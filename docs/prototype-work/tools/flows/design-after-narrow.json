@@ -1,0 +1,123 @@
+[
+{
+"act": "toMethod"
+},
+{
+"act": "toRequest"
+},
+{
+"check": "rights"
+},
+{
+"check": "stage"
+},
+{
+"check": "own"
+},
+{
+"act": "toCheckout"
+},
+{
+"check": "co_stage"
+},
+{
+"check": "co_plate"
+},
+{
+"act": "pay",
+"after": 500
+},
+{
+"role": "design"
+},
+{
+"act": "assign"
+},
+{
+"act": "startWork"
+},
+{
+"act": "propose",
+"after": 500
+},
+{
+"role": "customer"
+},
+{
+"act": "cs",
+"attr": "data-to=\"proposal\""
+},
+{
+"act": "cs",
+"attr": "data-to=\"approve\""
+},
+{
+"check": "ap_typo"
+},
+{
+"check": "ap_contact"
+},
+{
+"check": "ap_color"
+},
+{
+"check": "ap_qty"
+},
+{
+"check": "ap_nocancel"
+},
+{
+"act": "doApprove",
+"after": 600
+},
+{
+"role": "design"
+},
+{
+"act": "handOff"
+},
+{
+"role": "partner"
+},
+{
+"act": "download"
+},
+{
+"role": "customer"
+},
+{
+"act": "afterReq",
+"attr": "data-kind=\"cancel\"",
+"keepDialog": true,
+"shot": "dan-01-consent"
+},
+{
+"wait": 100
+},
+{
+"role": "partner",
+"shot": "dan-02-partner-hold"
+},
+{
+"act": "plate",
+"attr": "data-v=\"30000\""
+},
+{
+"role": "hq",
+"shot": "dan-03-mediation"
+},
+{
+"act": "mediate",
+"attr": "data-r=\"ok\""
+},
+{
+"role": "partner",
+"shot": "dan-04-partner-comp"
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+}
+]

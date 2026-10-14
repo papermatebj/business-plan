@@ -1,0 +1,8 @@
+[
+ {"act":"submitCoupon"},{"act":"acct","attr":"data-v=\"seo\""},{"act":"approveCoupon"},
+ {"role":"customer"},{"act":"cs","attr":"data-to=\"box\""},{"act":"download","shot":"benefit-dark-01-box"},
+ {"act":"cs","attr":"data-to=\"checkout\"","shot":"benefit-dark-02-checkout"},
+ {"role":"hq","shot":"benefit-dark-03-hq"},
+ {"act":"hqView","attr":"data-v=\"mem\"","shot":"benefit-dark-04-hqmem"},
+ {"role":"customer"},{"click":"#gc-device .phone-top .back"},{"act":"cs","attr":"data-to=\"box\""},{"act":"cs","attr":"data-to=\"dfee\"","shot":"benefit-dark-05-dfee"}
+]

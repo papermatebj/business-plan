@@ -1,0 +1,78 @@
+[
+ {
+  "shot": "order-01-cart"
+ },
+ {
+  "check": "cup"
+ },
+ {
+  "act": "toCheckout"
+ },
+ {
+  "eval": "document.querySelector('#gc-device [data-act=\"pay\"]').textContent.trim()"
+ },
+ {
+  "check": "ph2"
+ },
+ {
+  "eval": "document.querySelector('#gc-device [data-act=\"pay\"]').textContent.trim()"
+ },
+ {
+  "check": "ph2"
+ },
+ {
+  "check": "agree",
+  "shot": "order-02-checkout"
+ },
+ {
+  "act": "pay",
+  "after": 400
+ },
+ {
+  "wait": 100,
+  "shot": "order-03-done"
+ },
+ {
+  "role": "partner"
+ },
+ {
+  "act": "accept",
+  "shot": "order-04-partner"
+ },
+ {
+  "act": "ship"
+ },
+ {
+  "role": "system"
+ },
+ {
+  "act": "track"
+ },
+ {
+  "role": "customer",
+  "shot": "order-05-delivered"
+ },
+ {
+  "act": "confirmItem",
+  "attr": "data-id=\"spoon\""
+ },
+ {
+  "adv": "604800000"
+ },
+ {
+  "role": "hq",
+  "shot": "order-06-hq"
+ },
+ {
+  "role": "customer"
+ },
+ {
+  "act": "snapView",
+  "attr": "data-id=\"spoon\"",
+  "shot": "order-19-snapshot-info"
+ },
+ {
+  "act": "cs",
+  "attr": "data-to=\"detail\""
+ }
+]

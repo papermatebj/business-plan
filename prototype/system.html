@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>운영 설정 · 식업 프로토타입</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@600;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/gc.css">
+<style>
+  .head-pack { display: grid; gap: 12px; }
+  .acct { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet-2); }
+  .acct .who { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; font-size: 13.5px; }
+  .seg-sm button { padding: 5px 10px; font-size: 12.5px; }
+  .seg button:disabled { opacity: .45; cursor: not-allowed; }
+  .subtabs { display: flex; gap: 2px; border-bottom: 1px solid var(--rule); overflow-x: auto; scrollbar-width: thin; }
+  .subtabs button { flex: none; border: 0; background: none; padding: 8px 12px; font-size: 14px; color: var(--ink-2); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+  .subtabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+  .code { display: block; font-size: 11.5px; color: var(--ink-3); font-weight: 400; }
+  .diff { color: var(--warn); font-size: 12px; }
+  .chg { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .rbac th.sym, .rbac td.sym, .mx th.sym, .mx td.sym { text-align: center; padding-inline: 4px; }
+  .rbac td.sym { width: 50px; }
+  .rbac .on { background: var(--spot-weak); }
+  .rbac th.on { color: var(--ink); }
+  .pipe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .pipe span { font-size: 12px; text-align: center; padding: 6px 2px 0; border-top: 3px solid var(--rule); color: var(--ink-3); }
+  .pipe span.done { border-color: var(--kraft); color: var(--ink-2); }
+  .pipe span.now { border-color: var(--spot); color: var(--ink); font-weight: 600; }
+  .pipe span.bad { border-color: var(--stop); color: var(--stop); font-weight: 600; }
+  .sim-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .nw { white-space: nowrap; }
+  .tbl td.act { width: 1%; white-space: nowrap; }
+  .inbox .li { grid-template-columns: 10px minmax(0, 1fr); align-items: start; cursor: pointer; }
+  .inbox .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--spot); margin-top: 7px; }
+  .inbox .dot.read { background: transparent; }
+  .inbox .t { font-weight: 600; display: block; }
+  .inbox .b { display: block; font-size: 12.5px; color: var(--ink-2); }
+  .flag { color: var(--stop); font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .file-btns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  @media (max-width: 720px) { .file-btns { grid-template-columns: minmax(0, 1fr); } }
+  .btn.file-btn { display: grid; justify-content: start; justify-items: start; gap: 2px; text-align: left; }
+  .file-btn small { font-weight: 400; color: var(--ink-3); font-size: 12px; }
+  .tbl td.tv { text-align: right; min-width: 7em; }
+  .pol td:first-child { min-width: 9em; }
+  .tbl td.tv .code { text-align: right; }
+  .scan4 td:first-child { min-width: 8em; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="assets/engine.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  const { won, fmtDate } = GC;
+  const esc = UI.esc, pv = UI.pv;
+
+  /* ── 엔진에 없는 정책값: 페이지 안 상수(임시 기본값) ── */
+  const K = { NOTICE_FAVOR: 7, NOTICE_UNFAVOR: 30, NIGHT_FROM: 21, NIGHT_TO: 8, PII_MAX: 100, IDLE_MIN: 30, PRESIGN_UP: 10, PRESIGN_DOWN: 5, CONVERT_MIN: 5 };
+  const ppv = (text, label) => `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(label)} — 엔진에 없어 이 페이지 안 상수로 둔 값">${text}</span>`;
+  /* 값 범위 검증(A-SYS-03 "무료 수정 0~10회" 같은 범위). 키별 → 단위별 순서로 찾음. [최소, 최대, 소수 허용] */
+  const RANGE_KEY = { 'commission.default_rate': [0, 30, 1], 'commission.custom_rate': [0, 30, 1], 'commission.floor': [0, 30, 1], 'design.free_threshold': [0, 5000000, 0], 'settlement.final_holdback': [0, 50, 0], 'notify.notice_min_hours': [24, 72, 0], 'batch.stale_grace': [1, 24, 0] };
+  const RANGE_UNIT = { '%': [0, 100, 1], '%p': [0, 10, 1], '원': [0, 10000000, 0], '원/월': [0, 1000000, 0], '일': [1, 365, 0], '영업일': [1, 30, 0], '영업시간': [1, 40, 0], '시간': [0, 168, 0], '회': [0, 10, 0], '개월': [1, 60, 0], '세': [14, 40, 0], '개': [1, 10, 0], '장/월': [0, 30, 0], '장': [1, 200, 0], '분': [1, 60, 0] };
+  /* 문자열 값(엔진 text: true)은 숫자 편집 칸 대신 보기만. 실제로 어디서 넣는지 안내 */
+  const TEXT_HOW = { 'calendar.holidays': '관리자 화면의 공휴일 달력에서 등록', 'calendar.business_hours': '요일·시간대로 입력(이 화면은 보기만)', 'notify.ad_send_hours': '카카오 정책을 확인한 뒤 입력' };
+  /* 영향이 큰 값(수수료·디자인비·환불 기준): 최고관리자 승인 + 공지. cost=올리면 불리, benefit=내리면 불리 */
+  const HIGH = {};
+  ['commission.default_rate', 'commission.custom_rate', 'commission.floor', 'design.fee', 'design.multi_item_fee', 'design.free_threshold', 'design.extra_revision_fee', 'design.source_file_fee', 'design.own_file_fix_fee', 'membership.price_monthly', 'membership.price_yearly', 'partner.circumvent_penalty_min'].forEach((k) => { HIGH[k] = 'cost'; });
+  ['commission.plan_discount_pro', 'commission.plan_discount_premium', 'commission.new_partner_discount', 'commission.reorder_discount'].forEach((k) => { HIGH[k] = 'benefit'; });
+  ['claim.cancel_auto_approve_bd', 'claim.return_ship_days', 'claim.inspect_bd', 'claim.objection_days'].forEach((k) => { HIGH[k] = 'neutral'; });
+  const IMPACT = [
+    [/^design\.free_threshold$/, '주문서·맞춤 제작 화면의 "디자인비 무료" 판정이 바뀌어요. 적용 시작 이후 결제한 주문부터 쓰고, 이미 결제한 주문은 결제 때 정한 디자인비를 유지해요.'],
+    [/^design\./, '디자인 요청의 비용·횟수·기한 계산이 바뀌어요. 진행 중인 디자인 요청은 시작 시점 값을 유지해요.'],
+    [/^commission\./, '파트너 정산의 판매 수수료가 바뀌어요. 적용 뒤 결제된 주문 항목부터 쓰고, 계약 수수료 부록과 파트너 공지가 필요해요.'],
+    [/^order\.auto_confirm_days$/, '자동 구매 확정일이 바뀌면 정산 이벤트가 생기는 날, 곧 정산 시점이 달라져요.'],
+    [/^(order|payment|claim)\./, '주문·클레임 자동 처리 기한이 바뀌어요. 이미 열린 클레임은 열릴 때 값을 유지해요.'],
+    [/^settlement\./, '주간 정산 계산이 바뀌어요. 이미 확정된 정산에는 쓰지 않아요.'],
+    [/^notify\.notice_min_hours$/, '디자인 무응답 보류·자동 취소가 예고를 보낸 뒤 이 시간이 지나야 처리돼요(D-ROOM-07). 예고 시각은 건마다 저장해요.'],
+    [/^batch\./, '배치 지연 알림(NOTI_INT_BATCH_STALE)이 나가는 시점이 바뀌어요.'],
+    [/^file\./, '파일 악성코드 검사의 시간 초과 판단이 바뀌어요. 이 화면 파일 처리 탭에 바로 반영돼요.'],
+    [/^notify\./, '알림 발송 규칙이 바뀌어요. 이 화면 알림 탭의 시뮬레이터에 바로 반영돼요.'],
+    [/^(promo|membership)\./, '할인·혜택 계산이 바뀌어요.'],
+    [/^(member|partner)\./, '가입·입점 조건이 바뀌어요. 이미 접수된 신청은 접수 때 값을 써요.'],
+  ];
+  const PAGES = [[/^design\.|^production\./, 'design.html', '맞춤 디자인'], [/^commission\.|^settlement\./, 'settlement.html', '정산'], [/^(order|claim|payment)\./, 'order.html', '주문·결제'], [/^(promo|membership)\./, 'benefit.html', '쿠폰·멤버십'], [/^member\./, 'member.html', '회원·인증'], [/^partner\./, 'partner.html', '파트너 입점'], [/^notify\.notice_min_hours$/, 'room.html', '협의 룸'], [/^notify\./, '#', '이 화면 알림 탭'], [/^file\./, '#', '이 화면 파일 처리 탭']];
+  const REASONS = ['오픈 프로모션: 맞춤 주문 문턱 낮추기', '최근 4주 운영 데이터 반영', '법률 자문 결과 반영'];
+
+  /* ── 권한 (A-SYS-01 표 그대로) ── */
+  const ROLES = ['최고관리자', '운영·MD', 'CS', '디자이너', '정산·재무', '마케터', '읽기 전용'];
+  const ROLE_SHORT = ['최고', '운영·MD', 'CS', '디자인', '정산', '마케터', '읽기'];
+  const ACCT = {
+    '최고관리자': { name: '정대표', ip: '211.***.***.10 사내' }, '운영·MD': { name: '오민재', ip: '211.***.***.10 사내' },
+    'CS': { name: '윤가람', ip: '43.***.***.7 VPN 출구' }, '디자이너': { name: '최지안', ip: '211.***.***.10 사내' },
+    '정산·재무': { name: '서정우', ip: '211.***.***.10 사내' }, '마케터': { name: '강보라', ip: '43.***.***.7 VPN 출구' }, '읽기 전용': { name: '노은비', ip: '211.***.***.10 사내' },
+  };
+  const RBAC = [
+    ['대시보드', '●○○○○○○'], ['회원 조회(마스킹)', '●○◐—○—○'], ['마스킹 해제(사유 입력)', '●—◐————'],
+    ['개인정보 다운로드(마스킹 해제와 별도 권한)', '●—◐————'], ['사업자 인증 · 회원 제재', '●◐◐———○'], ['입점 심사 · 파트너 관리', '●●○—○—○'],
+    ['정산 계좌(마스킹 조회, 수정 불가)', '○○——○——'], ['수수료율 변경', '●◐——○——'], ['상품 검수 · 카테고리 · 전시', '●●○——◐○'],
+    ['주문 · 클레임 조회', '●●●○○○○'], ['강제 취소 · 환불 · 분쟁 판정', '●◐◐—○——'], ['디자인 스튜디오 작업(협의 룸 포함)', '●○○◐———'],
+    ['디자이너 배정 · SLA 관리', '●——◐——○'], ['정산 확정 · 지급 승인', '◐———◐—○'], ['쿠폰 · 캠페인 · 멤버십 · 광고 운영(작성·수정)', '●○——○●○'],
+    ['쿠폰 · 캠페인 승인', '◐————◐—'], ['디자인 옵션 가격', '●——◐○○○'], ['PB 매입 · 재고', '●◐——○—○'], ['통계 · 리포트', '●○○○○○○'],
+    ['관리자 계정 · 권한 · 정책값', '●——————'],
+  ];
+  const RBAC_MAP = Object.fromEntries(RBAC);
+  const SYM = { '●': '조회·수정·승인', '◐': '조회·수정(승인·배정은 팀장 플래그)', '○': '조회만', '—': '접근 불가' };
+  /* 정책값 묶음 → 권한 표의 행 (명세에 키별 매핑이 없어 묶음 단위로 가정) */
+  const GROUP_ROW = { '공통 · 영업일·배치': '관리자 계정 · 권한 · 정책값', '수수료·파트너': '수수료율 변경', '디자인': '디자인 옵션 가격', '할인·쿠폰': '쿠폰 · 캠페인 · 멤버십 · 광고 운영(작성·수정)', '주문·클레임': '관리자 계정 · 권한 · 정책값', '정산': '관리자 계정 · 권한 · 정책값', '회원·혜택': '관리자 계정 · 권한 · 정책값' };
+  const SECS = ['정책값', '권한', '알림', '감사 로그', '파일 처리'];
+  const SEC_SLUG = { '정책값': 'policies', '권한': 'roles', '알림': 'notifications', '감사 로그': 'audit', '파일 처리': 'files' };
+
+  /* ── 알림 이벤트 (C-NOTI-01에서 13개 발췌) ── */
+  const EVENTS = [
+    { code: 'NOTI_ORDER_PAID', label: '주문·결제 완료', to: '고객', ch: ['●', '●', '●', '●', '●', '—'], tab: '주문·배송', target: 'GC-20261012-0412', msg: '주문·결제가 완료됐어요' },
+    { code: 'NOTI_SHIPPED', label: '출고(송장 등록)', to: '고객', ch: ['●', '●', '●', '—', '●', '—'], tab: '주문·배송', target: 'GC-20261012-0412', msg: '상품이 출고됐어요 · 배송 조회' },
+    { code: 'NOTI_DELIVERED', label: '배송 완료', to: '고객', ch: ['○ 앱 푸시 못 받을 때', '—', '●', '—', '●', '—'], lazy: true, tab: '주문·배송', target: 'GC-20261012-0412', msg: '배송이 완료됐어요 · 7일 뒤 자동 구매 확정' },
+    { code: 'NOTI_DESIGN_PROPOSED', label: '시안 도착', to: '고객', ch: ['●', '●', '●', '●', '●', '—'], tab: '디자인', target: 'DR-24118', msg: '시안 v2가 도착했어요' },
+    { code: 'NOTI_ROOM_MESSAGE', label: '협의 룸 새 메시지', to: '고객', ch: ['○ 10분 동안 안 읽으면 묶어 1회', '—', '● 앱 밖에 있을 때', '—', '●', '—'], tab: '디자인', target: 'DR-24118', msg: '디자이너가 메시지를 보냈어요' },
+    { code: 'NOTI_DESIGN_REMIND', label: '무응답 리마인드(3일)', to: '고객', ch: ['●', '●', '●', '—', '●', '—'], lazy: true, tab: '디자인', target: 'DR-24118', msg: '시안 확인을 기다리고 있어요 (3일째)' },
+    { code: 'NOTI_DESIGN_AUTO_CANCELED', label: '디자인 자동 취소(30일)', to: '고객', ch: ['●', '●', '●', '●', '●', '—'], tab: '디자인', target: 'DR-24118', msg: '응답이 없어 디자인 요청이 자동 취소됐어요 · 공제·환불 내역' },
+    { code: 'NOTI_PARTNER_ORDER_NEW', label: '신규 주문', to: '파트너', ch: ['●', '●', '—', '○', '●', '—'], target: 'GC-20261012-0412', msg: '신규 주문이 들어왔어요' },
+    { code: 'NOTI_PARTNER_PACKAGE_HANDED_OFF', label: '인쇄 파일 도착', to: '파트너', ch: ['●', '●', '—', '○', '●', '—'], target: 'DR-24118', msg: '인쇄 파일이 도착했어요' },
+    { code: 'NOTI_PARTNER_PAYOUT_DONE', label: '지급 완료', to: '파트너', ch: ['○ 지급 완료·실패', '○', '—', '●', '●', '—'], target: 'ST-2026-W42', msg: '이번 주 정산금을 지급했어요' },
+    { code: 'NOTI_INT_SLA_OVER', label: 'SLA 초과', to: '담당 디자이너 · 디자인 리드', ch: ['—', '—', '—', '—', '●', '●'], target: 'DR-24118', msg: '첫 시안 SLA를 넘겼어요' },
+    { code: 'NOTI_INT_PII_ACCESS_LOCKED', label: '개인정보 조회 몰림 계정 잠금', to: '보안 담당', ch: ['—', '—', '—', '●', '●', '●'], target: 'ADM-윤가람', msg: '개인정보 조회가 몰려 계정을 잠갔어요' },
+    { code: 'NOTI_INT_FILE_SCAN_FAILED', label: '파일 검사 실패(재검사 뒤)', to: '개발 · 운영팀', ch: ['—', '—', '—', '●', '●', '●'], target: 'u/2026/10/파일 키', msg: '재검사 뒤에도 파일 검사가 안 끝나 격리했어요' },
+  ];
+  const EV_BY = Object.fromEntries(EVENTS.map((e) => [e.code, e]));
+  const CH6 = ['알림톡', 'SMS 대체', '앱 푸시', '이메일', '알림센터', '내부 Slack'];
+  const AD_TITLE = '(광고) 수저집 기획전 · 첫 맞춤 5,000원 쿠폰';
+  const CONSENT_LABEL = { push: '마케팅 앱 푸시', brand: '카카오 브랜드 메시지', email: '마케팅 이메일', night: '야간(21~08시) 광고' };
+
+  /* ── 회원·파일 예시 ── */
+  const MEMBERS = [
+    { id: 'M-10233', store: '오늘밥상', name: '정하늘', phone: '010-2481-5678', email: 'haneul@todaybapsang.kr' },
+    { id: 'M-10871', store: '브레드랩', name: '김도윤', phone: '010-7731-2045', email: 'doyun@breadlab.kr' },
+    { id: 'M-11002', store: '카페 온기', name: '이수아', phone: '010-5512-9087', email: 'sua@cafeongi.kr' },
+  ];
+  const UM_REASONS = ['고객 본인 확인 요청(CS)', '배송 분쟁 확인', '수사기관 요청(법무 확인 후)'];
+  const FILES = [
+    { id: 'logo', name: '오늘밥상_로고.ai', size: 18, limit: 20, kind: '고객 로고·참고 이미지', outcome: 'clean', convert: 'ok', note: '정상 파일' },
+    { id: 'mal', name: '견적서_스캔.pdf', size: 2, limit: 100, kind: '협의 룸 첨부', outcome: 'malware', note: '악성코드 샘플' },
+    { id: 'old', name: '옛날_로고.ai', size: 6, limit: 20, kind: '고객 로고·참고 이미지', outcome: 'clean', convert: 'fail', note: 'PDF 호환 저장 아님' },
+    { id: 'big', name: '메뉴판_사진.jpg', size: 25, limit: 20, kind: '고객 로고·참고 이미지', outcome: 'clean', convert: 'ok', note: '장당 한도 초과' },
+    { id: 'lock', name: '단가표_암호.pdf', size: 3, limit: 100, kind: '협의 룸 첨부', outcome: 'unscannable', note: '암호 걸린 PDF' },
+    { id: 'slow', name: '간판_원본.pdf', size: 48, limit: 500, kind: '고객 자체 인쇄 파일', outcome: 'error', convert: 'ok', note: '검사 엔진 오류 예시' },
+  ];
+  /* 검사 결과 4종(C-FILE-01) — '통과'만 열림 */
+  const SCAN_OUT = [
+    { k: 'clean', name: '통과', how: '미리보기 변환 뒤 권한 있는 사람만 열람', who: '사용 가능' },
+    { k: 'malware', name: '발견(악성코드)', how: '격리', who: '"다른 파일로 다시 올려 주세요"' },
+    { k: 'unscannable', name: '검사 불가(암호 걸린 PDF·압축, 검사 엔진 크기 한도 초과)', how: '격리', who: '"암호를 풀거나 나눠서 다시 올려 주세요"' },
+    { k: 'error', name: '실패·시간 초과(검사 엔진 오류, 정해진 시간 안에 결과 없음)', how: '자동으로 한 번 다시 검사 → 그래도 안 되면 격리 + 운영 알림', who: '"확인 중"' },
+  ];
+  const PAYOUT_SUM = 18420000;
+  const SAMPLE_QTYS = [10, 12, 20];
+
+  /* ── 페이지 안 상태 머신 ── */
+  GC.sm.define('SYS_POLICY_CHANGE', {
+    name: '정책값 변경',
+    states: { DRAFT: { name: '작성 중' }, PENDING: { name: '승인 대기' }, SCHEDULED: { name: '적용 예약' }, APPLIED: { name: '적용됨' }, ROLLED_BACK: { name: '되돌림' }, REJECTED: { name: '반려' } },
+    main: ['DRAFT', 'PENDING', 'SCHEDULED', 'APPLIED'], branch: ['ROLLED_BACK', 'REJECTED'], stop: ['REJECTED'],
+    transitions: [
+      { from: 'DRAFT', event: 'submit', to: 'PENDING', actor: 'hq', label: '승인 요청(새 값·적용 시작·사유)' },
+      { from: 'PENDING', event: 'approve', to: 'SCHEDULED', actor: 'hq', label: '승인(영향 큰 값은 최고관리자)' },
+      { from: 'PENDING', event: 'reject', to: 'REJECTED', actor: 'hq', label: '반려' },
+      { from: 'SCHEDULED', event: 'apply', to: 'APPLIED', actor: 'system', label: '적용 시작 시각에 배치가 적용' },
+      { from: 'APPLIED', event: 'rollback', to: 'ROLLED_BACK', actor: 'hq', label: '이전 값으로 되돌리기' },
+    ],
+  });
+  GC.sm.define('SYS_FILE', {
+    name: '파일 업로드·변환',
+    states: {
+      UPLOADING: { name: '업로드 중' }, SCANNING: { name: '검사 중', customer: '검사 중' }, CONVERTING: { name: '격리 변환', customer: '변환 중' }, READY: { name: '사용 가능', customer: '사용 가능' },
+      RESCANNING: { name: '재검사 중', customer: '검사 중' }, QUARANTINED: { name: '격리(발견)', customer: '다시 올려 주세요' }, UNSCANNABLE: { name: '검사 불가 · 격리', customer: '검사 불가' },
+      SCAN_FAILED: { name: '검사 실패 · 격리', customer: '확인 중' }, NO_PREVIEW: { name: '미리보기 없음', customer: '미리보기 없음' },
+    },
+    main: ['UPLOADING', 'SCANNING', 'CONVERTING', 'READY'], branch: ['RESCANNING', 'QUARANTINED', 'UNSCANNABLE', 'SCAN_FAILED', 'NO_PREVIEW'], stop: ['QUARANTINED', 'UNSCANNABLE', 'SCAN_FAILED'],
+    transitions: [
+      { from: 'UPLOADING', event: 'uploaded', to: 'SCANNING', actor: 'system', label: '업로드 완료 · 형식 확인 · 악성코드 검사 요청' },
+      { from: ['SCANNING', 'RESCANNING'], event: 'clean', to: 'CONVERTING', actor: 'system', label: '검사 통과 → convert 작업 실행' },
+      { from: ['SCANNING', 'RESCANNING'], event: 'malware', to: 'QUARANTINED', actor: 'system', label: '악성코드 발견 → 격리' },
+      { from: ['SCANNING', 'RESCANNING'], event: 'unscannable', to: 'UNSCANNABLE', actor: 'system', label: '검사 불가(암호·크기) → 격리 · 다시 올려 달라고 안내' },
+      { from: 'SCANNING', event: 'scan_error', to: 'RESCANNING', actor: 'system', label: '검사 실패·시간 초과 → 자동으로 한 번 다시 검사' },
+      { from: 'RESCANNING', event: 'scan_error', to: 'SCAN_FAILED', actor: 'system', label: '재검사도 실패 → 격리 · 운영 알림' },
+      { from: 'CONVERTING', event: 'converted', to: 'READY', actor: 'system', label: '미리보기·썸네일 생성' },
+      { from: 'CONVERTING', event: 'convert_fail', to: 'NO_PREVIEW', actor: 'system', label: '변환 실패 → 미리보기 없음' },
+    ],
+  });
+
+  const app = UI.mount({
+    domain: 'system',
+    title: '운영 설정',
+    lede: '금액·요율·기한 같은 운영 숫자는 코드에 박지 않고 관리자가 바꿉니다. 여기서 바꾼 값은 이 브라우저에 저장돼 다른 도메인 화면 계산에 바로 쓰여요. 역할별 권한, 알림 발송 규칙, 개인정보 접근 기록, 올린 파일의 격리 변환도 함께 봅니다.',
+    meta: '근거: 기능 명세서 A-SYS-01~03 · C-NOTI-01·02 · C-FILE-01 · C-SEC-01 · U-MY-06 · 기획서 실행 앱 구성(convert)',
+    actors: [
+      { id: 'hq', nav: SECS, navOn: '정책값', url: 'admin.sikup.co.kr/settings', place: '통합 관리자 · 역할별 권한으로 접속' },
+      { id: 'system' },
+      { id: 'customer', title: '알림', tab: '마이' },
+    ],
+    strips: [
+      { id: 'policy', machine: 'SYS_POLICY_CHANGE', label: '정책값 변경', note: 'A-SYS-03 · 새 값 → 승인 → 예약 → 적용' },
+      { id: 'file', machine: 'SYS_FILE', label: '파일 처리', note: 'C-FILE-01 · 검사 결과 4종 중 통과만 열려요' },
+    ],
+    render: (actor, f) => VIEWS[actor](f),
+    onReset: init,
+    foot: '시나리오: 디자인 팀장이 오픈 프로모션으로 맞춤 디자인비 무료 기준을 50만원에서 30만원으로 낮추려 합니다. 회원·계좌·파일은 설명용 예시입니다. 정책값은 [처음부터]로 지워지지 않아요. 원복은 [전부 기본값으로]로 하세요.',
+  });
+  const S = () => app.S;
+
+  function init() {
+    Object.assign(app.S, {
+      sec: '정책값', group: '디자인', role: '디자이너',
+      lead: { '최고관리자': true, '운영·MD': true, 'CS': false, '디자이너': true, '정산·재무': true, '마케터': false, '읽기 전용': false },
+      grants: { 'CS': { unmask: true, download: false } },
+      edit: null, change: null, seq: 0, appliedOnce: false, resetDone: false, lastBlock: null,
+      history: [{ at: new Date(2026, 9, 1, 10, 0), key: 'notify.room_digest_minutes', from: null, to: 10, status: '적용', by: '정대표(최고관리자)', ap: '최초 등록 · 오픈 준비' }],
+      audit: [], payout: { approved: false, blocked: false, lastBlock: null },
+      sim: { kind: 'info', ev: 'NOTI_DESIGN_REMIND', time: '2230', kakao: false, last: null, runs: 0, got: {} },
+      consent: { push: false, brand: false, email: false, night: false }, osPush: true, consentLog: [],
+      sentKeys: {}, adSent: [], queue: [],
+      inbox: [
+        { tab: '디자인', title: '시안 v1이 도착했어요', body: '오늘밥상 수저집 · 수정 요청이나 확정을 해 주세요', at: new Date(2026, 9, 9, 16, 5), read: false },
+        { tab: '주문·배송', title: '주문·결제가 완료됐어요', body: 'GC-20261012-0412 · 크라프트 수저집 맞춤 10,000매', at: new Date(2026, 9, 8, 14, 20), read: true },
+        { tab: '공지', title: '추석 연휴 배송 안내', body: '10/3~10/9 출고분은 연휴 뒤 순서대로 보내요', at: new Date(2026, 8, 29, 10, 0), read: true },
+      ],
+      cs: 'center', csTab: '디자인',
+      umReason: null, umErr: null, unmask: null, unmaskDone: false, lookups: {}, locked: {}, unlockDone: false,
+      file: null, files: [], fileReady: false, fileQuar: false, fileFail: false, fileLock: false,
+    });
+    audit('로그인', '통합 관리자', '', '', 'OTP 확인');
+    guide();
+  }
+
+  /* ── 도우미 ── */
+  const meta = (k) => GC.Policy.meta(k);
+  const who = (role = S().role) => `${ACCT[role].name}(${role}${S().lead[role] ? ' · 팀장' : ''})`;
+  const level = (row, role = S().role) => Array.from(RBAC_MAP[row])[ROLES.indexOf(role)];
+  const canEdit = (group) => ['●', '◐'].includes(level(GROUP_ROW[group]));
+  const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  const sameDay = (a, b) => startOfDay(a).getTime() === startOfDay(b).getTime();
+  const weekStart = (d) => { const x = startOfDay(d); return x.getTime() - ((x.getDay() + 6) % 7) * GC.DAY; };
+  const next8 = (at) => { const d = new Date(at); if (d.getHours() >= K.NIGHT_TO) d.setDate(d.getDate() + 1); d.setHours(K.NIGHT_TO, 0, 0, 0); return d; };
+  const inflight = () => !!S().edit || ['PENDING', 'SCHEDULED'].includes(app.state('policy'));
+  const rangeOf = (key) => RANGE_KEY[key] || RANGE_UNIT[meta(key).unit] || [0, 1e9, 0];
+  const impactText = (key) => (IMPACT.find(([re]) => re.test(key)) || [null, '이 값을 쓰는 화면의 계산이 바뀌어요.'])[1];
+  function pageLink(key) {
+    const p = PAGES.find(([re]) => re.test(key));
+    if (!p) return '';
+    return p[1] === '#' ? `${p[2]}에서 확인해 보세요.` : `<a href="${p[1]}">${p[2]}</a> 화면을 열면 바뀐 값으로 계산돼요.`;
+  }
+  function fmtV(key, v) {
+    if (v == null || v === '' || Number.isNaN(v)) return '-';
+    if (typeof v === 'string') return esc(v);
+    const m = meta(key);
+    if (m.unit === '원') return won(v);
+    if (m.unit === '원/월') return won(v) + '/월';
+    return `${Number.isInteger(v) ? GC.num(v) : Math.round(v * 10) / 10}${m.unit}`;
+  }
+  function parseVal(str) {
+    const t = String(str == null ? '' : str).replace(/[,\s]/g, '').replace(/(원\/월|원|%p|%|영업일|영업시간|일|회|개월|시간|분|세|개|장\/월|장)$/, '');
+    return t === '' ? NaN : Number(t);
+  }
+  function noticeDays(key, from, to) {
+    const h = HIGH[key]; if (!h) return 0;
+    if (Number.isNaN(to)) return K.NOTICE_FAVOR;
+    const worse = h === 'cost' ? to > from : h === 'benefit' ? to < from : false;
+    return worse ? K.NOTICE_UNFAVOR : K.NOTICE_FAVOR;
+  }
+  function startOpts(nd) {
+    const now = app.clock.now(); const d0 = startOfDay(now).getTime();
+    const min = nd ? new Date(d0 + nd * GC.DAY) : now;
+    const at = (n) => new Date(d0 + n * GC.DAY);
+    return [
+      { k: 'now', label: '즉시(승인 때)', at: now },
+      { k: 'tomorrow', label: '내일 00:00', at: at(1) },
+      { k: 'd7', label: `${fmtDate(at(K.NOTICE_FAVOR), false)} 00:00`, at: at(K.NOTICE_FAVOR) },
+      { k: 'd30', label: `${fmtDate(at(K.NOTICE_UNFAVOR), false)} 00:00`, at: at(K.NOTICE_UNFAVOR) },
+    ].map((o) => ({ ...o, ok: o.at >= min }));
+  }
+  function linkCheck(key, v) {
+    const g = (k) => (k === key ? v : GC.Policy.get(k));
+    if (key.startsWith('design.no_response')) {
+      const R = g('design.no_response_remind_days'), H = g('design.no_response_hold_days'), C = g('design.no_response_cancel_days');
+      if (!(R < H && H < C)) return `무응답 리마인드(${R}일) < 보류(${H}일) < 자동 취소(${C}일) 순서가 깨져요. 순서가 맞게 다시 넣어 주세요.`;
+    }
+    if (/^commission\.(floor|default_rate|custom_rate)$/.test(key) && (g('commission.floor') > g('commission.default_rate') || g('commission.floor') > g('commission.custom_rate'))) return `최종 요율 하한(${g('commission.floor')}%)이 카테고리 기본 요율보다 높아요. 하한을 낮추거나 기본 요율을 먼저 올려 주세요.`;
+    if (key.startsWith('notify.ad_') && g('notify.ad_daily_max') > g('notify.ad_weekly_max')) return `광고 하루 최대(${g('notify.ad_daily_max')}회)가 주 최대(${g('notify.ad_weekly_max')}회)보다 많아요.`;
+    if (/^design\.(fee|multi_item_fee)$/.test(key) && g('design.multi_item_fee') > g('design.fee')) return '추가 품목 디자인비가 첫 품목 디자인비보다 비싸요. 첫 품목 디자인비 이하로 넣어 주세요.';
+    if (/^membership\.price_/.test(key) && g('membership.price_yearly') > g('membership.price_monthly') * 12) return '연간 요금이 월간 요금 12개월치보다 비싸요.';
+    return null;
+  }
+  /* 맞춤 수저집 예시 장바구니(design.html과 같은 사양) — 엔진으로 계산 */
+  function basket(qty) {
+    return GC.price.calcOrder({
+      items: [{ id: 'i1', name: '크라프트 수저집', partnerId: 'DS', shipKey: 'DS', qty, unit: '1,000매', tiers: [{ min: 10, price: 30000 }, { min: 30, price: 26000 }], instant: { type: 'amount', value: 1000 }, plateFee: 50000, designGroup: 'D1' }],
+      designGroups: [{ id: 'D1', type: 'CUSTOM' }], shipping: { DS: { name: '대성포장', type: 'free', base: 0 } },
+    });
+  }
+  function feeIf(basis, { th, fee }) { return basis >= th ? 0 : fee; }
+  function audit(menu, target, before, after, reason, flag, by) {
+    const s = S();
+    s.audit.unshift({ at: app.clock.now(), who: by || who(), ip: by ? '내부 배치' : ACCT[s.role].ip, menu, target, before: before || '', after: after || '', reason: reason || '', flag: flag || '' });
+  }
+  function block(msg, menu, target) {
+    app.log('warn', `${esc(msg)} · 서버가 막았어요`);
+    app.toast(msg);
+    audit(menu || '권한 거부', target || '', '', '', '', '거부');
+    S().lastBlock = msg;
+  }
+  function guardLock() {
+    const s = S(); if (!s.locked[s.role]) return false;
+    app.log('warn', `${esc(who())} 계정이 잠겨 있어 서버가 요청을 막았어요`);
+    app.toast('잠긴 계정이에요. 최고관리자가 풀어야 해요');
+    return true;
+  }
+  function countRecent(role) { const now = app.clock.now(); return (S().lookups[role] || []).filter((t) => now - t < GC.HOUR).length; }
+  function addLookups(n) {
+    const s = S(); const arr = s.lookups[s.role] || (s.lookups[s.role] = []);
+    for (let i = 0; i < n; i++) arr.push(app.clock.now());
+    return countRecent(s.role);
+  }
+  const grant = (kind) => { const g = S().grants[S().role]; return g ? g[kind] !== false : true; };
+  function maskName(n) { return n.length <= 2 ? n[0] + '*' : n[0] + '*'.repeat(n.length - 2) + n[n.length - 1]; }
+  function maskPhone(p) { return p.replace(/^(\d{3})-\d{3,4}-(\d{4})$/, '$1-****-$2'); }
+  function maskEmail(e) { const [u, d] = e.split('@'); return `${u.slice(0, 2)}***@${d}`; }
+  function storeKey(name) { let h = 2166136261; for (let i = 0; i < name.length; i++) { h ^= name.charCodeAt(i); h = Math.imul(h, 16777619); } return `u/2026/10/${(h >>> 0).toString(16)}`; }
+  function pushHist(c, status) {
+    const back = status === '되돌림';
+    S().history.unshift({ at: app.clock.now(), key: c.key, from: back ? c.to : c.from, to: back ? c.from : c.to, status, by: c.by, ap: c.approvedBy || '-' });
+  }
+  function leftText(ms) { if (ms <= 0) return '곧'; const d = Math.floor(ms / GC.DAY), h = Math.floor((ms % GC.DAY) / GC.HOUR); return `${d ? d + '일 ' : ''}${h}시간`; }
+
+  /* ── 지금 차례 ── */
+  const rulesPolicy = (key) => [
+    { k: esc(meta(key).label), policy: key },
+    { k: '변경 승인', v: HIGH[key] ? '최고관리자' : '팀장 플래그 계정' },
+    { k: '공지 기간(유리 · 불리)', v: ppv(`${K.NOTICE_FAVOR}일 · ${K.NOTICE_UNFAVOR}일`, '공지 기간(A-MKT-04 약관 규칙 차용)') },
+    { k: '적용 대상', v: '적용 시작 이후 생긴 건' },
+  ];
+  const rulesPerm = () => [{ k: '돈이 나가는 승인', v: '팀장 플래그 필수' }, { k: '지급 요청자 = 승인자', v: '서버가 막음' }, { k: '정산 계좌 수정', v: '관리자 화면 불가' }, { k: '계좌 변경 후 첫 지급 보류', policy: 'settlement.account_change_hold_hours' }];
+  const rulesNoti = () => [{ k: '야간(급하지 않은 정보성은 08시)', v: ppv(`${K.NIGHT_FROM}~0${K.NIGHT_TO}시`, '야간 시간대') }, { k: '광고 하루 최대', policy: 'notify.ad_daily_max' }, { k: '광고 주 최대', policy: 'notify.ad_weekly_max' }, { k: '광고 채널', v: '푸시·브랜드 메시지·이메일' }];
+  const rulesAudit = () => [{ k: '조회 몰림 → 계정 잠금', v: ppv(`1시간 ${K.PII_MAX}건`, '개인정보 조회 몰림 기준') }, { k: '마스킹 해제', v: '사유 필수 · 기록' }, { k: '접속 기록 보관', v: ppv('1년(5만 명 이상 2년)', '접속 기록 보관') }, { k: '로그 수정·삭제', v: '최고관리자도 불가' }];
+  const rulesFile = () => [{ k: '검사 결과 4종 중 열리는 것', v: '통과만' }, { k: '검사 시간 초과(재검사 1회)', policy: 'file.scan_timeout_minutes' }, { k: '검사 중 디자인 SLA', v: '멈춤' }, { k: '원본·자체 인쇄 파일', v: ppv('500MB', 'file.max_size 원본') }, { k: '로고·참고 이미지', v: ppv('장당 20MB', 'file.max_size 이미지') }, { k: '업로드 서명 주소', v: ppv(`${K.PRESIGN_UP}분`, 'presigned POST 유효') }, { k: '변환 작업 상한', v: ppv(`${K.CONVERT_MIN}분`, 'convert 실행 시간 상한') }];
+
+  function guide() {
+    const s = S(); const st = app.state('policy'); const c = s.change;
+    const tk = 'design.free_threshold'; const sug = GC.Policy.get(tk) === 300000 ? 400000 : 300000;
+    const fst = app.state('file'); const tmo = GC.Policy.get('file.scan_timeout_minutes');
+    /* 결과를 기다리는 파일이 있으면 그것부터(검사가 안 끝나면 아무도 못 열고 SLA도 멈춰 있음) */
+    if (fst === 'SCANNING') return app.turn('system', '[검사 결과 받기]로 악성코드 검사 결과를 받으세요. 통과 전에는 아무도 파일을 열 수 없어요', { hint: `${tmo}분 안에 결과가 없으면(+1시간) 시간 초과로 보고 한 번 다시 검사해요.`, rules: rulesFile() });
+    if (fst === 'RESCANNING') return app.turn('system', '검사가 실패해 자동으로 한 번 다시 검사하고 있어요. [재검사 결과 받기]를 누르세요', { hint: `재검사도 실패하거나 ${tmo}분 안에 끝나지 않으면 격리하고 운영팀에 알려요. 올린 사람에게는 '확인 중'으로 보여요.`, rules: rulesFile() });
+    if (fst === 'CONVERTING') return app.turn('system', 'convert 작업이 끝났어요. [변환 결과 반영]으로 결과 JSON을 읽어 상태를 바꾸세요', { hint: 'convert에는 DB 계정·Redis·PG 키·S3 권한이 없어요. 받은 서명 주소로만 읽고 써요.', rules: rulesFile() });
+    if (!s.appliedOnce || ['DRAFT', 'PENDING', 'SCHEDULED'].includes(st)) {
+      if (st === 'PENDING') return app.turn('hq', c.high ? `${esc(c.id)} 요청을 승인하세요. 영향이 큰 값이라 계정 줄에서 최고관리자로 바꿔 [승인]해요` : `${esc(c.id)} 요청을 팀장 플래그 계정이나 최고관리자로 [승인]하세요`, { hint: '지금 계정으로 [승인]을 눌러 보면 서버가 막아요.', rules: rulesPolicy(c.key) });
+      if (st === 'SCHEDULED') return app.turn('system', `적용 시작(${fmtDate(c.startAt)})이 되면 예약 배치가 값을 바꿔요. 위쪽 +7일로 시간을 보내세요`, { hint: '그때까지 모든 화면은 지금 값으로 계산해요. 고객 알림 센터 공지 탭에 변경 안내가 올라갔어요.', rules: rulesPolicy(c.key) });
+      if (st === 'REJECTED') return app.turn('hq', '반려됐어요. 정책값 표에서 [변경]을 다시 눌러 새 요청을 만들 수 있어요', { rules: rulesPolicy(c.key) });
+      if (s.edit) return app.turn('hq', `새 값(예: ${s.edit.key === tk ? won(sug) : '범위 안 숫자'}), 적용 시작, 사유를 넣고 [승인 요청]을 누르세요`, { hint: '범위를 벗어난 값이나 사유 없는 요청은 저장되지 않아요.', rules: rulesPolicy(s.edit.key) });
+      return app.turn('hq', '정책값 탭 › 디자인 묶음에서 "맞춤 디자인비 무료 기준 금액"의 [변경]을 누르세요', {
+        hint: canEdit('디자인') ? `지금은 ${esc(who())}으로 로그인돼 있어요. 디자이너 역할은 디자인 옵션 가격을 바꿀 수 있어요(◐).` : '이 역할은 디자인 정책값을 바꿀 수 없어요. 계정 줄에서 디자이너(팀장 플래그)나 최고관리자로 바꾸세요.',
+        rules: rulesPolicy(tk),
+      });
+    }
+    const lockedRole = ROLES.find((r) => s.locked[r]);
+    if (lockedRole) return app.turn('hq', `${esc(who(lockedRole))} 계정이 잠겼어요. 최고관리자로 바꿔 감사 로그 탭에서 [잠금 풀기]를 누르세요`, { hint: '보안 담당에게 알림이 갔어요. 잠긴 계정은 어떤 요청도 할 수 없어요.', rules: rulesAudit() });
+    if (!s.payout.blocked && !s.payout.approved) return app.turn('hq', '권한 탭에서 정산·재무(서정우)로 바꿔, 서정우가 요청한 이번 주 지급을 [지급 승인]해 보세요', { hint: `${esc(meta(c.key).label)} 변경이 적용돼 다른 화면 계산에 바로 쓰여요(정책값 탭에서 엔진 재계산 확인). 이어서 요청자와 승인자가 같으면 서버가 막는 걸 봐요. 정산 계좌 [수정]도 눌러 보세요.`, rules: rulesPerm() });
+    if (!s.payout.approved) return app.turn('hq', '이번에는 최고관리자(팀장 플래그 켬)로 바꿔 [지급 승인]하세요', { hint: '최고관리자도 팀장 플래그를 끄면 돈이 나가는 승인을 못 해요.', rules: rulesPerm() });
+    const g = s.sim.got;
+    if (!(g.deferred && g.adSent && g.limit)) {
+      if (!g.deferred) return app.turn('hq', '알림 탭의 발송 규칙 시뮬레이터에서 정보성 "무응답 리마인드"를 밤 22:30으로 두고 [발송 판단]을 누르세요', { hint: '급하지 않은 정보성 알림은 야간에 보내지 않고 08시로 미뤄요.', rules: rulesNoti() });
+      if (!g.blocked && !g.adSent) return app.turn('hq', '구분을 [광고성]으로 바꿔 [발송 판단]을 누르세요. 고객이 마케팅 수신에 동의하지 않아 막혀요', { rules: rulesNoti() });
+      if (!g.adSent && !adWouldPass()) return app.turn('customer', '마이 › 알림 설정에서 마케팅 앱 푸시와 야간 광고 수신을 켜세요', { hint: '주문·디자인 같은 필수 알림은 끌 수 없고, 마케팅 알림만 고를 수 있어요.', rules: rulesNoti() });
+      if (!g.adSent) return app.turn('hq', '같은 광고로 다시 [발송 판단]을 누르세요. 이번엔 "(광고)" 표시를 달고 보내요', { rules: rulesNoti() });
+      return app.turn('hq', '한 번 더 [발송 판단]을 누르세요. 같은 고객에게 광고 하루 한도를 넘어 막혀요', { hint: '정책값 탭에서 notify.ad_daily_max를 바꾸면 이 판단이 바로 달라져요.', rules: rulesNoti() });
+    }
+    if (!s.unlockDone) {
+      if (!s.unmaskDone) return app.turn('hq', '감사 로그 탭에서 CS(윤가람)로 바꿔 해제 사유를 고르고 첫 회원의 [마스킹 해제]를 누르세요', { hint: '사유 없이 누르면 막혀요. [개인정보 다운로드]는 마스킹 해제와 다른 권한이라 CS 계정엔 따로 없어요.', rules: rulesAudit() });
+      return app.turn('hq', `[회원 상세 20건 열기]를 여러 번 눌러 1시간 안에 ${K.PII_MAX}건을 넘겨 보세요. 계정이 잠겨요`, { rules: rulesAudit() });
+    }
+    if (!s.fileReady) return app.turn('hq', '파일 처리 탭에서 [오늘밥상_로고.ai 올리기]를 누르세요', { hint: '고객이 올린 것으로 시연해요. 서버를 거치지 않고 S3로 바로 올라가요.', rules: rulesFile() });
+    if (!s.fileQuar) return app.turn('hq', '이번엔 [견적서_스캔.pdf 올리기]로 악성코드 샘플을 올려 보세요', { hint: '[메뉴판_사진.jpg]는 장당 한도를 넘어 S3가 업로드부터 거부해요. [단가표_암호.pdf]는 검사 불가, [간판_원본.pdf]는 검사 실패 → 재검사 갈래예요.', rules: rulesFile() });
+    if (st === 'APPLIED') return app.turn('hq', '마지막으로 정책값 탭에서 적용한 값을 [되돌리기] 하세요(최고관리자). 그 사이 새 값으로 처리된 건이 목록으로 나와요', { hint: s.fileFail && s.fileLock ? '' : '되돌리기 전에 파일 처리 탭에서 [단가표_암호.pdf](검사 불가)와 [간판_원본.pdf](검사 실패 → 재검사 → 격리)도 올려 볼 수 있어요.', rules: rulesPolicy(c.key) });
+    if (!s.resetDone) return app.turn('hq', '정책값 탭의 [전부 기본값으로]를 눌러 이 브라우저에 저장된 값을 모두 원복하세요', { hint: '다른 페이지도 기획서 임시 기본값으로 다시 계산해요.', rules: [{ k: '바뀐 값', v: `${Object.keys(GC.Policy.overrides()).length}개` }] });
+    return app.done('운영 설정을 한 바퀴 돌았어요. 바꾼 정책값은 모두 기본값으로 돌아갔어요.', { next: '정책값 탭에서 다른 값(예: 광고 하루 최대, 무응답 보류 일수)을 바꿔 보세요. 범위·연결 값 검증과 승인 규칙이 값마다 다르게 걸려요.' });
+  }
+  function refresh() { guide(); app.refresh(); }
+
+  /* ── 본사(통합 관리자) 화면 ── */
+  const VIEWS = {};
+  VIEWS.hq = (f) => {
+    const s = S();
+    f.nav(s.sec); f.url(`admin.sikup.co.kr/settings/${SEC_SLUG[s.sec]}`);
+    const locked = s.locked[s.role] ? `<div class="note note-stop small"><b>계정 잠김</b> · ${esc(who())} 계정이 1시간 동안 개인정보를 ${countRecent(s.role)}건 조회해 잠겼어요. 보안 담당에게 알렸고, 최고관리자가 확인한 뒤 풀 수 있어요.</div>` : '';
+    const sec = { '정책값': secPolicy, '권한': secPerm, '알림': secNoti, '감사 로그': secAudit, '파일 처리': secFile }[s.sec];
+    f.body.innerHTML = `<div class="head-pack">
+      <div class="acct">
+        <div class="who"><b>${esc(ACCT[s.role].name)}</b><span>${esc(s.role)}${s.lead[s.role] ? ' · 팀장 플래그' : ''}</span><span class="xsmall faint">OTP 확인 · ${esc(ACCT[s.role].ip)} · ${ppv(K.IDLE_MIN + '분', '미사용 자동 로그아웃')} 쓰지 않으면 로그아웃</span></div>
+        <div class="seg seg-sm" role="group" aria-label="로그인 역할">${ROLES.map((r) => `<button data-act="role" data-r="${r}" aria-pressed="${r === s.role}">${r}</button>`).join('')}</div>
+        <label class="check small"><input type="checkbox" data-change="lead" data-k="lead" ${s.lead[s.role] ? 'checked' : ''}><span>팀장 플래그 <span class="faint">시연용 전환 · 실제로는 최고관리자가 계정 관리에서 켜요</span></span></label>
+      </div>
+      <div class="subtabs" role="tablist" aria-label="운영 설정 메뉴">${SECS.map((x) => `<button role="tab" data-act="sec" data-s="${x}" aria-selected="${x === s.sec}">${x}</button>`).join('')}</div>
+    </div>${locked}${sec(s)}`;
+  };
+
+  /* 정책값 */
+  function secPolicy(s) {
+    const nOver = Object.keys(GC.Policy.overrides()).length;
+    return `<div class="split"><h3>정책값</h3><span class="small muted">기본값과 다른 값 ${nOver}개 · 이 브라우저에 저장</span></div>
+      ${s.edit ? editPanel(s) : changePanel(s)}
+      <div class="stack">${policyTable(s)}</div>
+      ${histHtml(s)}
+      <div class="cluster"><button class="btn btn-danger" data-act="resetAll">전부 기본값으로</button><span class="xsmall faint">시연용 · 이 브라우저에 저장된 바뀐 값을 모두 지워요. 실제 운영은 값마다 되돌리기와 승인을 거쳐요.</span></div>`;
+  }
+  function policyTable(s) {
+    const groups = [...new Set(GC.Policy.list().map((p) => p.group))];
+    const lv = level(GROUP_ROW[s.group]);
+    const seg = `<div class="seg seg-sm" role="group" aria-label="정책값 묶음">${groups.map((g) => `<button data-act="grp" data-g="${g}" aria-pressed="${g === s.group}">${g}</button>`).join('')}</div>
+      <p class="xsmall faint">이 묶음 권한(권한 표 "${esc(GROUP_ROW[s.group])}" 행): <b>${lv}</b> ${SYM[lv]}</p>`;
+    if (lv === '—') return `${seg}<div class="note note-stop small">${esc(who())} 계정은 이 묶음을 볼 수 없어요(A-SYS-01). 다른 묶음을 고르거나 역할을 바꾸세요.</div>`;
+    const busy = inflight(); const c = s.change; const st = app.state('policy');
+    const hl = (k) => c && c.key === k && ['PENDING', 'SCHEDULED', 'APPLIED'].includes(st);
+    const last = (k) => s.history.find((h) => h.key === k);
+    const common = s.group === '공통 · 영업일·배치' ? '<p class="xsmall faint">영업일은 평일 중 본사 공휴일 달력에 없는 날이에요. 디자인 SLA·파트너 기한·정산 확정일·지급일이 모두 이 달력 하나를 쓰고, 달력을 바꾸면 그 뒤 시작하는 기한부터 적용해요. 날짜·시각은 모두 한국 시간이에요.</p>' : '';
+    return `${seg}${common}<div class="tbl-wrap"><table class="tbl small pol"><thead><tr><th>정책값</th><th class="num">지금 값</th><th></th></tr></thead><tbody>
+      ${GC.Policy.list().filter((p) => p.group === s.group).map((p) => {
+        if (p.text) {
+          return `<tr><td>${esc(p.label)}<span class="code">${esc(p.key)} · 문자열 값</span></td>
+          <td class="tv">${pv(p.key)}<span class="code">${esc(TEXT_HOW[p.key] || '보기만')}${p.note ? ` · ${esc(p.note)}` : ''}</span></td>
+          <td class="act"><span class="xsmall faint" title="문자열 값이라 숫자 편집 칸으로 바꾸지 않아요">보기만</span></td></tr>`;
+        }
+        const h = last(p.key);
+        return `<tr${hl(p.key) ? ' class="is-hl"' : ''}><td>${esc(p.label)}${p.phase ? ` <span class="tag tag-phase">${p.phase}</span>` : ''}${p.draft ? ' <span class="tag tag-phase">법률 자문 전 초안</span>' : ''}${HIGH[p.key] ? ' <span class="tag tag-warn">영향 큼</span>' : ''}<span class="code">${esc(p.key)}${h ? ` · ${fmtDate(h.at, false)} ${esc(h.status)}` : ''}</span></td>
+          <td class="num">${pv(p.key)}<span class="code">${p.changed ? `<span class="diff">기본 ${fmtV(p.key, p.def)}과 다름</span>` : `기본 ${fmtV(p.key, p.def)}`}</span></td>
+          <td class="act">${canEdit(p.group) ? `<button class="btn btn-sm" data-act="pvEdit" data-k="${p.key}" ${busy ? 'disabled title="진행 중인 변경이 끝나면 바꿀 수 있어요"' : ''}>변경</button>` : '<span class="xsmall faint">조회만</span>'}</td></tr>`;
+      }).join('')}</tbody></table></div>`;
+  }
+  function previewHtml(key, nv) {
+    if (!/^design\.(free_threshold|fee)$/.test(key)) return '';
+    const cur = { th: GC.Policy.get('design.free_threshold'), fee: GC.Policy.get('design.fee') };
+    const nxt = { ...cur, ...(nv == null ? {} : key === 'design.fee' ? { fee: nv } : { th: nv }) };
+    const rows = SAMPLE_QTYS.map((q) => {
+      const d = basket(q).designFees[0]; const a = feeIf(d.basis, nxt);
+      return `<tr><td>수저집 ${(q * 1000).toLocaleString()}매</td><td class="num">${won(d.basis)}</td><td class="num">${d.fee ? won(d.fee) : '무료'}</td><td class="num">${nv == null ? '-' : a ? won(a) : '<b>무료</b>'}</td></tr>`;
+    }).join('');
+    return `<div class="tbl-wrap"><table class="tbl small"><thead><tr><th>예시 장바구니</th><th class="num">맞춤 품목</th><th class="num">지금 디자인비</th><th class="num">새 값이면</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="xsmall faint">맞춤 품목 = 파트너 할인 후·본사 쿠폰 전, 판비·배송비 제외. 지금 디자인비는 엔진(GC.price.calcOrder) 계산이에요.</p>`;
+  }
+  function editPanel(s) {
+    const e = s.edit; const m = meta(e.key); const cur = GC.Policy.get(e.key);
+    const nv = parseVal(e.val); const valid = !Number.isNaN(nv);
+    const nd = noticeDays(e.key, cur, valid ? nv : NaN); const opts = startOpts(nd);
+    if (!e.picked || !opts.find((o) => o.k === e.start && o.ok)) e.start = (opts.find((o) => o.ok) || opts[0]).k;
+    const [mn, mx] = rangeOf(e.key);
+    return `<div class="panel"><div class="panel-h"><h2>값 바꾸기 · ${esc(m.label)}</h2><span class="tag">${esc(e.key)}</span></div><div class="panel-b stack">
+      <dl class="kv small"><dt>지금 값</dt><dd>${pv(e.key)}</dd><dt>기본값</dt><dd>${fmtV(e.key, m.def)}</dd>
+        <dt>허용 범위</dt><dd>${ppv(`${fmtV(e.key, mn)} ~ ${fmtV(e.key, mx)}`, '값 범위 검증')}</dd>
+        <dt>승인</dt><dd>${HIGH[e.key] ? '<span class="tag tag-warn">영향 큼</span> 최고관리자 승인 · 공지 후 적용' : '팀장 플래그 계정 또는 최고관리자'}</dd></dl>
+      <div class="field"><label for="pvNew">새 값 (${esc(m.unit)})</label><input class="input" id="pvNew" data-input="pvVal" inputmode="decimal" autocomplete="off" value="${esc(e.val)}" placeholder="예: ${e.key === 'design.free_threshold' ? '300000' : m.def}">
+        ${valid && nv !== cur ? `<span class="hint">${fmtV(e.key, cur)} → <b>${fmtV(e.key, nv)}</b>${HIGH[e.key] ? ` · ${nd === K.NOTICE_UNFAVOR ? '고객·파트너에게 불리한 변경' : '불리하지 않은 변경'}이라 공지 ${nd}일 뒤부터` : ''}</span>` : ''}</div>
+      <div class="field"><span class="lbl">적용 시작</span><div class="seg">${opts.map((o) => `<button data-act="pvStart" data-k="${o.k}" aria-pressed="${e.start === o.k}" ${o.ok ? '' : 'disabled title="공지 기간이 모자라요"'}>${o.label}</button>`).join('')}</div>
+        <span class="hint">${nd ? `영향이 큰 값이라 즉시 적용할 수 없어요. 공지(A-MKT-04) ${ppv(nd + '일', '공지 기간')} 뒤부터 적용해요.` : '즉시 또는 예약 적용을 고를 수 있어요.'} 새 값은 적용 시작 이후 생긴 건에만 써요.</span></div>
+      <div class="field"><label for="pvReason">사유 (필수)</label><textarea class="textarea" id="pvReason" data-input="pvReason" placeholder="변경 이력과 감사 로그에 남아요">${esc(e.reason)}</textarea>
+        <div class="cluster">${REASONS.map((t) => `<button class="tag" data-act="pvReasonPreset" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>
+      <div class="note small"><b>영향 범위</b> · ${impactText(e.key)}</div>
+      ${previewHtml(e.key, valid ? nv : null)}
+      ${e.err ? `<div class="note note-stop small">${e.err.map(esc).join('<br>')}</div>` : ''}
+      <div class="cluster"><button class="btn btn-primary" data-act="pvSubmit">승인 요청</button><button class="btn btn-ghost" data-act="pvCancel">취소</button></div>
+    </div></div>`;
+  }
+  function affected(c) {
+    const end = c.rolledAt || app.clock.now(); const base = c.appliedAt.getTime();
+    const ymd = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    return [[95, 348000], [460, 420000], [530, 310000], [1500, 365000], [2900, 330000]].map(([min, amt], i) => {
+      const at = new Date(base + min * 60000);
+      const note = c.key === 'design.free_threshold' ? `맞춤 품목 ${won(amt)} · 디자인비 ${amt >= c.to ? '무료(새 기준)' : '유료'}` : `새 값 ${fmtV(c.key, c.to)}으로 계산`;
+      return { at, id: `GC-${ymd(at)}-0${130 + i * 7}`, note };
+    }).filter((x) => x.at <= end);
+  }
+  function affHtml(c) {
+    if (!c.appliedAt) return '';
+    const list = affected(c);
+    return `<div class="stack-sm"><b class="small">적용 뒤 새 값으로 처리된 건 ${list.length}건</b>${list.length ? `<table class="tbl small"><tbody>${list.map((x) => `<tr><td class="nw">${x.id}<span class="code">${fmtDate(x.at)}</span></td><td>${esc(x.note)}</td></tr>`).join('')}</tbody></table>` : '<p class="xsmall faint">아직 없어요.</p>'}</div>`;
+  }
+  function proofHtml(c) {
+    if (/^design\.(free_threshold|fee)$/.test(c.key)) {
+      const before = { th: c.key === 'design.free_threshold' ? c.from : GC.Policy.get('design.free_threshold'), fee: c.key === 'design.fee' ? c.from : GC.Policy.get('design.fee') };
+      const rows = SAMPLE_QTYS.map((q) => { const d = basket(q).designFees[0]; const b = feeIf(d.basis, before); return `<tr><td>수저집 ${(q * 1000).toLocaleString()}매</td><td class="num">${won(d.basis)}</td><td class="num">${b ? won(b) : '무료'}</td><td class="num"><b>${d.fee ? won(d.fee) : '무료'}</b></td></tr>`; }).join('');
+      return `<div class="tbl-wrap"><table class="tbl small"><thead><tr><th>엔진으로 다시 계산</th><th class="num">맞춤 품목</th><th class="num">바뀌기 전</th><th class="num">지금</th></tr></thead><tbody>${rows}</tbody></table></div><p class="xsmall faint">GC.price.calcOrder가 저장된 값을 바로 읽어요. ${pageLink(c.key)}</p>`;
+    }
+    if (/^commission\./.test(c.key)) {
+      const r1 = GC.settle.finalRate({ base: GC.Policy.get('commission.custom_rate') }); const r2 = GC.settle.finalRate({ base: GC.Policy.get('commission.custom_rate'), reorder: true });
+      const ev = GC.settle.confirmEvent({ sale: 348000, rate: r1.rate });
+      return `<dl class="kv small"><dt>맞춤 최종 요율</dt><dd>${r1.rate}% · 재주문 ${r2.rate}%</dd><dt>판매가 348,000원</dt><dd>수수료 ${won(ev.fee)} · 정산 ${won(ev.amount)}</dd></dl><p class="xsmall faint">GC.settle.finalRate·confirmEvent로 다시 계산했어요. ${pageLink(c.key)}</p>`;
+    }
+    return `<p class="small">${pageLink(c.key) || '이 값을 쓰는 화면 계산에 바로 쓰여요.'}</p>`;
+  }
+  function changePanel(s) {
+    const c = s.change; const st = app.state('policy'); if (!c || !st || st === 'DRAFT') return '';
+    const m = meta(c.key);
+    const kv = `<dl class="kv small"><dt>정책값</dt><dd>${esc(m.label)}<span class="code">${esc(c.key)}</span></dd>
+      <dt>변경</dt><dd class="chg">${fmtV(c.key, c.from)} → <b>${fmtV(c.key, c.to)}</b></dd>
+      <dt>적용 시작</dt><dd>${c.startKey === 'now' && st === 'PENDING' ? '승인 즉시' : fmtDate(c.startAt)}${c.high ? ` · 공지 ${c.nd}일 뒤` : ''}</dd>
+      <dt>사유</dt><dd>${esc(c.reason)}</dd><dt>요청</dt><dd>${esc(c.by)} · ${fmtDate(c.at)}</dd>
+      ${c.approvedBy ? `<dt>승인</dt><dd>${esc(c.approvedBy)}</dd>` : ''}
+      <dt>승인 기준</dt><dd>${c.high ? '<span class="tag tag-warn">영향 큼</span> 최고관리자 승인 · 약관·공지 절차 후 적용' : '팀장 플래그 계정 또는 최고관리자'}</dd></dl>`;
+    const box = (title, cls, body) => `<div class="panel"><div class="panel-h"><h2>${esc(c.id)} · ${title}</h2><span class="st ${cls}">${GC.sm.stateName('SYS_POLICY_CHANGE', st)}</span></div><div class="panel-b stack">${body}</div></div>`;
+    if (st === 'PENDING') return box('승인 대기', 'st-todo', `${kv}<div class="cluster"><button class="btn btn-primary" data-act="pvApprove">승인</button><button class="btn btn-danger" data-act="pvReject">반려</button><span class="xsmall faint">지금 로그인: ${esc(who())}</span></div>${s.lastBlock ? `<div class="note note-stop small">${esc(s.lastBlock)}</div>` : ''}`);
+    if (st === 'SCHEDULED') return box('적용 예약', 'st-now', `${kv}<div class="note small">${fmtDate(c.startAt)}에 예약 배치가 값을 바꿔요. 그때까지 모든 화면은 지금 값(${fmtV(c.key, c.from)})으로 계산해요.${c.noticed ? ` ${c.noticed}` : ''}</div>`);
+    if (st === 'APPLIED') return box('적용됨', 'st-done', `<div class="note note-spot"><b>다른 화면에 바로 반영돼요.</b> 값은 이 브라우저(localStorage gc.policy.v1)에 저장되고, 다른 도메인 화면도 같은 값을 읽어 계산해요.</div>${kv}${proofHtml(c)}${affHtml(c)}
+      <div class="cluster"><button class="btn btn-danger" data-act="pvRollback">${fmtV(c.key, c.from)}로 되돌리기</button><span class="xsmall faint">잘못 적용했을 때 · 최고관리자 · 즉시</span></div>${s.lastBlock ? `<div class="note note-stop small">${esc(s.lastBlock)}</div>` : ''}`);
+    if (st === 'ROLLED_BACK') return box('되돌림', 'st-warn', `${kv}<div class="note note-warn small">${fmtDate(c.rolledAt)}에 ${fmtV(c.key, c.from)}로 되돌렸어요. 그 사이 새 값으로 처리된 건은 결제 때 값을 그대로 두고, 필요하면 하나씩 보정해요.</div>${affHtml(c)}`);
+    if (st === 'REJECTED') return box('반려', 'st-stop', `${kv}<div class="note note-stop small">${esc(c.rejectedBy)}이 반려했어요. 지금 값(${fmtV(c.key, c.from)})을 그대로 써요.</div>`);
+    return '';
+  }
+  function histHtml(s) {
+    return `<div class="panel"><div class="panel-h"><h2>변경 이력</h2><span class="xsmall faint">감사 로그에도 같이 남아요</span></div><div class="panel-b"><div class="tbl-wrap"><table class="tbl small"><thead><tr><th>시각 · 상태</th><th>정책값 · 변경</th></tr></thead><tbody>
+      ${s.history.slice(0, 8).map((h) => `<tr><td class="nw xsmall">${fmtDate(h.at)}<br><b>${esc(h.status)}</b></td><td>${esc(meta(h.key).label)} <span class="chg">${h.from == null ? '-' : fmtV(h.key, h.from)} → <b>${fmtV(h.key, h.to)}</b></span><span class="code">${esc(h.key)} · 요청 ${esc(h.by)} · 승인 ${esc(h.ap)}</span></td></tr>`).join('')}</tbody></table></div></div></div>`;
+  }
+
+  /* 권한 */
+  function secPerm(s) {
+    const col = ROLES.indexOf(s.role); const p = s.payout;
+    return `<div class="split"><h3>역할별 권한</h3><span class="small muted">${esc(who())} 열 강조</span></div>
+      <div class="tbl-wrap"><table class="tbl small rbac"><thead><tr><th>메뉴 · 기능</th>${ROLE_SHORT.map((h, i) => `<th class="sym${i === col ? ' on' : ''}" title="${ROLES[i]}">${h}</th>`).join('')}</tr></thead><tbody>
+        ${RBAC.map(([label, sy]) => `<tr><td>${esc(label)}</td>${Array.from(sy).map((x, i) => `<td class="sym${i === col ? ' on' : ''}" title="${SYM[x]}">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+      <p class="xsmall faint">● 조회·수정·승인 · ◐ 조회·수정은 역할 전체, 승인·배정은 팀장 플래그 계정만 · ○ 조회만 · — 접근 불가. 팀장은 역할이 아니라 계정 플래그예요. 읽기 전용은 집계·마스킹 화면만 보고 정산 계좌·계약서·협의 룸 원문은 못 봐요.</p>
+      <div class="panel"><div class="panel-h"><h2>돈이 나가는 승인 · 이번 주 지급</h2>${p.approved ? '<span class="st st-done">승인됨</span>' : '<span class="st st-todo">승인 대기</span>'}</div><div class="panel-b stack">
+        <dl class="kv small"><dt>지급 요청</dt><dd>서정우(정산·재무 · 팀장) · 10/14(수) 정산 확정 후 요청</dd><dt>대상</dt><dd>2026년 42주차 정산 · 파트너 12곳</dd><dt>금액</dt><dd>${won(PAYOUT_SUM)}</dd><dt>지급</dt><dd>금요일 토스페이먼츠 지급대행</dd><dt>승인 조건</dt><dd>팀장 플래그 + 요청자와 다른 계정(서버 검증)</dd></dl>
+        <div class="cluster"><button class="btn btn-primary" data-act="payApprove" ${p.approved ? 'disabled' : ''}>지급 승인</button><span class="xsmall faint">지금 로그인: ${esc(who())}</span></div>
+        ${p.lastBlock && !p.approved ? `<div class="note note-stop small">${esc(p.lastBlock)}</div>` : ''}
+        ${p.approved ? `<div class="note note-spot small">${esc(p.approvedBy)}이 승인했어요. 금요일 배치가 지급대행을 실행해요.</div>` : ''}</div></div>
+      <div class="panel"><div class="panel-h"><h2>파트너 정산 계좌</h2><span class="xsmall faint">마스킹 조회만 · 수정 불가</span></div><div class="panel-b stack">
+        <table class="tbl small"><tbody><tr><td>대성포장</td><td>국민 ***-**-1234 · 예금주 대성포장(주)</td><td><button class="btn btn-sm" data-act="acctEdit">수정</button></td></tr></tbody></table>
+        <p class="xsmall faint">어떤 역할도 관리자 화면에서 고칠 수 없어요. 파트너 본인이 파트너 센터에서 바꾸고, 바뀐 뒤 첫 지급은 ${pv('settlement.account_change_hold_hours')} 보류해요(P-ONB-04).</p></div></div>
+      <div class="panel"><div class="panel-h"><h2>로그인 보안</h2></div><div class="panel-b"><dl class="kv small"><dt>2단계 인증</dt><dd>OTP 필수 · 기기 분실 시 최고관리자가 본인 확인 후 재등록</dd><dt>접속 경로</dt><dd>회사 IP 허용 목록 또는 VPN(고정 IP exit node) · admin 앱은 별도 도메인·쿠키·세션</dd><dt>비밀번호</dt><dd>10자 이상 · 3종 조합 · 5회 실패 시 잠금 · 공용 계정 금지</dd><dt>최고관리자</dt><dd>2명 이상 유지(1명 부재 대비)</dd><dt>점검</dt><dd>분기 1회 안 쓰는 계정·과도한 권한 목록</dd></dl></div></div>`;
+  }
+
+  /* 알림 */
+  function adWouldPass() {
+    const s = S(); const c = s.consent; const h = simTime().getHours(); const night = h >= K.NIGHT_FROM || h < K.NIGHT_TO;
+    return ((c.push && s.osPush) || c.brand || c.email) && (!night || c.night);
+  }
+  function simTime() {
+    const t = S().sim.time; const d = app.clock.now();
+    if (t !== 'now') d.setHours(Number(t.slice(0, t.length - 2)), Number(t.slice(-2)), 0, 0);
+    return d;
+  }
+  function decide() {
+    const s = S(); const sim = s.sim; const at = simTime(); const h = at.getHours();
+    const night = h >= K.NIGHT_FROM || h < K.NIGHT_TO;
+    const r = { at, night, rows: [], why: [], send: [], verdict: '', cls: 'spot', kind: sim.kind };
+    if (sim.kind === 'info') {
+      const ev = EV_BY[sim.ev]; r.ev = ev; r.key = `${ev.code} + ${ev.to} + ${ev.target}`;
+      if (s.sentKeys[r.key]) { r.verdict = '중복 억제 · 다시 보내지 않음'; r.cls = 'warn'; r.dup = true; r.why.push('같은 키(이벤트 + 수신자 + 대상 ID)는 재시도·중복 이벤트가 와도 한 번만 보내요.'); return r; }
+      const pushOk = ev.to !== '고객' || s.osPush;
+      ev.ch.forEach((cell, i) => {
+        if (i === 1 || cell === '—') return;
+        let res = '보냄', ok = true;
+        if (i === 0) {
+          if (/앱 푸시 못 받을 때/.test(cell)) { ok = !pushOk; res = ok ? '보냄 (앱 푸시를 못 받아서)' : '안 보냄 (앱 푸시로 받음)'; }
+          else if (/10분/.test(cell)) { ok = false; res = '10분 묶음 대기 (안 읽으면 1회)'; }
+          if (ok && sim.kakao) {
+            ok = false;
+            if (ev.ch[1] !== '—') { res = '실패 → 같은 내용을 SMS·LMS로 대체'; r.send.push('SMS'); r.sms = true; } else res = '실패 → 이메일·알림센터에 남김';
+          }
+        } else if (i === 2) {
+          if (!pushOk) { ok = false; res = '안 보냄 (기기 알림 권한 꺼짐)'; } else if (cell.length > 1) res = `보냄 (${cell.slice(2)})`;
+        } else if ((i === 3 || i === 5) && cell.startsWith('○')) { ok = false; res = '조건부 · 이번엔 안 보냄'; }
+        if (ok) r.send.push(i === 5 ? 'Slack' : CH6[i]);
+        r.rows.push([CH6[i], res, ok]);
+      });
+      if (night && ev.lazy) {
+        r.verdict = '08:00으로 미룸'; r.cls = 'warn'; r.defer = true; r.why.push('야간이고 급하지 않은 알림이라 예약 큐에 넣고 08시에 보내요.');
+        r.rows = r.rows.map((x) => (x[2] ? [x[0], `08:00에 ${x[1]}`, true] : x));
+      }
+      else { r.verdict = r.sms ? '바로 보냄 · SMS 대체' : '바로 보냄'; r.why.push(night ? '야간이지만 거래 진행에 필요한 정보성 알림이라 바로 보내요.' : '정보성 알림은 수신 동의 없이 보내요. 고객이 끌 수 없어요.'); }
+      return r;
+    }
+    const c = s.consent;
+    r.rows = [['알림톡', '금지 (광고는 알림톡으로 보내지 않음)', false],
+      ['앱 푸시', !c.push ? '동의 없음' : !s.osPush ? '안 보냄 (기기 알림 권한 꺼짐)' : '보냄', c.push && s.osPush],
+      ['카카오 브랜드 메시지', c.brand ? '보냄' : '동의 없음', c.brand], ['이메일', c.email ? '보냄' : '동의 없음', c.email],
+      ['SMS 대체', '하지 않음 (광고는 실패해도 문자로 대체 안 함)', false]];
+    const chans = r.rows.filter((x) => x[2]).map((x) => x[0]);
+    const dMax = GC.Policy.get('notify.ad_daily_max'), wMax = GC.Policy.get('notify.ad_weekly_max');
+    const day = s.adSent.filter((t) => sameDay(t, at)).length, week = s.adSent.filter((t) => weekStart(t) === weekStart(at)).length;
+    r.counts = { day, week };
+    if (!chans.length) { r.verdict = '차단 · 마케팅 수신 동의 없음'; r.blocked = true; r.why.push('발송 직전에 동의 상태를 다시 조회했어요. 받을 수 있는 채널이 없어 보내지 않아요.'); }
+    else if (night && !c.night) { r.verdict = '차단 · 야간 광고 수신 동의 없음'; r.blocked = true; r.why.push('야간(21~08시) 광고는 야간 수신에 따로 동의한 사람에게만 보내요.'); }
+    else if (day >= dMax || week >= wMax) { r.verdict = '한도 초과 · 보내지 않음'; r.limit = true; r.why.push(`같은 고객에게 광고는 하루 ${dMax}회·주 ${wMax}회까지예요. 오늘 ${day}회·이번 주 ${week}회 보냈어요.`); }
+    else { r.verdict = '보냄 · 맨 앞 "(광고)" 표시'; r.send = chans; r.adSent = true; r.why.push('수신 거부 방법(마이 › 알림 설정)을 함께 적어요. 카카오 브랜드 메시지는 카카오가 정한 발송 가능 시간 안에서만 보내요(확인 필요).'); }
+    if (r.blocked || r.limit) { r.cls = 'stop'; r.rows = r.rows.map((x) => (x[2] ? [x[0], '보내지 않음 (위 사유)', false] : x)); }
+    return r;
+  }
+  function deliver(ev, send, at) {
+    app.notify(ev.code, ev.to, send.length ? send : ['알림센터'], esc(ev.msg));
+    if (ev.to === '고객') S().inbox.unshift({ tab: ev.tab, title: ev.msg, body: ev.target, at: new Date(at), read: false });
+  }
+  function secNoti(s) {
+    const sim = s.sim; const c = s.consent; const r = sim.last;
+    const times = [['now', `지금 ${GC.fmtTime(app.clock.now())}`], ['1400', '14:00'], ['2230', '22:30'], ['0730', '07:30']];
+    const tg = (on, t) => `<span class="tag${on ? ' tag-spot' : ''}">${t} ${on ? '켬' : '끔'}</span>`;
+    const res = r ? `<div class="note note-${r.cls} small"><b>${esc(r.verdict)}</b> · ${fmtDate(r.at)}${r.night ? ' (야간)' : ''}<br>${r.why.map(esc).join(' ')}</div>
+      ${r.rows.length ? `<table class="tbl small"><thead><tr><th>채널</th><th>결과</th></tr></thead><tbody>${r.rows.map(([n, t, ok]) => `<tr><td>${esc(n)}</td><td>${ok ? `<span class="st st-done">${esc(t)}</span>` : `<span class="faint">${esc(t)}</span>`}</td></tr>`).join('')}</tbody></table>` : ''}
+      ${r.key ? `<p class="xsmall faint">중복 억제 키: ${esc(r.key)}</p>` : ''}${r.counts ? `<p class="xsmall faint">이 고객 광고: 오늘 ${r.counts.day}회 · 이번 주 ${r.counts.week}회 (한도 하루 ${pv('notify.ad_daily_max')} · 주 ${pv('notify.ad_weekly_max')})</p>` : ''}`
+      : '<p class="small muted">조건을 고르고 [발송 판단]을 누르면, 알림 모듈이 보내기 전에 확인하는 순서대로 결과를 보여 줘요.</p>';
+    return `<div class="split"><h3>알림 이벤트 · 발송 규칙</h3><span class="small muted">C-NOTI-01 · C-NOTI-02</span></div>
+      <div class="panel"><div class="panel-h"><h2>발송 규칙 시뮬레이터</h2><span class="xsmall faint">구분 · 시각 · 동의 · 횟수 · 중복 억제</span></div><div class="panel-b stack">
+        <div class="sim-grid">
+          <div class="field"><span class="lbl">메시지 구분</span><div class="seg">${[['info', '정보성(거래·서비스)'], ['ad', '광고성(혜택·홍보)']].map(([k, t]) => `<button data-act="simKind" data-k="${k}" aria-pressed="${sim.kind === k}">${t}</button>`).join('')}</div></div>
+          <div class="field">${sim.kind === 'info' ? `<label for="simEv">이벤트</label><select class="select" id="simEv" data-change="simEv">${EVENTS.map((e) => `<option value="${e.code}" ${e.code === sim.ev ? 'selected' : ''}>${esc(e.label)} · ${esc(e.to)}</option>`).join('')}</select>` : `<span class="lbl">캠페인 (A-MKT-03)</span><span class="input small" style="min-height:auto">${esc(AD_TITLE)}</span>`}</div>
+          <div class="field"><span class="lbl">발송 시각</span><div class="seg">${times.map(([k, t]) => `<button data-act="simTime" data-k="${k}" aria-pressed="${sim.time === k}">${t}</button>`).join('')}</div></div>
+          <div class="field"><span class="lbl">받는 고객(오늘밥상) 상태</span><div class="cluster">${tg(c.push, '마케팅 푸시')}${tg(c.brand, '브랜드 메시지')}${tg(c.email, '이메일')}${tg(c.night, '야간 광고')}${tg(s.osPush, '기기 알림')}</div>
+            <label class="check small"><input type="checkbox" data-change="simKakao" data-k="kakao" ${sim.kakao ? 'checked' : ''}><span>카카오톡 미사용·차단(알림톡 실패)</span></label></div>
+        </div>
+        <div class="cluster"><button class="btn btn-primary" data-act="simRun">발송 판단</button><span class="xsmall faint">고객 동의는 고객 화면 › 알림 설정에서 바꿔요</span></div>
+        ${res}
+        ${s.queue.length ? `<p class="small">08:00 예약 큐 ${s.queue.length}건 · 시스템이 08시에 순서대로 보내요.</p>` : ''}</div></div>
+      <div class="panel"><div class="panel-h"><h2>알림 이벤트 매트릭스 (${EVENTS.length}개 발췌)</h2><span class="xsmall faint">● 항상 · ○ 조건부 · — 안 보냄</span></div><div class="panel-b stack">
+        <div class="tbl-wrap"><table class="tbl small mx"><thead><tr><th>이벤트 · 받는 사람</th>${['알림톡', 'SMS', '푸시', '메일', '센터', 'Slack'].map((h) => `<th class="sym">${h}</th>`).join('')}</tr></thead><tbody>
+          ${EVENTS.map((e) => `<tr><td>${esc(e.label)} <span class="faint">· ${esc(e.to)}</span>${e.lazy ? ' <span class="tag">야간엔 08시</span>' : ''}<span class="code">${e.code.replace(/_/g, '_<wbr>')}</span></td>${e.ch.map((x) => `<td class="sym"${x.length > 1 ? ` title="${esc(x)}"` : ''}>${x.charAt(0)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+        <p class="xsmall faint">○ 조건: 배송 완료 알림톡은 앱 푸시를 못 받을 때, 협의 룸 알림톡은 ${pv('notify.room_digest_minutes')} 동안 안 읽으면 묶어 1회, 앱 푸시는 앱 설치·권한이 있을 때. 표의 알림은 모두 정보성이라 고객이 끌 수 없어요. 알림 문구에 고객 전화번호·주소를 넣지 않아요.</p></div></div>`;
+  }
+
+  /* 감사 로그 */
+  function secAudit(s) {
+    const lv = level('회원 조회(마스킹)'); const n = countRecent(s.role);
+    const locked = ROLES.filter((r) => s.locked[r]);
+    const member = lv === '—' ? `<div class="note note-stop small">${esc(who())} 계정은 회원 조회 권한이 없어요(A-SYS-01).</div>` : `
+      <table class="tbl small"><thead><tr><th>회원</th><th>이름 · 연락처</th><th></th></tr></thead><tbody>
+        ${MEMBERS.map((m, i) => { const open = s.unmask && s.unmask.i === i; return `<tr${open ? ' class="is-hl"' : ''}><td class="nw">${esc(m.store)}<span class="code">${m.id}</span></td><td><b>${esc(open ? m.name : maskName(m.name))}</b> <span class="chg">${esc(open ? m.phone : maskPhone(m.phone))}</span><span class="code">${esc(open ? m.email : maskEmail(m.email))}</span></td><td class="act"><button class="btn btn-sm" data-act="unmask" data-i="${i}" ${open ? 'disabled' : ''}>${open ? '해제됨' : '마스킹 해제'}</button></td></tr>`; }).join('')}</tbody></table>
+      <div class="field"><span class="lbl">해제·다운로드 사유 (필수)</span><div class="seg seg-sm">${UM_REASONS.map((t) => `<button data-act="umReason" data-t="${esc(t)}" aria-pressed="${s.umReason === t}">${esc(t)}</button>`).join('')}</div>${s.umErr ? `<span class="err">${esc(s.umErr)}</span>` : ''}</div>
+      <div class="cluster"><button class="btn" data-act="lookup20">회원 상세 20건 열기(시연)</button><button class="btn" data-act="piiDown">개인정보 다운로드</button></div>
+      <p class="xsmall faint">마스킹 해제와 개인정보 다운로드는 서로 다른 권한이에요. 이 계정: 해제 ${level('마스킹 해제(사유 입력)') !== '—' && grant('unmask') ? '있음' : '없음'} · 다운로드 ${level('개인정보 다운로드(마스킹 해제와 별도 권한)') !== '—' && grant('download') ? '있음' : '없음'}. 다운로드 파일은 암호를 걸고 개인정보 열은 기본으로 가려요.</p>`;
+    const tbl = s.role !== '최고관리자' ? '<div class="note small">감사 로그 조회는 최고관리자(개인정보 보호책임자)만 해요. 권한 표에 따로 행이 없어 "관리자 계정·권한·정책값" 권한으로 가정했어요.</div>' : `
+      ${locked.length ? `<div class="note note-stop small"><b>잠긴 계정</b> ${locked.map((r) => `<span class="cluster" style="margin-top:6px">${esc(who(r))} · 최근 1시간 ${countRecent(r)}건 <button class="btn btn-sm" data-act="unlock" data-r="${r}">잠금 풀기</button></span>`).join('')}</div>` : ''}
+      <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>누가 · 언제 · 어디서</th><th>무엇을 · 왜</th></tr></thead><tbody>
+        ${s.audit.slice(0, 14).map((a) => `<tr><td>${esc(a.who)}<span class="code nw">${fmtDate(a.at)} · ${esc(a.ip)}</span></td><td><b>${esc(a.menu)}</b>${a.target ? ` · ${esc(a.target)}` : ''}${a.flag ? ` <span class="flag">${esc(a.flag)}</span>` : ''}${a.before || a.after ? `<br><span class="chg">${esc(a.before || '-')} → ${esc(a.after || '-')}</span>` : ''}${a.reason ? `<span class="code">사유: ${esc(a.reason)}</span>` : ''}</td></tr>`).join('')}</tbody></table></div>
+      <div class="cluster"><button class="btn btn-sm" data-act="auditDel">이 기록 지우기 시도</button><span class="xsmall faint">전체 ${s.audit.length}건 · 쓰고 나면 고칠 수 없는 저장소 · 보관 ${ppv('1년(5만 명 이상 2년)', '접속 기록 보관')}</span></div>`;
+    return `<div class="split"><h3>개인정보 조회 · 감사 로그</h3><span class="small muted">A-SYS-02 · C-SEC-01</span></div>
+      <div class="panel"><div class="panel-h"><h2>회원 조회 (기본 가림)</h2><span class="xsmall faint">최근 1시간 ${n} / ${ppv(K.PII_MAX + '건', '개인정보 조회 몰림 기준')}</span></div><div class="panel-b stack">${member}</div></div>
+      <div class="panel"><div class="panel-h"><h2>감사 로그</h2><span class="xsmall faint">누가 · 언제 · 어디서 · 무엇을 · 왜</span></div><div class="panel-b stack">${tbl}</div></div>`;
+  }
+
+  /* 파일 처리 */
+  function convertBox() {
+    const no = '<span class="tag tag-stop">없음</span>';
+    return `<div class="panel"><div class="panel-h"><h2>convert 작업 격리</h2><span class="xsmall faint">남이 올린 AI·PDF·PSD·SVG를 여는 곳</span></div><div class="panel-b stack">
+      <dl class="kv small"><dt>실행</dt><dd>batch가 파일마다 띄우는 ECS 작업(RunTask) · 끝나면 종료</dd><dt>받는 것</dt><dd>이 파일 읽기 서명 주소 1개 · 결과(미리보기·썸네일·결과 JSON) 쓰기 서명 주소</dd>
+        <dt>DB 계정</dt><dd>${no}</dd><dt>Redis</dt><dd>${no}</dd><dt>PG 키</dt><dd>${no}</dd><dt>S3 권한</dt><dd>${no} 작업 역할에 권한 없음</dd>
+        <dt>도구 설정</dt><dd>Ghostscript -dSAFER · ImageMagick policy.xml로 PS·EPS·PDF·XPS·외부 URL 차단</dd><dt>상한</dt><dd>실행 ${ppv(K.CONVERT_MIN + '분', 'convert 실행 시간 상한')} · 메모리 제한 · 넘으면 실패, 자동 재시도 없음</dd></dl>
+      <p class="xsmall faint">이유: 변환 도구는 악성 PDF·PS로 서버 명령이 실행되는 취약점이 해마다 나오고, 악성코드 검사로는 못 걸러요. batch에는 DB 쓰기와 지급대행 키가 있어 같은 곳에서 변환하면 파일 하나로 정산까지 뚫릴 수 있어요.</p></div></div>`;
+  }
+  function pipeHtml(fst) {
+    const steps = [['UPLOADING', '업로드'], ['SCANNING', '검사 중'], ['CONVERTING', '격리 변환'], ['READY', '사용 가능']];
+    const idx = { UPLOADING: 0, SCANNING: 1, RESCANNING: 1, CONVERTING: 2, READY: 3, QUARANTINED: 1, UNSCANNABLE: 1, SCAN_FAILED: 1, NO_PREVIEW: 2 }[fst];
+    return `<div class="pipe">${steps.map(([k, t], i) => {
+      let cls = i < idx ? 'done' : i === idx ? 'now' : '';
+      let label = t;
+      if (fst === 'RESCANNING' && i === 1) label = '재검사 중';
+      if (fst === 'QUARANTINED' && i === 1) { cls = 'bad'; label = '악성코드 → 격리'; }
+      if (fst === 'UNSCANNABLE' && i === 1) { cls = 'bad'; label = '검사 불가 → 격리'; }
+      if (fst === 'SCAN_FAILED' && i === 1) { cls = 'bad'; label = '재검사 실패 → 격리'; }
+      if (fst === 'NO_PREVIEW' && i === 2) { cls = 'bad'; label = '미리보기 없음'; }
+      if (fst === 'READY' && i === 3) cls = 'done';
+      return `<span class="${cls}">${label}</span>`;
+    }).join('')}</div>`;
+  }
+  const QUAR = ['QUARANTINED', 'UNSCANNABLE', 'SCAN_FAILED'];
+  function openText(fst) {
+    if (fst === 'READY') return `권한 확인 뒤 ${ppv(K.PRESIGN_DOWN + '분', '다운로드 서명 주소 유효')}짜리 서명 주소로만 · files.sikup.co.kr · attachment`;
+    if (fst === 'NO_PREVIEW') return '원본은 받을 수 있지만 미리보기 없음 · 디자이너가 PNG를 따로 올려요';
+    if (fst === 'SCAN_FAILED') return '격리 · 누구에게도 주소를 주지 않음 · 운영팀이 확인해요';
+    if (QUAR.includes(fst)) return '격리 · 누구에게도 주소를 주지 않음';
+    return '검사를 통과할 때까지 아무도 못 열어요(디자이너 포함)';
+  }
+  function slaText(fst) {
+    if (['UPLOADING', 'SCANNING', 'RESCANNING'].includes(fst)) return '<b>멈춤</b> · 검사가 끝날 때까지 이 파일을 기다리는 SLA(자체 파일 검수 등)를 세지 않아요';
+    if (fst === 'QUARANTINED' || fst === 'UNSCANNABLE') return '고객 대기 · 올린 사람이 다시 올려야 해요';
+    if (fst === 'SCAN_FAILED') return '멈춘 채 운영 확인';
+    return '다시 흘러요';
+  }
+  const outKey = (f, fst) => (fst === 'RESCANNING' || fst === 'SCAN_FAILED' ? 'error' : fst === 'QUARANTINED' ? 'malware' : fst === 'UNSCANNABLE' ? 'unscannable' : ['CONVERTING', 'READY', 'NO_PREVIEW'].includes(fst) ? 'clean' : null);
+  function scan4Html(f, fst) {
+    const cur = f ? outKey(f, fst) : null;
+    return `<div class="panel"><div class="panel-h"><h2>검사 결과 4종</h2><span class="xsmall faint">'통과'만 열려요 · '발견이 아니면 통과'로 보지 않아요</span></div><div class="panel-b stack">
+      <div class="tbl-wrap"><table class="tbl small scan4"><thead><tr><th>검사 결과</th><th>처리</th><th>올린 사람에게</th></tr></thead><tbody>
+        ${SCAN_OUT.map((o) => `<tr${o.k === cur ? ' class="is-hl"' : ''}><td>${esc(o.name)}</td><td>${o.k === 'error' ? `${pv('file.scan_timeout_minutes')} 안에 안 끝나면 실패로 봐요. ${esc(o.how)}(NOTI_INT_<wbr>FILE_<wbr>SCAN_<wbr>FAILED)` : esc(o.how)}</td><td>${esc(o.who)}</td></tr>`).join('')}</tbody></table></div>
+      <p class="xsmall faint">검사 중·재검사 중에는 그 파일을 기다리는 디자인 SLA(D-STU-04)를 멈춰요. 다시 올려야 하는 경우(발견·검사 불가)는 고객 대기로 봐요. 협의 룸에서는 통과 전 파일이 디자이너에게 보이지 않아요(D-ROOM-02).</p></div></div>`;
+  }
+  function secFile(s) {
+    const f = s.file; const fst = app.state('file');
+    const stCls = QUAR.includes(fst) ? 'st-stop' : fst === 'READY' ? 'st-done' : fst === 'NO_PREVIEW' || fst === 'RESCANNING' ? 'st-warn' : 'st-now';
+    const cust = f ? GC.sm.machine('SYS_FILE').states[fst].customer : '';
+    return `<div class="split"><h3>파일 업로드 · 검사 · 변환</h3><span class="small muted">C-FILE-01</span></div>
+      <div class="panel"><div class="panel-h"><h2>업로드 시연</h2><span class="xsmall faint">고객이 올린 것으로 처리해요</span></div><div class="panel-b stack">
+        <div class="file-btns">${FILES.map((x) => `<button class="btn file-btn btn-ext" data-act="fileUp" data-id="${x.id}">${esc(x.name)} 올리기<small>${x.size}MB · ${esc(x.kind)} · ${esc(x.note)}</small></button>`).join('')}</div></div></div>
+      ${f ? `<div class="panel"><div class="panel-h"><h2>${esc(f.name)}</h2><span class="st ${stCls}">${GC.sm.stateName('SYS_FILE', fst)}</span></div><div class="panel-b stack">
+        ${pipeHtml(fst)}
+        <dl class="kv small"><dt>종류</dt><dd>${esc(f.kind)} · ${f.size}MB (한도 ${f.limit}MB)</dd><dt>저장 키</dt><dd>${esc(f.key)} · 원래 이름은 표시용</dd>
+          <dt>열람</dt><dd>${openText(fst)}</dd>
+          ${cust ? `<dt>올린 사람에게</dt><dd>${esc(cust)}${fst === 'UNSCANNABLE' ? ' · "암호를 풀거나 나눠서 다시 올려 주세요"' : fst === 'QUARANTINED' ? ' · "다른 파일로 다시 올려 주세요"' : ''}</dd>` : ''}
+          <dt>디자인 SLA</dt><dd>${slaText(fst)}</dd>
+          ${f.tries ? `<dt>검사 기록</dt><dd>${f.trail.map(esc).join('<br>')}</dd>` : ''}</dl></div></div>` : ''}
+      ${scan4Html(f, fst)}
+      ${convertBox()}
+      ${s.files.length ? `<div class="panel"><div class="panel-h"><h2>처리 기록</h2></div><div class="panel-b"><table class="tbl small"><thead><tr><th>파일</th><th>크기</th><th>결과</th><th>시각</th></tr></thead><tbody>${s.files.map((x) => `<tr><td>${esc(x.name)}</td><td class="num">${x.size}MB</td><td>${esc(x.result)}</td><td class="xsmall">${fmtDate(x.at)}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
+      <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>파일 종류 · 허용 형식</th><th>최대 크기 · 보관</th></tr></thead><tbody>
+        <tr><td>시안·인쇄 원본 · 고객 자체 파일<span class="code">AI · PDF · PSD · SVG (+ PNG·JPG 300dpi 검수)</span></td><td>${ppv('500MB', 'file.max_size 원본')}<span class="code">확정: 마지막 주문 후 3년 · 미확정: 취소 후 1년</span></td></tr>
+        <tr><td>협의 룸·생산 협의 첨부<span class="code">AI · PDF · PSD · PNG · JPG · SVG</span></td><td>${ppv('100MB', 'file.max_size 첨부')}<span class="code">분쟁 기록 3년 · 계약·확정 5년</span></td></tr>
+        <tr><td>고객 로고·참고 이미지<span class="code">AI · PDF · PNG · JPG · SVG</span></td><td>${ppv('장당 20MB · 10장', 'file.max_size 이미지')}<span class="code">디자인 요청과 같음</span></td></tr>
+        <tr><td>클레임 사진<span class="code">JPG · PNG</span></td><td>장당 20MB · 10장<span class="code">클레임 종료 후 3년</span></td></tr></tbody></table></div>`;
+  }
+
+  /* ── 시스템 화면 ── */
+  VIEWS.system = (f) => {
+    const s = S(); const c = s.change; const st = app.state('policy'); const fst = app.state('file'); const now = app.clock.now();
+    const sched = c && st === 'SCHEDULED';
+    const watch = ROLES.filter((r) => (s.lookups[r] || []).length).map((r) => `${ACCT[r].name} ${countRecent(r)}/${K.PII_MAX}`);
+    const rows = [
+      ['정책값 예약 적용', sched ? `${esc(c.id)} ${esc(meta(c.key).label)} ${fmtV(c.key, c.from)} → ${fmtV(c.key, c.to)} · ${fmtDate(c.startAt)}` : '예약된 변경 없음', sched ? `<span class="sla sla-warn">${leftText(c.startAt - now)} 남음</span>` : '<span class="faint">-</span>'],
+      ['알림 08:00 예약 큐', s.queue.length ? s.queue.map((q) => `${q.ev.code} → ${fmtDate(q.sendAt)}`).join('<br>') : '쌓인 메시지 없음', s.queue.length ? `<span class="sla sla-warn">${s.queue.length}건 대기</span>` : '<span class="faint">-</span>'],
+      ['개인정보 조회 감시', watch.join(' · ') || '최근 1시간 조회 없음', ROLES.some((r) => s.locked[r]) ? '<span class="sla sla-over">잠금 있음</span>' : '<span class="sla sla-ok">정상</span>'],
+      ['파일 검사·변환', s.file ? `${esc(s.file.name)} · ${GC.sm.stateName('SYS_FILE', fst)}${['SCANNING', 'RESCANNING'].includes(fst) ? ` · ${fmtDate(scanDeadline(s.file))}까지 결과 없으면 시간 초과(${pv('file.scan_timeout_minutes')})` : ''}` : '처리 중인 파일 없음',
+        ['SCANNING', 'RESCANNING', 'CONVERTING'].includes(fst) ? '<span class="sla sla-warn">결과 대기</span>' : fst === 'SCAN_FAILED' ? '<span class="sla sla-over">운영 확인</span>' : '<span class="faint">-</span>'],
+    ];
+    f.body.innerHTML = `
+      <h3>배치 · 발송 큐 · 감시</h3>
+      <p class="small muted">사람이 누르지 않아도 시간이 되면 돌아가는 일들이에요. 위쪽 +1시간·+1일·+7일로 시간을 보내면 자동으로 실행돼요.</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>작업</th><th>기준</th><th>상태</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${r[0]}</td><td class="small">${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table></div>
+      <div class="cluster"><button class="btn btn-ext" data-act="fileScan" ${['SCANNING', 'RESCANNING'].includes(fst) ? '' : 'disabled'}>${fst === 'RESCANNING' ? '재검사 결과 받기' : '검사 결과 받기'}</button><button class="btn btn-ext" data-act="fileConvert" ${fst === 'CONVERTING' ? '' : 'disabled'}>변환 결과 반영</button></div>
+      ${convertBox()}
+      <div class="note note-ext small">외부 연동: AWS S3·GuardDuty(파일·악성코드), ECS RunTask(convert), 솔라피(알림톡·문자), FCM·APNs(푸시), SES(이메일), Slack(내부 알림). 프로토타입에서는 안내 창으로 대신해요.</div>`;
+  };
+
+  /* ── 고객 화면: 알림 센터 · 알림 설정 (U-MY-06) ── */
+  VIEWS.customer = (f) => {
+    const s = S(); f.tab('마이');
+    const unread = s.inbox.filter((x) => !x.read).length; if (unread) f.badge('마이', unread);
+    if (s.cs === 'settings') { custSettings(f, s); return; }
+    f.title('알림');
+    const tabs = ['주문·배송', '디자인', '혜택·이벤트', '공지'];
+    const items = s.inbox.map((x, i) => ({ ...x, i })).filter((x) => x.tab === s.csTab);
+    f.body.innerHTML = `<div class="app-pad">
+      <div class="split"><span class="xsmall faint">알림은 90일 동안 보관해요</span><button class="btn btn-sm" data-act="csGo" data-to="settings">알림 설정</button></div>
+      <div class="seg" role="group" aria-label="알림 종류">${tabs.map((t) => { const n = s.inbox.filter((x) => x.tab === t && !x.read).length; return `<button data-act="csTab" data-t="${t}" aria-pressed="${s.csTab === t}">${t}${n ? ` ${n}` : ''}</button>`; }).join('')}</div>
+      <div class="app-card"><div class="app-list inbox">${items.length ? items.map((x) => `<div class="li" data-act="readNoti" data-i="${x.i}"><span class="dot${x.read ? ' read' : ''}"></span><span><span class="t">${esc(x.title)}</span><span class="b">${esc(x.body)}</span><span class="xsmall faint">${fmtDate(x.at)}</span></span></div>`).join('')
+        : `<p class="small muted">${s.csTab === '혜택·이벤트' ? '마케팅 수신에 동의하면 쿠폰·기획전 소식을 받아요.' : '아직 알림이 없어요.'}</p>`}</div></div>
+      <p class="xsmall faint">알림을 누르면 해당 화면(주문 상세·협의 룸 등)으로 이동해요.</p></div>`;
+  };
+  function custSettings(f, s) {
+    f.title('알림 설정'); f.back();
+    const c = s.consent;
+    const sw = (k, label, sub) => `<label class="check"><input type="checkbox" data-change="consent" data-k="c_${k}" ${c[k] ? 'checked' : ''}><span>${label}${sub ? `<br><span class="xsmall faint">${sub}</span>` : ''}</span></label>`;
+    f.body.innerHTML = `
+      <div class="app-sec"><h4>필수 알림</h4>
+        <p class="xsmall faint">주문·배송·결제·디자인·클레임 알림은 거래에 꼭 필요해서 끌 수 없어요.</p>
+        ${['주문·결제·배송', '디자인 진행(시안 도착·확정)', '취소·반품·환불'].map((t) => `<label class="check"><input type="checkbox" checked disabled><span>${t} <span class="tag">필수 알림</span></span></label>`).join('')}
+        <p class="note small">디자인 알림은 앱 푸시를 켜 두면 시안을 더 빨리 확인할 수 있어요.</p>
+        <p class="xsmall faint">받는 채널: 앱 푸시, 못 받으면 알림톡, 알림톡이 실패하면 문자 <span class="tag tag-phase">채널 선택 가능 여부 확인 필요</span></p></div>
+      <div class="app-sec"><h4>마케팅 알림 (선택)</h4>
+        ${sw('push', '앱 푸시')}${sw('brand', '카카오 브랜드 메시지')}${sw('email', '이메일')}
+        ${sw('night', '야간(21~08시) 광고 수신', '켜지 않으면 밤에는 광고를 보내지 않아요')}
+        <p class="xsmall faint">광고는 하루 ${pv('notify.ad_daily_max')}·주 ${pv('notify.ad_weekly_max')}까지만 보내요. 알림톡으로는 광고를 보내지 않아요. 동의는 2년마다 다시 확인해요.</p></div>
+      <div class="app-sec"><h4>기기 알림 권한</h4>
+        <div class="split"><span>${s.osPush ? '<span class="st st-done">허용됨</span>' : '<span class="st st-stop">꺼짐</span>'}</span><button class="btn btn-sm" data-act="osToggle">${s.osPush ? '기기 설정에서 끄기(시연)' : '기기 설정 열기'}</button></div>
+        <p class="xsmall faint">기기에서 알림을 끄면 동의와 상관없이 앱 푸시가 가지 않아요. 중요한 알림은 알림톡으로 보내요.</p></div>
+      <div class="app-sec"><h4>동의 이력</h4>
+        ${s.consentLog.length ? `<div class="app-list">${s.consentLog.map((x) => `<div class="li"><span class="small">${esc(x.txt)}</span><span class="xsmall faint">${fmtDate(x.at)}</span></div>`).join('')}</div>` : '<p class="xsmall faint">10/1 가입 때 마케팅 수신에 동의하지 않았어요.</p>'}</div>`;
+  }
+
+  /* ── 동작 ── */
+  app.actions({
+    role(b) {
+      const s = S(); const r = b.dataset.r; if (r === s.role) return;
+      s.role = r; s.lastBlock = null; s.payout.lastBlock = null;
+      const now = app.clock.now(); const off = !GC.isBizDay(now) || now.getHours() < 9 || now.getHours() >= 18;
+      audit('로그인', '통합 관리자', '', '', 'OTP 확인', off ? '업무 시간 외 접속' : '');
+      app.log('user', `로그인 계정: ${esc(who())}${s.locked[r] ? ' · 잠긴 계정' : ''}`);
+      refresh();
+    },
+    lead(t) {
+      const s = S(); s.lead[s.role] = t.checked;
+      audit('권한 변경', `${ACCT[s.role].name} 팀장 플래그`, t.checked ? '끔' : '켬', t.checked ? '켬' : '끔', '시연용 전환');
+      app.log('rule', `${esc(ACCT[s.role].name)} 계정 팀장 플래그 ${t.checked ? '켬' : '끔'} · 권한 변경 이력 저장`);
+      refresh();
+    },
+    sec(b) { S().sec = b.dataset.s; S().lastBlock = null; refresh(); },
+    grp(b) { S().group = b.dataset.g; refresh(); },
+    pvEdit(b) {
+      const s = S(); if (guardLock()) return;
+      const key = b.dataset.k; const m = meta(key);
+      if (m.text) { app.toast('문자열 값은 이 화면에서 보기만 해요'); return; }
+      if (!canEdit(m.group)) { block(`${who()} 계정은 '${m.group}' 정책값을 바꿀 권한이 없어요`, '정책값 변경', key); refresh(); return; }
+      if (inflight()) { app.toast('진행 중인 변경이 끝나면 바꿀 수 있어요'); return; }
+      s.edit = { key, val: '', start: null, reason: '', err: null }; s.lastBlock = null;
+      s.prevPolicy = { st: app.state('policy'), idx: app.strips.policy.lastMainIdx };
+      app.setState('policy', 'DRAFT', { by: `${who()} 작성 시작` });
+      app.log('user', `정책값 변경 작성: ${esc(m.label)} (${esc(key)})`);
+      refresh();
+    },
+    pvVal(t) {
+      const s = S(); if (!s.edit) return;
+      s.edit.val = t.value; s.edit.err = null;
+      clearTimeout(s._vt);
+      s._vt = setTimeout(() => {
+        if (!document.activeElement || document.activeElement.id !== 'pvNew') return;
+        refresh();
+        const i = app.lastFrame.querySelector('#pvNew'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+      }, 450);
+    },
+    pvReason(t) { const s = S(); if (s.edit) s.edit.reason = t.value; },
+    pvReasonPreset(b) { const s = S(); if (s.edit) { s.edit.reason = b.dataset.t; refresh(); } },
+    pvStart(b) { const s = S(); if (s.edit) { s.edit.start = b.dataset.k; s.edit.picked = true; refresh(); } },
+    pvCancel() {
+      const s = S(); s.edit = null;
+      const sp = app.strips.policy; const pr = s.prevPolicy || {};
+      sp.current = pr.st || null; sp.lastMainIdx = pr.idx == null ? null : pr.idx;
+      app.log('user', '정책값 변경 작성을 취소했어요');
+      refresh();
+    },
+    pvSubmit() {
+      const s = S(); const e = s.edit; if (!e || guardLock()) return;
+      if (!canEdit(meta(e.key).group)) { block(`${who()} 계정은 이 정책값을 바꿀 권한이 없어요`, '정책값 변경', e.key); refresh(); return; }
+      const cur = GC.Policy.get(e.key); const nv = parseVal(e.val); const [mn, mx, dec] = rangeOf(e.key); const errs = [];
+      if (Number.isNaN(nv)) errs.push('새 값을 숫자로 넣어 주세요.');
+      else if (nv < mn || nv > mx) errs.push(`허용 범위(${fmtV(e.key, mn)} ~ ${fmtV(e.key, mx)})를 벗어났어요. 범위 안의 값으로 다시 넣어 주세요.`);
+      else if (!dec && !Number.isInteger(nv)) errs.push('이 값은 정수만 받아요. 소수점을 빼 주세요.');
+      else if (dec && Math.abs(Math.round(nv * 10) - nv * 10) > 1e-9) errs.push('소수점은 한 자리까지만 받아요.');
+      else if (nv === cur) errs.push('지금 값과 같아요. 바꿀 값을 넣어 주세요.');
+      else { const bad = linkCheck(e.key, nv); if (bad) errs.push(bad); }
+      if (!e.reason.trim()) errs.push('변경 사유를 적어 주세요. 변경 이력과 감사 로그에 남아요.');
+      if (errs.length) { e.err = errs; app.log('warn', `정책값 저장을 막았어요: ${esc(errs[0])}`); refresh(); return; }
+      const nd = noticeDays(e.key, cur, nv); const opts = startOpts(nd);
+      const opt = (e.picked && opts.find((o) => o.k === e.start && o.ok)) || opts.find((o) => o.ok);
+      s.seq += 1;
+      s.change = { id: `PC-${String(41 + s.seq).padStart(4, '0')}`, key: e.key, from: cur, to: nv, startAt: opt.at, startKey: opt.k, reason: e.reason.trim(), by: who(), high: !!HIGH[e.key], nd, at: app.clock.now() };
+      s.edit = null;
+      app.go('policy', 'submit', { by: `${who()} 승인 요청` });
+      audit('정책값 변경 요청', e.key, fmtV(e.key, cur), fmtV(e.key, nv), s.change.reason);
+      app.log('rule', `${s.change.id} ${esc(meta(e.key).label)} ${fmtV(e.key, cur)} → ${fmtV(e.key, nv)} · 적용 ${opt.k === 'now' ? '승인 즉시' : fmtDate(opt.at)}${s.change.high ? ` · 영향 큰 값이라 최고관리자 승인 + 공지 ${nd}일` : ''}`);
+      refresh();
+    },
+    pvApprove() {
+      const s = S(); const c = s.change; if (!c || guardLock()) return;
+      const why = approveBlock(c);
+      if (why) { block(why, '정책값 승인', c.key); refresh(); return; }
+      s.lastBlock = null; c.approvedBy = who();
+      if (c.startKey === 'now') c.startAt = app.clock.now();
+      app.go('policy', 'approve', { by: `${who()} 승인` });
+      audit('정책값 변경 승인', c.key, fmtV(c.key, c.from), fmtV(c.key, c.to), `${c.id} 승인`);
+      if (c.high) postNotice(c);
+      if (c.startAt <= app.clock.now()) applyChange('승인 즉시 적용', c.startAt);
+      else app.log('rule', `${fmtDate(c.startAt)}에 예약 배치가 적용해요. 그때까지 지금 값을 계속 써요`);
+      refresh();
+    },
+    pvReject() {
+      const s = S(); const c = s.change; if (!c || guardLock()) return;
+      const why = approveBlock(c);
+      if (why) { block(why.replace('승인', '반려'), '정책값 반려', c.key); refresh(); return; }
+      c.rejectedBy = who(); s.lastBlock = null;
+      app.go('policy', 'reject', { by: `${who()} 반려` });
+      pushHist(c, '반려');
+      audit('정책값 변경 반려', c.key, fmtV(c.key, c.from), fmtV(c.key, c.to), `${c.id} 반려`);
+      refresh();
+    },
+    async pvRollback() {
+      const s = S(); const c = s.change; if (!c || guardLock()) return;
+      if (s.role !== '최고관리자') { block('적용한 값을 되돌리는 건 최고관리자만 할 수 있어요', '정책값 되돌리기', c.key); refresh(); return; }
+      const list = affected(c);
+      const ok = await app.confirm({ title: `${fmtV(c.key, c.from)}로 되돌릴까요?`, body: `<p>${esc(meta(c.key).label)}을 지금 바로 이전 값으로 돌려요.</p><p class="small">그 사이 새 값으로 처리된 건 ${list.length}건은 목록으로 남기고, 결제 때 값을 그대로 둬요.</p>`, ok: '되돌리기', danger: true });
+      if (!ok) return;
+      GC.Policy.set(c.key, c.from); c.rolledAt = app.clock.now(); s.lastBlock = null;
+      app.go('policy', 'rollback', { by: `${who()} 즉시 되돌림` });
+      pushHist(c, '되돌림');
+      audit('정책값 되돌리기', c.key, fmtV(c.key, c.to), fmtV(c.key, c.from), `${c.id} 잘못 적용 · 처리된 건 ${list.length}건`);
+      app.log('rule', `${esc(meta(c.key).label)} ${fmtV(c.key, c.to)} → ${fmtV(c.key, c.from)} 되돌림 · 그 사이 처리된 건 ${list.length}건 목록 제공`);
+      refresh();
+    },
+    async resetAll() {
+      const s = S(); const n = Object.keys(GC.Policy.overrides()).length;
+      const ok = await app.confirm({ title: '정책값을 전부 기본값으로 돌릴까요?', body: `<p>이 브라우저에 저장된 바뀐 값 ${n}개를 지워요. 다른 페이지 계산도 기획서 임시 기본값으로 돌아가요.</p><p class="small">시연용 버튼이에요. 실제 운영에서는 값마다 되돌리기와 승인을 거쳐요.</p>`, ok: '전부 기본값으로', danger: true });
+      if (!ok) return;
+      GC.Policy.reset(); s.resetDone = true; s.edit = null;
+      if (app.state('policy') === 'APPLIED') { s.change.rolledAt = app.clock.now(); app.setState('policy', 'ROLLED_BACK', { by: '전부 기본값으로' }); pushHist(s.change, '되돌림'); }
+      audit('정책값 전부 기본값으로', `${n}개`, '바뀐 값', '기본값', '시연 원복');
+      app.log('rule', `정책값 ${n}개를 기본값으로 원복 · localStorage gc.policy.v1을 비웠어요`);
+      refresh();
+    },
+    payApprove() {
+      const s = S(); const p = s.payout; if (guardLock()) return;
+      const lv = level('정산 확정 · 지급 승인'); let why = null;
+      if (lv === '—' || lv === '○') why = `${who()} 계정은 지급 승인 권한이 없어요(${SYM[lv]})`;
+      else if (!s.lead[s.role]) why = '돈이 나가는 승인은 팀장 플래그가 켜진 계정만 할 수 있어요. 최고관리자도 같아요';
+      else if (s.role === '정산·재무') why = '지급 요청자(서정우)와 승인자가 같아요. 다른 계정이 승인해야 해요';
+      if (why) { p.blocked = true; p.lastBlock = why; block(why, '지급 승인', '42주차 정산'); refresh(); return; }
+      p.approved = true; p.approvedBy = who(); p.lastBlock = null;
+      audit('지급 승인', '42주차 정산 · 파트너 12곳', '승인 대기', '승인', '요청자 서정우 · 승인자 다름 확인');
+      app.log('money', `지급 승인 ${won(PAYOUT_SUM)} · 요청 서정우 / 승인 ${esc(who())} · 금요일 지급대행 실행 예정`);
+      refresh();
+    },
+    acctEdit() { block(`정산 계좌는 어떤 역할도 관리자 화면에서 고칠 수 없어요. 파트너가 본인 인증 후 바꾸고 첫 지급은 ${GC.Policy.get('settlement.account_change_hold_hours')}시간 보류해요`, '정산 계좌 수정', '대성포장'); refresh(); },
+    simKind(b) { const s = S(); s.sim.kind = b.dataset.k; s.sim.last = null; refresh(); },
+    simEv(t) { const s = S(); s.sim.ev = t.value; s.sim.last = null; refresh(); },
+    simTime(b) { const s = S(); s.sim.time = b.dataset.k; s.sim.last = null; refresh(); },
+    simKakao(t) { S().sim.kakao = t.checked; refresh(); },
+    simRun() {
+      const s = S(); const r = decide(); const g = s.sim.got;
+      s.sim.last = r; s.sim.runs += 1;
+      if (r.kind === 'info') {
+        if (r.dup) { g.dup = true; app.log('rule', `중복 억제: ${esc(r.key)} · 보내지 않음`); }
+        else {
+          s.sentKeys[r.key] = true;
+          if (r.defer) { s.queue.push({ ev: r.ev, send: r.send, sendAt: next8(r.at) }); g.deferred = true; app.log('rule', `${esc(r.ev.code)} · 야간이라 예약 큐 → ${fmtDate(next8(r.at))} 발송`); }
+          else { deliver(r.ev, r.send, r.at); if (r.sms) { g.sms = true; app.log('ext', '솔라피 · 알림톡 실패 → SMS 대체 발송'); } }
+        }
+      } else if (r.blocked) { g.blocked = true; app.log('warn', `광고 발송 차단: ${esc(r.verdict)}`); }
+      else if (r.limit) { g.limit = true; app.log('warn', `광고 발송 차단: 하루 ${GC.Policy.get('notify.ad_daily_max')}회 · 주 ${GC.Policy.get('notify.ad_weekly_max')}회 한도`); }
+      else {
+        s.adSent.push(r.at); g.adSent = true;
+        app.notify('A-MKT-03 캠페인', '고객', r.send, `${esc(AD_TITLE)} · 수신 거부: 마이 › 알림 설정`);
+        s.inbox.unshift({ tab: '혜택·이벤트', title: AD_TITLE, body: '수신 거부: 마이 › 알림 설정', at: r.at, read: false });
+      }
+      refresh();
+    },
+    umReason(b) { const s = S(); s.umReason = b.dataset.t; s.umErr = null; refresh(); },
+    unmask(b) {
+      const s = S(); if (guardLock()) return;
+      const i = Number(b.dataset.i || 0); const mem = MEMBERS[i];
+      if (level('마스킹 해제(사유 입력)') === '—' || !grant('unmask')) { block(`${who()} 계정에는 마스킹 해제 권한이 없어요`, '마스킹 해제', mem.id); refresh(); return; }
+      if (!s.umReason) { s.umErr = '해제 사유를 먼저 골라 주세요. 사유 없이는 가림을 풀 수 없어요.'; app.toast('해제 사유를 골라 주세요'); refresh(); return; }
+      s.umErr = null; s.unmask = { i, at: app.clock.now() }; s.unmaskDone = true;
+      addLookups(1);
+      audit('마스킹 해제', `회원 ${mem.id}`, '가림', '전체 표시', s.umReason);
+      app.log('rule', `마스킹 해제 · ${esc(who())} · 사유 "${esc(s.umReason)}" → 감사 로그(고칠 수 없는 저장소)`);
+      refresh();
+    },
+    piiDown() {
+      const s = S(); if (guardLock()) return;
+      if (level('개인정보 다운로드(마스킹 해제와 별도 권한)') === '—') { block(`${who()} 계정에는 개인정보 다운로드 권한이 없어요`, '개인정보 다운로드', '회원 목록'); refresh(); return; }
+      if (!grant('download')) { block(`${ACCT[s.role].name} 계정은 마스킹 해제 권한만 있고 개인정보 다운로드 권한은 따로 받지 않았어요`, '개인정보 다운로드', '회원 목록'); refresh(); return; }
+      if (!s.umReason) { s.umErr = '다운로드 사유를 먼저 골라 주세요.'; refresh(); return; }
+      addLookups(MEMBERS.length);
+      audit('개인정보 다운로드', `회원 목록 ${MEMBERS.length}명`, '', '암호 건 엑셀', s.umReason);
+      app.log('rule', '엑셀 생성 · 파일 암호 설정 · 개인정보 열 기본 가림 · 다운로드 사유·기록 저장');
+      refresh();
+    },
+    lookup20() {
+      const s = S(); if (guardLock()) return;
+      if (level('회원 조회(마스킹)') === '—') { block(`${who()} 계정에는 회원 조회 권한이 없어요`, '회원 조회', '회원 목록'); refresh(); return; }
+      app.clock.pass(4 * 60000);
+      const n = addLookups(20);
+      audit('회원 상세 조회', '회원 20명', '', '', '업무 조회(시연)', n >= K.PII_MAX * 0.6 ? '조회 몰림 주의' : '');
+      app.log('user', `${esc(who())} 회원 상세 20건 조회 · 최근 1시간 ${n}건`);
+      if (n >= K.PII_MAX) {
+        s.locked[s.role] = true; s.unmask = null;
+        audit('계정 잠금', who(), '사용 중', '잠김', `1시간 ${n}건 조회`, '이상 행위', '보안 감시(batch)');
+        app.log('warn', `${esc(who())} 1시간 ${n}건 조회 → 계정 잠금`);
+        app.notify('NOTI_INT_PII_ACCESS_LOCKED', '보안 담당', ['이메일', '관리자 알림센터', 'Slack'], `${esc(ACCT[s.role].name)} 계정 1시간 ${n}건 조회 → 잠금`);
+      }
+      refresh();
+    },
+    unlock(b) {
+      const s = S(); const r = b.dataset.r;
+      if (s.role !== '최고관리자') { block('잠긴 계정은 최고관리자만 풀 수 있어요', '계정 잠금 해제', ACCT[r].name); refresh(); return; }
+      s.locked[r] = false; s.lookups[r] = []; s.unlockDone = true;
+      audit('계정 잠금 해제', who(r), '잠김', '사용 중', '본인 확인 · 업무상 조회로 확인');
+      app.log('rule', `${esc(ACCT[r].name)} 계정 잠금 해제 · 확인 사유 기록`);
+      refresh();
+    },
+    auditDel() { block('감사 로그는 쓰고 나면 고칠 수 없는 저장소에 있어 최고관리자도 지우거나 고칠 수 없어요', '감사 로그 삭제', '감사 로그'); refresh(); },
+    async fileUp(b) {
+      const s = S(); if (guardLock()) return;
+      const fst = app.state('file');
+      if (['SCANNING', 'RESCANNING', 'CONVERTING'].includes(fst)) { app.toast('처리 중인 파일이 끝나면 올릴 수 있어요'); return; }
+      const smp = FILES.find((x) => x.id === b.dataset.id); const big = smp.size > smp.limit;
+      await app.ext({ service: 'AWS S3', what: `${smp.name} 업로드 주소 발급`, lines: [`서버가 권한·형식을 확인하고 ${K.PRESIGN_UP}분짜리 presigned POST를 줘요`, `크기 조건 content-length-range ${smp.limit}MB 이하 (${esc(smp.kind)})`, '파일 이름은 무작위 키로 바꿔 저장하고, 원래 이름은 표시용으로만 둬요'], result: big ? 'S3가 크기 조건으로 거부한 것으로 처리해요' : '업로드가 끝난 것으로 처리해요' });
+      const rec = { ...smp, at: app.clock.now(), key: storeKey(smp.name), result: '' };
+      if (big) {
+        rec.result = '업로드 거부(크기 초과)'; s.files.unshift(rec);
+        app.log('warn', `${esc(smp.name)} ${smp.size}MB · 한도 ${smp.limit}MB를 넘어 S3가 업로드를 거부했어요(서버까지 오지 않음)`);
+        app.toast(`장당 ${smp.limit}MB까지 올릴 수 있어요. 크기를 줄여 다시 올려 주세요`);
+        refresh(); return;
+      }
+      s.file = rec; s.files.unshift(rec);
+      app.setState('file', 'UPLOADING', { by: `${smp.name} 업로드 시작` });
+      app.clock.pass(2 * 60000);
+      app.go('file', 'uploaded', { by: '확장자·MIME·파일 서명 일치 → 악성코드 검사 요청' });
+      rec.result = '검사 중'; rec.scanAt = app.clock.now(); rec.tries = 0; rec.trail = [];
+      app.log('rule', `검사 시작 · ${GC.Policy.get('file.scan_timeout_minutes')}분 안에 결과가 없으면 실패로 보고 한 번 다시 검사해요 · 그동안 이 파일을 기다리는 디자인 SLA는 멈춰요`);
+      refresh();
+    },
+    async fileScan() {
+      const s = S(); const f = s.file; const fst = app.state('file'); if (!f || !['SCANNING', 'RESCANNING'].includes(fst)) return;
+      const re = fst === 'RESCANNING';
+      const res = { malware: '악성코드가 발견된 것으로 처리해요', unscannable: '암호가 걸려 검사할 수 없다는 결과로 처리해요', error: re ? '재검사도 검사 엔진 오류로 끝난 것으로 처리해요' : '검사 엔진 오류(결과 없음)로 처리해요' }[f.outcome] || '깨끗한 것으로 처리해요';
+      await app.ext({ service: 'AWS GuardDuty', what: `S3 악성코드 ${re ? '재검사' : '검사'} 결과`, lines: [`${esc(f.name)} · 업로드 버킷에서 검사`, '결과는 통과·발견·검사 불가·실패 넷 중 하나예요. 통과가 아니면 누구에게도 다운로드 주소를 주지 않아요'], result: res });
+      app.clock.pass(3 * 60000);
+      if (app.state('file') !== fst) { refresh(); return; } // 기다리는 사이 시간 초과로 이미 넘어감
+      if (f.outcome === 'malware') {
+        app.go('file', 'malware', { by: 'GuardDuty: 악성코드 발견' }); f.result = '격리'; s.fileQuar = true;
+        app.log('rule', '파일을 격리 영역으로 옮기고 다운로드 주소를 막았어요 · 미리보기 변환도 하지 않아요');
+        app.notify('C-NOTI-01 표에 코드 없음', '올린 사람', ['알림센터', '이메일'], `${esc(f.name)}에서 악성코드가 발견돼 격리했어요. 다시 올려 주세요`);
+      } else if (f.outcome === 'unscannable') {
+        app.go('file', 'unscannable', { by: 'GuardDuty: 검사 불가(암호 걸린 PDF)' }); f.result = '검사 불가 · 격리'; s.fileLock = true;
+        app.log('rule', "'발견이 아니면 통과'로 보지 않아요 → 격리 · 다운로드 주소 막음 · 디자인 SLA는 고객 대기로");
+        app.notify('C-NOTI-01 표에 코드 없음', '올린 사람', ['알림센터', '이메일'], `${esc(f.name)} 파일은 암호가 걸려 검사할 수 없어요. 암호를 풀거나 나눠서 다시 올려 주세요`);
+      } else if (f.outcome === 'error') {
+        scanError('검사 엔진 오류');
+      } else {
+        app.go('file', 'clean', { by: '검사 통과 → batch가 convert 작업 실행(ECS RunTask)' }); f.result = '변환 중';
+        app.log('rule', 'convert 작업에는 이 파일 읽기 주소 1개와 결과 쓰기 주소만 넘겨요 · DB·Redis·PG 키·S3 권한 없음');
+      }
+      refresh();
+    },
+    async fileConvert() {
+      const s = S(); const f = s.file; if (!f || app.state('file') !== 'CONVERTING') return;
+      await app.ext({ service: 'AWS ECS RunTask · convert', what: '미리보기 변환 결과 JSON', lines: ['Ghostscript -dSAFER · ImageMagick policy.xml(PS·EPS·PDF·XPS·외부 URL 차단)', `작업당 실행 ${K.CONVERT_MIN}분 · 메모리 상한`, 'batch가 결과 JSON(성공·실패·사유)을 읽어 상태를 바꿔요'], result: f.convert === 'fail' ? '변환 실패(PDF 호환 저장 아님)로 처리해요' : '미리보기 PNG(긴 변 2,000px)와 썸네일(400px)이 생긴 것으로 처리해요' });
+      app.clock.pass(4 * 60000);
+      if (f.convert === 'fail') {
+        app.go('file', 'convert_fail', { by: 'PDF 호환 저장이 아닌 AI → 미리보기 없음' }); f.result = '미리보기 없음';
+        app.log('rule', '같은 파일은 자동으로 다시 돌리지 않아요 · 운영 알림 · 디자이너에게 PNG를 따로 올리라고 안내');
+      } else {
+        app.go('file', 'converted', { by: '미리보기 PNG·썸네일 생성' }); f.result = '사용 가능'; s.fileReady = true;
+        app.log('rule', `이제 권한 있는 사람만 ${K.PRESIGN_DOWN}분짜리 서명 주소로 내려받아요 · 별도 도메인 files.sikup.co.kr · attachment`);
+      }
+      refresh();
+    },
+    csGo(b) { S().cs = b.dataset.to; refresh(); },
+    csTab(b) { S().csTab = b.dataset.t; refresh(); },
+    readNoti(b) { const it = S().inbox[Number(b.dataset.i)]; if (it && !it.read) { it.read = true; refresh(); } },
+    consent(t) {
+      const s = S(); const k = t.dataset.k.replace('c_', ''); s.consent[k] = t.checked;
+      const txt = `${CONSENT_LABEL[k]} 수신 ${t.checked ? '동의' : '철회'}`;
+      s.consentLog.unshift({ at: app.clock.now(), txt });
+      app.log('user', `고객 ${txt} · 동의 이력(시각·경로) 저장`);
+      app.toast(`${fmtDate(app.clock.now())} ${txt}를 처리했어요`);
+      refresh();
+    },
+    osToggle() { const s = S(); s.osPush = !s.osPush; app.log('user', `기기 설정에서 앱 알림 ${s.osPush ? '허용' : '끔'}`); refresh(); },
+  });
+
+  /* 검사 실패·시간 초과(C-FILE-01): 첫 실패는 자동 재검사 1회, 재검사도 실패면 격리 + 운영 알림 */
+  const scanDeadline = (f) => new Date(f.scanAt.getTime() + GC.Policy.get('file.scan_timeout_minutes') * 60000);
+  function scanError(why) {
+    const s = S(); const f = s.file; const t = app.clock.now();
+    f.tries += 1; f.trail.push(`${GC.fmtTime(t)} ${f.tries === 1 ? '검사' : '재검사'} ${why}`);
+    if (app.state('file') === 'SCANNING') {
+      app.go('file', 'scan_error', { by: `${why} → 자동 재검사 1회` });
+      f.scanAt = t; f.result = '재검사 중';
+      app.log('rule', `${why} → 한 번 다시 검사해요 · 아직 아무도 못 열고, 디자인 SLA도 계속 멈춰 있어요`);
+      return;
+    }
+    app.go('file', 'scan_error', { by: `재검사도 ${why}` });
+    f.result = '검사 실패 · 격리'; s.fileFail = true;
+    app.log('warn', `재검사도 ${why} → 격리한 채 운영 확인 · 올린 사람에게는 '확인 중'으로 보여요`);
+    app.notify('NOTI_INT_FILE_SCAN_FAILED', '개발 · 운영팀', ['이메일', '관리자 알림센터', 'Slack'], `${esc(f.name)} · 재검사 뒤에도 검사 실패 → 격리`);
+  }
+  function approveBlock(c) {
+    const s = S();
+    if (c.high) return s.role === '최고관리자' ? null : `영향이 큰 값(${meta(c.key).label})이라 최고관리자만 승인할 수 있어요. 지금 계정: ${who()}`;
+    if (s.role === '최고관리자') return null;
+    const lv = level(GROUP_ROW[meta(c.key).group]);
+    if (lv === '●' || (lv === '◐' && s.lead[s.role])) return null;
+    return lv === '◐' ? '승인은 팀장 플래그가 켜진 계정만 할 수 있어요' : `${who()} 계정은 이 정책값을 승인할 권한이 없어요`;
+  }
+  function postNotice(c) {
+    const s = S(); const toPartner = /^(commission|partner|settlement)\./.test(c.key);
+    const body = `${fmtDate(c.startAt, false)}부터 ${fmtV(c.key, c.from)} → ${fmtV(c.key, c.to)}`;
+    if (!toPartner) s.inbox.unshift({ tab: '공지', title: `${meta(c.key).label} 변경 안내`, body, at: app.clock.now(), read: false });
+    c.noticed = `${toPartner ? '파트너 센터' : '고객 알림 센터'} 공지를 게시했어요.`;
+    app.log('rule', `공지 자동 게시(A-MKT-04) · 대상 ${toPartner ? '파트너' : '고객'} · ${esc(meta(c.key).label)} ${body}`);
+  }
+  function applyChange(by, at) {
+    const s = S(); const c = s.change;
+    GC.Policy.set(c.key, c.to);
+    c.appliedAt = new Date(at || app.clock.now());
+    app.go('policy', 'apply', { by });
+    s.appliedOnce = true;
+    pushHist(c, '적용');
+    audit('정책값 적용', c.key, fmtV(c.key, c.from), fmtV(c.key, c.to), `${c.id} ${by}`, '', '예약 적용(batch)');
+    app.log('rule', `${esc(meta(c.key).label)} ${fmtV(c.key, c.from)} → <b>${fmtV(c.key, c.to)}</b> · 이 브라우저(localStorage)에 저장돼 다른 화면 계산에 바로 쓰여요`);
+    app.toast('다른 화면에 바로 반영돼요');
+  }
+
+  /* ── 시간이 흐를 때: 예약 적용 · 08시 발송 · 다시 가림 ── */
+  app.onAdvance((prev, now) => {
+    const s = S(); const c = s.change;
+    if (c && app.state('policy') === 'SCHEDULED' && now >= c.startAt) applyChange(`${fmtDate(c.startAt)} 예약 배치`, c.startAt);
+    const due = s.queue.filter((q) => q.sendAt <= now);
+    if (due.length) { due.forEach((q) => deliver(q.ev, q.send, q.sendAt)); s.queue = s.queue.filter((q) => q.sendAt > now); app.log('rule', `08:00 예약 큐 ${due.length}건 발송`); }
+    if (s.unmask && now - prev >= GC.HOUR) { s.unmask = null; app.log('rule', '마스킹 해제 화면을 벗어나 다시 가렸어요'); }
+    /* 검사 시간 초과: 정해진 시간 안에 결과가 없으면 감시 배치가 실패로 보고 그때 재검사를 시작 → 재검사도 넘기면 격리 */
+    if (s.file && ['SCANNING', 'RESCANNING'].includes(app.state('file')) && now >= scanDeadline(s.file)) {
+      scanError(`시간 초과(${GC.Policy.get('file.scan_timeout_minutes')}분 안에 결과 없음)`);
+    }
+    guide();
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+[
+ {
+  "act": "pmode",
+  "attr": "data-k=\"both\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"desc\""
+ },
+ {
+  "act": "cleanDesc"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"ship\""
+ },
+ {
+  "act": "shipTpl",
+  "attr": "data-k=\"basic\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"custom\""
+ },
+ {
+  "act": "upTemplate",
+  "after": 400
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#cplatekeep');i.value='12';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "act": "saveDraft",
+  "after": 300
+ },
+ {
+  "eval": "document.querySelector('#cplatekeep').classList.contains('is-err')"
+ },
+ {
+  "eval": "document.querySelector('#cplatekeep').scrollIntoView({block:'center'})",
+  "shot": "catalog-p01-plate-short"
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#cplatekeep');i.value='36';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "act": "saveDraft",
+  "after": 300
+ },
+ {
+  "eval": "!document.querySelector('#cplatekeep').classList.contains('is-err')"
+ },
+ {
+  "eval": "document.querySelector('#cplatekeep').scrollIntoView({block:'center'})",
+  "shot": "catalog-p02-plate-36"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"docs\""
+ },
+ {
+  "act": "upDoc",
+  "attr": "data-k=\"test\"",
+  "after": 400
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"submit\""
+ },
+ {
+  "act": "requestReview"
+ },
+ {
+  "role": "hq",
+  "shot": "catalog-p03-hq-plate"
+ },
+ {
+  "check": "rv_cat"
+ },
+ {
+  "check": "rv_word"
+ },
+ {
+  "check": "rv_doc"
+ },
+ {
+  "check": "rv_img"
+ },
+ {
+  "check": "rv_tpl"
+ },
+ {
+  "check": "rv_mode"
+ },
+ {
+  "check": "rv_desc"
+ },
+ {
+  "act": "approve"
+ },
+ {
+  "role": "customer"
+ },
+ {
+  "act": "logoList"
+ },
+ {
+  "act": "openP",
+  "attr": "data-id=\"mine\""
+ },
+ {
+  "eval": "document.querySelector('#gc-device .phone-screen').innerText.includes('판 보관 36개월')"
+ },
+ {
+  "eval": "document.querySelector('#gc-device #arrival').scrollIntoView({block:'center'})",
+  "shot": "catalog-p04-pdp-plate"
+ }
+]

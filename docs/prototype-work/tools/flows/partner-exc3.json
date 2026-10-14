@@ -1,0 +1,18 @@
+[
+ {"act":"startApply","after":400},
+ {"act":"ntsCheck","after":400},
+ {"act":"nextStep"},{"act":"nextStep"},
+ {"act":"upAll","after":400},
+ {"act":"nextStep"},
+ {"act":"verifyAcct","after":400},
+ {"act":"nextStep"},
+ {"check":"ag_privacy"},{"check":"ag_rules"},
+ {"act":"submit","after":400},
+ {"role":"hq"},{"act":"startReview"},{"act":"docAllOk"},{"act":"toSample"},
+ {"adv":"604800000"},{"adv":"604800000","shot":"partner-z01-sample-hold"},
+ {"role":"system","shot":"partner-z02-system"},
+ {"role":"hq"},
+ {"act":"sampleIn"},
+ {"act":"rejectQuality","after":400},
+ {"role":"partner","shot":"partner-z03-rejected"}
+]

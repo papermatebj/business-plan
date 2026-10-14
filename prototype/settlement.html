@@ -1,0 +1,1181 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>정산·지급 · 식업 프로토타입</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@600;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/gc.css">
+<style>
+  .hq-head { flex-wrap: wrap; align-items: center; }
+  .row-pick { cursor: pointer; }
+  .row-pick:hover td { background: var(--sheet-2); }
+  .tbl tr.is-held td { color: var(--ink-3); }
+  .tbl tr.is-sub td { color: var(--ink-2); font-size: 12.5px; }
+  .tbl tr.is-zero td { color: var(--ink-3); }
+  .flags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+  .sum-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 720px) { .sum-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .scard { border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; display: grid; gap: 2px; background: var(--sheet); align-content: start; }
+  .scard .lb { font-size: 12px; color: var(--ink-2); }
+  .scard .am { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .scard .sb { font-size: 11.5px; color: var(--ink-3); }
+  .scard.is-on { border-color: var(--spot); box-shadow: 0 0 0 1px var(--spot); }
+  .scard.is-warn { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
+  .rv { border: 1px solid var(--warn); border-radius: 8px; background: var(--warn-weak); padding: 6px 12px; display: grid; }
+  .rv-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--rule); font-size: 13px; }
+  .rv-row:first-of-type { border-top: 0; }
+  .lviz { display: grid; gap: 8px; }
+  .lrow-v { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; align-items: center; font-size: 12px; }
+  .ltrack { display: grid; gap: 3px; }
+  .lb-bar { display: block; height: 9px; border-radius: 2px; min-width: 3px; }
+  .lb-pos { background: var(--spot); }
+  .lb-neg { background: var(--stop); }
+  .lb-pay { background: var(--kraft); }
+  .lb-recv { background: repeating-linear-gradient(135deg, var(--warn) 0 3px, transparent 3px 6px); border: 1px solid var(--warn); }
+  .lkey { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 11.5px; color: var(--ink-2); }
+  .lkey i { display: inline-block; width: 14px; height: 8px; margin-right: 4px; vertical-align: middle; border-radius: 2px; }
+  .days { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 2px; min-width: 400px; }
+  .tbl-nw td, .tbl-nw th { white-space: nowrap; }
+  .day { border: 1px solid var(--rule); border-radius: 4px; padding: 4px 2px; text-align: center; font-size: 11px; line-height: 1.35; background: var(--sheet); }
+  .day b { display: block; font-size: 11.5px; }
+  .day.ev { border-color: var(--c); background: var(--c-weak); }
+  .day.cl { border-color: var(--k); background: var(--k-weak); }
+  .day.cf { border-color: var(--kraft); background: var(--kraft-weak); }
+  .day.pay { border-color: var(--spot); background: var(--spot-weak); font-weight: 600; }
+  .calc-out { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .formula { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .denied { border: 2px solid var(--stop); background: var(--stop-weak); border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+  .who { font-size: 12px; color: var(--ink-3); }
+  /* 정산 예시 고르기(예시 1 MVP ↔ 예시 2 · 2차·3차) */
+  .scn-panel { margin-top: 18px; }
+  .scn { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: stretch; }
+  .scn-h { display: grid; gap: 4px; align-content: center; font-size: 13px; color: var(--ink-2); }
+  .scn-h b { font-size: 15px; color: var(--ink); }
+  .scn-card { text-align: left; border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; background: var(--sheet); color: var(--ink-2); cursor: pointer; display: grid; gap: 4px; align-content: start; font-size: 12.5px; line-height: 1.5; }
+  .scn-card:hover { border-color: var(--rule-strong); }
+  .scn-card .scn-t { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+  .scn-card .scn-am { font-size: 17px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .scn-card[aria-pressed="true"] { border-color: var(--spot); box-shadow: 0 0 0 1px var(--spot); background: var(--spot-weak); color: var(--ink); }
+  .scn-card .scn-on { display: none; }
+  .scn-card[aria-pressed="true"] .scn-on { display: inline-flex; }
+  @media (max-width: 900px) { .scn { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .scn-h { grid-column: 1 / -1; } }
+  @media (max-width: 560px) { .scn { grid-template-columns: minmax(0, 1fr); } .tbl-ev td:first-child { min-width: 168px; } }
+  /* 좁은 화면: 넓은 표가 패널을 밀어내지 않고 표 안에서만 가로로 움직이게 */
+  #gc-device .stack-lg, #gc-device .stack, #gc-device .stack-sm { grid-template-columns: minmax(0, 1fr); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="assets/engine.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  const { won, fmtDate, DAY, HOUR } = GC;
+  const esc = UI.esc, pv = UI.pv;
+  const P = (k) => GC.Policy.get(k);
+  const sum = (arr, f = (x) => x) => arr.reduce((a, x) => a + f(x), 0);
+
+  /* ── 엔진에 없는 정책값: 이 페이지 안 상수(관리자 설정값 · 임시 기본값) ── */
+  const LOCAL = {
+    schedule: { v: '화 마감 · 수~목 정산 확정 · 금 지급', label: '정산 주기·마감·정산 확정·지급 요일' },
+    plan_fee_pro: { v: 99000, label: '프로 플랜 월 구독료(VAT 별도)', fmt: (v) => won(v) },
+    recv_due_days: { v: 14, label: '미수금 청구서 납부 기한', fmt: (v) => v + '일' },
+    recv_weeks: { v: 4, label: '연속 미수 주 수(청구서 발행 기준)', fmt: (v) => v + '주' },
+    stop_notice_days: { v: 3, label: '판매 중지 예고(납부 기한 며칠 전)', fmt: (v) => v + '일 전' },
+    holdback_days: { v: 90, label: '계약 종료 파트너 최종 정산 유보 기간', fmt: (v) => v + '일' },
+    recon_escalate_days: { v: 3, label: '대사 불일치 팀장 알림', fmt: (v) => v + '일' },
+    plan_downgrade_cycles: { v: 2, label: '플랜료 연속 미수 → 베이직 전환', fmt: (v) => v + '주기' },
+  };
+  const L = (k) => LOCAL[k].v;
+  const lpv = (k, text) => `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(LOCAL[k].label)} — 엔진 정책값에 아직 없어 이 페이지에만 둔 값">${text != null ? text : LOCAL[k].fmt(LOCAL[k].v)}</span>`;
+
+  /* ── 상태 머신(엔진에 없는 것만 페이지에서 정의) ── */
+  GC.sm.define('SETTLEMENT_RECEIVABLE', {
+    name: '미수금 청구',
+    states: { ACCRUING: { name: '미수 누적' }, INVOICED: { name: '청구서 발행' }, PAID: { name: '납부 완료' }, SALES_STOPPED: { name: '판매 중지' } },
+    main: ['ACCRUING', 'INVOICED', 'PAID'], branch: ['SALES_STOPPED'], stop: ['SALES_STOPPED'],
+    transitions: [
+      { from: 'ACCRUING', event: 'invoice', to: 'INVOICED', actor: 'system', label: '미수금 기준 초과 · 청구서 발행' },
+      { from: ['INVOICED', 'SALES_STOPPED'], event: 'pay', to: 'PAID', actor: 'partner', label: '청구서 납부(가상계좌)' },
+      { from: 'INVOICED', event: 'overdue', to: 'SALES_STOPPED', actor: 'system', label: '납부 기한 경과 → 판매 중지' },
+    ],
+  });
+  GC.sm.define('SETTLEMENT_HOLDBACK', {
+    name: '계약 종료 유보',
+    states: { FINAL_CALC: { name: '최종 정산 계산' }, HOLDING: { name: '30% 유보 중' }, RELEASED: { name: '유보분 지급 등록' } },
+    main: ['FINAL_CALC', 'HOLDING', 'RELEASED'], branch: [], stop: [],
+    transitions: [
+      { from: 'FINAL_CALC', event: 'pay_partial', to: 'HOLDING', actor: 'system', label: '지급일에 70% 지급 · 30% 유보 시작' },
+      { from: 'HOLDING', event: 'release', to: 'RELEASED', actor: 'system', label: '90일 경과 · 클레임 차감 뒤 지급 목록 자동 등록' },
+    ],
+  });
+
+  /* ── 시나리오 (C-STL-01 예시 1·2·3) ──
+     예시 1 = MVP 기능만(플랜 없음, 기본) · 예시 2 = 프로 플랜, 2차·3차 기능 포함(위쪽 토글) · 예시 3 = 이월·미수금 원장.
+     토글은 [처음부터]를 눌러도 유지돼요(보는 렌즈라서 진행 상태와 따로 둠). */
+  let scenario = 'mvp';
+  const isPro = () => scenario === 'pro';
+  const SCN_NAME = { mvp: '예시 1 · MVP 기능만', pro: '예시 2 · 2차·3차 기능 포함' };
+  const PLATE = { print: 250000, fee: 50000, cost: 30000 }; // 확정 후 취소 건: 인쇄 대금 · 고객이 낸 판비 · 파트너가 증빙한 판 제작 실비
+  const STMT_ID = 'STL-20261013-DS'; // 대성포장 10월 2주차 정산서 ID(지급 요청 키 = 정산서 ID + 지급 회차)
+  const PERIOD = { from: new Date(2026, 9, 6), to: new Date(2026, 9, 12) };
+  const CLOSE_AT = new Date(2026, 9, 13, 0, 0);
+  const NOV1 = new Date(2026, 10, 1, 0, 0);
+  const payDayOf = (k) => new Date(2026, 9, 16 + 7 * k, 0, 0);
+  const confirmFrom = (k) => new Date(payDayOf(k).getTime() - 2 * DAY);
+  const confirmBy = (k) => payDayOf(k);
+  const payDayEnd = (k) => new Date(payDayOf(k).getTime() + DAY);
+  const LAST_WEEK = 188200;
+  const ACCOUNT_OLD = { mask: '국민 1234**-**-***678', holder: '대성포장(주)' };
+  const ACCOUNT_NEW = { mask: '신한 110-***-***321', holder: '대성포장(주)' };
+  const ACCOUNT_FIXED = { mask: '국민 1234**-**-***687', holder: '대성포장(주)' };
+  const ACCTS = {
+    choi: { id: 'choi', name: '최정산', role: '정산·재무', lead: false },
+    han: { id: 'han', name: '한재무', role: '정산·재무 · 팀장 플래그', lead: true },
+  };
+  const LATE_CLAIM = 28000, LATE_CLAIM_DAY = 40;
+
+  function rates() {
+    const plan = isPro() ? 'PRO' : 'BASIC';
+    const fr = (base, reorder) => GC.settle.finalRate({ base, plan, reorder });
+    return { plan, normal: fr(P('commission.default_rate')), custom: fr(P('commission.custom_rate')), reorder: fr(P('commission.custom_rate'), true) };
+  }
+  /* 확정 후 취소(본사 중재)에서 공제한 판비 = 파트너 '취소 보상' = min(증빙 실비, 낸 판비) — C-PAY-02 */
+  const cancelComp = () => GC.refund.designCancel({ type: 'CUSTOM', stage: 'APPROVED', itemsAmount: PLATE.print + PLATE.fee, paidDesignFee: P('design.fee'), plateFee: PLATE.fee, plateCost: PLATE.cost });
+  function events() {
+    const r = rates();
+    const mk = (o) => ({ kind: '구매 확정', ...o, ...GC.settle.confirmEvent({ sale: o.sale, partnerDisc: o.disc, rate: o.rate, shipping: o.ship || 0 }) });
+    const cup = mk({ id: 'cup', short: '종이컵', order: 'GC-20261009-0533', item: '종이컵 6.5oz 2박스', sale: 48000, disc: 0, rate: r.normal.rate, claim: true, at: new Date(2026, 9, 11, 11, 30) });
+    if (isPro()) {
+      return [
+        mk({ id: 'e1', short: '수저집', order: 'GC-20261006-0201', item: '수저집 크라프트 10박스', sale: 100000, disc: 10000, discType: 'instant', discNote: '즉시 할인 10%', rate: r.normal.rate, at: new Date(2026, 9, 8, 14, 20) }),
+        mk({ id: 'e2', short: '냅킨', order: 'GC-20261006-0201', item: '무형광 냅킨 2박스 · 묶음 마지막 확정', sale: 60000, disc: 5000, discType: 'coupon', discNote: '파트너 쿠폰', discPhase: '2차', rate: r.normal.rate, ship: 4000, shipNote: '고객 1,000 + 멤버십 배송비 쿠폰 보전 3,000', shipPhase: '2차', at: new Date(2026, 9, 9, 10, 5) }),
+        mk({ id: 'e3', short: '맞춤 주문', order: 'GC-20261007-0412', item: '맞춤 수저집 인쇄 250,000 + 판비 50,000', sale: 300000, disc: 0, rate: r.custom.rate, big: true, at: new Date(2026, 9, 10, 16, 40) }),
+        cup,
+      ];
+    }
+    const cc = cancelComp();
+    return [
+      mk({ id: 'm1', short: '일반 주문', order: 'GC-20261006-0201', item: '일반 주문 · 수저집 크라프트 10박스 + 무형광 냅킨 2박스(묶음 마지막 확정)', sale: 160000, disc: 10000, discType: 'instant', discNote: '즉시 할인', rate: r.normal.rate, ship: 4000, shipNote: '고객이 낸 배송비', at: new Date(2026, 9, 9, 10, 5) }),
+      mk({ id: 'm2', short: '맞춤 주문', order: 'GC-20261007-0412', item: '맞춤 수저집 인쇄 250,000 + 판비 50,000', sale: 300000, disc: 0, rate: r.custom.rate, big: true, at: new Date(2026, 9, 10, 16, 40) }),
+      cup,
+      mk({ id: 'm3', short: '같은 판 재주문', order: 'GC-20261008-0455', item: '같은 판 재주문 인쇄 250,000 · 판비 면제', sale: 250000, disc: 0, rate: r.reorder.rate, reorder: true, big: true, at: new Date(2026, 9, 12, 9, 20) }),
+      { id: 'm4', short: '취소 보상', kind: '클레임 완료', order: 'GC-20260929-0318', item: '확정 후 취소의 취소 보상(판 제작 실비)', comp: cc, sale: null, disc: 0, base: null, fee: 0, feeSupply: 0, feeVat: 0, rate: 0, shipping: 0, amount: cc.plateToPartner, at: new Date(2026, 9, 12, 15, 10) },
+    ];
+  }
+  const compNote = (e) => `판 실비 ${won(PLATE.cost)} 증빙 · 고객이 낸 판비 ${won(PLATE.fee)} → min = ${won(e.amount)} · 수수료 0%`;
+  function charges() {
+    if (!isPro()) return []; // MVP의 본사 청구는 위약금·분쟁 조정뿐 — 이번 주는 없음
+    const plan = L('plan_fee_pro'); const vat = Math.round(plan * 0.1);
+    return [
+      { type: 'PLAN', amount: plan + vat, label: `프로 플랜 10월 구독료 ${won(plan)} + VAT ${won(vat)}`, phase: '2차' },
+      { type: 'AD', amount: 16500, label: '광고비 유상분(사용 45,000 − 무상 캐시 30,000) + VAT 1,500', phase: '3차' },
+    ];
+  }
+  function mainCalc() {
+    const s = S(); const ev = events(); const ch = charges();
+    const inc = ev.filter((e) => !(e.claim && s.heldItem));
+    const res = GC.settle.payout({ events: inc.map((e) => e.amount), carryIn: 0, charges: ch.map(({ type, amount }) => ({ type, amount })) });
+    return { ev, inc, ch, res, fee: sum(inc, (e) => e.fee), feeSupply: sum(inc, (e) => e.feeSupply), feeVat: sum(inc, (e) => e.feeVat), ded: sum(res.deductions, (d) => d.amount), held: ev.filter((e) => e.claim && s.heldItem) };
+  }
+  /* 명세 예시의 지급액(클레임 진행 1건을 정산 보류한 뒤) — 토글 카드에 표시 */
+  function specPayout(id) {
+    const keep = scenario; scenario = id;
+    try { return GC.settle.payout({ events: events().filter((e) => !e.claim).map((e) => e.amount), charges: charges().map(({ type, amount }) => ({ type, amount })) }).payout; } finally { scenario = keep; }
+  }
+  /* 다른 파트너(갈래 설명용). 새봄인쇄 미수금은 예시마다 다름: MVP는 분쟁 조정, 예시 2는 플랜료(2차)·광고비(3차) */
+  const OTHERS = {
+    HB: { name: '한빛위생', plan: '베이직', events: [1204300], acct: '신한 140-***-***112' },
+    ON: { name: '온누리컵', plan: '베이직', events: [18000, -30000] },
+    BR: { name: '바른용기', plan: '계약 종료 9/30', events: [500000], acct: '농협 301-****-****-71' },
+    SB: { name: '새봄인쇄', plan: '프로', events: [40000],
+      pro: { receivables: [{ type: 'PLAN', amount: 108900 }, { type: 'AD', amount: 165000 }], charges: [{ type: 'AD', amount: 88000 }] },
+      mvp: { receivables: [{ type: 'DISPUTE', amount: 150000 }], charges: [{ type: 'DISPUTE', amount: 200000 }] } },
+  };
+  const otherOf = (id) => { const o = OTHERS[id]; const v = o[scenario] || {}; return { ...o, receivables: v.receivables || [], charges: v.charges || [] }; };
+  const otherCalc = (id) => { const o = otherOf(id); return GC.settle.payout({ events: o.events, receivables: o.receivables, charges: o.charges }); };
+  const planOf = (id) => (isPro() ? { DS: '프로', HB: '베이직', ON: '베이직', BR: '계약 종료', SB: '프로' } : { BR: '계약 종료' })[id] || '';
+  const ptPlace = () => `파트너 센터 · 대성포장${isPro() ? '(프로 플랜)' : ''}`;
+  function brCalc() {
+    const fin = otherCalc('BR').payout; const held = Math.floor((fin * P('settlement.final_holdback')) / 100);
+    return { fin, held, now: fin - held, release: held - (S().hb.late ? LATE_CLAIM : 0) };
+  }
+  const LEDGER = [
+    { label: '+1주', events: [{ t: '구매 확정', a: 60000 }, { t: '확정 후 불량 반품 역분개', a: -20000 }], charges: [{ type: 'AD', amount: 55000 }] },
+    { label: '+2주', events: [{ t: '구매 확정', a: 15000 }, { t: '반품 역분개', a: -27000 }], charges: [] },
+    { label: '+3주', events: [{ t: '구매 확정', a: 80000 }], charges: [{ type: 'AD', amount: 11000 }] },
+  ];
+  function ledgerRun() {
+    let carry = 0, recv = [];
+    return LEDGER.map((w) => {
+      const r = GC.settle.payout({ events: w.events.map((e) => e.a), carryIn: carry, receivables: recv, charges: w.charges });
+      const row = { ...w, r, carryIn: carry };
+      carry = r.carryOut; recv = r.receivables;
+      return row;
+    });
+  }
+
+  const app = UI.mount({
+    domain: 'settlement',
+    title: '정산·지급',
+    lede: '구매 확정 같은 정산 이벤트를 한 주씩 모아 화요일 0시, 그날 자동 구매 확정 배치가 끝난 뒤에 마감하고(그 뒤 기록된 이벤트는 다음 주기), 수~목에 본사가 정산 확정한 뒤 금요일에 PG 지급대행으로 파트너에게 보냅니다. 파트너가 받는 돈은 "정산 이벤트 합 − 본사 청구 + 이월" 하나의 식으로만 계산해요.',
+    meta: '근거: 기능 명세서 C-STL-01·02 · A-STL-01~03 · P-STL-01·02 · C-PAY-02 · A-SYS-01 · P-ONB-04 · C-NOTI-01 · 기획서 B(입점·수수료·정산)',
+    actors: [
+      { id: 'hq', nav: ['정산 집계', '지급', '세금계산서', '대사'], navOn: '정산 집계', url: 'admin.sikup.co.kr/settlement', place: '통합 관리자 · 정산·재무 담당' },
+      { id: 'partner', nav: ['주문', '상품', '정산 요약', '정산서', '세금계산서', '정산 계좌'], navOn: '정산 요약', url: 'partner.sikup.co.kr/settlement', place: '파트너 센터 · 대성포장' },
+      { id: 'system' },
+    ],
+    strips: [
+      { id: 'settle', machine: 'SETTLEMENT', label: '대성포장 주간 정산', note: '10월 2주차(10/6~10/12) 정산서 단위 · A-STL-01' },
+      { id: 'recv', machine: 'SETTLEMENT_RECEIVABLE', label: '새봄인쇄 미수금', note: '갈래 · 30만원 초과 → 청구서 14일 → 판매 중지 · C-STL-02', hidden: true },
+      { id: 'hb', machine: 'SETTLEMENT_HOLDBACK', label: '바른용기 계약 종료 유보', note: '갈래 · 최종 정산액 30% 90일 유보 · A-STL-02', hidden: true },
+    ],
+    render: (actor, f) => VIEWS[actor](f),
+    onReset: init,
+    foot: '시나리오: 파트너 "대성포장"의 10월 2주차(10/6~10/12) 정산이에요. 기본은 명세서 C-STL-01 예시 1(MVP 기능만, 플랜 없음)이고, 위쪽 "정산 예시"에서 예시 2(프로 플랜 · 2차·3차 기능 포함)로 바꿔 볼 수 있어요. 파트너 [정산서]의 이월·미수금 원장은 예시 3이에요. 종이컵 1건은 정산 보류를 보여 주려고 더한 항목이라, 정산 보류하면 지급액이 명세 예시와 같아져요. 한빛위생·온누리컵·바른용기·새봄인쇄는 갈래 설명용 예시예요. 지급 경로는 토스페이먼츠 지급대행(플랫폼이 가맹점으로 받은 정산 잔액에서 파트너에게 송금) 기준이고, PG가 확정되면 바뀔 수 있어요.<br>정산 기한 규제: 티몬·위메프 사태 이후 온라인 중개 플랫폼의 정산 기한 단축과 판매대금 별도 관리 의무화가 국회에서 논의되고 있어요(2026년 기준 진행 중). 지금 설계는 구매 확정 후 최대 10일 안 지급이라 논의 중인 "구매 확정 후 20일 안" 기준을 충족해요. 법안 통과 여부와 적용 대상 규모는 확인이 필요해요.',
+  });
+  const S = () => app.S;
+
+  /* ── 정산 예시 고르기: 페이지 위쪽(제목 아래)에 둠. 언제 바꿔도 화면 숫자가 바로 바뀌는 보기 전환 ── */
+  const scnBox = document.createElement('section');
+  scnBox.id = 'stl-scn'; scnBox.className = 'panel scn-panel'; scnBox.setAttribute('aria-label', '정산 예시 고르기');
+  document.querySelector('.page-head').insertAdjacentElement('afterend', scnBox);
+  function paintScn() {
+    const r = rates(); const keep = scenario;
+    scenario = 'pro'; const proR = rates(); const ch = charges(); scenario = keep;
+    const plan = ch.find((x) => x.type === 'PLAN'), ad = ch.find((x) => x.type === 'AD');
+    const card = (id, title, tags, lines) => `<button class="scn-card" data-scn="${id}" aria-pressed="${scenario === id}">
+      <span class="scn-t">${title} ${tags}<span class="tag tag-spot scn-on">보는 중</span></span>
+      <span class="scn-am">지급 ${won(specPayout(id))}</span><span>${lines}</span></button>`;
+    scnBox.innerHTML = `<div class="panel-b scn">
+      <div class="scn-h"><b>정산 예시</b><span>명세서 C-STL-01의 대성포장 주간 정산서를 어느 예시로 볼지 골라요. 언제 바꿔도 정산서·지급 목록·세금계산서 숫자가 함께 바뀌어요.</span><span class="xsmall faint">지급액은 클레임 진행 중인 종이컵 1건을 정산 보류한 뒤 값이에요.</span></div>
+      ${card('mvp', SCN_NAME.mvp, tag('tag-kraft', '기본'), `플랜 없음 · 파트너 할인은 즉시 할인뿐 · 같은 판 재주문 ${r.custom.rate} − ${r.reorder.parts.reDisc} = ${r.reorder.rate}% · 취소 보상 ${won(cancelComp().plateToPartner)} · 본사 청구 없음(MVP는 위약금·분쟁 조정뿐)`)}
+      ${card('pro', SCN_NAME.pro, tag('tag-phase', '2차·3차'), `프로 플랜 수수료 −${proR.normal.parts.planDisc}%p · 파트너 쿠폰 · 멤버십 배송비 쿠폰 보전 · 플랜료 ${won(plan.amount)}(2차)·광고비 ${won(ad.amount)}(3차) 차감`)}
+    </div>`;
+  }
+  function setScn(id) {
+    if (!SCN_NAME[id] || id === scenario) return;
+    scenario = id;
+    const pt = app.actors.find((a) => a.id === 'partner'); if (pt) pt.place = ptPlace();
+    if (S().calc) S().calc.plan = isPro() ? 'PRO' : 'BASIC';
+    app.log('user', `정산 예시 전환: ${SCN_NAME[id]} · 대성포장 지급 예정 ${won(mainCalc().res.payout)}`);
+    paintScn(); refresh();
+  }
+  scnBox.addEventListener('click', (e) => { const b = e.target.closest('[data-scn]'); if (b) setScn(b.dataset.scn); });
+
+  function init() {
+    paintScn();
+    Object.assign(app.S, {
+      closed: false, cycle: 0, acct: 'choi', hqTab: 'agg', ptTab: 'sum', focus: 'DS', dsSub: 'stmt', sim: 'now', branch: null,
+      heldItem: false, review: { spike: false }, recon: null, mismatchNotified: false,
+      confirmedAt: null, confirmedBy: null, confirmedOnce: false, partnerSeen: false, partnerPaidSeen: false,
+      req: null, selfDenied: false, pgMode: 'ok', lastRun: null, paidAt: null, othersPaid: false,
+      payKey: null, payCheck: null, qMode: 'sent',
+      hold: null, acctChange: null, reauthed: false, account: { ...ACCOUNT_OLD },
+      ledgerStep: 0, calc: { base: P('commission.custom_rate'), plan: isPro() ? 'PRO' : 'BASIC', newP: false, re: true, promo: 0 },
+      consent: true, taxRetried: false, taxIssuedOct: false,
+      recv: { due: null, noticed: false }, hb: { start: null, releaseAt: null, late: false },
+    });
+    app.strips.recv.hidden = true; app.strips.hb.hidden = true;
+    app.setState('recv', 'ACCRUING', { log: false });
+    guide();
+  }
+
+  /* ── 공통 표시 ── */
+  const stName = (code) => (code ? GC.sm.stateName('SETTLEMENT', code) : '집계 전');
+  const stCls = (code) => ({ SCHEDULED: 'st-now', CONFIRMED: 'st-now', ON_HOLD: 'st-warn', PAID_OUT: 'st-done' }[code] || '');
+  const stChip = (code, txt) => `<span class="st ${stCls(code)}">${txt || stName(code)}</span>`;
+  const holdMs = () => P('settlement.account_change_hold_hours') * HOUR;
+  const within24 = () => { const s = S(); return !!(s.acctChange && app.clock.now() - s.acctChange.at < holdMs()); };
+  const tag = (cls, t) => `<span class="tag ${cls}">${t}</span>`;
+  const scnTag = () => (isPro() ? tag('tag-phase', '예시 2 · 2차·3차') : tag('tag-kraft', '예시 1 · MVP'));
+  /* 지급 요청 키 = 정산서 ID + 지급 회차(A-STL-02). 결과 모름 뒤 다시 보낼 때는 같은 키, 계좌 오류처럼 실패가 확정된 뒤 새로 보내면 다음 회차 */
+  const keyTxt = (k = S().payKey) => (k ? `${k.stmt}/${k.round}` : `${STMT_ID}/1`);
+  const nextKey = () => { const k = S().payKey; return k && k.retry ? k : { stmt: STMT_ID, round: k ? k.round + 1 : 1 }; };
+  const spikeWhy = (c) => { const big = c.ev.filter((e) => e.big); return `${big.map((e) => e.short).join('·')} ${big.length}건(${won(sum(big, (e) => e.sale))}) 구매 확정이 원인`; };
+  function holdReady() {
+    const s = S(); const h = s.hold; if (!h) return false;
+    if (h.code === 'PAYOUT_FAILED') return s.reauthed;
+    if (h.code === 'ACCOUNT_CHANGED_24H') return !within24();
+    return true;
+  }
+  /* 사람이 하는 일은 업무 시간(09시~)에: 새벽이면 09시로 맞춘 뒤 작업 시간을 흘림 */
+  function work(min) {
+    const now = app.clock.now();
+    const target = now.getHours() < 9 ? new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, min) : new Date(now.getTime() + min * 60000);
+    app.clock.pass(target - now);
+  }
+  function nextCycleAfter(now, from) { let k = from; while (confirmBy(k) <= now) k += 1; return k; }
+
+  /* ── 이 단계의 규칙 ── */
+  const R = {
+    close: () => [{ k: '정산 기간', v: '화 00:00 ~ 다음 주 월 24:00' }, { k: '마감 배치', v: lpv('schedule', '매주 화 00:00') }, { k: '마감 시점', v: '자동 구매 확정 배치 뒤' }, { k: '주기 배정', v: '기록될 때 열린 주기' }, { k: '마감 뒤 기록', v: '다음 주기' }, { k: '직영 파트너', v: `배치에서 제외 ${tag('tag-phase', '3차')}` }, { k: '이 금액 미만이면 이월', policy: 'settlement.payout_min' }],
+    review: () => [{ k: '정산 보류 대상', v: '클레임·분쟁 진행 항목만' }, { k: '이상 건 표시', v: '급변·마이너스·미수 증가' }, { k: '정산 보류 항목', v: '끝나면 다음 주기 자동 포함' }],
+    recon: () => [{ k: '대사', v: 'PG 파일·내부 기록·은행 입금' }, { k: '불일치 건', v: '정산 보류 후 확인' }, { k: '안 풀리면 팀장 알림', v: lpv('recon_escalate_days') }, { k: 'MVP 방식', v: '엑셀 업로드(2차 자동)' }],
+    confirm: () => [{ k: '정산 확정 요일', v: lpv('schedule', '수~목') }, { k: '정산 확정 권한', v: '팀장 플래그 계정' }, { k: '정산 확정 뒤 수정', v: '불가 · 다음 주기 조정' }],
+    stmt: () => (isPro()
+      ? [{ k: '판매 수수료', v: '(판매가 − 파트너 할인) × 최종율' }, { k: `프로 플랜 인하 ${tag('tag-phase', '2차')}`, policy: 'commission.plan_discount_pro' }, { k: '최종율 하한', policy: 'commission.floor' }, { k: '본사 청구', v: `플랜료 ${tag('tag-phase', '2차')} · 광고비 ${tag('tag-phase', '3차')}` }]
+      : [{ k: '판매 수수료', v: '(판매가 − 파트너 할인) × 최종율' }, { k: '같은 판 재주문 인하', policy: 'commission.reorder_discount' }, { k: '취소 보상(수수료 0%)', v: 'min(판 실비, 낸 판비)' }, { k: '본사 쿠폰', v: '플랫폼 보전' }, { k: '본사 청구(MVP)', v: '위약금·분쟁 조정뿐' }]),
+    pay: () => [{ k: '지급일', v: lpv('schedule', '금(공휴일이면 앞 영업일)') }, { k: '공휴일(프로토타입은 주말만)', policy: 'calendar.holidays', v: '본사 달력' }, { k: '승인', v: '요청자와 다른 팀장' }, { k: '지급 요청 키(호출 전 저장)', v: '정산서 ID + 회차' }, { k: '계좌 변경 후 정산 보류', policy: 'settlement.account_change_hold_hours' }],
+    check: () => [{ k: 'PG 응답 없음', v: '지급 요청 확인 중' }, { k: '다시 보내기', v: 'PG 조회 전엔 안 함' }, { k: '정산서 상태', v: '정산 확정 그대로' }, { k: '다음 지급 목록', v: '자동으로 안 올림' }, { k: '조회로 송금 확인', v: '지급 완료' }, { k: '송금 안 됨 확인', v: '정산 보류 → 같은 키로' }, { k: '조회로도 모르면', v: '재무·개발 알림' }],
+    hold: () => [{ k: '지급 실패', v: '정산 보류 · 재인증 뒤' }, { k: '계좌 변경 후 정산 보류', policy: 'settlement.account_change_hold_hours' }, { k: '정산 보류가 풀리면', v: '다음 주기에 함께 지급' }],
+    paid: () => [{ k: '지급 내역', v: '파트너 센터 공개 + 알림' }, { k: '수수료 세금계산서', v: '다음 달 1일 월 합계' }],
+    recv: () => [{ k: '청구서 기준', policy: 'settlement.receivable_limit' }, { k: '또는 연속 미수', v: lpv('recv_weeks') }, { k: '납부 기한', v: lpv('recv_due_days') }, { k: '판매 중지 예고', v: lpv('stop_notice_days') }, ...(isPro() ? [{ k: '플랜료 연속 미수', v: `${lpv('plan_downgrade_cycles')} → 베이직 ${tag('tag-phase', '2차')}` }] : [{ k: 'MVP 미수금 청구', v: '분쟁 조정·위약금' }])],
+    hb: () => [{ k: '유보율', policy: 'settlement.final_holdback' }, { k: '유보 기간', v: lpv('holdback_days') }, { k: '그 사이 클레임', v: '유보분에서 차감' }],
+  };
+
+  /* ── 지금 차례 ── */
+  function guide() {
+    const s = S();
+    if (s.branch === 'SB') return guideRecv();
+    if (s.branch === 'BR') return guideHb();
+    return guideMain();
+  }
+  function guideMain() {
+    const s = S(); const st = app.state('settle'); const now = app.clock.now(); const k = s.cycle; const a = ACCTS[s.acct];
+    if (!s.closed) return app.turn('system', '화요일 0시 마감 배치를 기다려요. 위쪽 [+1일]을 누르거나 시스템 화면에서 [마감 배치 지금 실행]을 누르세요', { rules: R.close(), hint: '마감 전에는 구매 확정 같은 정산 이벤트가 쌓이기만 해요. 이벤트는 기록될 때 열려 있는 주기에 들어가고, 화요일 0시 그날 자동 구매 확정 배치가 끝난 뒤 마감해요. 그 뒤 기록된 이벤트는 다음 주기로 가요.' });
+    if (st === 'SCHEDULED') {
+      if (k === 0 && (!s.heldItem || !s.review.spike)) return app.turn('hq', '대성포장 정산서의 이상 건 2개를 검토하세요. 클레임이 진행 중인 항목은 정산 보류하고, 급변은 사유를 확인해요', { rules: R.review(), hint: '마감 배치가 이상 건에 표시만 해 두었어요. 정산 보류는 클레임·분쟁 항목에만 걸고 나머지는 그대로 정산 확정해요.' });
+      if (!s.recon) return app.turn('hq', '[대사] 메뉴에서 토스페이먼츠 정산 파일을 올려 내부 결제 기록·은행 입금과 맞춰 보세요', { rules: R.recon() });
+      if (now < confirmFrom(k)) return app.turn('hq', `정산 확정은 ${fmtDate(confirmFrom(k), false)}부터예요. 위쪽 [+1일]로 수요일까지 시간을 보내세요`, { rules: R.confirm(), hint: '화요일은 마감 결과를 검토하고 대사하는 날이에요. 목요일까지 정산 확정하지 않으면 지급일이 다음 금요일로 밀려요.' });
+      if (!a.lead) return app.turn('hq', '정산 확정은 팀장 플래그 계정만 할 수 있어요. 화면 위 계정을 "한재무 · 팀장"으로 바꾸세요', { rules: R.confirm() });
+      return app.turn('hq', '[정산 확정]을 누르세요. 정산 확정하면 파트너 센터에 정산서가 공개돼요', { rules: R.confirm() });
+    }
+    if (st === 'CONFIRMED') {
+      const pgHint = 'PG 응답을 "대성포장 계좌 오류"로 바꾸면 지급 실패 갈래를, "응답 없음"으로 바꾸면 지급 결과를 모르는 갈래(확인 중)를 볼 수 있어요.';
+      if (s.payCheck) {
+        if (s.payCheck.escalated) return app.turn('hq', 'PG 조회로도 결과를 몰라 재무·개발 담당에게 알렸어요. 담당자가 PG와 확인한 뒤 [지급] 메뉴에서 [PG 지급 조회]로 다시 확인하세요', { rules: R.check(), hint: '확인 전에는 다시 보내지 않아요. 첫 송금이 이미 나갔을 수 있어서예요.' });
+        return app.turn('hq', '대성포장 지급 결과를 몰라요(PG 응답 없음). 다시 보내지 말고 [지급] 메뉴에서 [PG 지급 조회]로 결과를 확인하세요', { rules: R.check(), hint: '조회 결과(체험용)를 "송금 안 됨"이나 "조회 안 됨"으로 바꾸면 다른 갈래를 볼 수 있어요.' });
+      }
+      if (!s.partnerSeen) return app.turn('partner', '정산서가 공개됐어요. 파트너 센터 [정산서] 메뉴에서 이번 주 항목을 확인하세요', { rules: R.stmt() });
+      if (now < payDayOf(k)) return app.turn('hq', `지급일 ${fmtDate(payDayOf(k), false)}까지 시간을 보내세요(+1일)`, { rules: R.pay(), hint: '갈래: 지금 파트너가 [정산 계좌]에서 계좌를 바꾸면, 바꾼 뒤 24시간 안에 돌아오는 지급은 정산 보류돼요.' });
+      if (!s.req) return app.turn('hq', '[지급] 메뉴에서 지급 목록을 확인하고 [지급 요청]을 누르세요', { rules: R.pay() });
+      const rq = ACCTS[s.req.by];
+      if (rq.lead) return app.turn('hq', '팀장이 요청하면 다른 팀장이 승인해야 하는데, 이 시나리오의 팀장은 한 명이에요. [요청 취소] 뒤 최정산 계정으로 다시 요청하세요', { rules: R.pay() });
+      if (!s.selfDenied && s.acct === s.req.by) return app.turn('hq', `요청한 ${rq.name} 계정 그대로 [지급 승인]을 눌러 보세요. 서버가 막는지 확인해요`, { rules: R.pay() });
+      if (s.acct === s.req.by || !a.lead) return app.turn('hq', `요청자(${rq.name})와 다른 팀장 계정 "한재무"로 바꿔 [지급 승인]을 누르세요`, { rules: R.pay(), hint: pgHint });
+      return app.turn('hq', '[지급 승인]을 누르면 지급 요청 키를 먼저 저장하고 토스페이먼츠 지급대행으로 돈이 나가요', { rules: R.pay(), hint: pgHint });
+    }
+    if (st === 'ON_HOLD') {
+      const h = s.hold || {};
+      const nextPay = fmtDate(payDayOf(nextCycleAfter(now, k + 1)), false);
+      if (h.code === 'PAYOUT_FAILED' && !s.reauthed) return app.turn('partner', '지급이 실패했어요(예금주 불일치). [정산 계좌]에서 계좌를 다시 인증하세요', { rules: R.hold() });
+      if (h.code === 'ACCOUNT_CHANGED_24H' && within24()) return app.turn('system', `계좌를 바꾼 지 24시간이 지나야 정산 보류가 풀려요. ${fmtDate(new Date(s.acctChange.at.getTime() + holdMs()))}까지 시간을 보내세요(+1일)`, { rules: R.hold() });
+      if (h.code === 'PAYOUT_NOT_SENT') return app.turn('hq', `PG 조회로 송금이 안 된 것을 확인해 정산 보류했어요. 대성포장 정산서에서 [정산 보류 해제]를 누르면 다음 지급일 ${nextPay}에 같은 요청 키로 다시 보내요`, { rules: R.check() });
+      return app.turn('hq', `정산 보류 사유가 풀렸어요. 대성포장 정산서에서 [정산 보류 해제]를 누르면 다음 지급일 ${nextPay}에 함께 지급돼요`, { rules: R.hold() });
+    }
+    if (st === 'PAID_OUT') {
+      if (!s.partnerPaidSeen) return app.turn('partner', '지급 완료 알림이 왔어요. [정산 요약]에서 지급 내역을 확인하세요', { rules: R.paid() });
+      return app.done(`정산 한 주기가 끝났어요. 대성포장에 ${won(mainCalc().res.payout)}을 ${fmtDate(s.paidAt, false)}에 지급했어요.`, { next: `다른 갈래: 본사 [정산 집계]에서 새봄인쇄(미수금 청구서·판매 중지)나 바른용기(계약 종료 30% 유보)를 골라 보세요. 파트너 [정산서]의 이월·미수금 원장(예시 3), 본사 대성포장 정산서의 [차감 순서·한도]도 있어요. 위쪽 "정산 예시"를 ${isPro() ? '예시 1(MVP)' : '예시 2(2차·3차 기능 포함)'}로 바꾸면 같은 화면을 다른 숫자로 비교할 수 있어요. [처음부터] 뒤 지급 승인 때 PG 응답을 "계좌 오류"나 "응답 없음"으로 바꾸면 지급 실패·결과 모름 갈래가 나와요.` });
+    }
+  }
+  function guideRecv() {
+    const s = S(); const rs = app.state('recv'); const back = '대성포장을 고르면 기본 흐름 안내로 돌아가요.';
+    if (!s.closed) return app.turn('system', '화요일 0시 마감 배치 때 새봄인쇄 미수금을 다시 계산해요. [+1일]로 시간을 보내세요', { rules: R.recv(), hint: back });
+    if (rs === 'ACCRUING') return app.turn('hq', `미수금이 청구서 기준(${won(P('settlement.receivable_limit'))}) 아래라 청구서를 보내지 않았어요`, { rules: R.recv(), hint: back });
+    if (rs === 'INVOICED') return app.turn('hq', `새봄인쇄 청구서 납부 기한은 ${fmtDate(s.recv.due, false)}예요. [가상계좌 입금 확인]으로 납부를 보거나 [납부 기한까지 시간 보내기]로 판매 중지를 보세요`, { rules: R.recv(), hint: back });
+    if (rs === 'SALES_STOPPED') return app.turn('hq', '납부 기한이 지나 새봄인쇄 판매를 멈췄어요. [가상계좌 입금 확인]을 누르면 판매를 다시 열어요', { rules: R.recv(), hint: back });
+    return app.done('새봄인쇄 미수금이 정리됐어요. 판매가 계속돼요.', { next: back });
+  }
+  function guideHb() {
+    const s = S(); const hs = app.state('hb'); const back = '대성포장을 고르면 기본 흐름 안내로 돌아가요.';
+    if (!s.closed) return app.turn('system', '화요일 0시 마감 배치 때 바른용기 최종 정산서를 만들어요. [+1일]로 시간을 보내세요', { rules: R.hb(), hint: back });
+    if (hs === 'FINAL_CALC') return app.turn('hq', '바른용기 유보는 금요일 지급 때 시작돼요. 기본 흐름(대성포장)의 지급 승인까지 마치세요', { rules: R.hb(), hint: back });
+    if (hs === 'HOLDING') return app.turn('system', `유보 해제일 ${fmtDate(s.hb.releaseAt, false)}까지 시간을 보내 보세요. 그 사이 늦게 들어온 반품은 유보분에서 빠져요`, { rules: R.hb(), hint: back });
+    return app.done(`바른용기 유보분 ${won(brCalc().release)}이 지급 목록에 자동으로 올라갔어요.`, { next: back });
+  }
+  function refresh() { guide(); app.refresh(); }
+  let rq = false;
+  function queueRefresh() { if (rq) return; rq = true; setTimeout(() => { rq = false; refresh(); }, 0); }
+
+  /* ── 본사(통합 관리자) ── */
+  const VIEWS = {};
+  const HQ_TABS = { agg: '정산 집계', pay: '지급', tax: '세금계산서', recon: '대사' };
+  VIEWS.hq = (f) => {
+    const s = S(); const st = app.state('settle'); const a = ACCTS[s.acct];
+    f.nav(HQ_TABS[s.hqTab]);
+    f.url(`admin.sikup.co.kr/settlement/${{ agg: 'batches', pay: 'payouts', tax: 'tax-invoices', recon: 'reconciliation' }[s.hqTab]}`);
+    const head = `<div class="stack-sm">
+      <div class="split hq-head"><h3>${HQ_TABS[s.hqTab]}</h3>
+        <div class="seg" role="group" aria-label="로그인 계정">${Object.values(ACCTS).map((x) => `<button data-act="acct" data-a="${x.id}" aria-pressed="${s.acct === x.id}">${x.name}${x.lead ? ' · 팀장' : ''}</button>`).join('')}</div></div>
+      <p class="who">로그인: ${a.name} (${a.role}) · 돈이 나가는 승인(정산 확정·지급 승인)은 팀장 플래그 계정만 해요. 계정 전환은 설명용이에요.</p>
+      <div class="seg" role="tablist" aria-label="정산 메뉴">${Object.entries(HQ_TABS).map(([k, n]) => `<button data-act="hqTab" data-t="${k}" aria-pressed="${s.hqTab === k}">${n}</button>`).join('')}</div></div>`;
+    f.body.innerHTML = head + { agg: hqAgg, pay: hqPay, tax: hqTax, recon: hqRecon }[s.hqTab](s, st);
+  };
+
+  function hqAgg(s, st) {
+    if (!s.closed) {
+      return `<div class="note">10월 2주차(${fmtDate(PERIOD.from, false)} ~ ${fmtDate(PERIOD.to, false)}) 정산 이벤트가 쌓이는 중이에요. 마감 배치는 <b>${fmtDate(CLOSE_AT)}</b>, 그날 자동 구매 확정 배치가 끝난 뒤에 돌아요. 그 뒤 기록된 이벤트는 다음 주기로 가요.</div>
+        <div class="panel"><div class="panel-h"><h2>쌓이는 중 · 대성포장</h2><span class="xsmall faint">기록될 때 열려 있는 주기에 배정</span></div><div class="panel-b stack">
+          <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>기록</th><th>정산 이벤트</th><th class="num">정산액</th></tr></thead><tbody>
+          ${events().map((e) => `<tr><td>${fmtDate(e.at)}</td><td>${e.kind} · ${esc(e.item)}</td><td class="num">${won(e.amount)}</td></tr>`).join('')}</tbody></table></div>
+          <p class="xsmall faint">다른 파트너 4곳도 같은 방식으로 쌓여요. 식업 직영(DIRECT) 파트너는 정산 배치에서 빠지고 별도 원장으로 관리해요 ${tag('tag-phase', '3차')} · MVP는 모든 파트너가 일반 입점이에요.</p></div></div>`;
+    }
+    const c = mainCalc(); const oState = s.othersPaid ? 'PAID_OUT' : s.confirmedOnce ? 'CONFIRMED' : 'SCHEDULED';
+    const dsFlags = [];
+    if (s.cycle === 0 && st === 'SCHEDULED') { if (!s.heldItem) dsFlags.push(tag('tag-warn', '클레임 진행 1건')); if (!s.review.spike) dsFlags.push(tag('tag-warn', '전주 대비 급변')); }
+    if (s.heldItem) dsFlags.push(tag('', '정산 보류 항목 1건'));
+    if (st === 'ON_HOLD' && s.hold) dsFlags.push(tag('tag-stop', esc(s.hold.label)));
+    if (s.payCheck) dsFlags.push(tag('tag-warn', '지급 확인 중'));
+    const on = otherCalc('ON'), hb = otherCalc('HB'), br = brCalc(), sb = otherCalc('SB');
+    const row = (id, name, ev, ded, pay, state, flags) => `<tr class="row-pick${s.focus === id ? ' is-hl' : ''}" data-act="pick" data-p="${id}"><td><b>${name}</b> <span class="xsmall faint">${planOf(id)}</span><div class="flags">${state}${flags.join('')}</div></td><td class="num">${won(ev)}</td><td class="num">${ded ? '−' + won(ded) : '0원'}</td><td class="num">${won(pay)}</td></tr>`;
+    const rows = [
+      row('DS', '대성포장', c.res.eventSum, c.ded, c.res.payout, stChip(st), dsFlags),
+      row('HB', '한빛위생', hb.eventSum, 0, hb.payout, stChip(oState), []),
+      row('ON', '온누리컵', on.eventSum, 0, 0, '<span class="st">0원 · 이월</span>', [tag('tag-warn', '마이너스 정산'), s.recon && !s.recon.resolved ? tag('tag-stop', '대사 불일치') : ''].filter(Boolean)),
+      row('BR', '바른용기', br.fin, 0, br.now, stChip(oState), [tag('tag-kraft', `갈래 · ${P('settlement.final_holdback')}% 유보`)]),
+      row('SB', '새봄인쇄', sb.eventSum, sum(sb.deductions, (d) => d.amount), 0, '<span class="st st-warn">0원 · 미수</span>', [tag('tag-stop', `갈래 · 미수금 ${won(sum(sb.receivables, (r) => r.amount))}`)]),
+    ].join('');
+    const detail = { DS: dsDetail, HB: hbDetail, ON: onDetail, BR: brDetail, SB: sbDetail, GC: gcDetail }[s.focus](s, st);
+    return `<div class="panel"><div class="panel-h"><h2>10월 2주차 정산 배치 · ${fmtDate(CLOSE_AT)} 마감</h2><span class="xsmall faint">행을 누르면 상세</span></div><div class="panel-b stack">
+      <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>파트너 · 상태</th><th class="num">이벤트 합</th><th class="num">청구 차감</th><th class="num">지급 예정</th></tr></thead><tbody>${rows}
+        <tr class="row-pick${s.focus === 'GC' ? ' is-hl' : ''}" data-act="pick" data-p="GC"><td colspan="4" class="faint">식업 직영 · 정산 배치 제외(별도 원장) ${tag('tag-phase', '3차')}</td></tr></tbody></table></div></div></div>
+      ${detail}`;
+  }
+
+  function dsDetail(s, st) {
+    const c = mainCalc(); const k = s.cycle; const now = app.clock.now(); const a = ACCTS[s.acct];
+    let review = '';
+    if (k === 0 && st === 'SCHEDULED') {
+      const e4 = c.ev.find((e) => e.claim);
+      const pct = Math.round(((c.res.payout - LAST_WEEK) / LAST_WEEK) * 100);
+      review = `<div class="rv"><b class="small" style="padding-top:4px">이상 건 검토 · 마감 배치가 표시함</b>
+        <div class="rv-row"><div>${tag('tag-warn', '클레임 진행')} ${esc(e4.item)} · 정산액 ${won(e4.amount)}<br><span class="xsmall faint">${e4.order} · 확정 후 불량 반품 신청(회수 중) · 사유 코드 CLAIM_IN_PROGRESS</span></div>
+          ${s.heldItem ? '<span class="st st-warn">정산 보류함 · 다음 주기</span>' : '<button class="btn btn-sm" data-act="holdItem">항목 정산 보류</button>'}</div>
+        <div class="rv-row"><div>${tag('tag-warn', '전주 대비 급변')} 지급 예정 ${won(c.res.payout)} · 지난주 ${won(LAST_WEEK)} 대비 +${pct}%<br><span class="xsmall faint">${spikeWhy(c)}</span></div>
+          ${s.review.spike ? '<span class="st st-done">확인함</span>' : '<button class="btn btn-sm" data-act="okSpike">사유 확인함</button>'}</div></div>`;
+    }
+    let actions = '';
+    if (st === 'SCHEDULED') {
+      const ready = k > 0 || (s.heldItem && s.review.spike && s.recon);
+      const early = now < confirmFrom(k);
+      const why = !ready ? (s.heldItem && s.review.spike ? '[대사]를 먼저 끝내요' : '이상 건 검토와 대사를 먼저 끝내요') : early ? `정산 확정은 ${fmtDate(confirmFrom(k), false)}부터예요` : !a.lead ? '팀장 플래그 계정(한재무)만 정산 확정할 수 있어요(A-SYS-01)' : `정산 확정하면 파트너 센터에 공개되고 ${fmtDate(payDayOf(k), false)}에 지급해요. 검토가 끝난 다른 파트너 정산서도 함께 정산 확정돼요`;
+      actions = `<div class="cluster"><button class="btn btn-primary" data-act="confirmStl" ${ready && !early && a.lead ? '' : 'disabled'}>정산 확정</button><span class="xsmall faint">${why}</span></div>`;
+    } else if (st === 'CONFIRMED' && s.payCheck) {
+      actions = `<div class="note note-warn small"><b>지급 요청 확인 중</b> · 요청 키 ${keyTxt()} · ${fmtDate(s.payCheck.at)} 요청 뒤 PG 응답이 없어 결과를 몰라요. 정산서는 정산 확정 그대로이고, 다시 보내지 않아요.</div><div class="cluster"><button class="btn" data-act="hqTab" data-t="pay">지급 메뉴에서 조회하기</button></div>`;
+    } else if (st === 'CONFIRMED') {
+      actions = `<div class="note note-spot small">${fmtDate(s.confirmedAt)} ${s.confirmedBy} 정산 확정 · 파트너 센터에 공개됐고 ${fmtDate(payDayOf(k), false)}에 지급해요. 정산 확정된 정산서는 고칠 수 없고, 오류는 다음 주기 '조정' 이벤트로 처리해요.</div><div class="cluster"><button class="btn" data-act="hqTab" data-t="pay">지급 메뉴 열기</button></div>`;
+    } else if (st === 'ON_HOLD' && s.hold) {
+      const ok = holdReady(); const h = s.hold; const nextPay = fmtDate(payDayOf(nextCycleAfter(now, k + 1)), false);
+      const okTxt = h.code === 'PAYOUT_NOT_SENT' ? `해제하면 다음 지급일 ${nextPay}에 같은 요청 키(${keyTxt()})로 다시 보내요. 첫 송금이 나갔더라도 PG가 같은 키를 알아봐 두 번 보내지 않아요.` : `정산 보류 사유가 풀렸어요. 해제하면 다음 지급일 ${nextPay}에 함께 보내요.`;
+      actions = `<div class="note note-warn small"><b>정산 보류</b> · ${esc(h.label)} <span class="xsmall faint">사유 코드 ${h.code}</span><br>${ok ? okTxt : h.code === 'PAYOUT_FAILED' ? '파트너가 정산 계좌를 다시 인증해야 풀 수 있어요.' : `${fmtDate(new Date(s.acctChange.at.getTime() + holdMs()))}이 지나야 풀 수 있어요.`}</div>
+        <div class="cluster"><button class="btn btn-primary" data-act="release" ${ok ? '' : 'disabled'}>정산 보류 해제</button></div>`;
+    } else if (st === 'PAID_OUT') {
+      actions = `<div class="note note-spot small">${fmtDate(s.paidAt)} 지급 완료 · ${esc(s.account.mask)} · 지급 내역서를 파트너 센터에 공개했어요.</div>`;
+    }
+    const subs = [['stmt', '정산서'], ['order', '차감 순서·한도']];
+    return `<div class="panel"><div class="panel-h"><h2>대성포장 · ${isPro() ? '프로 플랜' : '플랜 없음'} · ${k === 0 ? '10월 2주차' : `10월 2주차(${fmtDate(payDayOf(k), false)} 지급분)`}</h2><span class="cluster">${scnTag()}${stChip(st)}</span></div><div class="panel-b stack">
+      ${review}
+      <div class="seg" role="group" aria-label="정산서 보기">${subs.map(([v, n]) => `<button data-act="dsSub" data-t="${v}" aria-pressed="${s.dsSub === v}">${n}</button>`).join('')}</div>
+      ${s.dsSub === 'order' ? orderSim(s, c) : hqStmt(s, c)}
+      ${actions}</div></div>`;
+  }
+
+  const phTag = (p) => (p ? ` ${tag('tag-phase', p)}` : '');
+  const feeSplitTxt = (c) => c.inc.filter((e) => e.fee).map((e) => `${e.short} ${won(e.fee)} = 공급가 ${won(e.feeSupply)} + VAT ${won(e.feeVat)}`).join(' · ');
+  function hqStmt(s, c) {
+    const r = rates();
+    const rows = c.ev.map((e) => {
+      const held = e.claim && s.heldItem;
+      if (e.comp) {
+        return `<tr><td>${e.kind} · ${esc(e.item)}<br><span class="xsmall faint">${e.order} · ${compNote(e)}</span></td>
+          <td class="num">—</td><td class="num">0원<br><span class="xsmall faint">0%</span></td><td class="num">${won(e.amount)}</td></tr>`;
+      }
+      const rateTxt = e.reorder ? `${r.custom.rate} − ${r.reorder.parts.reDisc} = ${e.rate}%` : `${e.rate}%`;
+      return `<tr class="${held ? 'is-held' : ''}"><td>${e.kind} · ${esc(e.item)}<br><span class="xsmall faint">${e.order} · 판매가 ${won(e.sale)}${e.disc ? ` − ${esc(e.discNote)} ${won(e.disc)}${phTag(e.discPhase)}` : ''}${e.ship ? ` · 배송비 정산 +${won(e.ship)}(${esc(e.shipNote)})${phTag(e.shipPhase)}` : ''}</span>${held ? ` ${tag('tag-warn', '정산 보류 · 클레임 진행')}` : e.claim ? ` ${tag('tag-warn', '정산 보류 후보')}` : ''}</td>
+        <td class="num">${won(e.base)}</td><td class="num">−${won(e.fee)}<br><span class="xsmall faint">${rateTxt}</span></td><td class="num">${held ? `<s>${won(e.amount)}</s>` : won(e.amount)}</td></tr>`;
+    }).join('');
+    const ded = c.res.deductions.length ? c.res.deductions.map((d) => {
+      const ch = c.ch.find((x) => x.type === d.type);
+      return `<tr class="is-sub"><td>본사 청구 · ${d.name} ${tag('tag-phase', ch.phase)}<br><span class="xsmall faint">${esc(ch.label)}</span></td><td></td><td></td><td class="num">−${won(d.amount)}</td></tr>`;
+    }).join('') : '<tr class="is-sub"><td>본사 청구 · 없음<br><span class="xsmall faint">MVP의 본사 청구는 위약금·분쟁 조정뿐이에요</span></td><td></td><td></td><td class="num">0원</td></tr>';
+    const foot = isPro()
+      ? `최종율 = 기준율 − 프로 플랜 ${pv('commission.plan_discount_pro')}${phTag('2차')} → 일반 ${r.normal.rate}% · 맞춤 ${r.custom.rate}%. 본사 쿠폰 10,000원·포인트 2,000원${phTag('2차')}·멤버십 배송비 쿠폰 3,000원${phTag('2차')}은 플랫폼이 보전해 파트너 몫을 줄이지 않아요. 파트너 쿠폰${phTag('2차')}은 파트너가 부담해요.`
+      : `일반 주문 수수료는 수저집 90,000 × ${r.normal.rate}% = ${won(GC.settle.commission(90000, r.normal.rate))}, 냅킨 60,000 × ${r.normal.rate}% = ${won(GC.settle.commission(60000, r.normal.rate))}을 더한 값이에요. 같은 판 재주문은 판비가 0원이라 맞춤 ${r.custom.rate}%에서 재주문 인하 ${pv('commission.reorder_discount')}를 빼요. 취소 보상은 확정 후 취소에서 공제한 판비 = min(증빙한 판 실비, 고객이 낸 판비)이고 수수료가 없어요. 본사 쿠폰 10,000원은 플랫폼이 보전해 파트너 몫을 줄이지 않아요(MVP 파트너 할인은 즉시 할인뿐).`;
+    return `<div class="tbl-wrap"><table class="tbl small tbl-ev"><thead><tr><th>정산 이벤트</th><th class="num">수수료 기준가</th><th class="num">수수료</th><th class="num">정산액</th></tr></thead><tbody>${rows}
+      <tr class="is-sum"><td>정산 이벤트 합</td><td></td><td class="num">−${won(c.fee)}</td><td class="num">${won(c.res.eventSum)}</td></tr>
+      ${ded}<tr class="is-sub"><td>이월(직전 주기)</td><td></td><td></td><td class="num">${won(c.res.carryIn)}</td></tr>
+      <tr class="is-sum"><td>이번 주기 지급액</td><td></td><td></td><td class="num">${won(c.res.payout)}</td></tr></tbody></table></div>
+      <p class="xsmall faint">수수료는 VAT 포함 금액이라 VAT를 또 더하지 않고 나눠 저장해요: ${feeSplitTxt(c)}. ${foot} 디자인비는 본사 매출이라 정산 대상이 아니에요.</p>`;
+  }
+
+  const SIMS = [
+    { id: 'now', label: '이번 주', carry: 0 },
+    { id: 'low', label: '정산액 120,000', events: [120000], carry: 0 },
+    { id: 'carry', label: '이월 −12,000', events: [80000], carry: -12000 },
+    { id: 'neg', label: '정산액 −30,000', events: [-30000], carry: 0 },
+    { id: 'dis', label: '분쟁 조정 청구 200,000', events: [120000], carry: 0, charges: [{ type: 'DISPUTE', amount: 200000 }], mvp: true },
+  ];
+  const PHASE_OF = { PLAN: '2차', AD: '3차' };
+  function orderSim(s, c) {
+    const sims = SIMS.filter((x) => !x.mvp || !isPro());
+    const sim = sims.find((x) => x.id === s.sim) || SIMS[0];
+    const evs = sim.events || c.inc.map((e) => e.amount);
+    const ch = sim.charges || c.ch.map(({ type, amount }) => ({ type, amount }));
+    const r = GC.settle.payout({ events: evs, carryIn: sim.carry, charges: ch });
+    const taken = (t) => sum(r.deductions.filter((d) => d.type === t), (d) => d.amount);
+    const billed = (t) => sum(ch.filter((x) => x.type === t), (x) => x.amount);
+    const line = (t) => {
+      const b = billed(t), tk = taken(t);
+      if (!b) return PHASE_OF[t] && !isPro() ? `${PHASE_OF[t]} 기능 · MVP에는 없음` : '이번에는 없음';
+      return r.base <= 0 ? `청구 ${won(b)} · 차감 없음 → 전액 미수금` : `청구 ${won(b)}${b > tk ? ` · 한도가 모자라 ${won(b - tk)}은 미수금` : ' · 전액 차감'}`;
+    };
+    const steps = [
+      ['이전 마이너스 이월', sim.carry < 0 ? `정산액 계산에 먼저 반영(${won(sim.carry)}) · 차감 항목에 다시 넣지 않음` : '이번에는 없음', sim.carry < 0 ? sim.carry : 0],
+      ['분쟁 조정', line('DISPUTE'), -taken('DISPUTE')],
+      ['위약금', line('PENALTY'), -taken('PENALTY')],
+      [`플랜료${phTag('2차')}`, line('PLAN'), -taken('PLAN')],
+      [`광고비${phTag('3차')}`, line('AD'), -taken('AD')],
+    ];
+    const recv = sum(r.receivables, (x) => x.amount);
+    return `<div class="stack">
+      <div class="seg" role="group" aria-label="정산액 바꿔 보기">${sims.map((x) => `<button data-act="sim" data-v="${x.id}" aria-pressed="${sim.id === x.id}">${x.label}</button>`).join('')}</div>
+      <p class="small">정산액(정산 이벤트 합 + 이월) <b>${won(r.base)}</b>에서 아래 순서대로, 한도(그 주 정산액)까지만 빼요. 같은 종류 안에서는 미수금(오래된 것)부터 빼요.${isPro() ? '' : ' MVP에서 본사 청구(미수금이 생길 수 있는 청구)는 분쟁 조정·위약금뿐이에요.'}</p>
+      <div class="ladder">${steps.map(([h, d, amt], i) => `<div class="lrow"><span class="lno">${i + 1}</span><span><span class="lhead">${h}</span><br><span class="ldetail">${esc(d)}</span></span><span class="lamt${amt < 0 ? ' neg' : ''}">${amt ? won(amt) : '0원'}</span></div>`).join('')}
+        <div class="lrow is-total"><span></span><span class="lhead">지급액</span><span class="lamt">${won(r.payout)}</span></div></div>
+      <dl class="kv small"><dt>미수금 원장으로</dt><dd>${won(recv)}${recv ? ' · 다음 주기에 먼저 빼요' : ''}</dd><dt>다음 주기로 이월</dt><dd>${won(r.carryOut)}${r.carryOut < 0 ? ' · 마이너스 이월은 식의 "이월" 하나로만 반영(이중 차감 없음)' : r.carryOut > 0 ? ` · ${won(P('settlement.payout_min'))} 미만이라 이월` : ''}</dd></dl>
+    </div>`;
+  }
+
+  function hbDetail() {
+    const r = otherCalc('HB');
+    return `<div class="panel"><div class="panel-h"><h2>한빛위생${planOf('HB') ? ` · ${planOf('HB')}` : ''}</h2></div><div class="panel-b"><dl class="kv small"><dt>정산 이벤트</dt><dd>구매 확정 14건 · ${won(r.eventSum)}</dd><dt>본사 청구</dt><dd>없음</dd><dt>지급 예정</dt><dd>${won(r.payout)}</dd><dt>이상 건</dt><dd>없음 · 대사 일치</dd></dl></div></div>`;
+  }
+  function onDetail(s) {
+    const r = otherCalc('ON');
+    return `<div class="panel"><div class="panel-h"><h2>온누리컵 · 마이너스 정산</h2></div><div class="panel-b stack">
+      <table class="tbl small"><tbody><tr><td>구매 확정 2건</td><td class="num">+18,000원</td></tr><tr><td>확정 후 불량 반품 역분개(지난 주기 확정분)</td><td class="num">−30,000원</td></tr>
+        <tr class="is-sum"><td>정산액</td><td class="num">${won(r.base)}</td></tr><tr><td>지급액 · 다음 주기 이월</td><td class="num">${won(r.payout)} · ${won(r.carryOut)}</td></tr></tbody></table>
+      <p class="xsmall faint">정산액이 0 이하면 지급 0원이고 그 값을 다음 주기로 이월해요. 본사 청구가 있었다면 전액 미수금으로 넘어가요.</p>
+      ${s.recon && !s.recon.resolved ? '<div class="note note-stop small">대사 불일치 1건(GC-20261008-0377, 1,500원 차이)을 정산 보류했어요. [대사] 메뉴에서 확인하세요.</div>' : ''}</div></div>`;
+  }
+  function gcDetail() {
+    return `<div class="panel"><div class="panel-b stack-sm"><p class="small">식업 직영(DIRECT) 판매분은 정산 배치와 수수료 세금계산서에서 빠지고, 매출·원가를 별도 원장으로 관리해요(A-PB-01). 고객 세금계산서도 위수탁이 아니라 본사 명의로 직접 발행해요. ${tag('tag-phase', '3차')}</p><p class="xsmall faint">MVP는 파트너 유형 칸만 두고 모든 파트너가 일반 입점(MARKETPLACE)이라 제외 대상이 없어요.</p></div></div>`;
+  }
+  function brDetail(s) {
+    const b = brCalc(); const hs = app.state('hb'); const rate = P('settlement.final_holdback');
+    const start = s.hb.start; const rel = s.hb.releaseAt;
+    const tl = [
+      [`지급일에 ${100 - rate}% 지급 · ${rate}% 유보 시작`, !!start, hs === 'FINAL_CALC'],
+      [`늦게 들어온 반품 역분개 −${won(LATE_CLAIM)} → 유보분에서 차감`, s.hb.late, hs === 'HOLDING' && !s.hb.late],
+      [`${L('holdback_days')}일 뒤 남은 유보분 지급 목록 자동 등록`, hs === 'RELEASED', hs === 'HOLDING' && s.hb.late],
+    ];
+    return `<div class="panel"><div class="panel-h"><h2>바른용기 · 계약 종료(9/30) 최종 정산</h2><span class="st ${hs === 'RELEASED' ? 'st-done' : 'st-now'}">${GC.sm.stateName('SETTLEMENT_HOLDBACK', hs || 'FINAL_CALC')}</span></div><div class="panel-b stack">
+      <table class="tbl small"><tbody>
+        <tr><td>최종 정산액</td><td class="num">${won(b.fin)}</td></tr>
+        <tr><td>이번 지급(${100 - rate}%)</td><td class="num">${won(b.now)}</td></tr>
+        <tr><td>유보(${pv('settlement.final_holdback')} · ${lpv('holdback_days')})${rel ? `<br><span class="xsmall faint">해제 예정 ${fmtDate(rel, false)}</span>` : ''}</td><td class="num">${won(b.held)}</td></tr>
+        ${s.hb.late ? `<tr><td>유보 중 생긴 반품 역분개</td><td class="num">−${won(LATE_CLAIM)}</td></tr>` : ''}
+        <tr class="is-sum"><td>유보분 지급 ${hs === 'RELEASED' ? '(지급 목록 등록됨)' : '(예정)'}</td><td class="num">${won(b.release)}</td></tr></tbody></table>
+      <ol class="timeline">${tl.map(([t, done, now]) => `<li class="${done ? 'done' : now ? 'now' : ''}"><span>${t}</span></li>`).join('')}</ol>
+      <p class="xsmall faint">늦게 생기는 반품·분쟁에 대비해 유보해요. 유보 기간이 끝나면 사람이 누르지 않아도 지급 목록에 올라가요(A-STL-02).</p>
+      <div class="cluster">${hs === 'HOLDING' ? '<button class="btn" data-act="toHoldEnd">유보 해제일까지 시간 보내기</button>' : ''}<button class="btn btn-ghost" data-act="pick" data-p="DS">대성포장으로 돌아가기</button></div></div></div>`;
+  }
+  function sbDetail(s) {
+    const o = otherOf('SB'); const r = otherCalc('SB'); const rs = app.state('recv');
+    const before = sum(o.receivables, (x) => x.amount); const after = sum(r.receivables, (x) => x.amount);
+    const took = sum(r.deductions, (d) => d.amount); const newCh = sum(o.charges, (x) => x.amount);
+    const over = after > P('settlement.receivable_limit');
+    const due = s.recv.due;
+    return `<div class="panel"><div class="panel-h"><h2>새봄인쇄 · 미수금 원장</h2><span class="st ${rs === 'SALES_STOPPED' ? 'st-stop' : rs === 'PAID' ? 'st-done' : 'st-warn'}">${GC.sm.stateName('SETTLEMENT_RECEIVABLE', rs)}</span></div><div class="panel-b stack">
+      <table class="tbl small"><tbody>
+        <tr><td>지난 주까지 미수금<br><span class="xsmall faint">${isPro() ? `플랜료 9월분 108,900${phTag('2차')} · 광고비 165,000${phTag('3차')}` : '분쟁 조정 청구(9월 중재 판정분)'}</span></td><td class="num">${won(before)}</td></tr>
+        <tr><td>이번 주 정산액(구매 확정 1건)</td><td class="num">${won(r.base)}</td></tr>
+        <tr><td>미수금부터 차감(한도 = 그 주 정산액)</td><td class="num">−${won(took)}</td></tr>
+        <tr><td>이번 주 새 청구 · ${isPro() ? `광고비${phTag('3차')}` : '분쟁 조정(10월 중재 판정분)'}</td><td class="num">+${won(newCh)}</td></tr>
+        <tr class="is-sum"><td>미수금 잔액</td><td class="num">${won(rs === 'PAID' ? 0 : after)}</td></tr></tbody></table>
+      ${over ? `<div class="note ${rs === 'SALES_STOPPED' ? 'note-stop' : 'note-warn'} small">미수금 ${won(after)}이 기준 ${pv('settlement.receivable_limit')}을 넘어 청구서를 보냈어요. ${lpv('recv_due_days')} 안(${due ? fmtDate(due, false) : '-'}까지) 내지 않으면 판매를 멈춰요. ${isPro() ? `플랜료가 ${lpv('plan_downgrade_cycles')} 연속 미수면 다음 갱신일에 베이직으로 바꿔요${phTag('2차')}.` : 'MVP에서 미수금이 생기는 청구는 분쟁 조정·위약금이에요.'}</div>` : `<div class="note small">미수금이 기준 ${pv('settlement.receivable_limit')} 이하라 청구서 없이 다음 주기에 먼저 빼요.</div>`}
+      ${due ? `<dl class="kv small"><dt>청구서 발행</dt><dd>${fmtDate(CLOSE_AT)} · 알림톡·이메일</dd><dt>납부 기한</dt><dd>${fmtDate(due, false)}</dd><dt>판매 중지 예고</dt><dd>${fmtDate(new Date(due.getTime() - L('stop_notice_days') * DAY), false)} (${lpv('stop_notice_days')})</dd>${isPro() ? `<dt>광고비 차감 한도</dt><dd>최근 3개월 평균 주간 정산액의 50% · 넘으면 광고 자동 중지${phTag('3차')}</dd>` : ''}</dl>` : ''}
+      <div class="cluster">${['INVOICED', 'SALES_STOPPED'].includes(rs) ? '<button class="btn btn-primary btn-ext" data-act="payRecv">가상계좌 입금 확인</button>' : ''}${rs === 'INVOICED' ? '<button class="btn" data-act="toRecvDue">납부 기한까지 시간 보내기</button>' : ''}<button class="btn btn-ghost" data-act="pick" data-p="DS">대성포장으로 돌아가기</button></div></div></div>`;
+  }
+
+  function payoutList(s) {
+    const st = app.state('settle'); const c = mainCalc(); const w = within24();
+    const chk = !!s.payCheck;
+    const note = chk ? '<span class="st st-warn">지급 확인 중</span><br><span class="xsmall faint">결과를 알 때까지 다시 안 올려요</span>' : w ? '<span class="st st-warn">정산 보류 · 계좌 변경 24시간</span>' : stChip(st);
+    const rows = [{ id: 'DS', name: '대성포장', acct: s.account.mask, amount: c.res.payout, hold: chk || w || st !== 'CONFIRMED', note }];
+    if (!s.othersPaid) {
+      const b = brCalc();
+      rows.push({ id: 'HB', name: '한빛위생', acct: OTHERS.HB.acct, amount: otherCalc('HB').payout, hold: st === 'SCHEDULED', note: stChip(s.confirmedOnce ? 'CONFIRMED' : 'SCHEDULED') });
+      rows.push({ id: 'BR', name: '바른용기', acct: OTHERS.BR.acct, amount: b.now, hold: st === 'SCHEDULED', note: `<span class="xsmall">계약 종료 · 유보 ${won(b.held)}</span>` });
+    }
+    return rows;
+  }
+  /* PG 응답·조회 결과는 체험용 선택(실제 연동 없음) */
+  const PG_MODES = { ok: '성공', fail: '대성포장 계좌 오류', unknown: '응답 없음(시간 초과)' };
+  const Q_MODES = { sent: '송금됨', notsent: '송금 안 됨', unknown: '조회 안 됨' };
+  function checkHtml(s) {
+    const pc = s.payCheck;
+    return `<div class="panel"><div class="panel-h"><h2>지급 결과 확인 · 대성포장</h2><span class="st st-warn">지급 확인 중</span></div><div class="panel-b stack">
+      <dl class="kv small"><dt>지급 요청 키</dt><dd>${keyTxt()}</dd><dt>요청</dt><dd>${fmtDate(pc.at)} · ${won(pc.amount)}</dd><dt>PG 응답</dt><dd>없음(시간 초과) · 결과 모름</dd><dt>정산서 상태</dt><dd>${stChip('CONFIRMED')} 그대로</dd>${pc.tries ? `<dt>PG 조회</dt><dd>${pc.tries}번 · 확인 안 됨</dd>` : ''}</dl>
+      <div class="note note-warn small">첫 송금이 이미 나갔을 수 있어 다시 보내지 않고, 다음 지급 목록에도 자동으로 올리지 않아요. PG 지급 조회로 결과부터 확인해요.</div>
+      ${pc.escalated ? '<div class="note note-stop small">PG 조회로도 확인되지 않아 재무·개발 담당에게 알렸어요(NOTI_INT_MONEY_UNKNOWN). 담당자가 PG와 직접 확인한 뒤 다시 조회해요.</div>' : ''}
+      <div class="field"><span class="lbl">조회 결과(체험용)</span><div class="seg" role="group" aria-label="조회 결과">${Object.entries(Q_MODES).map(([m, n]) => `<button data-act="qMode" data-m="${m}" aria-pressed="${s.qMode === m}">${n}</button>`).join('')}</div></div>
+      <div class="cluster"><button class="btn btn-primary btn-ext" data-act="queryPayout">${pc.escalated ? 'PG 지급 다시 조회' : 'PG 지급 조회'}</button><span class="xsmall faint">조회는 돈을 보내지 않아요</span></div></div></div>`;
+  }
+  function hqPay(s, st) {
+    const now = app.clock.now(); const k = s.cycle; const pd = payDayOf(k); const a = ACCTS[s.acct];
+    const isPayDay = now >= pd && now < payDayEnd(k);
+    const list = payoutList(s); const go = list.filter((r) => !r.hold);
+    const total = sum(go, (r) => r.amount);
+    const done = st === 'PAID_OUT';
+    const listHtml = `<div class="panel"><div class="panel-h"><h2>지급 목록 · ${fmtDate(pd, false)}</h2>${tag('tag-phase', 'PG 확정 전 · 토스 지급대행 기준')}</div><div class="panel-b stack">
+      ${isPayDay || done ? '' : `<div class="note small">지급은 지급일(금, 공휴일이면 앞 영업일)에만 실행해요. 지금은 ${fmtDate(now)}이에요.</div>`}
+      <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>파트너 · 정산 계좌(마스킹)</th><th class="num">지급액</th><th>비고</th></tr></thead><tbody>
+      ${list.map((r) => `<tr${r.id === 'DS' ? ' class="is-hl"' : ''}><td><b>${r.name}</b><br><span class="xsmall faint">${esc(r.acct)}</span></td><td class="num">${r.hold ? `<s>${won(r.amount)}</s>` : won(r.amount)}</td><td>${r.note}</td></tr>`).join('')}
+      ${app.state('hb') === 'RELEASED' ? `<tr><td><b>바른용기</b><br><span class="xsmall faint">${esc(OTHERS.BR.acct)}</span></td><td class="num">${won(brCalc().release)}</td><td><span class="xsmall">유보분 · 자동 등록</span></td></tr>` : ''}
+      <tr class="is-sum"><td>이번에 보낼 합계</td><td class="num">${won(total)}</td><td></td></tr></tbody></table></div>
+      <p class="xsmall faint">지급액이 0원이라 목록에 없는 곳: 온누리컵(이월 −12,000원) · 새봄인쇄(미수금). 정산 계좌는 관리자 화면에서 마스킹으로만 보이고 고칠 수 없어요.</p></div></div>`;
+    const canReq = st === 'CONFIRMED' && isPayDay && !s.req && !s.payCheck;
+    const reqHtml = `<div class="panel"><div class="panel-h"><h2>1. 지급 요청</h2><span class="xsmall faint">정산 담당</span></div><div class="panel-b stack">
+      ${s.req ? `<dl class="kv small"><dt>요청자</dt><dd>${ACCTS[s.req.by].name}</dd><dt>요청 시각</dt><dd>${fmtDate(s.req.at)}</dd><dt>요청 금액</dt><dd>${won(total)} · ${go.length}곳</dd></dl><div class="cluster"><button class="btn btn-sm btn-ghost" data-act="cancelReq">요청 취소</button></div>`
+        : `<div class="cluster"><button class="btn btn-primary" data-act="reqPayout" ${canReq ? '' : 'disabled'}>지급 요청</button><span class="xsmall faint">${done ? '이번 지급은 끝났어요' : st !== 'CONFIRMED' ? '정산 확정된 정산서가 있어야 해요' : !isPayDay ? `${fmtDate(pd, false)}에 요청할 수 있어요` : `${a.name} 이름으로 요청돼요`}</span></div>`}</div></div>`;
+    const nk = nextKey();
+    const apHtml = `<div class="panel"><div class="panel-h"><h2>2. 지급 승인</h2><span class="xsmall faint">팀장 플래그 · 요청자와 다른 계정</span></div><div class="panel-b stack">
+      <div class="field"><span class="lbl">PG 응답(체험용)</span><div class="seg" role="group" aria-label="PG 응답">${Object.entries(PG_MODES).map(([m, n]) => `<button data-act="pgMode" data-m="${m}" aria-pressed="${s.pgMode === m}">${n}</button>`).join('')}</div></div>
+      <dl class="kv small"><dt>지급 요청 키</dt><dd>${keyTxt(nk)} <span class="xsmall faint">정산서 ID + 지급 회차 · 승인하면 PG를 부르기 전에 먼저 저장${nk.retry ? ' · 송금 안 됨이 확인된 건이라 같은 키로 다시 요청' : ''}</span></dd></dl>
+      ${s.selfDenied && s.req ? `<div class="denied"><b>서버가 승인을 거부했어요</b><br><span class="small">요청자(${ACCTS[s.req.by].name})와 승인자가 같아요. 팀장 플래그가 있는 다른 계정이 승인해야 해요.</span></div>` : ''}
+      <div class="cluster"><button class="btn btn-primary" data-act="approve" ${s.req ? '' : 'disabled'}>지급 승인</button><span class="xsmall faint">지금 계정: ${a.name}${a.lead ? ' (팀장 플래그)' : ' (팀장 플래그 없음)'}</span></div></div></div>`;
+    const lr = s.lastRun;
+    const RES = { ok: '<span class="st st-done">지급 완료</span>', fail: '<span class="st st-stop">실패 · 예금주 불일치</span>', unknown: '<span class="st st-warn">응답 없음 · 확인 중</span>', held: '<span class="st st-warn">정산 보류</span>' };
+    const resHtml = lr ? `<div class="panel"><div class="panel-h"><h2>지급 결과 · ${fmtDate(lr.at)}</h2><span class="xsmall faint">요청 ${ACCTS[lr.by].name} · 승인 ${ACCTS[lr.ap].name}</span></div><div class="panel-b"><div class="tbl-wrap"><table class="tbl small tbl-ev"><tbody>
+      ${lr.rows.map((r) => `<tr><td>${r.name}${r.key ? `<br><span class="xsmall faint">요청 키 ${r.key}</span>` : ''}</td><td class="num">${won(r.amount)}</td><td>${r.query ? RES[r.query === 'sent' ? 'ok' : 'held'] + `<br><span class="xsmall faint">PG 조회로 ${r.query === 'sent' ? '송금 확인' : '송금 안 됨 확인'}</span>` : RES[r.result]}</td></tr>`).join('')}</tbody></table></div></div></div>` : '';
+    const showSteps = !done && st !== 'ON_HOLD' && !s.payCheck;
+    return `${listHtml}${resHtml}${s.payCheck ? checkHtml(s) : ''}${showSteps ? reqHtml + apHtml : ''}
+      <div class="note small">정산 보류 사유: 클레임 진행 · 분쟁 중재 · 계좌 미인증 · 계좌 변경 24시간 · 입점 서류 만료 · 이상 거래 의심 · 지급 실패 · 압류·가압류 통지 ${tag('tag-phase', '법률 검토 필요')}</div>`;
+  }
+
+  /* 9월분 발행 내역. 플랜료(2차)·광고비(3차)는 예시 2에서만 */
+  const TAX_SEP_ALL = [
+    { p: '대성포장', fee: 41820, plan: 108900, ad: 0 },
+    { p: '한빛위생', fee: 112400, plan: 0, ad: 0 },
+    { p: '새봄인쇄', fee: 9000, plan: 108900, ad: 165000, note: '정산에서 못 뺀 미수분도 청구 기준으로 발행' },
+    { p: '온누리컵', fee: 6300, plan: 0, ad: 0, fail: true },
+  ];
+  const taxSep = () => TAX_SEP_ALL.map((r) => (isPro() ? r : { ...r, plan: 0, ad: 0, note: '' }));
+  const CH_TAX_NAME = { PLAN: `프로 플랜 10월 구독료${phTag('2차')}`, AD: `광고비${phTag('3차')}` };
+  const splitTxt = (n) => { const v = GC.vatSplit(n); return `공급가 ${won(v.supply)} · 세액 ${won(v.vat)}`; };
+  function hqTax(s) {
+    const c = mainCalc();
+    const rows = taxSep().map((r) => {
+      const parts = [['수수료', r.fee], [`플랜료${phTag('2차')}`, r.plan], [`광고비${phTag('3차')}`, r.ad]].filter((x) => x[1]);
+      const failing = r.fail && !s.taxRetried;
+      return `<tr><td><b>${r.p}</b><br>${parts.map(([n, v]) => `<span class="xsmall faint">${n} ${won(v)} (${splitTxt(v)})</span>`).join('<br>')}${r.note ? `<br><span class="xsmall">${r.note}</span>` : ''}</td><td class="num">${won(r.fee + r.plan + r.ad)}</td>
+        <td>${failing ? `<span class="st st-stop">발행 실패</span><br><span class="xsmall faint">상호 변경 확인 필요</span><br><button class="btn btn-sm btn-ext" data-act="retryTax">확인 후 재발행</button>` : '<span class="st st-done">국세청 전송 완료</span>'}</td></tr>`;
+    }).join('');
+    const oct = s.confirmedOnce ? [['판매 수수료', c.fee], ...c.ch.map((x) => [CH_TAX_NAME[x.type], x.amount])] : [];
+    return `<div class="panel"><div class="panel-h"><h2>9월분 · ${fmtDate(new Date(2026, 9, 1), false)} 일괄 발행(팝빌)</h2><span class="xsmall faint">본사 → 파트너</span></div><div class="panel-b stack">
+      <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>파트너</th><th class="num">합계</th><th>상태</th></tr></thead><tbody>${rows}
+        <tr class="is-zero"><td>식업 직영 ${tag('tag-phase', '3차')}</td><td class="num">—</td><td>발행 대상 아님</td></tr></tbody></table></div>
+      <p class="xsmall faint">수수료는 VAT 포함 금액이라 공급가와 세액으로 나눠 적어요. 작성일은 귀속 월 말일, 발행은 다음 달 10일까지예요. 위약금${isPro() ? '·플랜료·광고비' : '(2차부터 플랜료, 3차부터 광고비)'}는 정산에서 뺐는지, 미수로 남았는지와 상관없이 청구 기준으로 발행해요.</p></div></div>
+      <div class="panel"><div class="panel-h"><h2>10월분 · 대성포장 쌓이는 중</h2><span class="xsmall faint">${s.taxIssuedOct ? '11/1 발행됨' : `${fmtDate(NOV1, false)} 발행 예정`}</span></div><div class="panel-b">
+        ${oct.length ? `<table class="tbl small"><tbody>${oct.map(([n, v]) => `<tr><td>${n}<br><span class="xsmall faint">${splitTxt(v)}</span></td><td class="num">${won(v)}</td></tr>`).join('')}</tbody></table>
+          <p class="xsmall faint">수수료 귀속 월은 정산 확정일 기준이에요. 수수료 공급가 ${won(c.feeSupply)}는 항목별 저장값의 합과 같아요.</p>` : '<p class="small muted">정산 확정되면 정산 확정일 기준으로 10월분에 쌓여요.</p>'}</div></div>`;
+  }
+
+  function hqRecon(s) {
+    if (!s.recon) {
+      return `<div class="note small">PG 정산 파일(엑셀)을 올리면 내부 결제 기록·은행 입금과 건별로 맞춰요. MVP는 수동 업로드이고, 2차에 자동으로 받아 자동 매칭해요. ${tag('tag-phase', '2차 자동 대사')}</div>
+        <div class="cluster"><button class="btn btn-primary btn-ext" data-act="runRecon" ${s.closed ? '' : 'disabled'}>PG 정산 파일 올리기</button>${s.closed ? '' : '<span class="xsmall faint">마감 배치 뒤에 맞춰요</span>'}</div>`;
+    }
+    const mis = !s.recon.resolved; const days = Math.floor((app.clock.now() - s.recon.at) / DAY);
+    const same = (o, p, v) => [o, p, v, v, v];
+    const refund = cancelComp().refund;
+    const ds = isPro()
+      ? [same('GC-20261006-0201', '대성포장', 134000), same('GC-20261007-0412', '대성포장', 339000), same('GC-20261009-0533', '대성포장', 48000)]
+      : [same('GC-20261006-0201', '대성포장', 144000), same('GC-20261007-0412', '대성포장', 339000), same('GC-20261008-0455', '대성포장 · 같은 판 재주문', 250000), same('GC-20260929-0318', '대성포장 · 확정 후 취소 환불', -refund), same('GC-20261009-0533', '대성포장', 48000)];
+    const rows = [...ds, ['GC-20261008-0377', '온누리컵', 33000, 31500, 31500, true]];
+    return `<div class="panel"><div class="panel-h"><h2>대사 · 10/6~10/12 결제·취소분</h2><span class="xsmall faint">${fmtDate(s.recon.at)} 업로드</span></div><div class="panel-b stack">
+      <dl class="kv small"><dt>맞춘 건</dt><dd>${mis ? '411 / 412건' : '412 / 412건'}</dd><dt>불일치</dt><dd>${mis ? `1건 · ${days}일째` : '없음'}</dd></dl>
+      <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>주문</th><th class="num">내부 기록</th><th class="num">PG 정산</th><th class="num">은행 입금</th><th>결과</th></tr></thead><tbody>
+      ${rows.map(([o, p, a, b, c, bad]) => `<tr${bad && mis ? ' class="is-held"' : ''}><td>${o}<br><span class="xsmall faint">${p}</span></td><td class="num">${won(bad && !mis ? b : a)}</td><td class="num">${won(b)}</td><td class="num">${won(c)}</td><td>${bad && mis ? '<span class="st st-stop">−1,500 · 정산 보류</span>' : '<span class="st st-done">일치</span>'}</td></tr>`).join('')}</tbody></table></div>
+      ${mis ? `<div class="note note-warn small">온누리컵 1건이 PG 정산보다 1,500원 많아요. 부분 취소 반영이 빠진 것으로 보여 해당 건을 정산 보류했어요. ${lpv('recon_escalate_days')} 넘게 안 풀리면 팀장에게 알려요.</div><div class="cluster"><button class="btn" data-act="fixRecon">부분 취소 반영 확인 · 조정 전표</button></div>`
+        : '<div class="note note-spot small">부분 취소 1,500원 반영 누락을 확인해 조정 전표로 맞췄어요. 마감한 월은 잠그고 수정은 조정 전표로만 해요.</div>'}
+      <p class="xsmall faint">대성포장 ${ds.length}건은 모두 일치해 이번 정산 확정에 문제가 없어요.</p></div></div>`;
+  }
+
+  /* ── 파트너 센터 ── */
+  const PT_TABS = { sum: '정산 요약', stmt: '정산서', tax: '세금계산서', acct: '정산 계좌' };
+  VIEWS.partner = (f) => {
+    const s = S(); const st = app.state('settle');
+    f.nav(PT_TABS[s.ptTab]);
+    f.url(`partner.sikup.co.kr/settlement/${{ sum: 'summary', stmt: 'statements', tax: 'tax-invoices', acct: 'account' }[s.ptTab]}`);
+    if (st === 'CONFIRMED' && s.ptTab === 'stmt' && !s.partnerSeen) { s.partnerSeen = true; app.log('user', '파트너가 확정 정산서를 열어 봤어요'); queueRefresh(); }
+    if (st === 'PAID_OUT' && s.ptTab === 'sum' && !s.partnerPaidSeen) { s.partnerPaidSeen = true; app.log('user', '파트너가 지급 내역을 확인했어요'); queueRefresh(); }
+    const head = `<div class="stack-sm"><div class="split hq-head"><h3>${PT_TABS[s.ptTab]}</h3><span class="xsmall faint">대성포장 · 대표 계정 · 2단계 인증</span></div>
+      <div class="seg" role="tablist" aria-label="정산 메뉴">${Object.entries(PT_TABS).map(([k, n]) => `<button data-act="ptTab" data-t="${k}" aria-pressed="${s.ptTab === k}">${n}</button>`).join('')}</div></div>`;
+    f.body.innerHTML = head + { sum: ptSum, stmt: ptStmt, tax: ptTax, acct: ptAcct }[s.ptTab](s, st);
+  };
+
+  function ptSum(s, st) {
+    const c = mainCalc(); const amt = c.res.payout; const k = s.cycle;
+    const heldItem = s.heldItem ? sum(c.held, (e) => e.amount) : 0;
+    const card = (lb, am, sb, on) => `<div class="scard${on ? ` ${on}` : ''}"><span class="lb">${lb}</span><span class="am">${am}</span>${sb ? `<span class="sb">${sb}</span>` : ''}</div>`;
+    const reasons = [];
+    if (s.heldItem) reasons.push(`종이컵 2박스 ${won(heldItem)} · 클레임 진행 중 · 끝나면 다음 정산에 들어가요`);
+    if (st === 'ON_HOLD' && s.hold) reasons.push(`10월 2주차 정산 ${won(amt)} · ${esc(s.hold.label)} · 다음 지급일에 보내요`);
+    const cards = [
+      card('정산 예정', !s.closed ? won(amt) : st === 'SCHEDULED' ? won(amt) : '0원', !s.closed ? '마감 전 · 집계 중' : st === 'SCHEDULED' ? '본사 정산 확정 전' : '', st === 'SCHEDULED' || !s.closed ? 'is-on' : ''),
+      card('정산 보류', won(heldItem + (st === 'ON_HOLD' ? amt : 0)), reasons.length ? `${reasons.length}건 · 아래 사유` : '없음', heldItem || st === 'ON_HOLD' ? 'is-warn' : ''),
+      card('정산 확정', st === 'CONFIRMED' ? won(amt) : '0원', st === 'CONFIRMED' ? (s.payCheck ? '지급 결과 확인 중' : '정산서 공개됨') : '', st === 'CONFIRMED' ? 'is-on' : ''),
+      card('지급 완료', st === 'PAID_OUT' ? won(amt) : '0원', st === 'PAID_OUT' ? fmtDate(s.paidAt) : '이번 주기', st === 'PAID_OUT' ? 'is-on' : ''),
+      card('다음 지급일', fmtDate(payDayOf(st === 'ON_HOLD' ? nextCycleAfter(app.clock.now(), k + 1) : k), false), st === 'PAID_OUT' ? '지급 끝 · 다음 주기' : st === 'ON_HOLD' ? '정산 보류가 풀리면 이날 함께' : '금요일(공휴일이면 앞 영업일)'),
+      card('미수금 잔액', '0원', c.ch.length ? '본사 청구를 모두 정산에서 뺐어요' : '본사 청구 없음'),
+    ].join('');
+    const weeks = [
+      [`10월 2주차<br><span class="xsmall faint">${fmtDate(PERIOD.from, false)}~${fmtDate(PERIOD.to, false)}</span>`, !s.closed ? '집계 중' : stName(st), amt, st === 'PAID_OUT' ? fmtDate(s.paidAt, false) : `${fmtDate(payDayOf(st === 'ON_HOLD' ? nextCycleAfter(app.clock.now(), k + 1) : k), false)} 예정`, true],
+      ['10월 1주차<br><span class="xsmall faint">9/29(화)~10/5(월)</span>', '지급 완료', LAST_WEEK, '10/9(금)'],
+      ['9월 5주차<br><span class="xsmall faint">9/22(화)~9/28(월)</span>', '지급 완료', 96400, '10/2(금)'],
+    ];
+    return `<div class="sum-grid">${cards}</div>
+      ${reasons.length ? `<div class="note note-warn small"><b>정산 보류 사유</b><br>${reasons.join('<br>')}</div>` : ''}
+      ${st === 'PAID_OUT' ? `<div class="panel"><div class="panel-h"><h2>지급 내역</h2><span class="xsmall faint">토스페이먼츠 지급대행</span></div><div class="panel-b"><dl class="kv small"><dt>지급일</dt><dd>${fmtDate(s.paidAt)}</dd><dt>계좌</dt><dd>${esc(s.account.mask)} · ${esc(s.account.holder)}</dd><dt>금액</dt><dd>${won(amt)}</dd><dt>정산서</dt><dd>10월 2주차 · 엑셀로 내려받을 수 있어요</dd></dl></div></div>` : ''}
+      <div class="panel"><div class="panel-h"><h2>주차별 정산</h2><span class="xsmall faint">화 마감 · 수~목 정산 확정 · 금 지급</span></div><div class="panel-b"><div class="tbl-wrap"><table class="tbl small tbl-nw"><thead><tr><th>정산 주기</th><th>상태</th><th class="num">지급액</th><th>지급일</th></tr></thead><tbody>
+        ${weeks.map(([p, sn, a, d, hl]) => `<tr${hl ? ' class="is-hl"' : ''}><td>${p}</td><td>${sn}</td><td class="num">${won(a)}</td><td>${d}</td></tr>`).join('')}</tbody></table></div></div></div>
+      ${calcHtml(s)}`;
+  }
+
+  function calcHtml(s) {
+    const c = s.calc; const r = GC.settle.finalRate({ base: c.base, plan: c.plan, newPartner: c.newP, reorder: c.re, promoAdd: c.promo });
+    const fee = GC.settle.commission(300000, r.rate); const v = GC.vatSplit(fee); const p = r.parts;
+    const bases = [[8, '8%'], [P('commission.default_rate'), `${P('commission.default_rate')}% 일반`], [P('commission.custom_rate'), `${P('commission.custom_rate')}% 맞춤`], [15, '15%']];
+    const plans = [['BASIC', '베이직'], ['PRO', `프로 −${P('commission.plan_discount_pro')}%p`], ['PREMIUM', `프리미엄 −${P('commission.plan_discount_premium')}%p`]];
+    return `<div class="panel"><div class="panel-h"><h2>수수료율 계산기</h2><span class="xsmall faint">C-STL-01 최종율</span></div><div class="panel-b stack">
+      <div class="field"><span class="lbl">기준율(카테고리 요율 또는 파트너 예외 요율)</span><div class="seg" role="group" aria-label="기준율">${bases.map(([b, n]) => `<button data-act="calcBase" data-v="${b}" aria-pressed="${c.base === b}">${n}</button>`).join('')}</div></div>
+      <div class="field"><span class="lbl">파트너 플랜 ${tag('tag-phase', '2차')}</span><div class="seg" role="group" aria-label="플랜">${plans.map(([k, n]) => `<button data-act="calcPlan" data-v="${k}" aria-pressed="${c.plan === k}">${n}</button>`).join('')}</div></div>
+      <label class="check"><input type="checkbox" data-change="calcNew" ${c.newP ? 'checked' : ''}><span>신규 입점 3개월 (−${P('commission.new_partner_discount')}%p)</span></label>
+      <label class="check"><input type="checkbox" data-change="calcRe" ${c.re ? 'checked' : ''}><span>같은 판 재주문 (−${P('commission.reorder_discount')}%p · 맞춤 재주문, 판비 0원일 때만)</span></label>
+      <div class="field"><span class="lbl">기획전 가산 ${tag('tag-phase', '2차')}</span><div class="seg" role="group" aria-label="기획전 가산">${[0, 1, 2].map((x) => `<button data-act="calcPromo" data-v="${x}" aria-pressed="${c.promo === x}">${x ? `+${x}%p` : '없음'}</button>`).join('')}</div></div>
+      <div class="split"><span class="formula">max(${p.floor}%, ${p.base} − ${p.planDisc} − ${p.newDisc} − ${p.reDisc} + ${p.promoAdd})</span><span class="calc-out">${r.rate}%</span></div>
+      ${r.floored ? `<p class="small">${tag('tag-warn', '하한 적용')} 계산값 ${r.raw}%가 하한 ${pv('commission.floor')}보다 낮아 ${p.floor}%를 써요.</p>` : ''}
+      <p class="small">판매가 300,000원(파트너 할인 없음)이면 수수료 <b>${won(fee)}</b> = 공급가 ${won(v.supply)} + VAT ${won(v.vat)}</p>
+      <p class="xsmall faint">기준율 8~15%는 카테고리별 범위 예시예요. 수수료율이 기간 중에 바뀌어도 결제 시점 요율을 주문 항목에 저장해 써요.</p></div></div>`;
+  }
+
+  function ptItems(c) {
+    const inc = c.inc; const pro = isPro();
+    const inst = sum(inc.filter((e) => e.discType === 'instant'), (e) => e.disc);
+    const cpn = sum(inc.filter((e) => e.discType === 'coupon'), (e) => e.disc);
+    const comp = sum(inc.filter((e) => e.comp), (e) => e.amount);
+    const dedNames = c.res.deductions.map((d) => `${d.name} ${won(d.amount)}`).join(' → ');
+    /* [항목, 가감, 금액, 설명, 단계 태그] */
+    const rows = [
+      ['판매 금액', '+', sum(inc.filter((e) => e.sale != null), (e) => e.sale), '구간 단가를 적용한 VAT 포함 판매가(할인 전)'],
+      ['파트너 즉시 할인', '−', -inst, '파트너 부담'],
+      ['파트너 상품 쿠폰 할인', '−', -cpn, pro ? '파트너 부담' : 'MVP에는 없음', '2차'],
+      ['본사 쿠폰·멤버십 할인', '0', 0, pro ? '본사 쿠폰 10,000 · 포인트 2,000(2차) · 배송비 쿠폰 3,000(2차) — 플랫폼 보전, 참고 표시' : '본사 쿠폰 10,000 — 플랫폼 보전, 참고 표시'],
+      ['배송비', '+', sum(inc, (e) => e.ship || 0), pro ? '고객 1,000 + 멤버십 배송비 쿠폰 보전 3,000(2차) · 수수료 없음' : '고객이 낸 배송비 · 수수료 없음'],
+      ['판매 수수료', '−', -c.fee, `VAT 포함 · 공급가 ${won(c.feeSupply)} + VAT ${won(c.feeVat)}`],
+      ['반품 배송비', '±', 0, '이번 주기 없음'],
+      ['취소 보상(판비 실비)', '+', comp, comp ? `min(증빙 실비 ${won(PLATE.cost)}, 낸 판비 ${won(PLATE.fee)}) · 수수료 0%` : '이번 주기 없음 · 수수료 0%'],
+      ['재제작 비용', '+', 0, '이번 주기 없음'],
+      ['중재 판정·조정', '±', 0, '이번 주기 없음'],
+      ['이월', '±', c.res.carryIn, '지난 주기에서 넘어온 값 하나'],
+      ['본사 청구 차감', '−', -c.ded, c.ded ? dedNames + ' (VAT 포함)' : '없음 · MVP의 본사 청구는 위약금·분쟁 조정뿐'],
+    ];
+    return `<div class="tbl-wrap"><table class="tbl small"><thead><tr><th>정산서 항목</th><th>가감</th><th class="num">금액</th></tr></thead><tbody>
+      ${rows.map(([n, sg, v, d, ph]) => `<tr${v === 0 && sg !== '0' ? ' class="is-zero"' : ''}><td>${n}${phTag(ph)}<br><span class="xsmall faint">${esc(d)}</span></td><td>${sg}</td><td class="num">${won(v)}</td></tr>`).join('')}
+      <tr class="is-sum"><td>지급액</td><td>=</td><td class="num">${won(c.res.payout)}</td></tr></tbody></table></div>`;
+  }
+
+  function ptStmt(s, st) {
+    const c = mainCalc();
+    let top;
+    if (!s.confirmedOnce) {
+      top = `<div class="note small">10월 2주차 정산서는 본사 정산 확정(수~목) 뒤에 공개돼요. ${s.closed ? `지금은 예정 금액만 보여요: <b>${won(c.res.payout)}</b>` : '아직 화요일 0시 마감 전이에요.'}</div>`;
+    } else {
+      const evRow = (e) => (e.comp
+        ? `<tr><td>${e.kind} · ${esc(e.item)}<br><span class="xsmall faint">${e.order} · ${compNote(e)}</span></td><td class="num">—</td><td class="num">0원<br><span class="xsmall faint">0%</span></td><td class="num">${won(e.amount)}</td></tr>`
+        : `<tr><td>${e.kind} · ${esc(e.item)}<br><span class="xsmall faint">${e.order}${e.disc ? ` · ${esc(e.discNote)} −${won(e.disc)}${phTag(e.discPhase)}` : ''}${e.ship ? ` · 배송비 +${won(e.ship)}${phTag(e.shipPhase)}` : ''}</span></td><td class="num">${won(e.sale)}</td><td class="num">−${won(e.fee)}<br><span class="xsmall faint">${e.rate}%${e.reorder ? ' · 재주문' : ''}</span></td><td class="num">${won(e.amount)}</td></tr>`);
+      top = `<div class="panel"><div class="panel-h"><h2>10월 2주차 정산서 · ${fmtDate(PERIOD.from, false)}~${fmtDate(PERIOD.to, false)}</h2><span class="cluster">${scnTag()}${stChip(st)}</span></div><div class="panel-b stack">
+        <div class="tbl-wrap"><table class="tbl small tbl-ev"><thead><tr><th>정산 이벤트</th><th class="num">판매 금액</th><th class="num">수수료</th><th class="num">정산액</th></tr></thead><tbody>
+          ${c.inc.map(evRow).join('')}</tbody></table></div>
+        ${ptItems(c)}
+        ${s.heldItem ? `<p class="xsmall faint">정산 보류 1건(종이컵 2박스 ${won(sum(c.held, (e) => e.amount))} · 클레임 진행)은 이 정산서에 없고, 클레임이 끝나면 그때 생긴 정산 이벤트로 다음 정산에 들어가요.</p>` : ''}
+        <div class="cluster"><button class="btn btn-sm" data-act="dlExcel">엑셀 내려받기</button><button class="btn btn-sm btn-ext" data-act="objection">항목 이의 제기</button></div></div></div>`;
+    }
+    return top + ledgerHtml(s);
+  }
+
+  function ledgerHtml(s) {
+    const weeks = ledgerRun(); const n = s.ledgerStep;
+    const cell = (i, fn) => (i < n ? fn(weeks[i]) : '<span class="faint">·</span>');
+    const recvIn = (w) => sum(w.r.deductions.filter((d) => d.fromReceivable), (d) => d.amount);
+    const newDed = (w) => sum(w.r.deductions.filter((d) => !d.fromReceivable), (d) => d.amount);
+    const rowsDef = [
+      ['구매 확정', (w) => GC.signedWon(sum(w.events.filter((e) => e.a > 0), (e) => e.a))],
+      ['반품 역분개', (w) => { const v = sum(w.events.filter((e) => e.a < 0), (e) => e.a); return v ? GC.signedWon(v) : '—'; }],
+      ['이월(지난 주기)', (w) => won(w.carryIn)],
+      ['정산액', (w) => won(w.r.base), 'is-sum'],
+      ['미수금 먼저 차감', (w) => (recvIn(w) ? `−${won(recvIn(w))}` : '—')],
+      [`이번 주 광고비 차감${phTag('3차')}`, (w) => { const b = sum(w.charges, (x) => x.amount); if (!b) return '청구 없음'; return w.r.base <= 0 ? `0 (청구 ${won(b)})` : `−${won(newDed(w))}${newDed(w) < b ? ` (청구 ${won(b)})` : ''}`; }],
+      ['지급액', (w) => won(w.r.payout), 'is-sum'],
+      ['넘김 · 이월', (w) => won(w.r.carryOut)],
+      ['넘김 · 미수금', (w) => won(sum(w.r.receivables, (x) => x.amount))],
+    ];
+    const max = 80000;
+    const pct = (v) => Math.min(100, Math.round((Math.abs(v) / max) * 100));
+    const viz = weeks.slice(0, n).map((w) => {
+      const rv = sum(w.r.receivables, (x) => x.amount);
+      const bar = (cls, v, t) => (v ? `<i class="lb-bar ${cls}" style="width:${pct(v)}%" title="${t} ${won(v)}"></i>` : '');
+      return `<div class="lrow-v"><span>${w.label}</span><div class="ltrack">
+        ${bar(w.r.base < 0 ? 'lb-neg' : 'lb-pos', w.r.base, '정산액')}${bar('lb-pay', w.r.payout, '지급액')}${bar('lb-recv', rv, '미수금 잔액')}</div></div>`;
+    }).join('');
+    return `<div class="panel"><div class="panel-h"><h2>이월·미수금 원장 미리 보기</h2><span class="xsmall faint">C-STL-01 예시 3 · 예시 2 파트너의 이후 3주기</span></div><div class="panel-b stack">
+      <p class="small muted">반품 역분개와 본사 청구가 몰리는 주가 이어지면 이렇게 넘어가요. [다음 주기 계산]으로 한 주씩 넘겨 보세요. 광고비${phTag('3차')} 자리에 위약금·분쟁 조정이 오면 MVP에서도 같은 규칙으로 미수금이 생겨요.</p>
+      <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>원장</th>${weeks.map((w, i) => `<th class="num">${w.label}<br><span class="xsmall faint">${fmtDate(payDayOf(i + 1), false)} 지급</span></th>`).join('')}</tr></thead><tbody>
+        ${rowsDef.map(([lb, fn, cls]) => `<tr${cls ? ` class="${cls}"` : ''}><td>${lb}</td>${weeks.map((_, i) => `<td class="num">${cell(i, fn)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+      ${n ? `<div class="lviz">${viz}</div><div class="lkey"><span><i class="lb-pos"></i>정산액(플러스)</span><span><i class="lb-neg"></i>정산액(마이너스 · 이월)</span><span><i class="lb-pay"></i>지급액</span><span><i class="lb-recv"></i>미수금 잔액</span></div>` : ''}
+      ${n >= 3 ? '<p class="xsmall faint">+3주: 80,000 − 12,000(이월) − 15,000(미수금) − 11,000(광고비) = 42,000원. 마이너스 이월은 "이월" 하나로만 반영하고 본사 청구에 다시 넣지 않아요.</p>' : ''}
+      <div class="cluster"><button class="btn btn-sm btn-primary" data-act="ledgerNext" ${n >= 3 ? 'disabled' : ''}>다음 주기 계산</button>${n ? '<button class="btn btn-sm btn-ghost" data-act="ledgerReset">처음부터</button>' : ''}</div></div></div>`;
+  }
+
+  function ptTax(s) {
+    const c = mainCalc();
+    const rows = [['2026-09', '판매 수수료', 41820, '국세청 전송 완료']];
+    if (isPro()) rows.push(['2026-09', `프로 플랜 구독료${phTag('2차')}`, 108900, '국세청 전송 완료']);
+    if (s.confirmedOnce) {
+      const st = s.taxIssuedOct ? '국세청 전송 완료' : `${fmtDate(NOV1, false)} 발행 예정`;
+      rows.push(['2026-10', '판매 수수료(정산 확정분)', c.fee, st], ...c.ch.map((x) => ['2026-10', CH_TAX_NAME[x.type], x.amount, st]));
+    }
+    return `<div class="panel"><div class="panel-h"><h2>본사가 발행한 세금계산서</h2><span class="xsmall faint">매월 1일 전월분 · 팝빌</span></div><div class="panel-b stack">
+      <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>귀속 월 · 종류</th><th class="num">합계</th><th>상태</th></tr></thead><tbody>
+        ${rows.map(([m, k, v, st]) => { const sp = GC.vatSplit(v); return `<tr><td>${m} · ${k}<br><span class="xsmall faint">공급가 ${won(sp.supply)} · 세액 ${won(sp.vat)}</span></td><td class="num">${won(v)}</td><td>${st.includes('완료') ? `<span class="st st-done">${st}</span> <button class="btn btn-sm btn-ext" data-act="taxPdf">PDF</button>` : `<span class="st">${st}</span>`}</td></tr>`; }).join('')}</tbody></table></div>
+      <p class="xsmall faint">판매 수수료는 VAT 포함 금액이라 공급가와 세액으로 나눠 적어요. 위약금(2차부터 플랜료, 3차부터 광고비)은 정산에서 뺐는지와 상관없이 청구 기준으로 발행해요. 발행 오류가 있으면 수정 세금계산서를 요청하세요.</p>
+      <label class="check"><input type="checkbox" data-change="consent" ${s.consent ? 'checked' : ''}><span>사업자 고객이 세금계산서를 신청하면 식업이 대성포장 명의로 대신 발행해요(위수탁 발행 동의). 카드 결제 건은 매출전표가 증빙이라 빠져요.</span></label>
+      ${s.consent ? '' : '<div class="note note-warn small">동의하지 않으면 고객 신청 건을 직접 발행하고 다음 달 10일까지 [발행 완료]를 표시해야 해요.</div>'}</div></div>`;
+  }
+
+  function ptAcct(s, st) {
+    const failing = st === 'ON_HOLD' && s.hold && s.hold.code === 'PAYOUT_FAILED' && !s.reauthed;
+    const w = within24();
+    return `<div class="panel"><div class="panel-h"><h2>정산 계좌</h2>${failing ? tag('tag-stop', '확인 필요') : tag('tag-spot', '인증됨')}</div><div class="panel-b stack">
+      <dl class="kv small"><dt>계좌</dt><dd>${esc(s.account.mask)}</dd><dt>예금주</dt><dd>${esc(s.account.holder)}</dd><dt>인증</dt><dd>예금주 확인 · 대표자 본인인증 · 2단계 인증</dd><dt>마지막 변경</dt><dd>${s.acctChange ? fmtDate(s.acctChange.at) : '입점 때(2026-08-03)'}</dd></dl>
+      ${failing ? `<div class="note note-stop small">${fmtDate(s.lastRun.at)} 지급이 실패했어요. 사유: 예금주 불일치. 계좌를 다시 인증하면 다음 지급일에 보내요.</div><div class="cluster"><button class="btn btn-primary btn-ext" data-act="reauth">계좌 다시 인증</button></div>`
+        : `<div class="cluster"><button class="btn btn-ext" data-act="chgAccount">정산 계좌 변경</button></div>`}
+      ${w ? `<div class="note note-warn small">계좌를 바꾼 지 24시간이 안 됐어요. ${fmtDate(new Date(s.acctChange.at.getTime() + holdMs()))}까지 돌아오는 지급은 정산 보류되고 다음 지급일에 보내요.</div>` : ''}
+      <p class="xsmall faint">정산 계좌는 대표 계정만 바꿀 수 있고, 본사 관리자 화면에서는 고칠 수 없어요(사기 방지). 바꾼 뒤 ${pv('settlement.account_change_hold_hours')} 안에 돌아오는 지급은 정산 보류돼요. 새 계좌 인증에 실패하면 기존 계좌를 그대로 써요.</p></div></div>`;
+  }
+
+  /* ── 시스템 ── */
+  VIEWS.system = (f) => {
+    const s = S(); const now = app.clock.now(); const k = s.cycle; const st = app.state('settle');
+    const rs = app.state('recv'); const hs = app.state('hb');
+    const rows = [
+      ['자동 구매 확정 배치', `매일 00:00 · 배송 완료 뒤 ${pv('order.auto_confirm_days')} 지난 항목 · 화요일은 이 배치가 끝나야 정산 마감`, s.closed ? `<span class="sla sla-ok">끝남 ${fmtDate(CLOSE_AT)}</span>` : '대기'],
+      ['정산 마감 배치', `매주 화 00:00 · 그날 자동 구매 확정 배치가 끝난 뒤 · 그 뒤 기록된 이벤트는 다음 주기 · 직영 제외${phTag('3차')}`, s.closed ? `<span class="sla sla-ok">실행됨 ${fmtDate(CLOSE_AT)}</span>` : `<span class="sla sla-warn">대기 · ${fmtDate(CLOSE_AT)}</span>`],
+      ['정산 확정 창', `수~목(연휴면 지급일 전 영업일까지) · 공휴일은 ${pv('calendar.holidays', '본사 공휴일 달력')} 기준, 프로토타입은 주말만`, `${fmtDate(confirmFrom(k), false)} ~ ${fmtDate(new Date(confirmBy(k).getTime() - DAY), false)}`],
+      ['지급 실행', '금(공휴일이면 앞 영업일) · 팀장 승인 · 요청 키 먼저 저장 뒤 PG 지급대행', st === 'PAID_OUT' ? `<span class="sla sla-ok">완료 ${fmtDate(s.paidAt)}</span>` : fmtDate(payDayOf(k), false)],
+      ['지급 결과 확인', 'PG 응답이 없으면 확인 중 · 다시 보내지 않고 PG 지급 조회 · 조회로도 모르면 재무·개발 알림', s.payCheck ? `<span class="sla sla-warn">확인 중 · ${keyTxt()}${s.payCheck.escalated ? ' · 알림 보냄' : ''}</span>` : '없음'],
+      ['계좌 변경 정산 보류', `변경 + ${P('settlement.account_change_hold_hours')}시간`, s.acctChange ? (within24() ? `<span class="sla sla-warn">${fmtDate(new Date(s.acctChange.at.getTime() + holdMs()))}까지</span>` : '<span class="sla sla-ok">지남</span>') : '없음'],
+      ['대사 불일치 알림', `${L('recon_escalate_days')}일 넘게 안 풀리면 팀장`, s.recon ? (s.recon.resolved ? '해결' : `<span class="sla sla-warn">${Math.floor((now - s.recon.at) / DAY)}일째</span>`) : '대사 전'],
+      ['미수금 청구', `${won(P('settlement.receivable_limit'))} 초과 또는 ${L('recv_weeks')}주 연속 → 청구서 ${L('recv_due_days')}일 → 판매 중지`, s.recv.due ? `${GC.sm.stateName('SETTLEMENT_RECEIVABLE', rs)} · 기한 ${fmtDate(s.recv.due, false)}` : GC.sm.stateName('SETTLEMENT_RECEIVABLE', rs)],
+      ['계약 종료 유보', `최종 정산액 ${P('settlement.final_holdback')}% · ${L('holdback_days')}일`, hs ? `${GC.sm.stateName('SETTLEMENT_HOLDBACK', hs)}${s.hb.releaseAt ? ` · ${fmtDate(s.hb.releaseAt, false)}` : ''}` : '마감 전'],
+      ['월간 세금계산서', '매월 1일 전월분 · 팝빌', s.taxIssuedOct ? '<span class="sla sla-ok">11/1 발행됨</span>' : `다음 ${fmtDate(NOV1, false)}`],
+    ];
+    const days = Array.from({ length: 11 }, (_, i) => new Date(2026, 9, 6 + i));
+    const dcls = (i) => (i === 0 ? ['ev', '이벤트'] : i === 7 ? ['cl', '마감'] : i === 8 || i === 9 ? ['cf', '정산 확정'] : i === 10 ? ['pay', '지급'] : ['', '']);
+    f.body.innerHTML = `
+      <h3>배치·외부 연동</h3>
+      <p class="small muted">사람이 누르지 않아도 시간이 되면 돌아가는 일들이에요. 위쪽 +1일·+7일로 시간을 보내면 자동으로 실행돼요.</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>작업</th><th>기준</th><th>상태</th></tr></thead><tbody>
+        ${rows.map((r) => `<tr><td>${r[0]}</td><td class="small">${r[1]}</td><td class="small">${r[2]}</td></tr>`).join('')}</tbody></table></div>
+      <div class="cluster"><button class="btn btn-primary" data-act="runClose" ${s.closed ? 'disabled' : ''}>마감 배치 지금 실행</button><span class="xsmall faint">${s.closed ? '이번 주 마감은 끝났어요' : '시계를 화요일 0시로 보내고 배치를 돌려요'}</span></div>
+      <div class="panel"><div class="panel-h"><h2>가장 늦은 경우 10일 안 지급</h2><span class="xsmall faint">C-STL-02</span></div><div class="panel-b stack">
+        <div class="tbl-wrap"><div class="days">${days.map((d, i) => { const [c, t] = dcls(i); return `<div class="day ${c}"><b>${d.getMonth() + 1}/${d.getDate()}</b>${'일월화수목금토'[d.getDay()]}${t ? `<br>${t}` : ''}</div>`; }).join('')}</div></div>
+        <p class="small">화요일 마감 바로 뒤에 기록된 정산 이벤트가 가장 오래 기다려요: 다음 주 화요일 마감 → 수~목 정산 확정 → 금요일 지급 = 10일. 월요일까지 도래한 자동 구매 확정은 화요일 0시 배치가 끝난 뒤 마감하므로 그 주기에 들어가요.</p>
+        <div class="note small">정산 기한 규제가 강화되는 중이에요(티몬·위메프 사태 이후 국회 논의, 2026년 기준 진행 중). 이 설계는 논의 중인 "구매 확정 후 20일 안" 기준을 충족해요. 법안 통과 여부와 적용 대상 규모는 확인이 필요해요.</div></div></div>
+      <div class="note note-ext small">외부 연동: 토스페이먼츠(지급대행·PG 정산 파일·가상계좌) · 팝빌(세금계산서) · 쿠콘(계좌 예금주 확인) · PASS(대표자 본인인증) · 채널톡(이의 제기). 지급 구조는 토스 지급대행(플랫폼이 가맹점, 잔액에서 송금) 기준이며 PG 확정 전이에요. 프로토타입에서는 안내 창으로 대신해요.</div>`;
+  };
+
+  /* ── 상태 이동 묶음 ── */
+  function runClose() {
+    const s = S(); s.closed = true;
+    const c = mainCalc();
+    app.log('rule', '화요일 0시 자동 구매 확정 배치가 끝난 뒤 정산 마감 · 이 뒤에 기록되는 이벤트는 다음 주기(10/13~10/19)');
+    app.setState('settle', 'SCHEDULED', { by: `화요일 0시 마감 배치 · 대성포장 이벤트 ${c.ev.length}건 · ${SCN_NAME[scenario]}` });
+    app.log('rule', '직영(DIRECT) 파트너는 정산 배치에서 제외 → 별도 원장(3차 · MVP는 모든 파트너가 일반 입점)');
+    app.log('money', `대성포장 정산서 생성: 이벤트 합 ${won(c.res.eventSum)} − 본사 청구 ${c.ded ? `${won(c.ded)}(${c.res.deductions.map((d) => d.name).join(' → ')})` : '없음'} = 지급 예정 ${won(c.res.payout)}`);
+    app.log('warn', '이상 건 표시: 클레임 진행 항목 1건(종이컵) · 전주 대비 급변');
+    app.setState('hb', 'FINAL_CALC', { by: '계약 종료 파트너 최종 정산서 생성' });
+    const sb = otherCalc('SB'); const total = sum(sb.receivables, (x) => x.amount);
+    if (total > P('settlement.receivable_limit')) {
+      app.go('recv', 'invoice', { by: `새봄인쇄 미수금 ${won(total)} > 기준 ${won(P('settlement.receivable_limit'))}` });
+      s.recv.due = new Date(CLOSE_AT.getTime() + L('recv_due_days') * DAY);
+      app.notify('NOTI_PARTNER_INVOICE_ISSUED', '새봄인쇄', ['알림톡', '이메일', '알림센터'], `미수금 청구서 ${won(total)} · ${fmtDate(s.recv.due, false)}까지 납부`);
+    } else app.log('rule', `새봄인쇄 미수금 ${won(total)} · 기준 미만이라 청구서 없이 다음 주기에 먼저 차감`);
+  }
+  function startHoldback() {
+    const s = S();
+    if (app.state('hb') !== 'FINAL_CALC') return;
+    const b = brCalc();
+    app.go('hb', 'pay_partial', { by: `바른용기 ${won(b.now)} 지급 · ${won(b.held)} 유보` });
+    s.hb.start = app.clock.now(); s.hb.releaseAt = new Date(s.hb.start.getTime() + L('holdback_days') * DAY);
+    app.log('rule', `계약 종료 유보 ${won(b.held)} · 해제 예정 ${fmtDate(s.hb.releaseAt, false)} · 그 사이 클레임·역분개는 유보분에서 차감`);
+  }
+
+  /* ── 동작 ── */
+  app.actions({
+    acct(b) { S().acct = b.dataset.a; app.log('user', `본사 계정 전환: ${ACCTS[S().acct].name}`); refresh(); },
+    hqTab(b) { S().hqTab = b.dataset.t; refresh(); },
+    ptTab(b) { S().ptTab = b.dataset.t; refresh(); },
+    pick(b) {
+      const s = S(); const p = b.dataset.p;
+      s.focus = p; s.branch = p === 'SB' || p === 'BR' ? p : null; s.hqTab = 'agg';
+      if (p === 'SB') app.strips.recv.hidden = false;
+      if (p === 'BR') app.strips.hb.hidden = false;
+      refresh();
+    },
+    dsSub(b) { S().dsSub = b.dataset.t; refresh(); },
+    sim(b) { S().sim = b.dataset.v; refresh(); },
+    holdItem() {
+      const s = S(); work(10);
+      s.heldItem = true;
+      const c = mainCalc();
+      app.log('rule', '항목 정산 보류: 종이컵 2박스 · 사유 코드 CLAIM_IN_PROGRESS · 클레임이 끝나면 다음 주기에 자동 포함');
+      app.log('money', `대성포장 지급 예정 ${won(c.res.payout)} (이벤트 합 ${won(c.res.eventSum)})`);
+      app.notify('NOTI_PARTNER_SETTLEMENT_ON_HOLD', '대성포장', ['알림톡', '이메일', '알림센터'], `정산 보류 1건(클레임 진행) · ${won(sum(c.held, (e) => e.amount))}`);
+      refresh();
+    },
+    okSpike() { S().review.spike = true; work(5); app.log('user', `${ACCTS[S().acct].name}: 전주 대비 급변 확인 · ${spikeWhy(mainCalc())} · 정상`); refresh(); },
+    async runRecon() {
+      await app.ext({ service: '토스페이먼츠', what: 'PG 정산 파일(엑셀) 올리기', lines: ['상점관리자에서 내려받은 10/6~10/12 정산 내역 파일', 'PG 정산 ↔ 내부 결제 기록 ↔ 은행 입금을 건별로 맞춰요', 'MVP는 수동 업로드, 2차에 자동 수신·자동 매칭'], result: '412건 중 411건 일치, 1건 불일치로 처리해요' });
+      const s = S(); work(30);
+      s.recon = { at: app.clock.now(), resolved: false };
+      app.log('warn', '대사 불일치 1건: 온누리컵 GC-20261008-0377 내부 33,000 ≠ PG 31,500 → 해당 건 정산 보류');
+      app.notify('NOTI_INT_RECON_MISMATCH', '재무', ['이메일', '관리자 알림', 'Slack'], '정산 대사 불일치 1건');
+      refresh();
+    },
+    fixRecon() { const s = S(); s.recon.resolved = true; app.log('user', '대사 불일치 해결: 부분 취소 1,500원 반영 누락 확인 · 조정 전표'); refresh(); },
+    confirmStl() {
+      const s = S(); const a = ACCTS[s.acct]; const now = app.clock.now();
+      if (!a.lead) { app.log('warn', `정산 확정 거부: ${a.name} 계정에 팀장 플래그가 없어요`); app.toast('팀장 플래그 계정만 정산 확정할 수 있어요'); return refresh(); }
+      if (now < confirmFrom(s.cycle)) { app.toast('정산 확정은 수요일부터예요'); return; }
+      work(15);
+      app.go('settle', 'confirm', { by: `${a.name} 정산 확정(팀장 플래그)` });
+      s.confirmedAt = app.clock.now(); s.confirmedBy = a.name; s.confirmedOnce = true; s.partnerSeen = false;
+      const c = mainCalc();
+      app.log('rule', '정산 확정된 정산서는 고칠 수 없어요. 오류는 다음 주기의 조정 이벤트로 · 수수료 세금계산서 귀속 월 = 정산 확정일 기준(10월)');
+      app.notify('NOTI_PARTNER_SETTLEMENT_CONFIRMED', '대성포장', ['이메일', '알림센터'], `10월 2주차 정산 확정 · 지급 예정 ${won(c.res.payout)} · ${fmtDate(payDayOf(s.cycle), false)}`);
+      refresh();
+    },
+    reqPayout() {
+      const s = S(); const now = app.clock.now();
+      if (app.state('settle') !== 'CONFIRMED' || now < payDayOf(s.cycle)) { app.toast('지급일에 정산 확정된 정산서만 요청할 수 있어요'); return; }
+      if (s.payCheck) { app.toast('지급 결과를 확인하는 중이라 다시 요청할 수 없어요'); return; }
+      work(10);
+      s.req = { by: s.acct, at: app.clock.now() }; s.selfDenied = false;
+      const go = payoutList(s).filter((r) => !r.hold);
+      app.log('user', `${ACCTS[s.acct].name} 지급 요청 · ${go.length}곳 ${won(sum(go, (r) => r.amount))}`);
+      app.log('rule', '승인은 요청자와 다른 팀장 플래그 계정만 · 서버에서 검증');
+      refresh();
+    },
+    cancelReq() { const s = S(); app.log('user', `지급 요청 취소(${ACCTS[s.req.by].name})`); s.req = null; s.selfDenied = false; refresh(); },
+    pgMode(b) { S().pgMode = b.dataset.m; app.log('user', `PG 응답 체험: ${PG_MODES[b.dataset.m]}`); refresh(); },
+    qMode(b) { S().qMode = b.dataset.m; app.log('user', `PG 조회 결과 체험: ${Q_MODES[b.dataset.m]}`); refresh(); },
+    /* 결과 모름 → PG 지급 조회(A-STL-02 예외). 조회는 돈을 보내지 않음 */
+    async queryPayout() {
+      const s = S(); const pc = s.payCheck; if (!pc) return;
+      const m = s.qMode; const key = keyTxt();
+      await app.ext({ service: '토스페이먼츠 지급대행', what: `지급 조회 · 요청 키 ${key}`, lines: ['요청 키로 이 지급이 실제로 나갔는지 PG에 물어봐요', '조회는 돈을 보내지 않아요 · 결과를 알기 전에는 다시 보내지 않아요'], result: m === 'sent' ? '송금된 것으로 확인돼요' : m === 'notsent' ? '송금되지 않은 것으로 확인돼요' : '조회 응답도 받지 못한 것으로 처리해요' });
+      work(5);
+      const row = s.lastRun && s.lastRun.rows.find((r) => r.id === 'DS');
+      if (m === 'sent') {
+        if (row) row.query = 'sent';
+        s.payCheck = null; s.pgMode = 'ok';
+        app.go('settle', 'payout', { by: `PG 지급 조회 · 송금 확인(요청 키 ${key})` });
+        s.paidAt = pc.at;
+        app.log('money', `대성포장 ${won(mainCalc().res.payout)} 지급 확인 → ${s.account.mask} · 송금 시각 ${fmtDate(pc.at)}`);
+        app.notify('NOTI_PARTNER_PAYOUT_DONE', '대성포장', ['알림톡', '이메일', '알림센터'], `${won(mainCalc().res.payout)} 지급 완료 · 지급 내역서 공개`);
+      } else if (m === 'notsent') {
+        if (row) row.query = 'notsent';
+        s.payCheck = null; s.pgMode = 'ok';
+        app.go('settle', 'payout_fail', { by: 'PG 지급 조회 · 송금 안 됨 확인 → 정산 보류' });
+        s.hold = { code: 'PAYOUT_NOT_SENT', label: '지급 실패 확인 · PG 송금 안 됨' };
+        s.payKey.retry = true;
+        app.log('rule', `정산 보류로 돌린 뒤에만 같은 요청 키 ${key}로 다시 요청해요(정산 보류 해제 → 다음 지급일)`);
+        app.notify('NOTI_INT_PAYOUT_FAILED', '재무', ['이메일', '관리자 알림', 'Slack'], `대성포장 지급 실패 확인(PG 송금 안 됨 · 요청 키 ${key})`);
+        app.notify('NOTI_PARTNER_SETTLEMENT_ON_HOLD', '대성포장', ['알림톡', '이메일', '알림센터'], 'PG 지급 오류로 정산 보류 · 다음 지급일에 다시 보내요');
+      } else {
+        pc.tries += 1;
+        if (!pc.escalated) {
+          pc.escalated = true;
+          app.notify('NOTI_INT_MONEY_UNKNOWN', '재무 · 개발', ['이메일', '관리자 알림', 'Slack'], `대성포장 지급 결과 확인 안 됨(요청 키 ${key}) · 사람이 PG와 직접 확인해 주세요`);
+        } else app.log('warn', `PG 지급 조회 ${pc.tries}번째도 확인 안 됨 · 계속 확인 중(다시 보내지 않음)`);
+      }
+      refresh();
+    },
+    async approve() {
+      const s = S(); const a = ACCTS[s.acct];
+      if (!s.req) return;
+      if (s.acct === s.req.by) {
+        s.selfDenied = true;
+        app.log('warn', `지급 승인 거부: 요청자(${ACCTS[s.req.by].name})와 승인자가 같아 서버가 막았어요 <span class="faint xsmall">SELF_APPROVAL_DENIED</span>`);
+        app.toast('요청자와 승인자가 같아 서버가 승인을 거부했어요');
+        return refresh();
+      }
+      if (!a.lead) { app.log('warn', `지급 승인 거부: ${a.name} 계정에 팀장 플래그가 없어요`); app.toast('팀장 플래그 계정만 승인할 수 있어요'); return refresh(); }
+      const list = payoutList(s); const go = list.filter((r) => !r.hold); const total = sum(go, (r) => r.amount);
+      const ok = await app.confirm({ title: `${go.length}곳 ${won(total)}을 지급할까요?`, body: `<p class="small">요청 ${ACCTS[s.req.by].name} · 승인 ${a.name}(팀장). 승인하면 토스페이먼츠 지급대행을 호출해요.</p>${list.some((r) => r.hold) ? '<p class="small">정산 보류 건은 이번 목록에서 빠져요.</p>' : ''}`, ok: '승인하고 지급 실행' });
+      if (!ok) return;
+      const dsHeld = within24();
+      const dsGo = go.some((r) => r.id === 'DS');
+      const fail = s.pgMode === 'fail' && dsGo;
+      const unknown = s.pgMode === 'unknown' && dsGo;
+      let key = null;
+      if (dsGo) { // 지급 요청 키를 PG 호출 전에 먼저 저장(A-STL-02)
+        const nk = nextKey(); const same = !!nk.retry;
+        s.payKey = { stmt: nk.stmt, round: nk.round, retry: false }; key = keyTxt();
+        app.log('rule', `지급 요청 키 ${key} 먼저 저장(정산서 ID + 지급 회차)${same ? ' · 송금 안 됨이 확인된 건이라 같은 키로 다시 요청' : ''} → PG에 함께 보내요`);
+      }
+      const resTxt = fail ? '대성포장 1건은 "예금주 불일치"로 실패, 나머지는 성공한 것으로 처리해요' : unknown ? '대성포장 1건은 응답이 오지 않은 것(시간 초과)으로, 나머지는 성공한 것으로 처리해요' : '모두 성공한 것으로 처리해요';
+      await app.ext({ service: '토스페이먼츠 지급대행', what: `지급 실행 ${go.length}건 · ${won(total)}`, lines: ['식업이 가맹점으로 받은 정산 잔액에서 파트너 계좌로 송금해요(토스 기준 · PG 확정 전)', '계좌 인증을 통과한 계좌로만 보내요. 지급대행 수수료는 플랫폼이 내요', '셀러별 주간 지급 합계가 1천만 원 이상이면 토스의 KYC 확인이 필요해요', ...(key ? [`지급 요청 키 ${key}를 함께 보내요 · 같은 키로 다시 와도 PG가 두 번 보내지 않아요`] : []), ...go.map((r) => `${r.name} ${won(r.amount)}`)], result: resTxt });
+      app.clock.pass(5 * 60000);
+      const now = app.clock.now();
+      s.lastRun = { at: now, by: s.req.by, ap: s.acct, rows: list.map((r) => ({ id: r.id, name: r.name, amount: r.amount, key: r.id === 'DS' && !r.hold ? key : null, result: r.hold ? 'held' : r.id === 'DS' && fail ? 'fail' : r.id === 'DS' && unknown ? 'unknown' : 'ok' })) };
+      if (!s.othersPaid && list.some((r) => r.id === 'HB')) {
+        s.othersPaid = true;
+        app.log('money', `한빛위생 ${won(otherCalc('HB').payout)} · 바른용기 ${won(brCalc().now)} 지급 완료`);
+        startHoldback();
+      }
+      if (dsHeld) {
+        app.setState('settle', 'ON_HOLD', { by: '계좌 변경 뒤 24시간 안 지급 → 정산 보류' });
+        s.hold = { code: 'ACCOUNT_CHANGED_24H', label: '정산 계좌 변경 후 24시간 정산 보류' };
+        app.notify('NOTI_PARTNER_SETTLEMENT_ON_HOLD', '대성포장', ['알림톡', '이메일', '알림센터'], '계좌 변경 후 24시간 안 지급이라 정산 보류 · 다음 지급일에 보내요');
+      } else if (unknown) {
+        s.payCheck = { at: now, amount: mainCalc().res.payout, tries: 0, escalated: false };
+        app.log('warn', `대성포장 지급 응답 없음(시간 초과) → 지급 요청 "확인 중" · 정산서는 정산 확정 그대로 · 다시 보내지 않고 다음 지급 목록에도 자동으로 올리지 않아요 <span class="faint xsmall">${key}</span>`);
+      } else if (fail) {
+        app.go('settle', 'payout_fail', { by: 'PG 지급 실패 · 예금주 불일치' });
+        s.hold = { code: 'PAYOUT_FAILED', label: '지급 실패 · 예금주 불일치' }; s.reauthed = false;
+        app.notify('NOTI_PARTNER_PAYOUT_FAILED', '대성포장', ['알림톡', '이메일', '알림센터'], '지급 실패 · 정산 계좌를 확인해 주세요');
+        app.notify('NOTI_INT_PAYOUT_FAILED', '재무', ['이메일', '관리자 알림', 'Slack'], '대성포장 지급 실패(예금주 불일치)');
+      } else {
+        app.go('settle', 'payout', { by: '토스페이먼츠 지급대행 성공' });
+        s.paidAt = now;
+        app.log('money', `대성포장 ${won(mainCalc().res.payout)} 지급 → ${s.account.mask}`);
+        app.notify('NOTI_PARTNER_PAYOUT_DONE', '대성포장', ['알림톡', '이메일', '알림센터'], `${won(mainCalc().res.payout)} 지급 완료 · 지급 내역서 공개`);
+      }
+      s.req = null; s.selfDenied = false;
+      refresh();
+    },
+    release() {
+      const s = S(); if (!holdReady()) { app.toast('아직 정산 보류 사유가 남아 있어요'); return; }
+      const k = nextCycleAfter(app.clock.now(), s.cycle + 1);
+      app.go('settle', 'release', { by: `정산 보류 해제(${ACCTS[s.acct].name}) · 다음 주기 정산에 합류` });
+      s.cycle = k; s.hold = null; s.req = null; s.selfDenied = false; s.partnerSeen = false; s.lastRun = null;
+      app.log('rule', `다음 지급일 ${fmtDate(payDayOf(k), false)} · ${fmtDate(confirmFrom(k), false)}~${fmtDate(new Date(confirmBy(k).getTime() - DAY), false)}에 다시 정산 확정한 뒤 함께 지급${s.payKey && s.payKey.retry ? ` · 같은 요청 키 ${keyTxt()}로 다시 요청` : ''}`);
+      refresh();
+    },
+    async retryTax() { await app.ext({ service: '팝빌', what: '온누리컵 9월분 세금계산서 재발행', lines: ['상호 변경을 파트너에게 확인받은 뒤 바뀐 정보로 발행해요', '국세청 전송 결과를 다시 받아요'] }); S().taxRetried = true; refresh(); },
+    async chgAccount() {
+      const ok = await app.confirm({ title: '정산 계좌를 바꿀까요?', body: `<p class="small">바꾼 시각부터 ${P('settlement.account_change_hold_hours')}시간 안에 돌아오는 지급은 정산 보류되고 다음 지급일에 보내요. 새 계좌 인증에 실패하면 기존 계좌를 그대로 써요.</p>`, ok: '계좌 바꾸기' });
+      if (!ok) return;
+      await app.ext({ service: '쿠콘', what: '새 계좌 예금주 확인', lines: [`${ACCOUNT_NEW.mask} · 예금주 ${ACCOUNT_NEW.holder}`, '사업자 상호와 예금주가 같아야 통과해요'], result: '예금주가 일치한 것으로 처리해요' });
+      await app.ext({ service: 'PASS', what: '대표자 본인인증 · 2단계 인증', lines: ['계좌를 바꿀 때마다 대표 계정 본인인증과 OTP를 다시 거쳐요'] });
+      const s = S(); s.account = { ...ACCOUNT_NEW }; s.acctChange = { at: app.clock.now(), cleared: false };
+      app.log('rule', `정산 계좌 변경 완료 → ${fmtDate(new Date(s.acctChange.at.getTime() + holdMs()))}까지 돌아오는 지급은 정산 보류`);
+      app.notify('NOTI_PARTNER_ACCOUNT_CHANGED', '대성포장', ['알림톡', '이메일', '알림센터'], '정산 계좌 변경 완료 · 24시간 안 첫 지급은 정산 보류');
+      refresh();
+    },
+    async reauth() {
+      await app.ext({ service: '쿠콘', what: '정산 계좌 예금주 다시 확인', lines: [`바로잡은 계좌 ${ACCOUNT_FIXED.mask} · 예금주 ${ACCOUNT_FIXED.holder}`, '통과하지 못하면 기존 계좌를 그대로 둬요'], result: '예금주가 일치한 것으로 처리해요' });
+      await app.ext({ service: 'PASS', what: '대표자 본인인증 · 2단계 인증', lines: ['계좌를 다시 인증할 때도 대표 계정 본인인증과 OTP를 거쳐요'] });
+      const s = S(); s.reauthed = true; s.pgMode = 'ok'; s.account = { ...ACCOUNT_FIXED }; s.acctChange = { at: app.clock.now(), cleared: false };
+      app.log('user', '파트너가 정산 계좌를 다시 인증했어요');
+      app.notify('NOTI_PARTNER_ACCOUNT_CHANGED', '대성포장', ['알림톡', '이메일', '알림센터'], '정산 계좌 재인증 완료 · 다음 지급일에 보내요');
+      refresh();
+    },
+    dlExcel() { app.toast('정산서를 엑셀로 내려받았어요'); app.log('user', '파트너가 10월 2주차 정산서 엑셀 내려받기'); },
+    async objection() { await app.ext({ service: '채널톡', what: '정산서 항목 이의 제기', lines: ['항목 정보(주문번호·이벤트·금액)를 담아 파트너 1:1 문의로 넘겨요', '정산 확정된 정산서는 고치지 않고, 오류면 다음 주기에 조정 이벤트로 반영해요'], result: '문의가 접수된 것으로 처리해요' }); },
+    async taxPdf() { await app.ext({ service: '팝빌', what: '세금계산서 PDF 내려받기', lines: ['국세청 전송 상태와 승인번호가 함께 나와요'] }); },
+    consent(t) { S().consent = t.checked; app.log('user', `위수탁 발행 ${t.checked ? '동의' : '동의 철회'}`); refresh(); },
+    ledgerNext() {
+      const s = S(); if (s.ledgerStep >= 3) return;
+      const w = ledgerRun()[s.ledgerStep]; s.ledgerStep += 1;
+      app.log('money', `원장 미리 보기 ${w.label}: 정산액 ${won(w.r.base)} · 지급 ${won(w.r.payout)} · 이월 ${won(w.r.carryOut)} · 미수금 ${won(sum(w.r.receivables, (x) => x.amount))}`);
+      refresh();
+    },
+    ledgerReset() { S().ledgerStep = 0; refresh(); },
+    calcBase(b) { S().calc.base = Number(b.dataset.v); refresh(); },
+    calcPlan(b) { S().calc.plan = b.dataset.v; refresh(); },
+    calcPromo(b) { S().calc.promo = Number(b.dataset.v); refresh(); },
+    calcNew(t) { S().calc.newP = t.checked; refresh(); },
+    calcRe(t) { S().calc.re = t.checked; refresh(); },
+    runClose() {
+      const ms = CLOSE_AT - app.clock.now();
+      if (ms > 0) { app.log('user', '시스템: 시계를 화요일 0시로 보냈어요'); app.clock.pass(ms); }
+      else if (!S().closed) runClose();
+      refresh();
+    },
+    async payRecv() {
+      await app.ext({ service: '토스페이먼츠', what: '청구서 가상계좌 입금 확인', lines: ['새봄인쇄 전용 가상계좌 입금 웹훅을 받아요', '미수금 원장을 0원으로 정리하고 세금계산서는 이미 청구 기준으로 발행돼 있어요'], result: '입금된 것으로 처리해요' });
+      const stopped = app.state('recv') === 'SALES_STOPPED';
+      app.go('recv', 'pay', { by: stopped ? '납부 확인 · 판매 다시 열림' : '기한 안 납부' });
+      app.log('money', `새봄인쇄 미수금 ${won(sum(otherCalc('SB').receivables, (x) => x.amount))} 납부 · 원장 0원`);
+      refresh();
+    },
+    async toRecvDue() {
+      const s = S(); const ms = s.recv.due - app.clock.now(); if (ms <= 0) return;
+      if (app.state('settle') !== 'PAID_OUT' && !(await app.confirm({ title: '납부 기한까지 시간을 보낼까요?', body: '<p class="small">시계가 함께 움직여서 대성포장 기본 흐름의 기한(정산 확정일·지급일)도 지나갈 수 있어요.</p>', ok: '시간 보내기' }))) return;
+      app.clock.advance(ms, `새봄인쇄 납부 기한까지 시간을 보냈어요 → ${fmtDate(s.recv.due)}`);
+    },
+    async toHoldEnd() {
+      const s = S(); const ms = s.hb.releaseAt - app.clock.now(); if (ms <= 0) return;
+      if (app.state('settle') !== 'PAID_OUT' && !(await app.confirm({ title: '90일을 한 번에 보낼까요?', body: '<p class="small">시계가 함께 움직여서 대성포장 기본 흐름의 기한도 지나가요.</p>', ok: '시간 보내기' }))) return;
+      app.clock.advance(ms, `바른용기 유보 해제일까지 시간을 보냈어요 → ${fmtDate(s.hb.releaseAt)}`);
+    },
+  });
+
+  /* ── 시간이 흐를 때: 마감 배치·기한·자동 처리 ── */
+  app.onAdvance((prev, now) => {
+    const s = S();
+    if (!s.closed && now >= CLOSE_AT) runClose();
+    const st = app.state('settle');
+    if (st === 'SCHEDULED' && s.closed && now >= confirmBy(s.cycle)) {
+      const old = s.cycle; s.cycle = nextCycleAfter(now, old);
+      app.log('warn', `목요일까지 정산 확정하지 않아 지급일이 ${fmtDate(payDayOf(old), false)} → ${fmtDate(payDayOf(s.cycle), false)}로 밀렸어요`);
+      app.log('noti', `파트너 공지 → 대성포장: 지급일 변경 안내(${fmtDate(payDayOf(s.cycle), false)})`);
+    }
+    if (st === 'CONFIRMED' && !s.payCheck && now >= payDayEnd(s.cycle)) { // 확인 중인 지급은 다음 지급일로 자동으로 넘기지 않음
+      const old = s.cycle; let k = old; while (payDayEnd(k) <= now) k += 1; s.cycle = k; s.req = null; s.selfDenied = false;
+      app.log('warn', `지급일(${fmtDate(payDayOf(old), false)})에 지급을 실행하지 않아 ${fmtDate(payDayOf(k), false)}로 밀렸어요`);
+      app.log('noti', `파트너 공지 → 대성포장: 지급 지연 사유와 예정일(${fmtDate(payDayOf(k), false)})`);
+    }
+    if (s.acctChange && !s.acctChange.cleared && now - s.acctChange.at >= holdMs()) {
+      s.acctChange.cleared = true;
+      app.log('rule', `계좌 변경 뒤 ${P('settlement.account_change_hold_hours')}시간이 지났어요 → 계좌 변경 정산 보류 사유 해소`);
+    }
+    if (s.recon && !s.recon.resolved && !s.mismatchNotified && now - s.recon.at >= L('recon_escalate_days') * DAY) {
+      s.mismatchNotified = true;
+      app.notify('NOTI_INT_RECON_MISMATCH', '정산 팀장(한재무)', ['이메일', '관리자 알림', 'Slack'], `대사 불일치가 ${L('recon_escalate_days')}일 넘게 안 풀렸어요`);
+    }
+    if (app.state('recv') === 'INVOICED' && s.recv.due) {
+      const notice = new Date(s.recv.due.getTime() - L('stop_notice_days') * DAY);
+      if (!s.recv.noticed && now >= notice) { s.recv.noticed = true; app.notify('NOTI_PARTNER_SALES_STOP_NOTICE', '새봄인쇄', ['알림톡', '이메일', '알림센터'], `${fmtDate(s.recv.due, false)}까지 미수금을 내지 않으면 판매가 멈춰요`); }
+      if (now >= s.recv.due) {
+        app.go('recv', 'overdue', { by: `납부 기한(${fmtDate(s.recv.due, false)}) 경과` });
+        app.log('rule', '새봄인쇄 판매 중지: 상품 노출을 멈추고 진행 중인 주문·클레임은 계속 처리해요');
+      }
+    }
+    if (app.state('hb') === 'HOLDING' && s.hb.start) {
+      if (!s.hb.late && now - s.hb.start >= LATE_CLAIM_DAY * DAY) { s.hb.late = true; app.log('money', `바른용기 늦은 반품 역분개 −${won(LATE_CLAIM)} → 유보분에서 차감`); }
+      if (now >= s.hb.releaseAt) {
+        if (!s.hb.late) { s.hb.late = true; app.log('money', `바른용기 늦은 반품 역분개 −${won(LATE_CLAIM)} → 유보분에서 차감`); }
+        app.go('hb', 'release', { by: `${L('holdback_days')}일 경과 · 유보분 ${won(brCalc().release)} 지급 목록 자동 등록` });
+      }
+    }
+    if (!s.taxIssuedOct && prev < NOV1 && now >= NOV1) {
+      s.taxIssuedOct = true;
+      app.log('ext', `팝빌 · 10월분 ${isPro() ? '수수료·플랜료·광고비' : '판매 수수료'} 세금계산서 월 합계 일괄 발행(정산 확정분 기준)`);
+    }
+    guide();
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+[
+ {"act":"pvEdit","attr":"data-k=\"design.free_threshold\""},
+ {"type":{"sel":"#pvNew","text":"300000"},"after":700},
+ {"act":"pvReasonPreset","idx":0,"shot":"system-dark-01-edit","full":true},
+ {"act":"pvSubmit"},
+ {"act":"role","attr":"data-r=\"최고관리자\""},
+ {"act":"pvApprove"},
+ {"adv":"604800000"},
+ {"wait":2600},
+ {"shot":"system-dark-02-applied","full":true},
+ {"act":"sec","attr":"data-s=\"알림\""},
+ {"act":"simRun"},
+ {"wait":2600},
+ {"shot":"system-dark-03-noti","full":true},
+ {"act":"sec","attr":"data-s=\"감사 로그\"","shot":"system-dark-04-audit","full":true},
+ {"role":"customer"},
+ {"act":"csGo","attr":"data-to=\"settings\"","shot":"system-dark-05-customer","full":true},
+ {"role":"hq"},
+ {"act":"sec","attr":"data-s=\"정책값\""},
+ {"act":"resetAll"},
+ {"eval":"localStorage.getItem('gc.policy.v1')"}
+]

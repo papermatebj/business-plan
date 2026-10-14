@@ -1,0 +1,22 @@
+[
+ {"check":"cup"},{"act":"toCheckout"},{"act":"payMethod","attr":"data-m=\"vbank\""},{"check":"agree","shot":"order-14-vbank-checkout"},
+ {"act":"pay","after":400,"shot":"order-15-vbank-done"},
+ {"adv":"86400000"},{"adv":"86400000"},{"adv":"86400000"},
+ {"eval":"document.querySelector('#gc-turn .turn-done').textContent"},
+ {"click":"#gc-reset"},
+ {"check":"cup"},{"act":"toCheckout"},{"act":"payMethod","attr":"data-m=\"vbank\""},{"check":"agree"},{"act":"pay","after":400},
+ {"role":"system"},{"act":"deposit"},
+ {"role":"partner"},{"act":"accept"},
+ {"role":"customer"},
+ {"act":"openCancel","attr":"data-id=\"napkin\""},{"act":"doCancel"},
+ {"role":"partner","shot":"order-16-cancel-request"},
+ {"adv":"86400000"},
+ {"eval":"[document.querySelector('#gc-turn .turn-what').textContent, Array.from(document.querySelectorAll('.chip.is-now,.chip.is-branch-now')).map(c=>c.title).join('|'), Array.from(document.querySelectorAll('#gc-log li')).slice(0,8).map(l=>l.textContent.trim()).join(' // ')]"},
+ {"click":"#gc-reset"},
+ {"act":"toCheckout"},{"check":"agree"},{"act":"pay","after":400},
+ {"role":"partner"},{"act":"pvSwitch","attr":"data-p=\"B\""},
+ {"act":"stockout","attr":"data-id=\"cup\"","after":400,"shot":"order-17-stockout"},
+ {"act":"pvSwitch","attr":"data-p=\"A\""},{"act":"accept"},{"act":"ship"},
+ {"role":"system"},{"act":"track"},{"adv":"604800000"},
+ {"role":"hq","shot":"order-18-multi-hq"}
+]

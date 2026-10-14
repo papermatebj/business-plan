@@ -1,0 +1,20 @@
+[
+ {"shot":"member-s01-login-keep"},
+ {"act":"sns","attr":"data-via=\"kakao\""},
+ {"check":"tos"},{"check":"privacy"},{"check":"age"},
+ {"act":"toIdentity","shot":"member-s02-identity"},
+ {"act":"pass","after":300},
+ {"act":"cs","attr":"data-to=\"home\""},
+ {"act":"cs","attr":"data-to=\"my\""},
+ {"eval":"document.querySelector('#gc-device [data-act=\"logoutAll\"]').scrollIntoView({block:'center'})","shot":"member-s03-my-devices"},
+ {"adv":"604800000"},{"adv":"604800000"},{"adv":"604800000"},{"adv":"604800000"},{"adv":"604800000"},
+ {"eval":"document.querySelector('#gc-device [data-act=\"logoutAll\"]').scrollIntoView({block:'center'})","shot":"member-s04-web-expired"},
+ {"act":"logoutAll","after":400,"shot":"member-s05-logged-out"},
+ {"act":"relogin","after":400,"shot":"member-s06-relogin-my"},
+ {"role":"hq"},
+ {"act":"openMember","after":300},
+ {"eval":"(()=>{const dt=[...document.querySelectorAll('#gc-device .kv dt')].map(x=>x.textContent);return [dt.includes('만 나이 확인'), dt.includes('생년월일')]})()"},
+ {"eval":"document.querySelector('#gc-device [data-act=\"maskReason\"], #gc-device [data-act=\"remask\"]').scrollIntoView({block:'center'})","shot":"member-s07-hq-age"},
+ {"act":"maskReason","idx":0},{"act":"unmask","after":300},
+ {"eval":"document.querySelector('#gc-device [data-act=\"maskReason\"], #gc-device [data-act=\"remask\"]').scrollIntoView({block:'center'})","shot":"member-s08-hq-unmask"}
+]

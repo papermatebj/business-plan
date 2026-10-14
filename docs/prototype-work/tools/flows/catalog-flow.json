@@ -1,0 +1,376 @@
+[
+ {
+  "shot": "catalog-01-partner-basic"
+ },
+ {
+  "act": "pmode",
+  "attr": "data-k=\"both\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"desc\""
+ },
+ {
+  "act": "detUpload",
+  "after": 400,
+  "shot": "catalog-01b-desc-upload-fail"
+ },
+ {
+  "act": "detRetry",
+  "after": 400
+ },
+ {
+  "act": "detTpl"
+ },
+ {
+  "act": "detPaste",
+  "shot": "catalog-01c-desc-paste"
+ },
+ {
+  "act": "detPv",
+  "attr": "data-k=\"m\"",
+  "shot": "catalog-01d-desc-preview"
+ },
+ {
+  "act": "detSave"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"price\""
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#t2price');i.value='33000';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "act": "saveDraft",
+  "shot": "catalog-02-tier-inverted"
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#t2price');i.value='28000';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"ship\""
+ },
+ {
+  "act": "shipTpl",
+  "attr": "data-k=\"basic\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"custom\""
+ },
+ {
+  "act": "upTemplate",
+  "after": 400,
+  "shot": "catalog-03-custom"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"submit\""
+ },
+ {
+  "act": "requestReview"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"docs\""
+ },
+ {
+  "act": "upDoc",
+  "attr": "data-k=\"test\"",
+  "after": 400
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"submit\"",
+  "shot": "catalog-04-submit"
+ },
+ {
+  "act": "requestReview"
+ },
+ {
+  "role": "hq",
+  "shot": "catalog-05-hq-review"
+ },
+ {
+  "act": "needsFix"
+ },
+ {
+  "role": "partner"
+ },
+ {
+  "act": "cleanDesc"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"submit\""
+ },
+ {
+  "act": "requestReview"
+ },
+ {
+  "role": "hq"
+ },
+ {
+  "check": "rv_cat"
+ },
+ {
+  "check": "rv_word"
+ },
+ {
+  "check": "rv_doc"
+ },
+ {
+  "check": "rv_img"
+ },
+ {
+  "check": "rv_tpl"
+ },
+ {
+  "check": "rv_mode"
+ },
+ {
+  "check": "rv_desc"
+ },
+ {
+  "act": "approve"
+ },
+ {
+  "role": "customer",
+  "shot": "catalog-06-home"
+ },
+ {
+  "act": "cs",
+  "attr": "data-to=\"search\""
+ },
+ {
+  "type": {
+   "sel": "#q",
+   "text": "ㅅㅈㅈ"
+  },
+  "after": 400,
+  "shot": "catalog-07-chosung"
+ },
+ {
+  "act": "pickAc",
+  "idx": 0
+ },
+ {
+  "act": "filter",
+  "attr": "data-k=\"eco\""
+ },
+ {
+  "act": "filter",
+  "attr": "data-k=\"fast\"",
+  "shot": "catalog-08-filter-zero"
+ },
+ {
+  "act": "filter",
+  "attr": "data-k=\"fast\""
+ },
+ {
+  "act": "filter",
+  "attr": "data-k=\"eco\""
+ },
+ {
+  "act": "sort",
+  "attr": "data-k=\"price\""
+ },
+ {
+  "act": "cs",
+  "attr": "data-to=\"search\""
+ },
+ {
+  "act": "qClear"
+ },
+ {
+  "type": {
+   "sel": "#q",
+   "text": "수저봉투"
+  },
+  "after": 300
+ },
+ {
+  "act": "doSearch",
+  "shot": "catalog-09-synonym"
+ },
+ {
+  "act": "openP",
+  "attr": "data-id=\"mine\"",
+  "shot": "catalog-10-pdp-guest"
+ },
+ {
+  "click": "#gc-aside [data-mem=\"biz\"]",
+  "shot": "catalog-11-pdp-biz"
+ },
+ {
+  "act": "qty",
+  "attr": "data-d=\"-1\""
+ },
+ {
+  "act": "qty",
+  "attr": "data-d=\"-1\""
+ },
+ {
+  "act": "qty",
+  "attr": "data-d=\"-1\""
+ },
+ {
+  "act": "cqty",
+  "attr": "data-d=\"-1\"",
+  "shot": "catalog-12-pdp-moq"
+ },
+ {
+  "click": "#gc-aside [data-pm=\"custom\"]",
+  "shot": "catalog-13-pdp-custom-only"
+ },
+ {
+  "click": "#gc-aside [data-pm=\"\"]"
+ },
+ {
+  "act": "dvOpen",
+  "shot": "catalog-18-desc-open"
+ },
+ {
+  "act": "zoom",
+  "attr": "data-i=\"1\"",
+  "shot": "catalog-19-zoom"
+ },
+ {
+  "act": "zoomClose"
+ },
+ {
+  "act": "report"
+ },
+ {
+  "click": "#gc-aside [data-imgfail=\"1\"]",
+  "shot": "catalog-20-imgfail"
+ },
+ {
+  "act": "reloadImg"
+ },
+ {
+  "click": "#gc-device .phone-top .back"
+ },
+ {
+  "act": "cs",
+  "attr": "data-to=\"search\""
+ },
+ {
+  "act": "qClear"
+ },
+ {
+  "type": {
+   "sel": "#q",
+   "text": "대나무 수저통"
+  },
+  "after": 300
+ },
+ {
+  "act": "doSearch",
+  "shot": "catalog-14-zero"
+ },
+ {
+  "act": "reqItem"
+ },
+ {
+  "role": "partner"
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#qp2');i.value='2800';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 300
+ },
+ {
+  "act": "applyPrice",
+  "keepDialog": true,
+  "after": 400,
+  "shot": "catalog-15-price-alert"
+ },
+ {
+  "wait": 100
+ },
+ {
+  "act": "pause"
+ },
+ {
+  "act": "resume"
+ },
+ {
+  "act": "ptab",
+  "attr": "data-k=\"desc\""
+ },
+ {
+  "act": "descEdit"
+ },
+ {
+  "act": "detUpload",
+  "after": 400
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#pdesc');i.value=i.value+' 로고 인쇄 주문은 10,000매부터 받아요.';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "act": "descSubmit",
+  "shot": "catalog-21-desc-submit"
+ },
+ {
+  "role": "customer",
+  "shot": "catalog-22-customer-still-old"
+ },
+ {
+  "role": "hq",
+  "shot": "catalog-23-hq-diff"
+ },
+ {
+  "check": "rvd_diff"
+ },
+ {
+  "check": "rvd_ban"
+ },
+ {
+  "act": "descApprove"
+ },
+ {
+  "role": "customer",
+  "shot": "catalog-24-customer-new"
+ },
+ {
+  "role": "partner"
+ },
+ {
+  "adv": "604800000"
+ },
+ {
+  "adv": "604800000"
+ },
+ {
+  "adv": "604800000"
+ },
+ {
+  "adv": "604800000"
+ },
+ {
+  "adv": "604800000"
+ },
+ {
+  "adv": "604800000"
+ },
+ {
+  "role": "partner",
+  "shot": "catalog-16-doc-expired"
+ },
+ {
+  "act": "renewDoc"
+ },
+ {
+  "role": "hq"
+ },
+ {
+  "act": "unsuspend",
+  "shot": "catalog-17-hq-after"
+ }
+]

@@ -1,0 +1,1318 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>맞춤 디자인 · 식업 프로토타입</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@600;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/gc.css">
+<style>
+  .methods { display: grid; gap: 10px; }
+  .method { text-align: left; cursor: pointer; font: inherit; color: inherit; }
+  .method .mrow { display: grid; grid-template-columns: 78px minmax(0, 1fr); font-size: 13px; gap: 6px; }
+  .method .mrow span:first-child { color: var(--ink-3); }
+  .method .mh { font-size: 16px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .method .mh small { font-size: 13px; color: var(--spot); font-weight: 700; }
+  .method .moff { display: block; }
+  .steps-mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .steps-mini span { font-size: 11px; text-align: center; padding: 4px 0; border-top: 3px solid var(--rule); color: var(--ink-3); }
+  .steps-mini span.on { border-color: var(--spot); color: var(--ink); font-weight: 600; }
+  .chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips-row .tag { font-size: 12.5px; padding: 3px 9px; }
+  .proof-wrap { position: relative; padding: 18px 16px; color: var(--ink-3); }
+  .proof-wrap .pin-hit { position: absolute; inset: 18px 16px; cursor: crosshair; }
+  .pin-list { display: grid; gap: 6px; }
+  .pin-item { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; font-size: 13.5px; align-items: start; }
+  .pin-no { width: 22px; height: 22px; border-radius: 50%; background: var(--m); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+  .pin-no.ok { background: var(--kraft); }
+  .snapshot { font-size: 12px; background: var(--sheet-2); border: 1px solid var(--rule); border-radius: 6px; padding: 10px; overflow-x: auto; white-space: pre; font-family: var(--body); line-height: 1.5; }
+  .ws { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 16px; }
+  @media (max-width: 1100px) { .ws { grid-template-columns: minmax(0, 1fr); } }
+  .ver-list { display: grid; gap: 8px; }
+  .ver { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; padding: 8px; border: 1px solid var(--rule); border-radius: 8px; }
+  .ver b { font-size: 15px; }
+  .hold-banner { border: 2px solid var(--stop); background: var(--stop-weak); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; }
+  .money-flow .tbl td:last-child { white-space: nowrap; }
+  .nw { white-space: nowrap; }
+  .ptbl { min-width: 560px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="assets/engine.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  const { won, fmtDate } = GC;
+  const esc = UI.esc, pv = UI.pv;
+
+  /* ── 시나리오 데이터 (기획서 06장 협의 룸 예시: 오늘밥상 · 수저집) ── */
+  const STORE = { name: '오늘밥상', biz: '한식', phone: '02-000-0000', insta: '@todaybapsang', branch: '강남점' };
+  const PRODUCT = {
+    name: '크라프트 수저집 40×240mm', partner: '대성포장', unit: '1,000매',
+    normalTiers: [{ min: 1, price: 32000 }, { min: 5, price: 30000 }, { min: 10, price: 28000 }],
+    tiers: [{ min: 10, price: 30000 }, { min: 30, price: 26000 }], // 맞춤: 1,000매당
+    instant: { type: 'amount', value: 1000 }, plateFee: 50000, leadDays: 7,
+  };
+  const QTYS = [10, 20, 30];
+  const DESIGNERS = [{ id: 'kim', name: '김하린', load: 6, today: 1 }, { id: 'park', name: '박도윤', load: 11, today: 3 }, { id: 'lee', name: '이서준', load: 14, today: 2 }];
+  const TYPES = {
+    TEMPLATE: { name: '템플릿형', cost: '무료', rev: () => `${GC.Policy.get('design.free_revisions_template')}회`, first: '영업일 1일', right: '회사 보유 · 매장 사용권' },
+    CUSTOM: { name: '맞춤형', cost: () => won(GC.Policy.get('design.fee')), rev: () => `${GC.Policy.get('design.free_revisions_custom')}회`, first: () => `영업일 ${GC.Policy.get('design.sla.first_draft_days')}일`, right: '회사 보유 · 매장 사용권' },
+    OWN_FILE: { name: '자체 파일', cost: '검수 무료', rev: '재업로드 3회', first: '검수 영업일 1일', right: '고객 소유' },
+    REORDER: { name: '재주문', cost: '없음 · 판비 면제', rev: '문구 수정 1회', first: '디자인 단계 없음', right: '처음 확정 때와 같음' },
+  };
+  const val = (v) => (typeof v === 'function' ? v() : v);
+  const DESIGN_ACTIVE = ['REQUESTED', 'ASSIGNED', 'IN_PROGRESS', 'PROPOSED', 'REVISION', 'ON_HOLD', 'FILE_SUBMITTED', 'FILE_REVIEW', 'FILE_REJECTED'];
+
+  const app = UI.mount({
+    domain: 'design',
+    title: '맞춤 디자인',
+    lede: '사장님이 로고를 넣은 수저집을 주문하면, 본사 디자인팀이 시안을 만들고, 고객이 확정한 파일만 파트너 인쇄소로 넘어갑니다. 고객과 파트너는 서로 직접 만나지 않아요.',
+    meta: '근거: 기능 명세서 D-REQ-01~D-RE-01 · C-PRICE-01 · C-PAY-02 · C-STATE-01~03 · U-MY-01·03 · P-ORD-06 · 기획서 06장 · 2026-10-14 부록 B 결정(D1·D3·D4·D17~D19) 반영',
+    actors: [
+      { id: 'customer', title: '맞춤 제작', tab: '디자인' },
+      { id: 'design' },
+      { id: 'partner', nav: ['주문', '맞춤 제작', '상품', '정산'], navOn: '맞춤 제작', url: 'partner.sikup.co.kr/production' },
+      { id: 'hq', nav: ['대시보드', '주문', '분쟁 중재', '정산'], navOn: '분쟁 중재', url: 'admin.sikup.co.kr/mediation' },
+      { id: 'system' },
+    ],
+    strips: [
+      { id: 'design', machine: 'DESIGN', label: '디자인 요청', note: '디자인팀 작업 단위 · D-STU-01' },
+      { id: 'item', machine: 'ORDER_CUSTOM', label: '주문 항목', note: '고객 주문 상세와 파트너 화면에 보이는 상태 · C-STATE-01' },
+      { id: 'claim', machine: 'CLAIM_RETURN', label: '클레임', note: 'C-STATE-02', hidden: true },
+    ],
+    render: (actor, f) => VIEWS[actor](f),
+    onReset: init,
+    foot: '시나리오: 강남의 한식당 "오늘밥상"이 대성포장의 크라프트 수저집에 로고를 넣어 주문합니다. 시안 그림은 설명용 예시입니다.',
+  });
+  const S = () => app.S;
+
+  function init() {
+    Object.assign(app.S, {
+      cs: 'pdp', qty: 10, type: 'CUSTOM', round: 1, checks: {}, pay: 'card',
+      paid: null, designer: null, versions: [], viewVer: 0, viewOpt: 'A', pins: [], pinDraft: null,
+      freeLeft: 0, revisions: 0, firstProposedAt: null, waitSince: null, fired: {}, notices: {}, prevStatus: null,
+      sla: null, hold: false, after: null, afterChange: false, changeFrom: null, plateCost: null, downloaded: false, shipDue: null, deliveredAt: null,
+      hash: null, confirmedVer: null, confirmedHash: null, reviseText: '', reviseNote: '', ownFile: null, logo: false, template: 'band', refunded: null, fixStarted: false,
+      asking: false, viewedVer: 0, proposeFrom: null, slaBefore: null, revReqAt: null, restoreDue: false, source: null,
+      remake: null, settled: false, exchangedAt: null, exchangeSettleDue: null,
+    });
+    app.strips.claim.hidden = true;
+    setFlow('normal');
+    guide();
+  }
+  /* 클레임 칩 줄: 확정 후 취소는 CLAIM_CANCEL(CUSTOM_CANCEL), 재제작은 CLAIM_RETURN(REMAKE) */
+  function showClaim(machine, label, note) {
+    const c = app.strips.claim;
+    Object.assign(c, { machine, label, note, hidden: false, current: null, lastMainIdx: null });
+  }
+  const CONFIRMED_D = ['APPROVED', 'HANDED_OFF', 'PREFLIGHT_REJECTED'];
+  /* 확정 후 변경으로 다시 시안 단계가 된 건(표시, 상태 아님) */
+  const changeCase = () => S().afterChange && ['REVISION', 'PROPOSED', 'ON_HOLD'].includes(app.state('design'));
+  const claimOpen = () => { const s = S(); return !!(s.remake && app.state('claim') !== 'CLAIM_COMPLETED'); };
+  const plateTxt = (v) => (v > 0 ? `판 만들었음 · 실비 ${won(v)} 증빙` : '판 아직 안 만듦');
+  /* 재제작(REMAKE)은 반품 상태를 쓰지만 고객·파트너에게는 재제작 말로 보여 줌 */
+  const REMAKE_LABEL = { RETURN_REQUESTED: '재제작 요청됨', RETURN_COLLECTING: '회수 중', RETURN_INSPECTING: '확정본 대조 검수 중', RETURN_APPROVED: '재제작 승인', RETURN_REJECTED: '판매자 거부', EXCHANGE_SHIPPED: '재제작품 보내는 중', CLAIM_COMPLETED: '재제작 완료' };
+
+  /* 방식에 따라 상태칩 순서를 바꿔 보여줌(자체 파일은 검수부터, 재주문은 확정부터) */
+  function setFlow(kind) {
+    const ds = app.strips.design, is = app.strips.item;
+    delete ds.main; delete ds.branch; delete is.main;
+    if (kind === 'own') { ds.main = ['FILE_SUBMITTED', 'FILE_REVIEW', 'PROPOSED', 'APPROVED', 'HANDED_OFF', 'IN_PRODUCTION', 'SHIPPED', 'COMPLETED']; ds.branch = ['FILE_REJECTED', 'ON_HOLD', 'PREFLIGHT_REJECTED', 'CANCELED']; }
+    if (kind === 'reorder') { ds.main = ['APPROVED', 'HANDED_OFF', 'IN_PRODUCTION', 'SHIPPED', 'COMPLETED']; ds.branch = ['PREFLIGHT_REJECTED', 'CANCELED']; is.main = ['PAID', 'DESIGN_CONFIRMED', 'IN_PRODUCTION', 'SHIPPED', 'DELIVERED', 'CONFIRMED']; ds.note = '재주문 · 디자인 단계 생략'; }
+    else ds.note = '디자인팀 작업 단위 · D-STU-01';
+  }
+
+  /* ── 금액 ── */
+  function orderInput(type = S().type, qty = S().qty) {
+    const reorder = type === 'REORDER';
+    return {
+      items: [{ id: 'item1', name: PRODUCT.name, partnerId: 'DS', shipKey: 'DS', qty, unit: PRODUCT.unit, tiers: PRODUCT.tiers, instant: PRODUCT.instant, plateFee: reorder ? 0 : PRODUCT.plateFee, designGroup: 'D1' }],
+      designGroups: [{ id: 'D1', type }],
+      hqCoupon: reorder ? null : { name: '첫 맞춤 주문 5,000원', type: 'amount', value: 5000 },
+      shipping: { DS: { name: '대성포장 맞춤 제작', type: 'free', base: 0 } },
+    };
+  }
+  const calc = (type, qty) => GC.price.calcOrder(orderInput(type, qty));
+  /* 취소 계산(C-PAY-02 예시 2): 단계는 상태가 아니라 '첫 시안 전달 시각' 기록과 '확정 후 변경 건' 표시로 정함.
+     판비 공제 = 취소 보상 = min(파트너가 증빙한 실비, 낸 판비) */
+  function cancelPreview() {
+    const s = S(); const p = s.paid; if (!p) return null;
+    return GC.refund.designCancel({
+      type: s.type, state: app.state('design'), firstProposed: !!s.firstProposedAt, afterChange: s.afterChange,
+      itemsAmount: p.total - p.designFee, paidDesignFee: p.designFee, freeCustom: s.type === 'CUSTOM' && p.designFee === 0,
+      plateFee: p.plate, plateCost: s.plateCost || 0, fixFee: p.fix || 0, fixStarted: s.fixStarted,
+    });
+  }
+  function settlePreview() {
+    const r = calc();
+    const line = r.lines[0];
+    const rate = GC.settle.finalRate({ base: GC.Policy.get('commission.custom_rate'), reorder: S().type === 'REORDER' });
+    const ev = GC.settle.confirmEvent({ sale: line.gross + line.plateFee, partnerDisc: line.instantDisc, rate: rate.rate });
+    return { rate, ev, line };
+  }
+
+  /* ── 시안 그림: 수저집 40×240mm (가로로 눕힘) ── */
+  function proofSvg(ver, opt, { watermark = true, blank = false } = {}) {
+    const v2 = ver >= 2;
+    const green = '#007749';
+    const contact = v2 ? STORE.insta : STORE.phone;
+    const body = blank ? `<text x="360" y="68" text-anchor="middle" font-size="16" fill="#8a7353" font-family="IBM Plex Sans KR">무지 크라프트 · 로고 인쇄 영역 40×240mm</text>` :
+      opt === 'B' ? `
+        <circle cx="250" cy="66" r="${v2 ? 30 : 26}" fill="none" stroke="#1b1b1b" stroke-width="3"/>
+        <text x="250" y="${v2 ? 78 : 75}" text-anchor="middle" font-size="${v2 ? 30 : 26}" font-weight="800" fill="#1b1b1b" font-family="Hahmlet, serif">밥</text>
+        <text x="300" y="${v2 ? 82 : 78}" font-size="${v2 ? 44 : 38}" font-weight="800" fill="#1b1b1b" font-family="Hahmlet, serif">오늘밥상</text>
+        <text x="360" y="108" text-anchor="middle" font-size="13" fill="#1b1b1b" font-family="IBM Plex Sans KR">${esc(contact)}</text>` : `
+        <circle cx="74" cy="66" r="${v2 ? 34 : 28}" fill="none" stroke="#1b1b1b" stroke-width="3"/>
+        <text x="74" y="${v2 ? 79 : 76}" text-anchor="middle" font-size="${v2 ? 34 : 28}" font-weight="800" fill="#1b1b1b" font-family="Hahmlet, serif">밥</text>
+        <text x="${v2 ? 124 : 118}" y="${v2 ? 84 : 80}" font-size="${v2 ? 48 : 40}" font-weight="800" fill="#1b1b1b" font-family="Hahmlet, serif">오늘밥상</text>
+        <text x="${v2 ? 126 : 120}" y="104" font-size="12" fill="#1b1b1b" font-family="IBM Plex Sans KR" letter-spacing="1">한식 · ${esc(STORE.branch)}</text>
+        <text x="690" y="74" text-anchor="end" font-size="15" font-weight="600" fill="#1b1b1b" font-family="IBM Plex Sans KR">${esc(contact)}</text>`;
+    const wm = watermark && !blank ? Array.from({ length: 5 }, (_, i) => `<text x="${60 + i * 150}" y="${i % 2 ? 46 : 96}" font-size="15" font-weight="700" fill="#ffffff" opacity=".28" transform="rotate(-12 ${60 + i * 150} 70)" font-family="IBM Plex Sans KR">시안 · 식업</text>`).join('') : '';
+    const crop = 'stroke="currentColor" stroke-width="1"';
+    return `<svg viewBox="-24 -24 768 168" role="img" aria-label="수저집 시안 ${blank ? '무지' : 'v' + ver + ' ' + opt + '안'}">
+      <g ${crop}><line x1="-24" y1="0" x2="-6" y2="0"/><line x1="0" y1="-24" x2="0" y2="-6"/><line x1="744" y1="0" x2="726" y2="0"/><line x1="720" y1="-24" x2="720" y2="-6"/>
+      <line x1="-24" y1="120" x2="-6" y2="120"/><line x1="0" y1="144" x2="0" y2="126"/><line x1="744" y1="120" x2="726" y2="120"/><line x1="720" y1="144" x2="720" y2="126"/></g>
+      <rect x="0" y="0" width="720" height="120" fill="#C9A36A"/>
+      <rect x="0" y="0" width="720" height="120" fill="url(#kraftgrain)" opacity=".35"/>
+      <defs><pattern id="kraftgrain" width="9" height="9" patternUnits="userSpaceOnUse"><path d="M0 9 L9 0" stroke="#a9854f" stroke-width=".6"/></pattern></defs>
+      ${blank ? '' : `<rect x="0" y="0" width="720" height="${v2 ? 18 : 13}" fill="${green}"/>`}
+      ${body}${wm}
+    </svg>`;
+  }
+
+  /* ── 지금 차례 안내 ── */
+  function guide() {
+    const s = S(); const d = app.state('design'); const it = app.state('item');
+    const r1 = [{ k: '맞춤 디자인비', policy: 'design.fee' }, { k: '무료 기준(같은 디자인 맞춤 품목)', policy: 'design.free_threshold' }];
+    if (!s.paid) {
+      const map = {
+        pdp: '상품 상세의 "우리 가게 로고 넣기"에서 [맞춤 제작으로 주문하기]를 누르세요',
+        method: '맞춤 수량과 디자인 방식을 고르세요. 방식마다 비용·무료 수정·첫 시안 시점이 달라요',
+        request: s.type === 'OWN_FILE' ? '가진 인쇄 파일을 올리고 자동 점검 결과를 확인하세요' : '요청서를 채우고 동의 항목을 체크하세요',
+        checkout: '주문서 금액 순서를 확인하고 결제하세요. 생산은 디자인을 확정한 뒤에 시작해요',
+      };
+      app.turn('customer', map[s.cs] || map.pdp, { rules: r1.concat([{ k: '판비(재주문 면제)', v: won(PRODUCT.plateFee) }]) });
+      return;
+    }
+    const waitRules = () => [{ k: '무응답 리마인드·보류·취소', v: `${GC.Policy.get('design.no_response_remind_days')}·${GC.Policy.get('design.no_response_hold_days')}·${GC.Policy.get('design.no_response_cancel_days')}일` }, { k: '예고 뒤 본 처리', policy: 'notify.notice_min_hours' }];
+    if (s.after) {
+      if (s.plateCost === null) return app.turn('partner', '생산 보류 요청이 왔어요. 판을 이미 만들었는지, 만들었다면 실비를 증빙해 답해 주세요', { hint: '파트너는 영업시간 4시간 안에 답해야 하고, 답이 없으면 운영팀이 전화로 확인해요. 그동안 [인쇄 가능]은 서버가 막아요.', rules: [{ k: '판비 공제', v: 'min(증빙 실비, 낸 판비)' }, { k: '증빙 없음', v: '판비 공제 0원' }] });
+      return app.turn('hq', `고객의 확정 후 ${s.after.kind === 'change' ? '변경' : '취소'} 요청을 중재하세요`, { rules: [{ k: '확정 후 취소 자동 승인', v: '없음(본사 중재)' }, { k: '판비 공제 = 취소 보상', v: 'min(증빙 실비, 낸 판비)' }, { k: '중재 결과', v: '최종 · 기각해도 이의 제기 없음' }] });
+    }
+    if (s.restoreDue) return app.turn('hq', '확정 후 변경 건이 30일 동안 답이 없어요. 운영 확인 목록에서 이전 확정본으로 복원하세요', { hint: '확정 후 변경으로 다시 시안 단계가 된 건은 자동 취소하지 않아요(D-ROOM-07, 2026-10-14 확정).', rules: [{ k: '복원', v: `디자인 요청 → 파트너 전달 · 주문 항목 → 디자인 확정` }, { k: '생산 보류', v: '복원하면 해제' }] });
+    if (s.remake && !['CLAIM_COMPLETED'].includes(app.state('claim'))) {
+      const c = app.state('claim');
+      const R = [{ k: '검수 기한', policy: 'claim.inspect_bd' }, { k: '기한 넘기면', v: '재제작 승인으로 봄(환불 아님)' }, { k: '재제작 출고 기한', v: `제작 리드타임 영업일 ${PRODUCT.leadDays}일` }];
+      if (c === 'RETURN_REQUESTED') return app.turn('partner', '재제작 요청이 왔어요. 사진이 충분하면 회수를 생략하고 확정본과 대조 검수로 넘기세요', { rules: R });
+      if (c === 'RETURN_INSPECTING') return app.turn('partner', '확정본과 대조해 불량이 맞으면 [재제작 승인]을 누르세요', { hint: '+1일을 눌러 검수 기한(영업일 2일)을 넘기면 재제작 승인으로 봐요.', rules: R });
+      if (c === 'RETURN_APPROVED') return app.turn('partner', '같은 확정 파일로 다시 만들어 재제작품 송장을 등록하세요. 고객이 환불을 고를 수도 있어요', { rules: R });
+      if (c === 'EXCHANGE_SHIPPED') return app.turn('system', '재제작품 배송 완료를 감지해요(시스템 탭에서 실행)');
+    }
+    switch (d) {
+      case 'REQUESTED': return app.turn('design', '요청 큐의 "배정 대기" 카드에서 담당 디자이너를 고르세요(팀장)', { rules: [{ k: '배정 기한', policy: 'design.sla.assign_hours' }, { k: '같은 고객 다음 요청', v: '이전 담당자 먼저' }, { k: '디자이너 동시 진행 상한', v: '15건' }] });
+      case 'ASSIGNED': return app.turn('design', '담당 디자이너가 [작업 시작]을 눌러요. 첫 시안 기한은 배정 때부터 흘러요', { rules: [{ k: '첫 시안 기한', policy: 'design.sla.first_draft_days' }, { k: '운영시간', policy: 'calendar.business_hours' }] });
+      case 'IN_PROGRESS':
+        if (s.asking) return app.turn('customer', '디자이너가 질문을 남겼어요. 주문 상세의 "답변 필요"에서 답해 주세요', { hint: '답이 없으면 시안처럼 3일째 리마인드, 14일째 보류가 일어나요. 답을 기다리는 동안은 디자이너 SLA에서 빠져요.', rules: waitRules() });
+        return app.turn('design', s.versions.length ? `요청을 반영한 수정본 v${s.versions.length + 1}을 등록하세요` : '시안 v1을 등록하세요. 첫 시안은 최대 2안(A·B)까지예요', { rules: [{ k: s.versions.length ? '수정본 기한' : '첫 시안 기한', policy: s.versions.length ? 'design.sla.revision_days' : 'design.sla.first_draft_days' }, { k: '등록 전 확인', v: '재단선·오탈자·목업' }] });
+      case 'PROPOSED':
+        if (s.afterChange) return app.turn('customer', '확정 후 변경으로 만든 새 버전이에요. 다시 확정하거나, 취소하려면 [취소 요청]을 누르세요', { hint: '답하지 않으면 리마인드·보류만 하고 자동 취소는 하지 않아요. 30일째에 본사가 이전 확정본으로 복원해요.', rules: waitRules() });
+        return app.turn('customer', '시안을 보고 핀을 찍어 [수정 요청]하거나 [이 시안으로 확정]하세요', { hint: '응답하지 않고 시간을 보내 보면(+1일·+7일) 3일째 리마인드, 13일째 보류 예고, 예고 24시간 뒤 보류, 29일째 취소 예고, 예고 24시간 뒤 자동 취소가 일어나요.', rules: [{ k: '남은 무료 수정', v: `${s.freeLeft}회` }, { k: '넘으면 회당', policy: 'design.extra_revision_fee' }].concat(waitRules()) });
+      case 'REVISION': return app.turn('design', `수정 요청이 접수됐어요. 반영한 수정본 v${s.versions.length + 1}을 등록하세요`, { hint: '수정 요청을 받으면 디자이너는 바로 새 버전을 등록해요. 고객은 접수 10분 안·작업 시작 전에만 요청을 취소할 수 있어요.', rules: [{ k: '수정본 기한', policy: 'design.sla.revision_days' }, { k: '디자이너 실수 정정', v: '횟수 차감 안 함' }] });
+      case 'ON_HOLD': return app.turn('customer', `${GC.Policy.get('design.no_response_hold_days')}일 동안 답이 없어 보류됐어요. [진행 재개]를 누르면 보류 전 상태로 돌아가요`, { rules: [{ k: s.afterChange ? '30일째' : '자동 취소', v: s.afterChange ? '자동 취소 대신 본사가 이전 확정본 복원' : `처음 기준 ${GC.Policy.get('design.no_response_cancel_days')}일째 예고 뒤 24시간` }] });
+      case 'FILE_SUBMITTED': return app.turn('design', '자체 파일 검수 담당을 배정하세요', { rules: [{ k: '검수 결과 기한', v: '영업일 1일' }] });
+      case 'FILE_REVIEW': return app.turn('design', s.fixStarted ? '보정본을 확인해 인쇄 미리보기로 등록하세요. 고객이 다시 확정해요' : '해상도·아웃라인·재단 여백을 확인해 통과 또는 반려하세요', { rules: [{ k: '재업로드 무료 재검수', v: '3회' }, { k: '보정 작업', policy: 'design.own_file_fix_fee' }] });
+      case 'FILE_REJECTED': return app.turn('customer', '파일 수정이 필요해요. 재업로드·보정·맞춤형 전환 중에 고르세요', { rules: waitRules() });
+      case 'APPROVED': return app.turn('design', s.hold && s.afterChange ? '다시 확정한 새 버전으로 인쇄 패키지를 만들어 전달하세요. 전달하면 생산 보류가 풀려요' : '확정본으로 인쇄 패키지를 만들어 파트너에 전달하세요', { hint: '인쇄용으로 정리하다 눈에 보이는 내용이 바뀌면 고객에게 다시 확정받아요.', rules: [{ k: '전달 기한', v: '확정 후 영업시간 4시간' }, { k: '패키지', v: '인쇄 원본·사양서·해시' }] });
+      case 'HANDED_OFF': return app.turn('partner', s.downloaded ? '인쇄 적합성을 확인하고 [인쇄 가능] 또는 [반려]를 누르세요' : '맞춤 제작 큐에서 인쇄 패키지를 내려받으세요', { hint: '[인쇄 가능]을 누르는 순간이 "생산 시작"이에요. 그 뒤로는 고객이 취소할 수 없고 불량만 재제작해요. 그 전에는 고객이 [확정 후 변경 요청]·[취소 요청]을 할 수 있어요.', rules: [{ k: '확인 기한', v: '패키지 받은 뒤 영업일 1일' }, { k: '제작 기간', v: `[인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일` }] });
+      case 'PREFLIGHT_REJECTED': return app.turn('design', '파트너가 인쇄를 반려했어요. 고쳐서 다시 전달하거나, 보이는 내용이 바뀌면 고객 재확정을 받으세요');
+      case 'IN_PRODUCTION': return app.turn('partner', '생산이 끝나면 송장을 등록해 출고하세요', { rules: [{ k: '출고 예정일', v: s.shipDue ? fmtDate(s.shipDue, false) : '-' }] });
+      case 'SHIPPED':
+        if (it === 'SHIPPED') return app.turn('system', '택배 조회로 배송 완료를 감지해요(시스템 탭에서 실행)');
+        if (it === 'DELIVERED') return app.turn('customer', '받은 상품을 확인하고 [구매 확정]을 누르세요. 인쇄가 확정본과 다르면 [재제작 요청]을 누르세요', { hint: '맞춤 제작이라 단순 변심 반품·교환은 안 되고 불량만 재제작해요. 7일이 지나면 자동으로 확정돼요(클레임이 열린 항목은 빼고).', rules: [{ k: '자동 구매 확정', policy: 'order.auto_confirm_days' }, { k: '불량 신청 기한', v: '받은 날부터 3개월 · 안 날부터 30일' }] });
+        if (it === 'EXCHANGED') return app.turn('system', `재제작품 배송 완료 ${GC.Policy.get('order.auto_confirm_days')}일 뒤 구매 확정과 같이 정산돼요(+7일)`, { rules: [{ k: 'EXCHANGED', v: '끝 상태(구매 확정으로 바꾸지 않음)' }] });
+        if (it === 'RETURNED') return app.done('재제작 대신 환불했어요. 주문 항목은 반품 완료예요.', { next: '[처음부터]로 다른 길도 가 볼 수 있어요.' });
+        break;
+      case 'COMPLETED':
+        if (it === 'EXCHANGED') return app.done(`재제작품을 받았어요. 주문 항목은 '교환·재제작 완료'(끝 상태)예요.${s.remake && s.remake.settledBefore ? ' 이미 구매 확정·정산된 항목이라 새 정산은 없어요.' : ''}`, { next: '재제작품이 또 불량이면 그 물건을 받은 날부터 3개월 안에 다시 [재제작 요청]을 할 수 있어요(2026-10-14 확정). [같은 디자인으로 재주문]도 돼요.' });
+        if (it === 'RETURNED') return app.done('재제작 대신 환불했어요. 주문 항목은 반품 완료예요.', { next: '이미 정산된 항목이면 다음 정산 주기에서 되돌려요(역분개).' });
+        return app.done('주문 한 건이 끝났어요. 파트너 정산 대상이 됐어요.', { next: '고객 화면에서 [같은 디자인으로 재주문]을 눌러 보세요. 디자인 단계 없이 바로 파트너에게 넘어가고, 판비가 면제되며 파트너 수수료가 3%p 내려가요. 인쇄 불량이면 [재제작 요청]도 할 수 있어요.' });
+      case 'CANCELED': return app.done(`디자인 요청이 취소됐어요.${s.refunded ? ` 환불 ${won(s.refunded.refund)}${s.refunded.deduction ? ` (공제 ${won(s.refunded.deduction)})` : ''}.` : ''}${s.refunded && s.refunded.plateToPartner ? ` 파트너 '취소 보상' ${won(s.refunded.plateToPartner)}.` : ''}`, { next: '[처음부터]를 눌러 다른 길로 다시 가 볼 수 있어요.' });
+    }
+    app.turn('customer', '주문 상세에서 진행 상황을 확인하세요');
+  }
+  function refresh() { guide(); app.refresh(); }
+
+  /* ── 상태 이동 묶음 ── */
+  function goDesign(ev, by) { return app.go('design', ev, { by }); }
+  function goItem(ev, by) { return app.go('item', ev, { by }); }
+  /* 무응답 기준 시각을 새로 잡음(리마인드·예고 기록도 처음부터) */
+  function setWait() { S().waitSince = app.clock.now(); S().fired = {}; S().notices = {}; }
+  /* 고객 응답을 기다리는 중: 시안·파일 반려·보류, 또는 디자이너가 '고객 답변 대기'를 붙인 작업 */
+  const waitingNow = () => ['PROPOSED', 'ON_HOLD', 'FILE_REJECTED'].includes(app.state('design')) || (S().asking && app.state('design') === 'IN_PROGRESS');
+  function setSla(kind, due) { S().sla = { kind, due, warned: false }; }
+
+  /* ── 고객 화면 ── */
+  const VIEWS = {};
+  VIEWS.customer = (f) => {
+    const s = S(); const d = app.state('design');
+    const screens = { pdp, method, request, checkout, done, progress, proposal, revise, approve, approved, reorder };
+    if (s.paid && ['pdp', 'method', 'request', 'checkout'].includes(s.cs)) s.cs = 'progress';
+    // 주문 완료·확정 완료 화면은 다음 단계로 넘어가면 진행 화면으로
+    if (['done', 'approved'].includes(s.cs) && s.csState && s.csState !== d) s.cs = 'progress';
+    (screens[s.cs] || progress)(f, s, d);
+  };
+  function pdp(f, s) {
+    f.title('상품 상세'); f.tab('카테고리'); f.back();
+    const nt = PRODUCT.normalTiers;
+    f.body.innerHTML = `
+      <div class="app-sec">
+        <div class="proof-wrap" style="padding:8px 0">${proofSvg(1, 'A', { blank: true })}</div>
+        <div class="cluster"><span class="tag tag-spot">맞춤 인쇄</span><span class="tag">빠른 출고</span><span class="tag">식품용 시험성적서</span></div>
+        <p class="app-title">${esc(PRODUCT.name)} · 1,000매</p>
+        <p class="app-sub">${esc(PRODUCT.partner)} ›</p>
+        <p><span class="app-price">${won(nt[0].price)}</span> <span class="muted small">/ 박스 · 1매당 ${nt[2].price / 1000}원~</span></p>
+        <p class="small muted">사업자 공급가 ${won(GC.vatSplit(nt[0].price).supply)}</p>
+        <table class="tbl small"><tbody>${nt.map((t, i) => `<tr><td>${t.min}${nt[i + 1] ? `~${nt[i + 1].min - 1}` : ''}박스${nt[i + 1] ? '' : ' 이상'}</td><td class="num">${won(t.price)}</td></tr>`).join('')}</tbody></table>
+      </div>
+      <div class="app-sec">
+        <h4>우리 가게 로고 넣기</h4>
+        <dl class="kv">
+          <dt>인쇄</dt><dd>옵셋 · 최대 2도 · 별색 가능</dd>
+          <dt>인쇄 영역</dt><dd>40×240mm (앞면)</dd>
+          <dt>맞춤 수량</dt><dd>10,000매부터 · 1매당 ${PRODUCT.tiers[1].price / 1000}원~</dd>
+          <dt>판비</dt><dd>${won(PRODUCT.plateFee)} · 재주문 때 면제</dd>
+          <dt>제작 기간</dt><dd>파트너 [인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일</dd>
+          <dt>예상 도착</dt><dd>디자인 확정 → 파트너 인쇄 확인(영업일 1일) → 제작 ${PRODUCT.leadDays}일 → 배송 1~2일</dd>
+        </dl>
+        <div class="grid3" style="gap:6px">
+          <div class="app-card" style="padding:10px"><span class="xsmall faint">템플릿</span><b>무료</b></div>
+          <div class="app-card" style="padding:10px"><span class="xsmall faint">맞춤</span><b>${pv('design.fee')}</b></div>
+          <div class="app-card" style="padding:10px"><span class="xsmall faint">자체 파일</span><b>검수 무료</b></div>
+        </div>
+        <p class="xsmall faint">같은 디자인의 맞춤 품목이 ${pv('design.free_threshold')} 이상이면 맞춤 디자인비가 무료예요.</p>
+        <p class="note small">판비는 인쇄판 제작비입니다. 인쇄판은 제작 파트너가 보관하며 고객에게 넘겨드리지 않습니다. 이 상품의 판 보관 기간(${pv('production.plate_keep_months')}, 마지막 생산일부터) 안에 식업에서 재주문하면 판비가 면제됩니다. 기간은 결제할 때 기록해 두어 나중에 설정이 바뀌어도 그대로예요. <span class="tag tag-phase">법률 자문 전 초안</span></p>
+      </div>
+      <div class="app-sec">
+        <h4>판매자 정보</h4>
+        <p class="xsmall muted">대성포장 · 대표 정○○ · 사업자등록번호 123-45-67890 · 통신판매업 2026-서울중구-0000. 식업은 통신판매중개자이며 거래 당사자가 아닙니다. 상품 문의는 [문의하기]로 받아요.</p>
+      </div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="toMethod">맞춤 제작으로 주문하기</button>`);
+  }
+  function method(f, s) {
+    f.title('디자인 방식 고르기'); f.tab('카테고리'); f.back();
+    const r = calc('CUSTOM', s.qty); const df = r.designFees[0];
+    const cards = ['TEMPLATE', 'CUSTOM', 'OWN_FILE', 'REORDER'].map((k) => {
+      const t = TYPES[k]; const off = k === 'REORDER' && !s.history;
+      const cost = k === 'CUSTOM' ? (df.fee === 0 ? '무료' : won(df.fee)) : val(t.cost);
+      return `<button class="app-card method${s.type === k ? ' is-pick' : ''}${off ? ' is-off' : ''}" data-act="pickType" data-type="${k}" ${off ? 'aria-disabled="true"' : ''}>
+        <span class="mh">${t.name}<small>${cost}</small></span>
+        <span class="mrow"><span>무료 수정</span><span>${val(t.rev)}</span></span>
+        <span class="mrow"><span>첫 시안</span><span>${val(t.first)}</span></span>
+        <span class="mrow"><span>디자인 권리</span><span>${t.right}</span></span>
+        ${off ? '<span class="moff xsmall faint">이 상품으로 확정한 디자인이 생기면 열려요</span>' : ''}
+      </button>`;
+    }).join('');
+    f.body.innerHTML = `
+      <div class="app-sec">
+        <h4>맞춤 수량</h4>
+        <div class="seg" role="group" aria-label="맞춤 수량">${QTYS.map((q) => `<button data-act="qty" data-q="${q}" aria-pressed="${s.qty === q}">${(q * 1000).toLocaleString()}매</button>`).join('')}</div>
+        <p class="small">맞춤 품목 ${won(r.lines[0].afterPartner)} · ${df.fee === 0 ? '<b class="strong" style="color:var(--spot)">맞춤 디자인비 무료</b>' : `<b>맞춤 품목 ${won(df.shortfall)} 더 담으면 디자인비 무료</b>`}</p>
+        <p class="xsmall faint">맞춤 최소 수량은 10,000매예요. 파트너 할인 후·본사 쿠폰 전 금액으로 판단해요.</p>
+      </div>
+      <div class="app-pad"><div class="methods">${cards}</div></div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="toRequest">${TYPES[s.type].name} 요청서 쓰기</button>`);
+  }
+  function request(f, s) {
+    f.title(TYPES[s.type].name + ' 요청'); f.tab('디자인'); f.back();
+    const r = calc(); const df = r.designFees[0];
+    const agree = (k, html) => `<label class="check"><input type="checkbox" data-change="chk" data-k="${k}" ${s.checks[k] ? 'checked' : ''}><span><span class="req">(필수)</span> ${html}</span></label>`;
+    let main = '';
+    if (s.type === 'CUSTOM') {
+      main = `
+        <div class="app-sec"><div class="steps-mini"><span class="on">매장 정보</span><span class="on">소재</span><span class="on">스타일</span><span class="on">확인</span></div>
+          <p class="xsmall faint">실제 화면은 4단계로 나눠 받아요. 여기서는 채워 둔 값을 한 번에 보여 드려요.</p></div>
+        <div class="app-sec"><h4>① 매장 정보</h4><dl class="kv"><dt>매장명</dt><dd>${STORE.name}</dd><dt>업종</dt><dd>${STORE.biz}</dd><dt>분위기</dt><dd>동네 밥집, 따뜻하고 깔끔하게</dd></dl></div>
+        <div class="app-sec"><h4>② 소재</h4>
+          <div class="split"><span class="small">로고 파일</span>${s.logo ? '<span class="st st-done">logo.ai · 검사 통과</span>' : `<button class="btn btn-sm btn-ext" data-act="uploadLogo">올리기</button>`}</div>
+          <dl class="kv"><dt>인쇄할 문구</dt><dd>${STORE.name} / ${STORE.phone}</dd><dt>간판 사진</dt><dd>1장</dd><dt>참고 링크</dt><dd>instagram.com/todaybapsang</dd></dl>
+          <p class="xsmall faint">인쇄할 문구 칸의 전화번호·SNS는 가리지 않아요. 대화 칸에서만 가려요.</p></div>
+        <div class="app-sec"><h4>③ 스타일</h4><div class="chips-row"><span class="tag tag-spot">모던</span><span class="tag tag-spot">친환경</span></div>
+          <dl class="kv"><dt>지정 색상</dt><dd>PANTONE 3415C (간판색)</dd><dt>피하고 싶은 것</dt><dd>빨간색</dd></dl></div>
+        <div class="app-sec"><h4>④ 확인</h4>
+          <dl class="kv"><dt>디자인비</dt><dd>${df.fee === 0 ? '무료 (50만원 이상)' : `${won(df.fee)} · 맞춤 품목 ${won(df.shortfall)} 더 담으면 무료`}</dd>
+          <dt>무료 수정</dt><dd>${pv('design.free_revisions_custom')}</dd><dt>첫 시안</dt><dd>배정 후 ${pv('design.sla.first_draft_days')} 안</dd></dl>
+          ${agree('rights', '올린 로고·문구의 권리는 제가 보증합니다')}
+          ${agree('stage', '첫 시안 전 취소는 전액 환불, 첫 시안 뒤 취소는 디자인비를 공제합니다')}
+          ${agree('own', '완성 디자인의 저작권은 회사에, 매장 사용권은 저에게 있습니다')}</div>`;
+    } else if (s.type === 'TEMPLATE') {
+      const tpls = [['band', '한식 띠 배너'], ['emblem', '원형 엠블럼'], ['line', '미니멀 라인']];
+      main = `
+        <div class="app-sec"><h4>템플릿 고르기</h4><p class="xsmall faint">이 상품 인쇄 사양(40×240mm·2도)에 맞는 템플릿만 보여요</p>
+          <div class="seg">${tpls.map(([k, n]) => `<button data-act="tpl" data-k="${k}" aria-pressed="${s.template === k}">${n}</button>`).join('')}</div>
+          <div class="proof-wrap" style="padding:8px 0">${proofSvg(1, s.template === 'emblem' ? 'B' : 'A', { watermark: true })}</div>
+          <p class="xsmall faint">MVP는 템플릿 원본과 입력 요약을 함께 보여줘요. 입력값을 바로 합성하는 미리보기는 3차 셀프 에디터와 함께 나와요.</p></div>
+        <div class="app-sec"><h4>바꿀 칸만 입력</h4><dl class="kv"><dt>매장명</dt><dd>${STORE.name}</dd><dt>연락처·SNS</dt><dd>${STORE.phone}</dd><dt>색상</dt><dd>템플릿 팔레트 · 그린</dd></dl>
+          <p class="xsmall faint">레이아웃을 바꾸고 싶으면 맞춤형으로 전환해요(디자인비 차액).</p>
+          ${agree('rights', '올린 로고·문구의 권리는 제가 보증합니다')}${agree('own', '완성 디자인의 저작권은 회사에, 매장 사용권은 저에게 있습니다')}</div>`;
+    } else if (s.type === 'OWN_FILE') {
+      main = `
+        <div class="app-sec"><h4>파일 요건</h4><p class="small">AI·PDF 권장 · 300dpi 이상 · 글자 아웃라인 · 재단 여백 3mm · 최대 2도</p>
+          <button class="btn btn-sm btn-ext" data-act="dlTemplate">칼선 템플릿 내려받기</button></div>
+        <div class="app-sec"><h4>인쇄 파일 올리기</h4>
+          ${s.ownFile ? `<div class="app-list">
+            <div class="li"><span>파일 형식 AI</span><span class="st st-done">통과</span></div>
+            <div class="li"><span>문서 크기 40×240mm</span><span class="st st-done">일치</span></div>
+            <div class="li"><span>글자 아웃라인</span><span class="st st-warn">확인 불가</span></div>
+            <div class="li"><span>색상 모드 CMYK</span><span class="st st-done">통과</span></div></div>
+            <p class="xsmall faint">자동 점검은 참고용이고 최종 판단은 디자인팀이 해요. 검수는 무료예요.</p>`
+            : `<button class="btn btn-block btn-ext" data-act="uploadOwn">오늘밥상_수저집.ai 올리기 (최대 500MB)</button>`}
+          ${agree('outline', '글자를 아웃라인 처리했어요')}${agree('rights', '파일의 권리는 제가 보증합니다(제3자 권리 침해 시 고객 책임)')}</div>`;
+    }
+    f.body.innerHTML = main;
+    const ready = requiredChecks().every((k) => s.checks[k]) && (s.type !== 'OWN_FILE' || s.ownFile);
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="toCheckout" ${ready ? '' : 'disabled'}>주문서로</button>`);
+  }
+  function requiredChecks() { const t = S().type; return t === 'CUSTOM' ? ['rights', 'stage', 'own'] : t === 'TEMPLATE' ? ['rights', 'own'] : ['outline', 'rights']; }
+  function checkoutChecks() {
+    const s = S(); const r = calc(); const keys = ['co_stage', 'co_plate'];
+    if (s.type === 'CUSTOM' && r.designFees[0].fee === 0) keys.push('co_free');
+    if (s.type === 'REORDER') keys.push('co_prev');
+    return keys;
+  }
+  function ladderHtml(r) {
+    return `<div class="ladder">${r.steps.filter((x) => !x.hidden).map((x) => `<div class="lrow"><span class="lno">${x.no}</span><span><span class="lhead">${x.label}</span>${x.payer ? `<span class="payer payer-${x.payer}">${{ partner: '파트너 부담', hq: '본사 부담', customer: '본사 매출' }[x.payer]}</span>` : ''}<br><span class="ldetail">${esc(x.detail)}</span></span><span class="lamt${x.amount < 0 ? ' neg' : ''}">${x.amount < 0 ? '−' + won(-x.amount) : won(x.amount)}</span></div>`).join('')}
+      <div class="lrow is-total"><span></span><span class="lhead">최종 결제 (VAT 포함)</span><span class="lamt">${won(r.totals.pay)}</span></div></div>
+      <p class="xsmall faint" style="text-align:right">공급가 ${won(r.totals.supply)} · 부가세 ${won(r.totals.vat)}</p>`;
+  }
+  function checkout(f, s) {
+    f.title('주문서'); f.tab('카테고리'); f.back();
+    const r = calc();
+    const agree = (k, html) => `<label class="check"><input type="checkbox" data-change="chk" data-k="${k}" ${s.checks[k] ? 'checked' : ''}><span><span class="req">(필수)</span> ${html}</span></label>`;
+    f.body.innerHTML = `
+      <div class="app-sec"><h4>${esc(PRODUCT.partner)}</h4>
+        <div class="split small"><span>${esc(PRODUCT.name)} · 맞춤 ${(s.qty * 1000).toLocaleString()}매<br><span class="faint">${TYPES[s.type].name}${s.type === 'REORDER' ? ' · 판비 면제' : ''}</span></span><b class="num">${won(r.lines[0].gross)}</b></div></div>
+      <div class="app-sec"><dl class="kv"><dt>배송지</dt><dd>${STORE.branch} (평일 10~15시, 1층 하차)</dd><dt>쿠폰</dt><dd>${s.type === 'REORDER' ? '쓸 수 있는 쿠폰 없음' : '가장 큰 할인 1장 자동 적용'}</dd><dt>증빙</dt><dd>세금계산서 (사업자 기본)</dd></dl></div>
+      <div class="app-sec"><h4>결제 금액</h4>${ladderHtml(r)}
+        ${s.type !== 'REORDER' ? `<p class="note small">판비는 인쇄판 제작비입니다. 인쇄판은 제작 파트너가 보관하며 고객에게 넘겨드리지 않습니다.</p>` : '<p class="note note-spot small">같은 판으로 다시 찍어서 판비가 없어요. 파트너가 [인쇄 가능]을 누르기 전에는 바로 취소할 수 있어요(공제 0원).</p><p class="xsmall faint">판 보관 기간이 지나 판비가 다시 붙은 재주문은 취소를 확정 후 취소(본사 중재)로 받아, 판을 만들었으면 판비를 공제해요.</p>'}</div>
+      <div class="app-sec"><h4>결제 수단</h4><div class="seg"><button data-act="payMethod" data-m="card" aria-pressed="${s.pay === 'card'}">카드</button><button data-act="payMethod" data-m="easy" aria-pressed="${s.pay === 'easy'}">간편결제</button><button data-act="payMethod" data-m="vbank" aria-pressed="${s.pay === 'vbank'}">가상계좌</button></div>
+        ${s.pay === 'vbank' ? '<p class="xsmall faint">가상계좌는 입금이 확인된 뒤에 디자인이 시작돼요. 이 프로토타입에서는 바로 입금된 것으로 처리해요.</p>' : ''}</div>
+      <div class="app-sec">
+        ${agree('co_stage', '디자인 확정 후 생산이 시작되며, 디자인 단계별 환불 규정에 동의합니다')}
+        ${s.type !== 'REORDER' ? agree('co_plate', '판은 제작 파트너가 보관하며 넘겨받지 않는다는 점을 확인했습니다') : agree('co_plate', '맞춤 제작이라 생산 시작 뒤에는 취소·반품이 제한됩니다')}
+        ${s.type === 'REORDER' ? agree('co_prev', `이전 확정본(v${s.versions.length}, 문구 "${STORE.name} / ${STORE.insta}")을 확인했습니다`) : ''}
+        ${s.type === 'CUSTOM' && r.designFees[0].fee === 0 ? agree('co_free', `첫 시안을 받은 뒤 취소하면 디자인비 ${pv('design.fee')}을 공제합니다`) : ''}
+      </div>`;
+    const ok = checkoutChecks().every((k) => s.checks[k]);
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="pay" ${ok ? '' : 'disabled'}>${won(r.totals.pay)} 결제하기</button>`);
+  }
+  function done(f, s) {
+    f.title('주문 완료'); f.tab('디자인');
+    const due = GC.addBusinessHours(s.paid.at, GC.Policy.get('design.sla.assign_hours'));
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <p class="app-title">주문이 완료됐어요</p>
+        <dl class="kv"><dt>주문번호</dt><dd>GC-20261012-${s.round === 1 ? '0412' : '0977'}</dd><dt>결제 금액</dt><dd>${won(s.paid.total)}</dd><dt>예상 출고</dt><dd>파트너 [인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일</dd></dl>
+        ${s.type === 'REORDER' ? `<div class="note note-spot">디자인 단계 없이 확정본 그대로 파트너에게 넘어갔어요.</div>`
+          : `<div class="note note-spot">영업시간 기준 4시간 안에 디자이너가 배정돼요. <b>${fmtDate(due)}까지</b></div>
+             <div class="app-card"><b>시안이 오면 바로 알려 드릴게요</b><span class="small muted">알림을 켜 두면 시안 확인이 빨라져요. (앱 알림 권한 요청 전 안내)</span></div>`}
+      </div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="cs" data-to="progress">${s.type === 'REORDER' ? '주문 상세 보기' : '디자인 진행 보기'}</button>`);
+  }
+  function progress(f, s, d) {
+    f.title('디자인 진행'); f.tab('디자인');
+    const st = GC.sm.machine('DESIGN').states[d] || {};
+    const it = app.state('item');
+    const itemEnd = ['EXCHANGED', 'RETURNED'].includes(it);
+    const todo = ['PROPOSED', 'FILE_REJECTED', 'ON_HOLD'].includes(d) || s.asking;
+    if (todo) f.badge('디자인', 1);
+    const waiting = s.waitSince && (['PROPOSED', 'ON_HOLD', 'FILE_REJECTED'].includes(d) || s.asking) ? Math.floor((app.clock.now() - s.waitSince) / GC.DAY) : null;
+    const tl = [['결제', true], ['디자인', DESIGN_ACTIVE.includes(d)], ['확정', CONFIRMED_D.includes(d)], ['제작', d === 'IN_PRODUCTION'], ['출고·배송', it === 'SHIPPED' || it === 'DELIVERED'], [itemEnd ? GC.sm.machine('ORDER_CUSTOM').states[it].customer : '구매 확정', it === 'CONFIRMED' || itemEnd]];
+    const nowIdx = tl.findIndex((x) => x[1] && x[0] !== '결제');
+    const timeline = `<ol class="timeline">${tl.map((x, i) => `<li class="${d === 'CANCELED' ? '' : i < (nowIdx < 0 ? tl.length : nowIdx) ? 'done' : i === nowIdx ? 'now' : ''}"><span>${x[0]}${i === nowIdx && d !== 'CANCELED' && !itemEnd ? ` · ${esc(st.customer || '')}` : ''}</span></li>`).join('')}</ol>`;
+    const latest = s.versions[s.versions.length - 1];
+    const cp = cancelPreview();
+    // 일반 취소(CANCEL): 확정 전, 판비 0원 재주문 생산 전 · 확정 후 취소(CUSTOM_CANCEL): 확정 뒤 ~ [인쇄 가능] 전, 확정 후 변경 건
+    const canCancel = d !== 'CANCELED' && cp && cp.allowed && cp.claimType === 'CANCEL' && !s.after;
+    const canCustomCancel = d !== 'CANCELED' && cp && cp.allowed && cp.claimType === 'CUSTOM_CANCEL' && !s.after;
+    const canChange = CONFIRMED_D.includes(d) && s.type !== 'REORDER' && !s.after && !s.afterChange;
+    // 표시(상태 아님): 답변 필요 · 변경 요청 중 · 취소 중재 중 · 확정 후 변경 중
+    const marks = [];
+    if (s.asking) marks.push('<span class="tag tag-warn">답변 필요</span>');
+    if (s.after) marks.push(`<span class="tag tag-stop">${s.after.kind === 'change' ? '변경 요청 중' : '취소 중재 중'}</span>`);
+    else if (s.afterChange && d !== 'CANCELED') marks.push('<span class="tag tag-warn">확정 후 변경 중</span>');
+    const rm = s.remake; const rc = rm ? app.state('claim') : null;
+    const remakeDue = (from) => GC.claim.defectDeadline(from);
+    const canRemake = ['DELIVERED', 'CONFIRMED', 'EXCHANGED'].includes(it) && !claimOpen();
+    const remakeFrom = it === 'EXCHANGED' ? s.exchangedAt : s.deliveredAt;
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="app-card">
+          <div class="split"><b>${esc(PRODUCT.name)}</b><span class="st nw ${todo ? 'st-todo' : d === 'CANCELED' ? 'st-stop' : 'st-now'}">${esc(itemEnd ? GC.sm.machine('ORDER_CUSTOM').states[it].customer : st.customer || '')}</span></div>
+          ${marks.length ? `<div class="cluster" style="gap:4px">${marks.join('')}</div>` : ''}
+          <dl class="kv small">
+            <dt>방식</dt><dd>${TYPES[s.type].name}</dd>
+            ${s.designer ? `<dt>담당</dt><dd>디자이너 ${esc(s.designer.name)} · ${UI.pv('calendar.business_hours')}</dd>` : ''}
+            ${s.sla && ['ASSIGNED', 'IN_PROGRESS', 'REVISION'].includes(d) && !s.asking ? `<dt>다음 시안 예정</dt><dd>${fmtDate(s.sla.due)}까지</dd>` : ''}
+            ${d === 'REQUESTED' && s.sla ? `<dt>배정 예정</dt><dd>${fmtDate(s.sla.due)}까지</dd>` : ''}
+            ${waiting != null ? `<dt>응답 대기</dt><dd>${waiting}일째</dd>` : ''}
+            ${['CUSTOM', 'TEMPLATE'].includes(s.type) && s.paid ? `<dt>무료 수정</dt><dd>${s.freeLeft}회 남음</dd>` : ''}
+          </dl>
+          ${s.asking ? `<div class="note note-warn small">디자이너 질문: "로고 파일의 초록색이 간판 사진과 달라 보여요. 간판색(PANTONE 3415C)으로 맞출까요?"</div><button class="btn btn-primary" data-act="answerQ">룸에서 답하기</button>` : ''}
+          ${d === 'ON_HOLD' ? `<button class="btn btn-primary" data-act="resume">진행 재개</button>` : ''}
+          ${d === 'REVISION' && s.revReqAt && app.clock.now() - s.revReqAt <= 10 * 60000 ? `<button class="btn btn-sm btn-ghost" data-act="revWithdraw">수정 요청 취소(접수 10분 안 · 횟수 돌려받음)</button>` : ''}
+          ${d === 'FILE_REJECTED' ? `<div class="note note-warn small">해상도가 300dpi보다 낮아요(로고 부분 150dpi).</div><div class="cluster"><button class="btn btn-sm" data-act="ownReupload">다시 올리기(무료)</button><button class="btn btn-sm btn-ext" data-act="ownFix">보정 맡기기 ${pv('design.own_file_fix_fee')}</button><button class="btn btn-sm btn-ext" data-act="convertCustom">맞춤형으로 전환</button></div>` : ''}
+          ${s.type === 'TEMPLATE' && ['IN_PROGRESS', 'PROPOSED', 'REVISION'].includes(d) && !s.after ? `<div class="split small"><span class="faint">레이아웃을 바꾸고 싶으면</span><button class="btn btn-sm btn-ext" data-act="convertCustom">맞춤형으로 전환</button></div>` : ''}
+        </div>
+        ${latest ? `<div class="app-card"><div class="split"><b>시안 v${latest.v} ${d === 'PROPOSED' ? '도착' : ''}</b><span class="xsmall faint">${fmtDate(latest.at)}</span></div>
+          <div style="color:var(--ink-3)">${proofSvg(latest.v, latest.opts[0])}</div>
+          <button class="btn btn-block" data-act="cs" data-to="proposal">크게 보고 결정하기</button></div>` : ''}
+        <div class="app-card"><b class="small">주문 진행</b>${timeline}
+          ${it === 'DELIVERED' && !claimOpen() ? `<div class="cluster"><button class="btn btn-primary" data-act="confirmBuy">구매 확정</button><button class="btn" data-act="remakeReq">재제작 요청</button></div><p class="xsmall faint">맞춤 제작이라 단순 변심 반품·교환은 안 되고, 확정본과 다르게 인쇄됐으면 재제작해 드려요.</p>` : ''}
+          ${(it === 'CONFIRMED' || it === 'EXCHANGED') && !claimOpen() ? `<button class="btn btn-primary" data-act="startReorder">같은 디자인으로 재주문</button><p class="xsmall faint">식업에서 재주문하면 불량·오인쇄 때 다시 만들거나 환불해 드려요.</p>` : ''}
+          ${canRemake && it !== 'DELIVERED' ? `<div class="split small"><span class="faint">${it === 'EXCHANGED' ? '재제작품' : '받은 상품'}이 불량이면 ${remakeFrom ? fmtDate(remakeDue(remakeFrom), false) : '3개월'}까지(안 날부터 30일)</span><button class="btn btn-sm nw" data-act="remakeReq">재제작 요청</button></div>` : ''}
+        </div>
+        ${rm && rc !== 'CLAIM_COMPLETED' ? `<div class="app-card"><div class="split"><b class="small">재제작 요청</b><span class="st st-warn">${esc(REMAKE_LABEL[rc])}</span></div>
+          <dl class="kv small"><dt>사유</dt><dd>로고 위치가 3mm 밀렸어요(허용 ±2mm) · 사진 3장</dd><dt>처리</dt><dd>${{ RETURN_REQUESTED: '판매자가 사진을 확인하고 있어요', RETURN_INSPECTING: '확정본과 대조해 검수하고 있어요', RETURN_APPROVED: '재제작이 승인됐어요. 같은 확정 파일로 다시 만들어요', EXCHANGE_SHIPPED: '재제작품을 보냈어요' }[rc] || ''}</dd></dl>
+          ${rc === 'RETURN_APPROVED' ? `<button class="btn btn-sm btn-ghost" data-act="remakeRefund">재제작 대신 환불받기</button>` : ''}</div>` : ''}
+        ${s.source ? sourceCard(s) : (CONFIRMED_D.includes(d) && !s.afterChange ? `<div class="app-card"><b class="small">확정 확인서</b><span class="small muted">사양 요약과 동의 기록이 담긴 확인서를 이메일로 보냈어요.</span><button class="btn btn-sm btn-ext" data-act="buySource">원본 AI 파일 사기 · ${pv('design.source_file_fee')}</button></div>` : '')}
+        ${canCancel ? `<div class="app-card"><b class="small">지금 취소하면</b>
+          <div class="split small"><span>환불 예정</span><b class="num">${won(cp.refund)}</b></div>
+          ${cp.lines.map((l) => `<div class="split xsmall"><span class="faint">공제 · ${esc(l.label)}</span><span class="num">−${won(l.amount)}</span></div>`).join('')}
+          ${cp.stage === 'BEFORE_PROPOSAL' ? '<p class="xsmall faint">첫 시안을 받기 전이라 전액 환불돼요.</p>' : cp.reorderFree ? '<p class="xsmall faint">판비 0원 재주문이라 본사 중재 없이 바로 취소돼요(공제 0원).</p>' : s.firstProposedAt && ['REQUESTED', 'ASSIGNED', 'IN_PROGRESS'].includes(d) ? '<p class="xsmall faint">맞춤형으로 바꿔 다시 시작했어도 첫 시안을 이미 받았으므로 디자인비를 공제해요.</p>' : ''}
+          <button class="btn btn-sm btn-danger" data-act="cancelDesign">${cp.reorderFree ? '취소' : '주문 취소'}</button></div>` : ''}
+        ${canChange || canCustomCancel ? `<div class="app-card"><b class="small">${s.afterChange ? '변경 중인 주문을 취소하고 싶어요' : '확정 후 바꾸고 싶어요'}</b><span class="xsmall muted">${s.afterChange ? '확정 후 변경으로 다시 시안 단계가 된 건이라 일반 취소가 아니라 확정 후 취소로 받아 본사가 중재해요.' : '파트너가 [인쇄 가능]을 누르기 전까지만 요청할 수 있고, 본사가 중재해요.'}</span>
+          <div class="cluster">${canChange ? '<button class="btn btn-sm" data-act="afterReq" data-kind="change">확정 후 변경 요청</button>' : ''}${canCustomCancel ? '<button class="btn btn-sm btn-danger" data-act="afterReq" data-kind="cancel">취소 요청</button>' : ''}</div></div>` : ''}
+        ${s.after ? `<div class="note note-warn small">확정 후 ${s.after.kind === 'change' ? '변경' : '취소'} 요청을 본사가 확인하고 있어요. 그동안 인쇄는 멈춰 있어요.${s.after.kind === 'cancel' ? ` 공제는 디자인비와, 파트너가 판을 만들었다면 판비(최대 ${won(s.paid.plate)})예요.` : ''}<div style="margin-top:6px"><button class="btn btn-sm btn-ghost" data-act="afterWithdraw">요청 철회</button></div></div>` : ''}
+        <p class="xsmall faint">대화와 연락처 가림은 <a href="room.html">협의 룸</a> 화면에서 따로 볼 수 있어요.</p>
+      </div>`;
+  }
+  /* 원본 파일(디자인 부가 결제 → 다운로드, S-18·S-25) */
+  function sourceCard(s) {
+    const exp = new Date(s.source.at.getTime() + 7 * GC.DAY);
+    return `<div class="app-card"><div class="split"><b class="small">원본 AI 파일</b><span class="st st-done">결제 완료</span></div>
+      <dl class="kv small"><dt>파일</dt><dd>오늘밥상_수저집_원본.ai · 폰트 아웃라인·템플릿 레이어 제거본</dd><dt>링크</dt><dd>${fmtDate(exp)}까지 · 지나면 다시 받기</dd><dt>이용 범위</dt><dd>우리 매장용 인쇄(다른 업체 인쇄 가능) · 재판매 불가</dd></dl>
+      <button class="btn btn-sm btn-ext" data-act="dlSource">${s.source.downloaded ? '다시 내려받기' : '원본 파일 다운로드'}</button>
+      <p class="xsmall faint">${s.source.downloaded ? '내려받았어요. 이제 원본 파일 값은 환불되지 않아요.' : '내려받기 전 7일 안에만 환불돼요. 내려받으면 청약철회가 제한돼요.'} <span class="tag tag-phase">법률 자문 전 초안</span></p></div>`;
+  }
+  function proposal(f, s, d) {
+    f.title('시안 보기'); f.tab('디자인'); f.back();
+    const vi = s.viewVer || s.versions.length; const ver = s.versions[vi - 1];
+    if (!ver) { f.body.innerHTML = '<div class="app-pad"><p class="muted">아직 시안이 없어요.</p></div>'; return; }
+    const opt = ver.opts.includes(s.viewOpt) ? s.viewOpt : ver.opts[0];
+    const pins = s.pins.filter((p) => p.v === ver.v);
+    const isLatest = vi === s.versions.length; const live = isLatest && d === 'PROPOSED';
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="cluster"><div class="seg">${s.versions.map((x) => `<button data-act="viewVer" data-v="${x.v}" aria-pressed="${x.v === vi}">v${x.v}${x.v === s.versions.length ? ' 최신' : ''}</button>`).join('')}</div>
+          ${ver.opts.length > 1 ? `<div class="seg">${ver.opts.map((o) => `<button data-act="viewOpt" data-o="${o}" aria-pressed="${o === opt}">${o}안</button>`).join('')}</div>` : ''}</div>
+        <div class="app-card" style="padding:0">
+          <div class="proof-wrap">${proofSvg(ver.v, opt)}
+            ${live ? '<div class="pin-hit" data-act="addPin" title="눌러서 핀 찍기"></div>' : ''}
+            ${pins.map((p) => `<span class="pin${p.resolved ? ' is-resolved' : ''}" style="left:calc(16px + (100% - 32px) * ${p.x});top:calc(18px + (100% - 36px) * ${p.y})"><span>${p.n}</span></span>`).join('')}
+          </div>
+        </div>
+        <p class="xsmall faint">사양 · 40×240mm · 크라프트 · 2도(PANTONE 3415C, 블랙) · ${(s.qty * 1000).toLocaleString()}매(±3%)${ver.note ? ` · 이 버전에서 바뀐 것: ${esc(ver.note)}` : ''}</p>
+        ${live ? '<p class="small muted">시안 위를 누르면 그 자리에 핀을 찍고 의견을 남길 수 있어요.</p>' : ''}
+        ${s.pinDraft ? `<div class="app-card"><b class="small">핀 ${s.pinDraft.n} 의견</b>
+          <div class="chips-row">${['로고를 조금 더 크게', '띠 색을 간판색에 맞춰 주세요', '전화번호 대신 인스타 계정 넣어 주세요'].map((t) => `<button class="tag" data-act="pinPreset" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+          <input class="input" id="pinText" data-input="pinType" value="${esc(s.pinDraft.text || '')}" placeholder="예: 010-1234-5678 로 연락 주세요 (가림 확인용)">
+          <div class="cluster"><button class="btn btn-sm btn-primary" data-act="pinSave">핀 남기기</button><button class="btn btn-sm btn-ghost" data-act="pinCancel">취소</button></div></div>` : ''}
+        ${pins.length ? `<div class="app-card"><b class="small">핀 코멘트 ${pins.length}</b><div class="pin-list">${pins.map((p) => `<div class="pin-item"><span class="pin-no${p.resolved ? ' ok' : ''}">${p.n}</span><span>${p.html}</span><span class="xsmall faint">${p.resolved ? '해결' : '미해결'}</span></div>`).join('')}</div></div>` : ''}
+      </div>`;
+    if (live) f.bottom(`<div class="grid2" style="gap:8px"><button class="btn btn-lg" data-act="cs" data-to="revise">수정 요청</button><button class="btn btn-primary btn-lg" data-act="cs" data-to="approve">이 시안으로 확정</button></div><p class="xsmall faint" style="text-align:center">대화에 "확정할게요"라고 써도 확정되지 않아요. 확정은 이 버튼으로만 해요.</p>`);
+  }
+  function revise(f, s) {
+    f.title('수정 요청'); f.tab('디자인'); f.back();
+    const open = s.pins.filter((p) => !p.resolved && p.v === s.versions.length);
+    const m = GC.mask(s.reviseNote || '');
+    const fee = GC.Policy.get('design.extra_revision_fee');
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="note ${s.freeLeft > 0 ? 'note-spot' : 'note-warn'} small">무료 수정 ${s.freeLeft}회 남았어요.${s.freeLeft > 0 ? ' 핀을 여러 개 모아 한 번에 요청하면 1회로 세요.' : ` 이번 요청은 ${pv('design.extra_revision_fee')}을 결제해야 접수돼요(디자인 부가 결제 · 작업을 시작하면 환불되지 않아요).`}</div>
+        <div class="app-card"><b class="small">미해결 핀 ${open.length}개가 함께 전달돼요</b>${open.map((p) => `<div class="pin-item"><span class="pin-no">${p.n}</span><span>${p.html}</span><span></span></div>`).join('') || '<span class="xsmall faint">핀이 없으면 추가 설명을 꼭 적어 주세요.</span>'}</div>
+        <div class="field"><label for="rvNote">추가 설명</label><textarea class="textarea" id="rvNote" data-input="reviseNote" placeholder="예: 전체적으로 좋아요. 연락은 010-1234-5678 로 주세요">${esc(s.reviseNote || '')}</textarea>
+          ${m.hits.length ? `<div class="note note-warn small">보내면 이렇게 보여요: “${m.parts.map((p) => p.t === 'mask' ? `<span class="masked">${esc(p.v)}</span>` : esc(p.v)).join('')}”<br>연락처는 대화로 공유할 수 없어요. 인쇄할 번호는 아래 ‘문구 변경’ 칸에 적어 주세요.</div>` : '<span class="hint">연락처·외부 링크·계좌번호는 자동으로 가려져요.</span>'}</div>
+        <div class="field"><span class="lbl">문구 변경 (인쇄할 문구 전용 · 가리지 않아요)</span>
+          <div class="split small"><span class="input" style="min-height:auto">${STORE.phone}</span><span>→</span><span class="input" style="min-height:auto">${STORE.insta}</span></div></div>
+        <div class="field"><span class="lbl">참고 링크</span><span class="input small" style="min-height:auto">instagram.com/todaybapsang</span><span class="hint">메신저·오픈채팅 링크는 어느 칸에서도 막아요.</span></div>
+      </div>`;
+    const okToSend = open.length > 0 || (s.reviseNote || '').trim().length > 0;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block${s.freeLeft > 0 ? '' : ' btn-ext'}" data-act="sendRevision" ${okToSend ? '' : 'disabled'}>${s.freeLeft > 0 ? '수정 요청 보내기' : `${won(fee)} 결제하고 요청하기`}</button>`);
+  }
+  const CHECKLIST = [
+    ['typo', '매장명·문구에 오탈자가 없는지 확인했어요'],
+    ['contact', '전화번호·SNS 표기를 확인했어요'],
+    ['color', '모니터와 실물 색이 다를 수 있다는 점을 알아요'],
+    ['qty', '수량·사이즈를 확인했어요(수량 ±3% 허용)'],
+    ['nocancel', '확정하면 인쇄가 시작되어 취소·반품이 제한된다는 점에 따로 동의해요'],
+  ];
+  function approve(f, s) {
+    f.title('시안 확정'); f.tab('디자인'); f.back();
+    const ver = s.versions[s.versions.length - 1];
+    const opt = ver.opts.includes(s.viewOpt) ? s.viewOpt : ver.opts[0];
+    s.approvedOpt = opt;
+    const all = CHECKLIST.every(([k]) => s.checks['ap_' + k]);
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="app-card"><b>v${ver.v} ${opt}안으로 확정</b><div style="color:var(--ink-3)">${proofSvg(ver.v, opt)}</div>
+          <dl class="kv small"><dt>사양</dt><dd>40×240mm · 크라프트지 · 옵셋 2도</dd><dt>색상</dt><dd>PANTONE 3415C, 블랙</dd><dt>문구</dt><dd>${STORE.name} / ${ver.v >= 2 ? STORE.insta : STORE.phone}</dd><dt>수량</dt><dd>${(s.qty * 1000).toLocaleString()}매 (±3%)</dd><dt>예상 출고</dt><dd>파트너 인쇄 확인 후 영업일 ${PRODUCT.leadDays}일</dd></dl></div>
+        <div class="app-card"><b class="small">모두 체크해야 확정할 수 있어요</b>
+          ${CHECKLIST.map(([k, t]) => `<label class="check"><input type="checkbox" data-change="chk" data-k="ap_${k}" ${s.checks['ap_' + k] ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div>
+        <label class="check"><input type="checkbox" data-change="chk" data-k="ap_portfolio" ${s.checks.ap_portfolio ? 'checked' : ''}><span><span class="opt">(선택)</span> 이 디자인을 식업 브랜딩 사례에 써도 좋아요</span></label>
+      </div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="doApprove" ${all ? '' : 'disabled'}>확정하기</button>`);
+  }
+  function approved(f, s) {
+    f.title('확정 완료'); f.tab('디자인');
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <p class="app-title">디자인을 확정했어요</p>
+        <p class="small muted">확정본만 파트너 인쇄소로 넘어가요. 확정 확인서(사양 요약)를 이메일과 마이페이지로 보내 드렸어요.</p>
+        <div class="app-card"><b class="small">디자인 권리</b><span class="small">저작권은 식업에, 매장에서 쓸 수 있는 사용권은 사장님께 있어요. 원본 AI 파일을 사면 다른 업체에서 우리 매장용으로 인쇄할 수 있어요.</span>
+          ${s.source ? '' : `<button class="btn btn-sm btn-ext" data-act="buySource">원본 AI 파일 사기 · ${pv('design.source_file_fee')}</button>`}</div>
+        ${s.source ? sourceCard(s) : ''}
+        <div class="app-card"><b class="small">확정 기록 · 분쟁이 생기면 이 기록이 기준이에요</b><dl class="kv xsmall">${snapshotRows().map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>
+      </div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="cs" data-to="progress">진행 상황 보기</button>`);
+  }
+  function snapshotRows() {
+    const s = S(); const ver = s.versions[s.versions.length - 1];
+    return [
+      ['상품', `${PRODUCT.name} (결제 시점 사양)`], ['수량', `${(s.qty * 1000).toLocaleString()}매 ±3%`], ['인쇄', '옵셋 · 2도 · 앞면'],
+      ['색상', 'PANTONE 3415C, 블랙'], ['문구 전문', `${STORE.name} / ${ver && ver.v >= 2 ? STORE.insta : STORE.phone}`],
+      ['확정 시안', ver ? `v${ver.v} ${s.approvedOpt || ver.opts[0]}안` : '-'], ['인쇄 원본 해시', s.hash ? s.hash.slice(0, 24) + '…' : '계산 중'],
+      ['동의', '오탈자·연락처·색상 차이·수량·취소 제한(약관 v1.0)'], ['포트폴리오', s.checks.ap_portfolio ? '동의' : '동의 안 함'],
+      ['확정 시각·IP', `${s.approvedAt ? fmtDate(s.approvedAt) : '-'} · 211.***.***.20`],
+    ];
+  }
+  function reorder(f, s) {
+    f.title('같은 디자인 재주문'); f.tab('다시 사기'); f.back();
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="app-card"><b>지난 확정본 그대로 다시 찍어요</b><div style="color:var(--ink-3)">${proofSvg(s.versions.length, s.versions[s.versions.length - 1].opts[0])}</div>
+          <p class="small">문구 전문: ${STORE.name} / ${STORE.insta}</p>
+          <div class="cluster"><span class="tag tag-spot">디자인비 없음</span><span class="tag tag-spot">판비 면제</span><span class="tag">디자인 단계 생략</span></div></div>
+        <div class="app-sec"><h4>수량</h4><div class="seg">${QTYS.map((q) => `<button data-act="qty" data-q="${q}" aria-pressed="${s.qty === q}">${(q * 1000).toLocaleString()}매</button>`).join('')}</div></div>
+        <p class="xsmall faint">문구만 바꾸려면 [수정해서 재주문]으로 가요(문구 수정 1회 무료, 판을 새로 만들면 판비가 붙어요). 판 보관 기간(${pv('production.plate_keep_months')})이 지났어도 판비가 다시 붙어요.</p>
+        <p class="xsmall faint">판비 0원 재주문은 파트너 [인쇄 가능] 전까지 바로 취소할 수 있어요(공제 0원). 판비를 낸 재주문은 확정 후 취소(본사 중재)로 받아요.</p>
+      </div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="toCheckout">주문서로</button>`);
+  }
+
+  /* ── 디자인팀 화면 ── */
+  VIEWS.design = (f) => {
+    const s = S(); const d = app.state('design');
+    f.nav(['REQUESTED', 'FILE_SUBMITTED'].includes(d) || !s.paid ? '요청 큐' : '작업 공간');
+    const cols = [
+      ['배정 대기', ['REQUESTED', 'FILE_SUBMITTED']], ['착수 대기', ['ASSIGNED']], ['작업 중', ['IN_PROGRESS', 'REVISION', 'FILE_REVIEW']],
+      ['고객 확인 대기', ['PROPOSED', 'FILE_REJECTED']], ['보류', ['ON_HOLD']], ['전달 대기', ['APPROVED']], ['전달·생산', ['HANDED_OFF', 'IN_PRODUCTION', 'SHIPPED']], ['생산 이슈', ['PREFLIGHT_REJECTED']],
+    ];
+    const others = { '배정 대기': [['DR-24121', '바삭치킨 · 쇼핑백', '맞춤']], '작업 중': [['DR-24109', '카페 온기 · 컵홀더', '템플릿']], '고객 확인 대기': [['DR-24102', '브레드랩 · 스티커', '자체']] };
+    const slaTxt = () => {
+      if (!s.sla) return '';
+      const left = s.sla.due - app.clock.now();
+      const cls = left < 0 ? 'sla-over' : left < 6 * GC.HOUR ? 'sla-warn' : 'sla-ok';
+      return `<span class="sla ${cls}">${left < 0 ? 'SLA 초과' : '기한 ' + fmtDate(s.sla.due)}</span>`;
+    };
+    const myCard = s.paid && d !== 'COMPLETED' && d !== 'CANCELED' ? `<div class="kcard is-live"><div class="split"><span class="kt">DR-24118</span><span class="tag">${TYPES[s.type].name}</span></div><span>${STORE.name} · 수저집</span>
+      <span class="xsmall faint">${s.designer ? '담당 ' + s.designer.name : '담당 없음'} · 수정 ${s.revisions}회</span>${s.asking ? '<span class="tag tag-warn">고객 답변 대기 · SLA 멈춤</span>' : slaTxt()}${s.hold ? `<span class="tag tag-stop">생산 보류${s.after && s.after.kind === 'cancel' ? ' · 취소 중재 중' : s.afterChange ? ' · 확정 후 변경 건' : ''}</span>` : ''}</div>` : '';
+    const kan = `<div class="kanban">${cols.map(([name, sts]) => {
+      const mine = sts.includes(d) ? myCard : '';
+      const ext = (others[name] || []).map(([id, t, ty]) => `<div class="kcard"><div class="split"><span class="kt">${id}</span><span class="tag">${ty}</span></div><span>${t}</span></div>`).join('');
+      const n = (mine ? 1 : 0) + (others[name] || []).length;
+      return `<div class="kcol"><div class="kcol-h"><span>${name}</span><span>${n}</span></div>${mine}${ext}</div>`;
+    }).join('')}</div>`;
+    let ws = '<p class="muted small">고객이 결제하면 여기에 요청이 들어와요.</p>';
+    if (s.paid) {
+      const ver = s.versions;
+      const actions = [];
+      if (d === 'REQUESTED' || d === 'FILE_SUBMITTED') {
+        actions.push(`<div class="field"><label for="dsSel">담당 디자이너 (팀장 권한)</label><select class="select" id="dsSel">${DESIGNERS.map((x) => `<option value="${x.id}">${x.name} · 진행 ${x.load}건 · 오늘 마감 ${x.today}건</option>`).join('')}</select></div><button class="btn btn-primary" data-act="assign">배정하기</button>`);
+      }
+      if (d === 'ASSIGNED') actions.push(`<button class="btn btn-primary" data-act="startWork">작업 시작</button><p class="xsmall faint">[작업 시작] 전에는 시안 등록 버튼이 꺼져 있어요.</p>`);
+      if (d === 'IN_PROGRESS' || d === 'REVISION') {
+        actions.push(`<div class="stack-sm small"><label class="check"><input type="checkbox" checked disabled><span>인쇄 영역·재단선 확인</span></label><label class="check"><input type="checkbox" checked disabled><span>오탈자 1차 확인</span></label><label class="check"><input type="checkbox" checked disabled><span>목업 첨부 · 인쇄 원본(AI) 첨부</span></label></div>
+          <div class="cluster"><button class="btn btn-primary btn-ext" data-act="propose" ${s.asking ? 'disabled' : ''}>${d === 'REVISION' ? '수정본' : '시안'} v${ver.length + 1} 등록${ver.length === 0 ? ' (A·B 2안)' : ''}</button>
+          ${d === 'IN_PROGRESS' && !s.asking ? '<button class="btn" data-act="askQ">고객에게 질문 남기기</button>' : ''}</div>
+          ${s.asking ? '<p class="xsmall faint">"고객 답변 대기" 표시를 붙였어요. 답을 기다리는 동안 SLA가 멈추고, 답이 없으면 리마인드·보류 규칙이 돌아요.</p>' : d === 'REVISION' ? '<p class="xsmall faint">수정 요청을 받으면 따로 시작 버튼 없이 새 버전을 등록해요(REVISION → PROPOSED).</p>' : ''}`);
+      }
+      if (d === 'PROPOSED' && ver.length && s.viewedVer < ver[ver.length - 1].v && app.clock.now() - ver[ver.length - 1].at <= 10 * 60000) {
+        actions.push(`<button class="btn btn-ghost" data-act="withdrawProposal">방금 올린 v${ver.length} 회수(고객이 보기 전 · 등록 10분 안)</button><p class="xsmall faint">회수하면 등록 전 상태로 돌아가요. 첫 버전을 회수하면 첫 시안 전달로 보지 않아요.</p>`);
+      }
+      if (d === 'FILE_REVIEW') actions.push(s.fixStarted ? `<button class="btn btn-primary" data-act="filePass">보정본 등록 · 고객 재확정 요청</button>` : `<div class="cluster"><button class="btn btn-primary" data-act="filePass">검수 통과 · 인쇄 미리보기 등록</button><button class="btn btn-danger" data-act="fileReject">반려 (해상도 부족)</button></div>`);
+      if (d === 'APPROVED') actions.push(`<table class="tbl small"><tbody><tr><td>인쇄 원본</td><td>오늘밥상_수저집_v${ver.length}.ai · 해시 ${esc((s.hash || '').slice(0, 12))}…</td></tr><tr><td>사양서</td><td>확정 스냅샷으로 자동 생성(PDF)</td></tr><tr><td>요청 출고일</td><td>파트너 [인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일 (내일 확인하면 ${fmtDate(GC.addBusinessDays(GC.addBusinessDays(app.clock.now(), 1), PRODUCT.leadDays), false)})</td></tr></tbody></table>
+        <div class="cluster"><button class="btn btn-primary" data-act="handOff" ${s.after ? 'disabled' : ''}>파트너에 전달</button><button class="btn" data-act="reconfirm" ${s.after ? 'disabled' : ''}>인쇄용 정리본이 확정 시안과 달라짐 · 고객 재확정</button></div>`);
+      if (d === 'PREFLIGHT_REJECTED') actions.push(`<div class="note note-stop small">파트너 반려 사유: 별색 레이어가 분리되지 않았어요.</div><div class="cluster"><button class="btn btn-primary" data-act="reHandOff" ${s.after ? 'disabled' : ''}>레이어 정리해서 다시 전달</button>${s.type === 'OWN_FILE' ? '<button class="btn" data-act="backToFile">고객 파일 선택지로 되돌리기</button>' : '<button class="btn" data-act="needReconfirm">보이는 내용이 바뀜 · 고객 재확정</button>'}</div>`);
+      if (s.hold) actions.push(`<div class="hold-banner">생산 보류 중이에요. ${s.after ? `고객이 확정 후 ${s.after.kind === 'change' ? '변경' : '취소'}을 요청했고 본사가 중재하고 있어요.` : '확정 후 변경 건이라 새 버전을 다시 전달할 때까지 보류를 켜 둬요.'}</div>`);
+      ws = `<div class="ws">
+        <div class="stack"><h3>DR-24118 · ${STORE.name}</h3>
+          <dl class="kv small"><dt>방식</dt><dd>${TYPES[s.type].name}</dd><dt>품목</dt><dd>${esc(PRODUCT.name)} · ${(s.qty * 1000).toLocaleString()}매</dd><dt>문구</dt><dd>${STORE.name} / ${STORE.phone}</dd><dt>스타일</dt><dd>모던 · 친환경 · PANTONE 3415C</dd><dt>피할 것</dt><dd>빨간색</dd><dt>사양</dt><dd>옵셋 2도 · 40×240mm · 칼선 v2</dd><dt>고객 연락처</dt><dd class="faint">디자인에 필요 없어 보이지 않아요</dd></dl>
+          <div class="stack-sm">${actions.join('')}</div></div>
+        <div class="stack"><b class="small">시안 버전</b>
+          ${ver.length ? `<div class="ver-list">${ver.map((x) => `<div class="ver"><b>v${x.v}</b><span>${x.opts.join('·')}안 · ${fmtDate(x.at)}${x.note ? ` · ${esc(x.note)}` : ''}</span></div>`).join('')}</div>` : '<p class="xsmall faint">아직 등록한 시안이 없어요.</p>'}
+          ${s.pins.length ? `<b class="small">고객 핀 코멘트</b><div class="pin-list">${s.pins.map((p) => `<div class="pin-item"><span class="pin-no${p.resolved ? ' ok' : ''}">${p.n}</span><span class="small">${p.html}</span><span class="xsmall faint">v${p.v}</span></div>`).join('')}</div>` : ''}
+          <p class="xsmall faint">내부 메모·생산 협의 채널은 <a href="room.html">협의 룸</a> 화면에서 볼 수 있어요.</p></div>
+      </div>`;
+    }
+    requestAnimationFrame(() => { const k = f.body.querySelector('.kanban'); const live = k && k.querySelector('.is-live'); if (live) k.scrollLeft = Math.max(0, live.parentElement.offsetLeft - k.offsetLeft - 8); });
+    f.body.innerHTML = `<div class="split"><h3>디자인 요청 큐</h3><span class="small muted">오늘 마감 ${s.sla ? 1 : 0} · 배정 대기 ${['REQUESTED', 'FILE_SUBMITTED'].includes(d) ? 2 : 1}</span></div>${kan}<hr class="hr">${ws}`;
+  };
+
+  /* ── 파트너 화면 ── */
+  VIEWS.partner = (f) => {
+    const s = S(); const d = app.state('design'); const it = app.state('item');
+    if (!s.paid) { f.body.innerHTML = '<h3>맞춤 제작 주문</h3><p class="muted">아직 들어온 맞춤 주문이 없어요.</p>'; return; }
+    const rc = s.remake ? app.state('claim') : null;
+    const remakeOpen = claimOpen();
+    const tabs = [['디자인 중', DESIGN_ACTIVE.includes(d) && !remakeOpen], ['파일 수신', d === 'HANDED_OFF'], ['인쇄 반려', d === 'PREFLIGHT_REJECTED'], ['생산 중', d === 'IN_PRODUCTION'], ['출고', (d === 'SHIPPED' || d === 'COMPLETED') && !remakeOpen], ['재제작', remakeOpen]];
+    const sp = settlePreview();
+    let detail = '';
+    const plateAsk = s.after && s.plateCost === null ? `<div class="cluster" style="margin-top:8px"><button class="btn btn-sm" data-act="plate" data-v="0">판 아직 안 만듦</button><button class="btn btn-sm btn-ext" data-act="plate" data-v="30000">판 만들었음 · 실비 30,000원 증빙</button><button class="btn btn-sm btn-ext" data-act="plate" data-v="70000">판 만들었음 · 실비 70,000원 증빙</button></div>
+      <p class="xsmall faint" style="margin-top:6px">판비 공제 = 취소 보상 = min(증빙한 실비, 고객이 낸 판비 ${won(s.paid.plate)}). 실비가 더 커도 낸 판비까지만이고, 증빙이 없으면 0원이에요.</p>` : s.after ? `<p class="small" style="margin-top:6px">답변: ${plateTxt(s.plateCost)}</p>` : '';
+    if (remakeOpen) {
+      detail = `<div class="panel"><div class="panel-h"><h2>재제작 요청 · 인쇄 불량(REMAKE)</h2><span class="st st-warn">${esc(REMAKE_LABEL[rc])}</span></div><div class="panel-b stack-sm">
+        <dl class="kv small"><dt>고객 사유</dt><dd>로고 위치가 3mm 밀렸어요(허용 ±2mm) · 사진 3장</dd><dt>대조 기준</dt><dd>확정 스냅샷 v${s.confirmedVer || s.versions.length} · 인쇄 원본 해시 ${esc((s.hash || '').slice(0, 12))}…</dd>
+          <dt>받은 날</dt><dd>${s.remake.from === 'EXCHANGED' ? `재제작품 ${fmtDate(s.exchangedAt, false)}` : fmtDate(s.deliveredAt, false)} · 기한 ${fmtDate(GC.claim.defectDeadline(s.remake.from === 'EXCHANGED' ? s.exchangedAt : s.deliveredAt), false)}</dd>
+          ${s.remake.inspectDue ? `<dt>검수 기한</dt><dd>${fmtDate(s.remake.inspectDue)} · 넘기면 재제작 승인으로 봐요(환불 아님)</dd>` : ''}</dl>
+        <div class="cluster">
+          ${rc === 'RETURN_REQUESTED' ? '<button class="btn btn-primary" data-act="remakePhoto">사진으로 확인 · 회수 생략</button>' : ''}
+          ${rc === 'RETURN_INSPECTING' ? '<button class="btn btn-primary" data-act="remakeApprove">확정본과 대조 · 재제작 승인</button>' : ''}
+          ${rc === 'RETURN_APPROVED' ? '<button class="btn btn-primary btn-ext" data-act="remakeShip">재제작품 송장 등록</button>' : ''}
+        </div>
+        <p class="xsmall faint">같은 확정 파일로 다시 만들어요. 재제작은 클레임으로만 움직이고 디자인 요청 상태는 그대로예요. 인쇄 불량이라 재제작 비용은 파트너 부담이에요(귀책 판정 A-ORD-02). 거부하면 고객이 3일 안에 이의를 제기할 수 있어요.</p></div></div>`;
+    } else if (DESIGN_ACTIVE.includes(d)) {
+      detail = `<div class="note small">디자인이 확정되기 전이에요. 디자인 내용과 고객 정보는 보이지 않고, 생산 계획용으로 품목·수량만 보여요.</div>
+        ${s.hold ? `<div class="hold-banner"><b>생산 보류 · ${s.after ? '취소 중재 중' : '확정 후 변경 건'}</b> · 고객이 확정 후 변경을 요청해 디자인을 다시 하고 있어요. 이전 인쇄 패키지는 무효예요. ${plateAsk}</div>` : ''}`;
+    } else if (d === 'APPROVED') {
+      detail = `<div class="note small">고객이 디자인을 확정했어요. 디자인팀이 인쇄 패키지를 만들고 있어요(확정 후 영업시간 4시간 안에 도착).</div>`;
+    } else if (d === 'HANDED_OFF') {
+      detail = `
+        ${s.hold && s.after ? `<div class="hold-banner"><b>생산 보류 요청${s.after.kind === 'cancel' ? ' · 취소 중재 중' : ''}</b> · 고객이 확정 후 ${s.after.kind === 'change' ? '변경' : '취소'}을 요청했어요. 판을 이미 만들었는지 영업시간 4시간 안에 답해 주세요.
+          ${plateAsk}</div>` : ''}
+        <table class="tbl small"><thead><tr><th>인쇄 패키지</th><th>내용</th></tr></thead><tbody>
+          <tr><td>인쇄 원본</td><td>AI · 아웃라인 · 재단 여백 3mm · 별색 레이어 분리</td></tr>
+          <tr><td>사양서</td><td>옵셋 2도 · PANTONE 3415C, 블랙 · ${(s.qty * 1000).toLocaleString()}매 ±3% · 문구 전문</td></tr>
+          <tr><td>패키지 해시</td><td>${esc((s.hash || '').slice(0, 16))}…</td></tr>
+          <tr><td>머리말</td><td>식업 주문 전용 · GC-20261012-${s.round === 1 ? '0412' : '0977'}</td></tr></tbody></table>
+        <div class="cluster">
+          <button class="btn btn-ext" data-act="download">${s.downloaded ? '다시 내려받기' : '패키지 내려받기'}</button>
+          <button class="btn btn-primary" data-act="printable" ${!s.downloaded ? 'disabled' : ''} ${s.hold ? 'aria-disabled="true"' : ''}>인쇄 가능</button>
+          <button class="btn btn-danger" data-act="preflightReject" ${!s.downloaded || s.hold ? 'disabled' : ''}>반려</button>
+        </div>
+        ${s.hold ? '<p class="xsmall" style="color:var(--stop)">생산 보류 중이라 [인쇄 가능]을 눌러도 서버가 거부해요.</p>' : `<p class="xsmall faint">[인쇄 가능]을 누르면 출고 예정일이 ${fmtDate(GC.addBusinessDays(app.clock.now(), PRODUCT.leadDays), false)}로 정해지고, 이때부터 고객은 취소할 수 없어요.</p>`}`;
+    } else if (d === 'PREFLIGHT_REJECTED') {
+      detail = `<div class="note note-warn small">반려했어요. 디자인팀이 고쳐서 다시 보내면 새 버전으로 확인해요. 예전 파일은 잠겨요.</div>${s.hold && s.after ? `<div class="hold-banner"><b>생산 보류 요청${s.after.kind === 'cancel' ? ' · 취소 중재 중' : ''}</b> · 판을 이미 만들었는지 답해 주세요. ${plateAsk}</div>` : ''}`;
+    } else if (d === 'IN_PRODUCTION') {
+      detail = `<dl class="kv small"><dt>출고 예정일</dt><dd>${s.shipDue ? fmtDate(s.shipDue, false) : '-'} ([인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일)</dd><dt>택배사</dt><dd>CJ대한통운</dd><dt>송장번호</dt><dd>6890-1234-5678</dd></dl><button class="btn btn-primary btn-ext" data-act="ship">송장 등록하고 출고</button>`;
+    } else if (d === 'SHIPPED' || d === 'COMPLETED') {
+      detail = `<div class="note small">출고했어요. 주문 항목 상태: ${GC.sm.stateName('ORDER_CUSTOM', it)}. ${it === 'EXCHANGED' ? (s.remake && s.remake.settledBefore ? '이미 구매 확정·정산된 항목이라 재제작으로 새 정산은 생기지 않아요.' : '재제작품 배송 완료 7일 뒤 구매 확정과 같이 정산돼요.') : it === 'RETURNED' ? '재제작 대신 환불했어요. 이미 정산됐으면 다음 주기에서 되돌려요(역분개).' : '구매 확정되면 다음 주 정산에 들어가요.'}</div>`;
+    } else if (d === 'CANCELED') {
+      detail = `<div class="note note-stop small">주문이 취소됐어요.${s.refunded && s.refunded.plateToPartner ? ` 판비 공제 ${won(s.refunded.plateToPartner)}은 '취소 보상'으로 수수료 없이(0%) 정산돼요.` : ''}</div>`;
+    }
+    const lockTag = s.after && s.after.kind === 'cancel' ? ' <span class="tag tag-stop">취소 중재 중</span>' : s.hold ? ' <span class="tag tag-stop">생산 보류</span>' : '';
+    const comp = d === 'CANCELED' && s.refunded && s.refunded.plateToPartner;
+    f.body.innerHTML = `
+      <h3>맞춤 제작 주문</h3>
+      <div class="seg" role="group" aria-label="맞춤 제작 큐">${tabs.map(([n, on]) => `<button aria-pressed="${on}">${n}${on ? ' 1' : ''}</button>`).join('')}</div>
+      <p class="xsmall faint">앞의 다섯 탭은 디자인 요청 상태, '재제작' 탭은 클레임 상태 기준이에요(P-ORD-06).</p>
+      <div class="tbl-wrap"><table class="tbl ptbl"><thead><tr><th>주문번호</th><th>품목</th><th class="num">수량</th><th>상태</th><th>유형</th></tr></thead>
+        <tbody><tr class="is-hl"><td>GC-20261012-${s.round === 1 ? '0412' : '0977'}</td><td>${esc(PRODUCT.name)}</td><td class="num">${(s.qty * 1000).toLocaleString()}매</td><td><span class="st st-now">${GC.sm.stateName('ORDER_CUSTOM', it)}</span>${lockTag}${remakeOpen ? ' <span class="tag tag-warn">재제작</span>' : ''}</td><td>${TYPES[s.type].name}</td></tr></tbody></table></div>
+      ${detail}
+      <div class="panel"><div class="panel-h"><h2>이 주문의 정산 ${comp ? '' : '예정'}</h2><span class="xsmall faint">${comp ? '클레임 완료 정산 이벤트' : '구매 확정 뒤 주간 정산'}</span></div><div class="panel-b">
+        ${comp ? `<table class="tbl small"><tbody>
+          <tr><td>취소 보상(판비 공제분)</td><td class="num">${won(s.refunded.plateToPartner)}</td></tr>
+          <tr><td>판매 수수료</td><td class="num">0원 (0%)</td></tr>
+          <tr class="is-sum"><td>정산액</td><td class="num">${won(s.refunded.plateToPartner)}</td></tr></tbody></table>
+          <p class="xsmall faint">고객이 낸 판비 ${won(s.paid.plate)}와 증빙한 실비 ${won(s.plateCost)} 중 작은 금액이에요.</p>` : `<table class="tbl small"><tbody>
+          <tr><td>판매가(상품 + 판비)</td><td class="num">${won(sp.line.gross + sp.line.plateFee)}</td></tr>
+          <tr><td>파트너 즉시 할인</td><td class="num">−${won(sp.line.instantDisc)}</td></tr>
+          <tr><td>판매 수수료 ${sp.rate.rate}%${s.type === 'REORDER' ? ' (맞춤 13% − 재주문 3%p)' : ' (맞춤 요율)'}</td><td class="num">−${won(sp.ev.fee)}</td></tr>
+          <tr class="is-sum"><td>정산 예정액</td><td class="num">${won(sp.ev.amount)}</td></tr></tbody></table>
+        <p class="xsmall faint">본사 쿠폰과 디자인비는 본사 몫이라 파트너 정산에 영향이 없어요.</p>`}</div></div>`;
+  };
+
+  /* ── 본사 운영 화면 ── */
+  VIEWS.hq = (f) => {
+    const s = S();
+    if (!s.paid) { f.body.innerHTML = '<h3>분쟁 중재</h3><p class="muted">중재할 건이 없어요.</p>'; return; }
+    const r = s.paidCalc;
+    let med = '<div class="panel"><div class="panel-b"><p class="muted small">지금 중재할 건이 없어요. 확정 뒤 고객이 변경·취소를 요청하면 여기로 와요.</p></div></div>';
+    if (s.after) {
+      const cp = cancelPreview(); const cancel = s.after.kind === 'cancel';
+      med = `<div class="panel"><div class="panel-h"><h2>확정 후 ${cancel ? '취소(CUSTOM_CANCEL)' : '변경'} 요청 · DR-24118</h2><span class="tag tag-stop">생산 보류 켜짐</span></div><div class="panel-b stack">
+        <dl class="kv small"><dt>고객 사유</dt><dd>${cancel ? '매장 오픈이 미뤄져서 취소하고 싶어요' : '인스타 계정 철자를 바꾸고 싶어요'}</dd>${s.afterChange && cancel ? '<dt>건의 성격</dt><dd>확정 후 변경으로 다시 시안 단계가 된 건 → 일반 취소가 아니라 확정 후 취소(2026-10-14 확정)</dd>' : ''}
+          <dt>파트너 답변</dt><dd>${s.plateCost === null ? '<span class="st st-warn">기다리는 중</span>' : plateTxt(s.plateCost)}</dd><dt>공제 동의</dt><dd>요청할 때 받음(판비는 최대 낸 판비 ${won(s.paid.plate)})</dd><dt>판단 근거</dt><dd>확정 스냅샷 · 동의 기록 · 협의 룸 대화</dd></dl>
+        ${cancel ? `<table class="tbl small"><tbody><tr><td>환불 대상 금액</td><td class="num">${won(cp.total)}</td></tr>${cp.lines.map((l) => `<tr><td>공제 · ${esc(l.label)}</td><td class="num">−${won(l.amount)}</td></tr>`).join('')}<tr class="is-sum"><td>고객 환불</td><td class="num">${won(cp.refund)}</td></tr>${cp.plateToPartner ? `<tr><td>파트너 '취소 보상'(수수료 0%)</td><td class="num">${won(cp.plateToPartner)}</td></tr>` : ''}</tbody></table>` : '<p class="small">승인하면 기존 인쇄 패키지를 무효로 하고 파트너 다운로드 링크를 회수해요. 디자인 요청은 수정 단계로 돌아가고, 수정 횟수 1회를 써요. 새 버전은 고객이 다시 확정해야 하고, 그 버전을 다시 전달할 때까지 생산 보류를 켜 둬요.</p>'}
+        <div class="cluster"><button class="btn btn-primary" data-act="mediate" data-r="ok" ${s.plateCost === null ? 'disabled' : ''}>${cancel ? '취소 승인' : '변경 승인'}</button><button class="btn" data-act="mediate" data-r="no">기각</button></div>
+        <p class="xsmall faint">${s.plateCost === null ? '파트너가 판 제작 여부를 답하면 판단할 수 있어요. ' : ''}중재 결과는 최종이에요. ${cancel ? '기각하면 클레임이 바로 끝나고 이의 제기는 없어요.' : ''}</p></div></div>`;
+    }
+    if (s.restoreDue) {
+      const cv = s.versions.find((x) => x.v === s.confirmedVer);
+      med += `<div class="panel"><div class="panel-h"><h2>운영 확인 목록 · 확정 후 변경 건 30일 무응답</h2><span class="tag tag-warn">자동 취소 안 함</span></div><div class="panel-b stack">
+        <dl class="kv small"><dt>건</dt><dd>DR-24118 · 확정 후 변경으로 다시 시안 단계(${esc(GC.sm.stateName('DESIGN', app.state('design')))})</dd><dt>이전 확정본</dt><dd>v${s.confirmedVer}${cv ? ` ${esc(cv.opts[0])}안` : ''} · 해시 ${esc((s.confirmedHash || '').slice(0, 12))}… · 사양 스냅샷</dd><dt>무응답</dt><dd>${s.waitSince ? Math.floor((app.clock.now() - s.waitSince) / GC.DAY) : '-'}일</dd></dl>
+        <p class="small">복원하면 이전 확정 버전·인쇄 원본 해시·사양 스냅샷을 다시 유효로 하고 그 패키지를 파트너에게 다시 전달해요. 디자인 요청은 '파트너 전달', 주문 항목은 '디자인 확정'이 되고 생산 보류가 풀려요.</p>
+        <button class="btn btn-primary" data-act="restore">이전 확정본 복원</button></div></div>`;
+    }
+    f.body.innerHTML = `<h3>분쟁 중재</h3>${med}
+      <div class="panel money-flow"><div class="panel-h"><h2>이 주문의 돈 흐름</h2><span class="xsmall faint">결제 ${won(s.paid.total)}</span></div><div class="panel-b">
+        <table class="tbl small"><thead><tr><th>항목</th><th class="num">금액</th><th>누구 몫·부담</th></tr></thead><tbody>
+          <tr><td>상품 대금 + 판비</td><td class="num">${won(r.totals.gross + r.totals.plates)}</td><td>파트너 매출(맞춤 수수료 차감)</td></tr>
+          <tr><td>파트너 즉시 할인</td><td class="num">−${won(r.totals.instantDisc)}</td><td>파트너 부담</td></tr>
+          <tr><td>디자인비</td><td class="num">${won(r.totals.designFee)}</td><td>본사 매출 · 정산 대상 아님</td></tr>
+          <tr><td>본사 쿠폰</td><td class="num">−${won(r.totals.hqDisc)}</td><td>본사 부담 · 파트너 몫 안 줄어듦</td></tr>
+          <tr><td>증빙</td><td colspan="2">파트너 명의 세금계산서(상품·판비) + 본사 명의(디자인비) 따로 발행</td></tr></tbody></table></div></div>`;
+  };
+
+  /* ── 시스템 화면 ── */
+  VIEWS.system = (f) => {
+    const s = S(); const d = app.state('design'); const it = app.state('item');
+    const now = app.clock.now();
+    const rows = [];
+    if (s.sla && ['REQUESTED', 'ASSIGNED', 'IN_PROGRESS', 'REVISION'].includes(d)) rows.push(['SLA 감시', `${{ assign: '배정', first: '첫 시안', revision: '수정본' }[s.sla.kind]} 기한 ${fmtDate(s.sla.due)}`, now > s.sla.due ? '<span class="sla sla-over">초과 → 팀장·운영 알림</span>' : '<span class="sla sla-ok">여유</span>']);
+    if (s.waitSince && waitingNow()) {
+      const days = Math.floor((now - s.waitSince) / GC.DAY);
+      rows.push(['고객 무응답', `${days}일째 (3일 리마인드 · 13일 보류 예고 · 14일 보류 · ${s.afterChange ? '30일 운영 확인 목록(확정 후 변경 건은 자동 취소 안 함)' : '29일 취소 예고 · 30일 자동 취소'})`, `<span class="sla ${days >= 14 ? 'sla-over' : days >= 3 ? 'sla-warn' : 'sla-ok'}">${days}일</span>`]);
+      Object.entries(s.notices).forEach(([k, at]) => rows.push([`${k === 'hold' ? '보류' : '자동 취소'} 예고`, `예고 ${fmtDate(at)} → ${UI.pv('notify.notice_min_hours')} 지난 뒤에만 본 처리`, GC.notice.elapsed(at, now) ? '<span class="sla sla-warn">본 처리 가능</span>' : `<span class="sla sla-ok">${fmtDate(new Date(at.getTime() + GC.Policy.get('notify.notice_min_hours') * GC.HOUR))}부터</span>`]));
+    }
+    if (it === 'DELIVERED' && s.deliveredAt) {
+      const due = new Date(s.deliveredAt.getTime() + GC.Policy.get('order.auto_confirm_days') * GC.DAY);
+      rows.push(['자동 구매 확정', `배송 완료 + 7일 = ${fmtDate(due)}${claimOpen() ? ' · 클레임이 열려 있어 제외' : ''}`, claimOpen() ? '<span class="sla sla-warn">제외</span>' : now >= due ? '실행됨' : `<span class="sla sla-ok">${Math.ceil((due - now) / GC.DAY)}일 남음</span>`]);
+    }
+    if (s.remake && app.state('claim') === 'RETURN_INSPECTING' && s.remake.inspectDue) rows.push(['재제작 검수 기한', `${fmtDate(s.remake.inspectDue)} · 넘기면 재제작 승인으로 봄`, now > s.remake.inspectDue ? '<span class="sla sla-over">자동 승인</span>' : '<span class="sla sla-ok">여유</span>']);
+    if (s.exchangeSettleDue) rows.push(['EXCHANGED 정산', `재제작품 배송 완료 + 7일 = ${fmtDate(s.exchangeSettleDue)} (상태는 그대로)`, now >= s.exchangeSettleDue ? '실행됨' : '<span class="sla sla-ok">대기</span>']);
+    f.body.innerHTML = `
+      <h3>배치·외부 연동</h3>
+      <p class="small muted">사람이 누르지 않아도 시간이 되면 돌아가는 일들이에요. 위쪽 +1일·+7일로 시간을 보내면 자동으로 실행돼요.</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>작업</th><th>기준</th><th>상태</th></tr></thead><tbody>
+        ${rows.map((r) => `<tr><td>${r[0]}</td><td class="small">${r[1]}</td><td>${r[2]}</td></tr>`).join('') || '<tr><td colspan="3" class="faint">지금 기다리는 자동 작업이 없어요.</td></tr>'}</tbody></table></div>
+      <div class="cluster">
+        <button class="btn btn-ext" data-act="trackDelivery" ${it === 'SHIPPED' ? '' : 'disabled'}>택배 배송 완료 확인</button>
+        <button class="btn" data-act="autoConfirm" ${it === 'DELIVERED' && !claimOpen() ? '' : 'disabled'}>자동 구매 확정 지금 실행</button>
+        ${s.remake ? `<button class="btn btn-ext" data-act="remakeDelivered" ${app.state('claim') === 'EXCHANGE_SHIPPED' ? '' : 'disabled'}>재제작품 배송 완료 확인</button>` : ''}
+      </div>
+      <div class="note note-ext small">외부 연동: 토스페이먼츠(결제·지급대행) · 솔라피(알림톡) · FCM(푸시) · S3(파일) · GuardDuty(악성코드 검사) · 스윗트래커(배송 조회). 프로토타입에서는 안내 창으로 대신해요.</div>`;
+  };
+
+  /* ── 동작 ── */
+  app.actions({
+    toMethod() { S().cs = 'method'; refresh(); },
+    qty(b) { S().qty = Number(b.dataset.q); app.log('user', `맞춤 수량 ${(S().qty * 1000).toLocaleString()}매`); refresh(); },
+    pickType(b) { if (b.getAttribute('aria-disabled') === 'true') return; S().type = b.dataset.type; S().checks = {}; refresh(); },
+    toRequest() { S().cs = S().type === 'REORDER' ? 'reorder' : 'request'; app.log('user', `디자인 방식: ${TYPES[S().type].name}`); refresh(); },
+    tpl(b) { S().template = b.dataset.k; refresh(); },
+    async uploadLogo() { await app.ext({ service: 'AWS S3 · GuardDuty', what: '로고 파일 업로드와 악성코드 검사', lines: ['서명된 주소로 브라우저에서 바로 업로드', '검사를 통과해야 디자이너가 열 수 있어요', 'AI 파일은 격리된 변환 작업에서 미리보기 생성'] }); S().logo = true; refresh(); },
+    async uploadOwn() { await app.ext({ service: 'AWS S3 · GuardDuty · convert 작업', what: '인쇄 파일 업로드와 자동 점검', lines: ['최대 500MB, 이어 올리기 지원', '악성코드 검사 → 미리보기 변환(DB·결제 권한 없는 격리 작업)'] }); S().ownFile = true; refresh(); },
+    async dlTemplate() { await app.ext({ service: 'AWS S3', what: '칼선 템플릿 내려받기', lines: ['5분짜리 서명 주소로만 내려받아요'] }); },
+    chk(t) { S().checks[t.dataset.k] = t.checked; refresh(); },
+    toCheckout() {
+      const s = S();
+      if (s.cs === 'reorder') { s.checks = {}; }
+      s.cs = 'checkout'; refresh();
+    },
+    payMethod(b) { S().pay = b.dataset.m; refresh(); },
+    async pay() {
+      const s = S(); const r = calc();
+      await app.ext({ service: '토스페이먼츠', what: '결제창 호출', lines: [`결제 금액 ${won(r.totals.pay)}`, '서버가 금액을 다시 계산해 화면 금액과 같을 때만 결제창을 열어요', '결과는 리다이렉트로 받고 PG 조회로 한 번 더 확인해요'], result: '결제가 승인된 것으로 처리해요' });
+      const fee = r.designFees[0].fee;
+      s.paid = { at: app.clock.now(), total: r.totals.pay, designFee: fee, plate: r.totals.plates };
+      s.paidCalc = r;
+      app.log('money', `결제 ${won(r.totals.pay)} = 파트너 몫 ${won(r.totals.gross + r.totals.plates - r.totals.instantDisc)} + 디자인비 ${won(fee)} − 본사 쿠폰 ${won(r.totals.hqDisc)}`);
+      app.setState('item', 'PAID', { by: '카드 승인' });
+      app.notify('NOTI_ORDER_PAID', '고객', ['알림톡', '푸시'], '주문·결제 완료');
+      if (s.type === 'REORDER') {
+        setFlow('reorder');
+        goItem('reorder');
+        app.setState('design', 'APPROVED', { by: '이전 확정 스냅샷 복사' });
+        goDesign('hand_off', '인쇄 패키지 재사용');
+        s.downloaded = false; s.after = null; s.hold = false; s.plateCost = null;
+        app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', '파트너', ['알림톡', '이메일'], '재주문 인쇄 파일 도착');
+        app.log('rule', `재주문: 디자인비 0원 · 판비 면제 · 파트너 수수료 ${settlePreview().rate.rate}%(재주문 −${GC.Policy.get('commission.reorder_discount')}%p)`);
+      } else {
+        goItem('design_created');
+        setFlow(s.type === 'OWN_FILE' ? 'own' : 'normal');
+        app.setState('design', s.type === 'OWN_FILE' ? 'FILE_SUBMITTED' : 'REQUESTED', { by: '결제 후 자동 생성 · 협의 룸 생성' });
+        s.freeLeft = s.type === 'CUSTOM' ? GC.Policy.get('design.free_revisions_custom') : s.type === 'TEMPLATE' ? GC.Policy.get('design.free_revisions_template') : 0;
+        setSla('assign', GC.addBusinessHours(s.paid.at, GC.Policy.get('design.sla.assign_hours')));
+        app.notify('NOTI_INT_DESIGN_NEW', '디자인 리드', ['관리자 알림', 'Slack'], '신규 디자인 요청');
+      }
+      s.cs = 'done'; s.csState = app.state('design'); s.checks = {}; refresh();
+    },
+    cs(b) { const s = S(); s.cs = b.dataset.to; if (b.dataset.to === 'proposal') { s.viewVer = s.versions.length; s.viewedVer = Math.max(s.viewedVer, s.versions.length); } refresh(); },
+    assign() {
+      const s = S(); const sel = app.lastFrame.querySelector('#dsSel');
+      app.clock.pass(45 * 60000);
+      s.designer = DESIGNERS.find((x) => x.id === (sel ? sel.value : 'kim'));
+      if (app.state('design') === 'FILE_SUBMITTED') {
+        goDesign('assign', `검수 담당 ${s.designer.name}`);
+        setSla('first', GC.addBusinessDays(app.clock.now(), 1));
+      } else {
+        goDesign('assign', `팀장이 ${s.designer.name} 배정`);
+        const days = GC.Policy.get('design.sla.first_draft_days');
+        setSla('first', GC.addBusinessDays(app.clock.now(), days));
+        app.notify('NOTI_DESIGN_ASSIGNED', '고객', ['알림톡', '푸시'], `디자이너 ${s.designer.name} 배정 · 첫 시안 ${fmtDate(s.sla.due)}까지`);
+      }
+      refresh();
+    },
+    startWork() { app.clock.pass(20 * 60000); goDesign('start', `${S().designer.name}이 작업 시작`); refresh(); },
+    async propose() {
+      const s = S();
+      await app.ext({ service: 'AWS S3 · convert 작업', what: `시안 v${s.versions.length + 1} 파일 올리기`, lines: ['시안 이미지(워터마크 자동), 목업, 인쇄 원본(고객 비공개)', '인쇄 원본은 해시를 저장해 나중에 전달 파일과 대조해요'] });
+      const v = s.versions.length + 1;
+      app.clock.pass(v === 1 ? 26 * 3600000 : 5 * 3600000);
+      if (s.cs === 'done') s.cs = 'progress';
+      s.proposeFrom = app.state('design'); s.slaBefore = s.sla;
+      s.versions.push({ v, opts: v === 1 ? ['A', 'B'] : ['A'], at: app.clock.now(), note: v === 1 ? '' : s.afterChange ? '확정 후 변경 · 인스타 계정 철자 수정' : '로고 키움 · 띠 색 3415C · 전화번호 → 인스타 계정' });
+      s.pins.filter((p) => p.v === v - 1).forEach((p) => { p.resolved = true; });
+      const onTime = !s.sla || app.clock.now() <= s.sla.due;
+      goDesign('propose', `${s.proposeFrom === 'REVISION' ? '수정본' : '시안'} v${v} 등록${onTime ? ' · SLA 안' : ' · SLA 초과'}`);
+      if (!s.firstProposedAt) { s.firstProposedAt = app.clock.now(); app.log('rule', '첫 시안 전달 시각 기록 → 이제부터 취소하면 디자인비를 공제해요(상태가 아니라 이 기록으로 판단)'); }
+      s.sla = null; s.revReqAt = null; setWait(); s.viewVer = v; s.viewOpt = 'A';
+      app.notify(v === 1 ? 'NOTI_DESIGN_PROPOSED' : 'NOTI_DESIGN_REVISED', '고객', ['알림톡', '푸시', '이메일'], `시안 v${v} 도착`);
+      refresh();
+    },
+    viewVer(b) { S().viewVer = Number(b.dataset.v); refresh(); },
+    viewOpt(b) { S().viewOpt = b.dataset.o; refresh(); },
+    addPin(b, e) {
+      const s = S(); const rect = b.getBoundingClientRect();
+      const x = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      const y = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+      s.pinDraft = { n: s.pins.length + 1, x: Math.round(x * 1000) / 1000, y: Math.round(y * 1000) / 1000, text: '' };
+      refresh();
+      const inp = app.lastFrame.querySelector('#pinText'); if (inp) inp.focus();
+    },
+    pinPreset(b) { S().pinDraft.text = b.dataset.t; refresh(); },
+    pinType(t) { S().pinDraft.text = t.value; },
+    pinCancel() { S().pinDraft = null; refresh(); },
+    pinSave() {
+      const s = S(); const dft = s.pinDraft; if (!dft || !dft.text.trim()) { app.toast('의견을 적어 주세요'); return; }
+      const m = GC.mask(dft.text);
+      const html = m.parts.map((p) => (p.t === 'mask' ? `<span class="masked">${esc(p.v)}</span>` : esc(p.v))).join('');
+      s.pins.push({ n: dft.n, x: dft.x, y: dft.y, v: s.versions.length, html, resolved: false });
+      app.log('user', `핀 ${dft.n} (좌표 ${dft.x}, ${dft.y} · 이미지 크기 대비 비율)`);
+      if (m.hits.length) { app.log('rule', `핀 코멘트의 연락처를 가렸어요 (${m.hits.map((h) => h.kind).join(', ')}) · 원문은 암호화해 운영자만 열람`); app.toast('연락처는 대화로 공유할 수 없어요'); }
+      s.pinDraft = null; refresh();
+    },
+    reviseNote(t) { S().reviseNote = t.value; const s = S(); clearTimeout(s._rt); s._rt = setTimeout(() => { refresh(); const ta = app.lastFrame.querySelector('#rvNote'); if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 450); },
+    async sendRevision() {
+      const s = S();
+      if (s.freeLeft <= 0) await app.ext({ service: '토스페이먼츠', what: '추가 수정 결제', lines: [`${won(GC.Policy.get('design.extra_revision_fee'))} · 디자인 부가 결제(본사 매출)`, '원 주문에 연결해 기록해요'] });
+      const m = GC.mask(s.reviseNote || '');
+      if (m.hits.length) app.log('rule', `추가 설명의 연락처를 가렸어요 · 문구 변경 칸(${STORE.phone} → ${STORE.insta})은 그대로 전달`);
+      app.clock.pass(3 * 3600000);
+      s.revPaid = s.freeLeft <= 0;
+      if (s.freeLeft > 0) s.freeLeft -= 1;
+      s.revisions += 1;
+      goDesign('request_revision', `고객 수정 요청 (${s.revisions}회째)`);
+      setSla('revision', GC.addBusinessDays(app.clock.now(), GC.Policy.get('design.sla.revision_days')));
+      s.waitSince = null; s.notices = {}; s.cs = 'progress'; s.reviseNote = ''; s.revReqAt = app.clock.now();
+      app.notify('NOTI_INT_ROOM_MESSAGE', '담당 디자이너', ['관리자 알림'], '수정 요청 도착');
+      refresh();
+    },
+    /* REVISION → PROPOSED: 접수 10분 안·작업 시작 전 고객이 요청 취소(횟수 돌려줌) */
+    revWithdraw() {
+      const s = S();
+      goDesign('revision_withdraw', '고객이 수정 요청 취소(접수 10분 안)');
+      s.revisions -= 1; if (!s.revPaid) s.freeLeft += 1; s.sla = null; s.revReqAt = null; setWait();
+      app.log('rule', s.revPaid ? '작업 시작 전이라 추가 수정비를 환불해요' : '무료 수정 횟수를 돌려줬어요');
+      refresh();
+    },
+    /* PROPOSED → 등록 전 상태: 고객이 보기 전·등록 10분 안 회수 */
+    withdrawProposal() {
+      const s = S(); const ver = s.versions.pop(); const back = s.proposeFrom || 'IN_PROGRESS';
+      app.setState('design', back, { by: `시안 v${ver.v} 회수 · 고객이 보기 전 10분 안 → 등록 전 상태` });
+      if (ver.v === 1) { s.firstProposedAt = null; app.log('rule', '회수한 첫 버전은 첫 시안 전달로 보지 않아요 → 첫 시안 전달 시각 기록을 지웠어요'); }
+      s.sla = s.slaBefore; s.waitSince = null; s.notices = {}; s.fired = {}; s.viewVer = s.versions.length;
+      refresh();
+    },
+    /* '고객 답변 대기' 표시(상태 아님): SLA 멈춤, 무응답 규칙 적용 */
+    askQ() {
+      const s = S(); app.clock.pass(40 * 60000);
+      s.asking = true; s.askAt = app.clock.now(); s.slaPaused = s.sla; s.sla = null; setWait();
+      app.log('user', '디자이너 질문: "로고 초록색을 간판색(PANTONE 3415C)으로 맞출까요?" · 고객 답변 대기 표시');
+      app.log('rule', '"고객 답변 대기"는 상태가 아니라 표시예요. 상태는 IN_PROGRESS 그대로, SLA는 멈추고 고객에게 "답변 필요"가 보여요');
+      app.notify('NOTI_INT_ROOM_MESSAGE', '고객', ['알림톡', '푸시'], '디자이너가 질문을 남겼어요');
+      refresh();
+    },
+    answerQ() {
+      const s = S(); app.clock.pass(20 * 60000);
+      s.asking = false; s.waitSince = null; s.notices = {}; s.fired = {};
+      if (s.slaPaused) { s.sla = { ...s.slaPaused, due: new Date(s.slaPaused.due.getTime() + (app.clock.now() - s.askAt)) }; s.slaPaused = null; }
+      app.log('user', `고객 답변: "네, 간판색으로 맞춰 주세요" · 답변 대기 표시 해제, 기다린 시간만큼 SLA를 미뤄 다시 흐름${s.sla ? `(기한 ${fmtDate(s.sla.due)})` : ''}`);
+      refresh();
+    },
+    /* 템플릿형·자체 파일 → 맞춤형 전환 결제(D-REQ-02·D-REQ-04, C-STATE-03 → REQUESTED) */
+    async convertCustom() {
+      const s = S(); const fee = calc('CUSTOM').designFees[0].fee; const revs = GC.Policy.get('design.free_revisions_custom');
+      const ok = await app.confirm({ title: '맞춤형으로 바꿀까요?', body: `<p>디자인비 ${fee ? `${won(fee)}을 더 내면` : '없이(맞춤 품목 50만원 이상)'} 디자이너가 레이아웃부터 새로 잡아요. 무료 수정 ${revs}회로 새로 시작하고, 배정·첫 시안 기한을 지금부터 다시 세요.</p><p class="small">맞춤형 취소 공제 규정에 다시 동의해요.${s.firstProposedAt ? ' 첫 시안을 이미 받았으므로 지금부터 취소하면 디자인비를 공제해요.' : ''}</p>`, ok: '동의하고 바꾸기' });
+      if (!ok) return;
+      if (fee) await app.ext({ service: '토스페이먼츠', what: '맞춤형 전환 결제(디자인 부가 결제)', lines: [`${won(fee)} · 본사 매출 · 원 주문에 연결`, '작업을 시작하면 환불되지 않아요'] });
+      const from = s.type;
+      s.type = 'CUSTOM'; s.paid.designFee += fee; s.paid.total += fee; s.freeLeft = revs; s.asking = false; s.waitSince = null; s.notices = {};
+      goDesign('convert_custom', `${TYPES[from].name} → 맞춤형 전환 결제${fee ? ` ${won(fee)}` : ''} · 이전 담당자 먼저`);
+      setSla('assign', GC.addBusinessHours(app.clock.now(), GC.Policy.get('design.sla.assign_hours')));
+      setFlow('normal');
+      if (s.firstProposedAt) app.log('rule', `REQUESTED로 돌아갔지만 첫 시안 전달 기록(${fmtDate(s.firstProposedAt)})이 남아 있어, 취소하면 디자인비를 공제해요`);
+      refresh();
+    },
+    async doApprove() {
+      const s = S();
+      app.clock.pass(2 * 3600000);
+      s.approvedAt = app.clock.now();
+      s.hash = await sha256(`오늘밥상_수저집_v${s.versions.length}.ai#${s.round}`);
+      goDesign('approve', s.afterChange ? '고객 재확정(확정 후 변경 건) · 새 버전 잠금' : '고객 최종 확정 · 버전 잠금');
+      goItem('design_approved');
+      s.confirmedVer = s.versions.length; s.confirmedHash = s.hash;
+      s.waitSince = null; s.notices = {}; s.cs = 'approved'; s.csState = 'APPROVED';
+      app.log('rule', '사양 스냅샷·체크리스트·동의 시각·IP 저장(수정·삭제 금지) · 청약철회 제한 동의 기록');
+      if (s.afterChange) app.log('rule', '확정 후 변경 건이라 새 버전을 파트너에게 다시 전달할 때까지 생산 보류를 켜 둬요');
+      app.notify('NOTI_DESIGN_APPROVED', '고객', ['알림톡', '이메일'], '확정 확인서(사양 요약) 발송');
+      refresh();
+    },
+    async buySource() {
+      await app.ext({ service: '토스페이먼츠', what: '원본 AI 파일 결제(디자인 부가 결제)', lines: [`${won(GC.Policy.get('design.source_file_fee'))} · 본사 매출 · 원 주문에 연결`, '결제 버튼 위에 환불 조건 고지: 내려받기 전 7일 안에만 환불, 내려받은 뒤에는 청약철회 제한(법률 자문 전 초안)', '폰트 아웃라인·템플릿 레이어 제거본 · 7일 유효 링크', 'iOS 앱 안에서는 웹 결제로 안내할 수 있어요(인앱결제 확인 중)'] });
+      S().source = { at: app.clock.now(), downloaded: false };
+      app.log('money', `원본 파일 ${won(GC.Policy.get('design.source_file_fee'))} 결제 · 디자인 부가 결제(본사 매출)`);
+      refresh();
+    },
+    async dlSource() {
+      await app.ext({ service: 'AWS S3', what: '원본 파일 내려받기', lines: ['7일 유효 서명 링크 · 지나면 주문 상세에서 다시 받기', '이용 범위: 우리 매장용 인쇄(다른 업체 인쇄 가능) · 재판매 불가'] });
+      const s = S(); if (!s.source.downloaded) app.log('rule', '원본 파일을 내려받았어요 → 이제 환불되지 않아요(청약철회 제한)');
+      s.source.downloaded = true; refresh();
+    },
+    async handOff() {
+      app.clock.pass(70 * 60000);
+      goDesign('hand_off', '인쇄 패키지 전달 · 해시 일치 확인');
+      const s = S(); s.downloaded = false;
+      if (s.hold && !s.after) { s.hold = false; s.afterChange = false; s.plateCost = null; app.log('rule', '확정 후 변경 건의 새 버전을 다시 전달했어요 → 생산 보류 해제'); }
+      app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', '파트너', ['알림톡', '이메일'], '인쇄 파일 도착');
+      refresh();
+    },
+    async download() {
+      await app.ext({ service: 'AWS S3', what: '인쇄 패키지 내려받기', lines: ['파트너 계정·시각·IP·패키지 해시를 5년 보관(계약 기록)', '링크는 7일 뒤 만료, 다시 발급 가능'] });
+      app.clock.pass(2 * 3600000); S().downloaded = true; refresh();
+    },
+    printable() {
+      const s = S();
+      if (s.hold) { app.log('warn', '생산 보류 플래그가 켜져 있어 서버가 [인쇄 가능]을 거부했어요'); app.toast('생산 보류 중이라 서버가 거부했어요'); refresh(); return; }
+      app.clock.pass(30 * 60000);
+      s.shipDue = GC.addBusinessDays(app.clock.now(), PRODUCT.leadDays);
+      goDesign('printable', '파트너 인쇄 가능 확인 = 생산 시작');
+      goItem('printable');
+      app.notify('NOTI_PRODUCTION_STARTED', '고객', ['푸시'], `제작 시작 · 출고 예정 ${fmtDate(s.shipDue, false)}`);
+      refresh();
+    },
+    preflightReject() { goDesign('preflight_reject', '별색 레이어 미분리'); app.notify('NOTI_INT_PREFLIGHT_REJECTED', '담당 디자이너', ['관리자 알림', 'Slack'], '인쇄 반려'); refresh(); },
+    reHandOff() { goDesign('re_hand_off', '레이어 정리 후 다시 전달(보이는 내용 같음)'); S().downloaded = false; refresh(); },
+    needReconfirm() { const s = S(); s.versions.push({ v: s.versions.length + 1, opts: ['A'], at: app.clock.now(), note: '인쇄 반려 수정 · 별색 레이어 재구성(보이는 내용 바뀜)' }); goDesign('need_reconfirm', '보이는 내용이 바뀌어 새 버전 · 고객 재확정 필요'); goItem('need_reconfirm'); setWait(); refresh(); },
+    /* APPROVED → PROPOSED: 인쇄용 정리본이 확정 시안과 눈에 보이게 다름(D-PRD-01) */
+    reconfirm() {
+      const s = S(); app.clock.pass(50 * 60000);
+      s.versions.push({ v: s.versions.length + 1, opts: ['A'], at: app.clock.now(), note: '인쇄용 정리본 · 확정 시안과 비교 이미지 첨부(띠 두께 달라짐)' });
+      goDesign('reconfirm', '인쇄용 정리본이 확정 시안과 눈에 보이게 달라 고객 재확정');
+      goItem('need_reconfirm');
+      setWait(); s.viewVer = s.versions.length;
+      app.notify('NOTI_DESIGN_REVISED', '고객', ['알림톡', '푸시'], `인쇄용 정리본 v${s.versions.length} · 다시 확정해 주세요`);
+      refresh();
+    },
+    /* 자체 파일 인쇄 반려 → 고객 선택지 흐름(FILE_REJECTED) */
+    backToFile() { goDesign('back_to_file', '자체 파일 인쇄 반려 → 고객 선택지(재업로드·보정·맞춤형 전환)'); goItem('need_reconfirm'); app.notify('NOTI_FILE_REVIEWED', '고객', ['알림톡', '푸시'], '파일 수정 필요(인쇄 반려)'); setWait(); refresh(); },
+    async ship() {
+      await app.ext({ service: 'CJ대한통운 · 스윗트래커', what: '송장 등록', lines: ['택배사별 송장 형식 검증', '24시간 안에 집하 기록이 없으면 허위 송장 의심으로 운영팀 알림'] });
+      const s = S(); if (s.shipDue && s.shipDue > app.clock.now()) app.clock.pass(s.shipDue - app.clock.now());
+      goDesign('ship', '송장 등록'); goItem('ship');
+      app.notify('NOTI_SHIPPED', '고객', ['알림톡', '푸시'], '출고 · 배송 조회 링크');
+      refresh();
+    },
+    async trackDelivery() {
+      await app.ext({ service: '스윗트래커', what: '배송 조회 API로 배송 완료 확인', lines: ['배송 완료를 감지하면 주문 항목을 배송 완료로 바꿔요'] });
+      app.clock.pass(26 * 3600000);
+      goItem('deliver'); S().deliveredAt = app.clock.now();
+      app.notify('NOTI_DELIVERED', '고객', ['푸시'], '배송 완료 · 7일 뒤 자동 구매 확정');
+      refresh();
+    },
+    autoConfirm() { doConfirm('자동 구매 확정 배치(관리자가 바로 실행)'); },
+    confirmBuy() { doConfirm('고객이 직접 구매 확정'); },
+    startReorder() {
+      const s = S();
+      s.history = true; s.round = 2; s.type = 'REORDER'; s.cs = 'reorder'; s.checks = {};
+      Object.assign(s, { paid: null, downloaded: false, after: null, hold: false, afterChange: false, plateCost: null, refunded: null, shipDue: null, deliveredAt: null,
+        remake: null, settled: false, exchangedAt: null, exchangeSettleDue: null, source: null, restoreDue: false, waitSince: null, notices: {} });
+      ['design', 'item', 'claim'].forEach((k) => { app.strips[k].current = null; app.strips[k].lastMainIdx = null; });
+      app.strips.claim.hidden = true;
+      app.log('user', '고객이 [같은 디자인으로 재주문]을 눌렀어요');
+      refresh();
+    },
+    /* 일반 취소(CANCEL): 확정 전 단계별 공제, 또는 판비 0원 재주문의 생산 전 취소(공제 0원, 중재 없음) */
+    async cancelDesign() {
+      const s = S(); const cp = cancelPreview();
+      const why = cp.stage === 'BEFORE_PROPOSAL' ? '첫 시안 전이라 전액 환불돼요.' : cp.reorderFree ? '판비 0원 재주문이라 본사 중재 없이 바로 취소되고 공제는 없어요.' : '첫 시안을 받은 뒤라 디자인비를 공제해요.';
+      const ok = await app.confirm({ title: '주문을 취소할까요?', body: `<p>환불 예정 ${won(cp.refund)}${cp.deduction ? ` (공제 ${won(cp.deduction)})` : ''}</p><p class="small">${why}</p>`, ok: '취소하기', cancel: '그대로 두기', danger: true });
+      if (!ok) return;
+      await app.ext({ service: '토스페이먼츠', what: '결제 취소(판매자별 부분 취소)', lines: [`환불 ${won(cp.refund)}`, '파트너 몫과 본사 몫을 판매자별로 나눠 취소해요', '요청 키(취소 건 ID + 회차)를 먼저 저장하고 같은 키로만 다시 요청해요'] });
+      s.refunded = cp;
+      if (cp.reorderFree) { goDesign('reorder_cancel', '판비 0원 재주문 · 생산 전 바로 취소'); goItem('reorder_cancel', '판비 0원 재주문 취소 · 공제 0원'); }
+      else { goDesign('cancel', `고객 취소 · 공제 ${won(cp.deduction)}`); goItem('cancel'); }
+      app.log('money', `환불 ${won(cp.refund)}${cp.deduction ? ` · 공제 ${won(cp.deduction)}` : ' · 공제 없음(멤버십 이용권·쿠폰 복원)'}`);
+      s.cs = 'progress'; refresh();
+    },
+    /* 확정 후 변경·취소 요청(D-APV-02): 접수 즉시 생산 보류. 취소는 확정 후 취소(CUSTOM_CANCEL) 클레임 */
+    async afterReq(b) {
+      const s = S(); const kind = b.dataset.kind; const d = app.state('design'); const cp = cancelPreview();
+      const designPart = cp.lines.filter((l) => !/판비/.test(l.label)).reduce((a, l) => a + l.amount, 0);
+      const body = kind === 'change'
+        ? `<p class="small">요청하는 즉시 파트너 인쇄가 멈추고 본사가 중재해요. 승인되면 수정 횟수 1회를 쓰고(없으면 ${pv('design.extra_revision_fee')}), 새 버전을 다시 확정해야 해요. 파트너가 판을 이미 만들었고 바뀐 내용이 판에 들어가면 새 판비를 안내해요.</p>`
+        : `<p class="small">요청하는 즉시 파트너 인쇄가 멈추고 본사가 중재해요(자동 승인 없음).</p><table class="tbl small"><tbody><tr><td>디자인비 공제</td><td class="num">${won(designPart)}</td></tr><tr><td>판비 공제</td><td class="num">최대 ${won(s.paid.plate)}</td></tr></tbody></table><p class="xsmall faint">판비는 파트너가 판 제작 실비를 증빙했을 때만, 실비와 낸 판비 중 작은 금액을 공제해요. 이 공제 기준에 동의해야 요청돼요.</p>`;
+      const ok = await app.confirm({ title: kind === 'change' ? '확정한 디자인을 바꿀까요?' : (s.afterChange ? '변경 중인 주문을 취소할까요?' : '확정한 주문을 취소할까요?'), body, ok: kind === 'change' ? '요청하기' : '공제 기준에 동의하고 요청하기', cancel: '그대로 두기' });
+      if (!ok) return;
+      s.after = { kind, at: app.clock.now() };
+      if (kind === 'change') s.changeFrom = d;
+      if (!s.hold) { s.hold = true; app.log('rule', '생산 보류 플래그 켬 → 파트너 [인쇄 가능]을 서버가 막아요'); }
+      else app.log('rule', '확정 후 변경 건이라 이미 켜진 생산 보류를 그대로 둬요');
+      if (kind === 'cancel') {
+        showClaim('CLAIM_CANCEL', '확정 후 취소 클레임', 'claim_type CUSTOM_CANCEL · 자동 승인 없음 · 본사 중재 · C-STATE-02');
+        app.setState('claim', 'CANCEL_REQUESTED', { by: `고객 [취소 요청]${s.afterChange ? ' · 확정 후 변경 건' : ''} · 공제 기준 동의` });
+      }
+      if (s.plateCost === null && d === 'APPROVED') { s.plateCost = 0; app.log('rule', '아직 파트너에 전달하기 전이라 판 제작이 없어요 → 판비 공제 없음'); }
+      if (s.plateCost === null) app.notify('NOTI_PARTNER_PRODUCTION_HOLD', '파트너', ['알림톡'], `생산 보류 요청${kind === 'cancel' ? ' · 취소 중재 중' : ''} · 4시간 안 판 제작 여부 답변`);
+      app.notify('NOTI_INT_MEDIATION_NEW', '운영팀(CS)', ['관리자 알림', 'Slack'], `확정 후 ${kind === 'change' ? '변경' : '취소'} 요청`);
+      refresh();
+    },
+    /* 고객이 중재 결과 전에 요청 철회 */
+    afterWithdraw() {
+      const s = S(); const a = s.after;
+      if (a.kind === 'cancel') app.go('claim', 'withdraw', { by: '고객이 확정 후 취소 요청 철회' });
+      s.after = null;
+      if (!s.afterChange) { s.hold = false; app.log('rule', '요청 철회 → 생산 보류 해제'); }
+      else app.log('rule', '확정 후 변경 건이라 생산 보류는 새 버전을 전달할 때까지 그대로예요');
+      app.notify('NOTI_CLAIM_WITHDRAWN', '파트너', ['알림톡'], '고객이 요청을 철회했어요');
+      refresh();
+    },
+    async plate(b) {
+      const s = S(); const v = Number(b.dataset.v);
+      if (v > 0) await app.ext({ service: 'AWS S3', what: '판 제작 증빙 올리기', lines: ['작업 기록·사진·실비 내역이 있어야 판비를 공제해요', `증빙한 실비 ${won(v)}`] });
+      s.plateCost = v;
+      app.log('user', `파트너 답변: ${plateTxt(v)}`);
+      if (v > 0) app.log('rule', `판비 공제 = min(실비 ${won(v)}, 낸 판비 ${won(s.paid.plate)}) = ${won(Math.min(v, s.paid.plate))}${v > s.paid.plate ? ' · 실비가 더 커도 낸 판비까지만' : ''}`);
+      refresh();
+    },
+    async mediate(b) {
+      const s = S(); const accept = b.dataset.r === 'ok'; const a = s.after;
+      if (a.kind === 'change') {
+        if (!accept) {
+          s.after = null; s.hold = s.afterChange;
+          app.log('user', '본사 중재: 확정 후 변경 기각(최종) · 생산 보류 해제');
+          app.notify('NOTI_MEDIATION_DECIDED', '고객', ['알림톡', '이메일'], '변경 요청 기각 · 확정본대로 제작');
+          refresh(); return;
+        }
+        goDesign('change_approved', '확정 후 변경 승인 · 기존 패키지 무효·다운로드 링크 회수');
+        goItem('change_approved');
+        s.revisions += 1; if (s.freeLeft > 0) s.freeLeft -= 1;
+        setSla('revision', GC.addBusinessDays(app.clock.now(), GC.Policy.get('design.sla.revision_days')));
+        s.after = null; s.afterChange = true; s.downloaded = false; s.waitSince = null; s.notices = {};
+        app.log('rule', '확정 후 변경 건 표시를 붙였어요: 생산 보류는 새 버전을 다시 전달할 때까지 유지, 이 건의 취소는 확정 후 취소(본사 중재), 30일 무응답이면 자동 취소 대신 이전 확정본 복원');
+        app.notify('NOTI_MEDIATION_DECIDED', '고객', ['알림톡', '이메일'], '변경 승인 · 새 시안을 다시 확정해 주세요');
+        refresh(); return;
+      }
+      if (!accept) {
+        app.go('claim', 'mediation_dismiss', { by: '본사 중재 · 확정 후 취소 기각(최종, 이의 제기 없음)' });
+        s.after = null; s.hold = s.afterChange;
+        app.log('user', `본사 중재: 취소 기각 · ${s.afterChange ? '확정 후 변경 건이라 생산 보류는 새 버전 전달까지 유지' : '생산 보류 해제'}`);
+        app.notify('NOTI_MEDIATION_DECIDED', '고객', ['알림톡', '이메일'], '취소 요청 기각 · 중재 결과는 최종');
+        refresh(); return;
+      }
+      const cp = cancelPreview();
+      await app.ext({ service: '토스페이먼츠', what: '결제 취소(판매자별 부분 취소)', lines: [`고객 환불 ${won(cp.refund)}`, cp.plateToPartner ? `판비 공제 ${won(cp.plateToPartner)} → 파트너 '취소 보상'(수수료 0%)` : '판비 공제 없음', '요청 키(취소 건 ID + 회차)를 먼저 저장하고 같은 키로만 다시 요청해요'] });
+      app.go('claim', 'mediation_approve', { by: '본사 중재 · 확정 후 취소 승인' });
+      s.refunded = cp; s.hold = false; s.after = null; s.afterChange = false;
+      goDesign('custom_cancel_approved', '본사 중재로 확정 후 취소');
+      goItem('custom_cancel_approved');
+      app.go('claim', 'refund', { by: '환불 완료' });
+      app.log('money', `환불 ${won(cp.refund)} · 공제 ${won(cp.deduction)}${cp.plateToPartner ? ` (판비 ${won(cp.plateToPartner)}은 파트너 '취소 보상' 정산 이벤트)` : ''}`);
+      app.notify('NOTI_PARTNER_MEDIATION_DECIDED', '파트너', ['알림톡'], `확정 후 취소 승인${cp.plateToPartner ? ` · 취소 보상 ${won(cp.plateToPartner)}` : ''}`);
+      refresh();
+    },
+    /* 확정 후 변경 건 30일 무응답 → 본사 중재로 이전 확정본 복원(D3, D-ROOM-07) */
+    restore() {
+      const s = S();
+      goDesign('restore', `본사 중재 · 이전 확정본 v${s.confirmedVer} 복원(버전·해시·사양 스냅샷 다시 유효)`);
+      goItem('restore');
+      s.versions.forEach((x) => { if (x.v > s.confirmedVer) x.note = `${x.note ? x.note + ' · ' : ''}복원으로 무효`; });
+      s.hash = s.confirmedHash; s.hold = false; s.afterChange = false; s.restoreDue = false; s.downloaded = false; s.waitSince = null; s.notices = {}; s.sla = null; s.plateCost = null;
+      if (s.changeFrom === 'APPROVED') app.log('rule', '변경 요청을 패키지 전달 전에 받은 건이라 디자이너가 이전 확정본으로 패키지를 만들어 전달해요(영업시간 4시간)');
+      app.log('rule', '생산 보류 해제 → 파트너가 이전 확정본으로 [인쇄 가능]을 누를 수 있어요');
+      app.notify('NOTI_DESIGN_RESTORED', '고객', ['알림톡', '푸시', '이메일'], `30일 동안 답이 없어 이전 확정본 v${s.confirmedVer}으로 제작을 이어가요`);
+      app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', '파트너', ['알림톡', '이메일'], '이전 확정본 패키지 다시 전달 · 생산 보류 해제');
+      refresh();
+    },
+    resume() {
+      const s = S(); const back = s.prevStatus || 'PROPOSED';
+      app.setState('design', back, { by: '고객이 진행 재개 · 보류 전 상태로' });
+      if (s.restoreDue) { s.restoreDue = false; app.log('rule', '고객이 응답해 운영 확인 목록에서 뺐어요(복원하지 않고 일반 흐름대로)'); }
+      setWait(); refresh();
+    },
+    ownReupload() { goDesign('reupload', '수정 파일 재업로드 · 같은 담당자가 다시 검수'); setSla('first', GC.addBusinessDays(app.clock.now(), 1)); S().waitSince = null; S().notices = {}; refresh(); },
+    async ownFix() {
+      await app.ext({ service: '토스페이먼츠', what: '보정 작업 결제(디자인 부가 결제)', lines: [`${won(GC.Policy.get('design.own_file_fix_fee'))} · 디자인 변경은 포함하지 않아요`, '작업을 시작하면 환불되지 않아요'] });
+      const s = S(); s.fixStarted = true; s.paid.fix = GC.Policy.get('design.own_file_fix_fee');
+      goDesign('fix', '보정 작업 맡김 · 보정본은 고객이 다시 확정'); setSla('revision', GC.addBusinessDays(app.clock.now(), 1)); s.waitSince = null; s.notices = {}; refresh();
+    },
+    filePass() {
+      const s = S(); const v = s.versions.length + 1;
+      goDesign('file_pass', s.fixStarted ? '보정본 등록 · 고객 재확정 요청' : '검수 통과 · 인쇄 미리보기 등록');
+      s.versions.push({ v, opts: ['A'], at: app.clock.now(), note: s.fixStarted ? '디자인팀 보정본 · 인쇄 미리보기' : '고객 파일 · 인쇄 미리보기' });
+      if (!s.firstProposedAt) s.firstProposedAt = app.clock.now();
+      s.sla = null; setWait(); refresh();
+    },
+    fileReject() { goDesign('file_reject', '해상도 부족(150dpi)'); app.notify('NOTI_FILE_REVIEWED', '고객', ['알림톡', '푸시'], '파일 수정 필요'); setWait(); refresh(); },
+    /* ── 재제작(REMAKE, C-STATE-02): 디자인 요청 상태는 그대로, 클레임으로만 움직임 ── */
+    async remakeReq() {
+      const s = S(); const it = app.state('item');
+      const ok = await app.confirm({ title: '재제작을 요청할까요?', body: '<p class="small">확정본과 다른 인쇄나 허용 오차(수량 ±3%, 위치 ±2mm)를 넘는 불량만 받아요. 사진이 필수이고, 사진으로 충분하면 회수를 생략해요.</p><p class="small">기본은 같은 확정 파일로 다시 만들어 드리고, 원하면 환불을 고를 수 있어요.</p>', ok: '사진 올리고 요청하기' });
+      if (!ok) return;
+      await app.ext({ service: 'AWS S3 · GuardDuty', what: '불량 사진 3장 올리기', lines: ['최대 10장 · 악성코드 검사를 통과해야 파트너·디자인팀이 열어요'] });
+      s.remake = { at: app.clock.now(), from: it, settledBefore: s.settled, inspectDue: null };
+      showClaim('CLAIM_RETURN', '재제작 클레임', 'claim_type REMAKE · 디자인 요청 상태는 바뀌지 않아요 · C-STATE-02');
+      app.setState('claim', 'RETURN_REQUESTED', { by: `고객 재제작 요청${it === 'EXCHANGED' ? '(재제작품이 또 불량, 그 물건 받은 날부터 기한)' : ''} · 사진 3장` });
+      if (it === 'DELIVERED') app.log('rule', '클레임이 열린 항목은 자동 구매 확정에서 빠져요');
+      app.notify('NOTI_PARTNER_CLAIM_NEW', '대성포장', ['알림톡', '이메일'], '재제작 요청 · 사진 확인');
+      refresh();
+    },
+    remakePhoto() {
+      const s = S(); app.clock.pass(2 * 3600000);
+      app.go('claim', 'photo_inspect', { by: '사진 증빙으로 회수 생략 → 확정본 대조 검수' });
+      s.remake.inspectDue = GC.addBusinessDays(app.clock.now(), GC.Policy.get('claim.inspect_bd'));
+      refresh();
+    },
+    remakeApprove() { app.clock.pass(3 * 3600000); app.go('claim', 'approve', { by: '확정본과 대조 · 인쇄 위치 불량 맞음 → 재제작 승인' }); app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], '재제작 승인 · 같은 파일로 다시 만들어요'); refresh(); },
+    async remakeShip() {
+      await app.ext({ service: 'CJ대한통운 · 스윗트래커', what: '재제작품 송장 등록', lines: [`기한 = 제작 리드타임(영업일 ${PRODUCT.leadDays}일)`, '같은 확정 파일 · 같은 판으로 다시 인쇄'] });
+      app.clock.pass(GC.addBusinessDays(app.clock.now(), PRODUCT.leadDays) - app.clock.now());
+      app.go('claim', 'reship', { by: '재제작품 출고' });
+      app.notify('NOTI_SHIPPED', '고객', ['알림톡', '푸시'], '재제작품 출고 · 배송 조회 링크');
+      refresh();
+    },
+    async remakeRefund() {
+      const s = S(); const amt = s.paid.total - s.paid.designFee;
+      const ok = await app.confirm({ title: '재제작 대신 환불받을까요?', body: `<p>상품 대금·판비 ${won(amt)}을 환불해요.</p><p class="small">파트너 귀책 불량이라 할인 회수가 없어요. 디자인비는 귀책 판정(A-ORD-02)에 따라 따로 정해요.</p>`, ok: '환불받기' });
+      if (!ok) return;
+      await app.ext({ service: '토스페이먼츠', what: '결제 취소(판매자별 부분 취소)', lines: [`환불 ${won(amt)}`, '요청 키(클레임 ID + 회차)를 먼저 저장'] });
+      app.go('claim', 'refund', { by: '고객이 재제작 대신 환불 선택 · 환불 완료' });
+      goItem('remake_refund');
+      if (s.settled) app.log('money', '이미 정산된 항목이라 다음 정산 주기에 역분개(마이너스 이벤트)해요');
+      if (app.state('design') === 'SHIPPED') goDesign('complete', '연결 항목이 모두 반품 → 마지막 클레임이 끝날 때 완료');
+      refresh();
+    },
+    async remakeDelivered() {
+      const s = S();
+      await app.ext({ service: '스윗트래커', what: '재제작품 배송 완료 확인', lines: ['택배사가 기록한 배송 완료 시각을 그대로 써요'] });
+      app.clock.pass(26 * 3600000);
+      app.go('claim', 'delivered', { by: '재제작품 배송 완료' });
+      goItem('remake_delivered');
+      s.exchangedAt = app.clock.now();
+      const rs = GC.claim.remakeSettlement({ settledBefore: s.remake.settledBefore, deliveredAt: s.exchangedAt });
+      if (rs.newEvent) { s.exchangeSettleDue = rs.settleAt; app.log('rule', `EXCHANGED는 끝 상태예요. 재제작품 배송 완료 7일 뒤(${fmtDate(rs.settleAt)}) 구매 확정과 같이 정산해요`); }
+      else app.log('money', '이미 구매 확정·정산된 항목을 재제작했어요 → 고객 추가 결제가 없어 새 정산 이벤트를 만들지 않아요. 재제작 비용은 귀책 쪽(파트너)이 내요');
+      app.notify('NOTI_DELIVERED', '고객', ['푸시'], '재제작품 배송 완료');
+      refresh();
+    },
+  });
+
+  function doConfirm(by) {
+    const s = S();
+    goItem('confirm');
+    goDesign('complete', '연결된 주문 항목이 모두 구매 확정');
+    const sp = settlePreview();
+    s.settled = true;
+    app.log('money', `정산 이벤트 생성: 구매 확정 ${won(sp.ev.amount)} (판매가 ${won(sp.line.gross + sp.line.plateFee)} − 할인 ${won(sp.line.instantDisc)} − 수수료 ${sp.rate.rate}% ${won(sp.ev.fee)})`);
+    app.log('user', by);
+    refresh();
+  }
+
+  /* ── 시간이 흐를 때: 무응답(예고 먼저)·SLA·재제작 검수 기한·자동 확정 ── */
+  app.onAdvance((prev, now) => {
+    const s = S(); const d = app.state('design');
+    if (s.sla && !s.sla.warned && now > s.sla.due && ['REQUESTED', 'ASSIGNED', 'IN_PROGRESS', 'REVISION', 'FILE_SUBMITTED', 'FILE_REVIEW'].includes(d)) {
+      s.sla.warned = true;
+      app.log('warn', `SLA 초과: ${{ assign: '배정', first: '첫 시안', revision: '수정본' }[s.sla.kind]} 기한 ${fmtDate(s.sla.due)}을 넘겼어요 → 사유 기록 필요`);
+      app.notify('NOTI_INT_SLA_OVER', '담당 디자이너·디자인 리드', ['관리자 알림', 'Slack'], 'SLA 초과');
+    }
+    if (s.waitSince && waitingNow()) {
+      const days = Math.floor((now - s.waitSince) / GC.DAY);
+      const R = GC.Policy.get('design.no_response_remind_days'), H = GC.Policy.get('design.no_response_hold_days'), C = GC.Policy.get('design.no_response_cancel_days');
+      const NH = GC.Policy.get('notify.notice_min_hours');
+      const late = (k) => app.log('rule', `예고 없이 ${k}하지 않아요 → 지금 예고를 보내고 ${NH}시간 뒤에 ${k}해요(D-ROOM-07 예고 먼저)`);
+      if (days >= R && !s.fired[R]) { s.fired[R] = true; app.notify('NOTI_DESIGN_REMIND', '고객', ['알림톡', '푸시'], `${s.asking ? '디자이너 질문에 답을' : d === 'FILE_REJECTED' ? '파일 수정을' : '시안 확인을'} 기다리고 있어요 (${R}일째)`); }
+      // 보류: 13일째 예고 → 예고 뒤 24시간이 지나야 14일째 보류
+      if (d !== 'ON_HOLD' && days >= H - 1 && !s.notices.hold) {
+        s.notices.hold = now;
+        app.notify('NOTI_DESIGN_HOLD_NOTICE', '고객', ['알림톡', '푸시', '이메일'], '내일 보류 처리돼요');
+        if (days >= H) late('보류');
+      }
+      if (d !== 'ON_HOLD' && days >= H && GC.notice.elapsed(s.notices.hold, now)) {
+        s.prevStatus = d;
+        goDesign('hold', `${H}일 무응답 · 예고 뒤 ${NH}시간 지남 · 보류 전 상태(${GC.sm.stateName('DESIGN', d)}) 저장`);
+        app.notify('NOTI_DESIGN_ON_HOLD', '고객', ['알림톡', '푸시'], '보류됐어요 · [진행 재개]로 이어 갈 수 있어요');
+        app.log('rule', '보류 중에는 SLA 타이머가 멈추고 디자이너 업무량에서도 빠져요');
+      }
+      if (s.afterChange) {
+        // 확정 후 변경 건: 자동 취소 없이 30일째 운영 확인 목록 → 본사가 이전 확정본 복원(D3)
+        if (days >= C && !s.restoreDue) {
+          s.restoreDue = true;
+          app.log('warn', `확정 후 변경 건이 ${C}일 동안 답이 없어요 → 자동 취소하지 않고 운영 확인 목록에 올렸어요`);
+          app.notify('NOTI_INT_MEDIATION_NEW', '운영팀(CS)', ['관리자 알림', 'Slack'], '확정 후 변경 건 30일 무응답 · 이전 확정본 복원 판단');
+        }
+      } else {
+        if (days >= C - 1 && !s.notices.cancel) {
+          s.notices.cancel = now;
+          app.notify('NOTI_DESIGN_CANCEL_NOTICE', '고객', ['알림톡', '푸시', '이메일'], '내일 자동 취소돼요');
+          if (days >= C) late('자동 취소');
+        }
+        if (days >= C && GC.notice.elapsed(s.notices.cancel, now)) {
+          const cp = cancelPreview();
+          s.refunded = cp;
+          goDesign('cancel', `${C}일 무응답 · 예고 뒤 ${NH}시간 지나 자동 취소`);
+          goItem('cancel', '디자인 자동 취소');
+          app.log('money', `자동 취소 환불 ${won(cp.refund)} · 공제 ${won(cp.deduction)}(${cp.stage === 'BEFORE_PROPOSAL' ? '첫 시안 전이라 전액 환불' : '첫 시안 뒤라 디자인비 공제'})`);
+          app.notify('NOTI_DESIGN_AUTO_CANCELED', '고객', ['알림톡', '푸시', '이메일'], '자동 취소 · 공제·환불 내역');
+          s.waitSince = null; s.notices = {};
+        }
+      }
+    }
+    // 재제작 검수 기한(영업일 2일)을 넘기면 재제작 승인으로 봄(환불 아님)
+    if (s.remake && app.state('claim') === 'RETURN_INSPECTING' && s.remake.inspectDue && now > s.remake.inspectDue) {
+      app.go('claim', 'approve', { by: '검수 기한 넘김 → 재제작 승인으로 봄(환불 아님) · 출고 독촉' });
+      app.notify('NOTI_PARTNER_CLAIM_AUTO_APPROVED', '대성포장', ['알림톡'], '검수 기한 초과 · 재제작 승인 처리 · 출고해 주세요');
+    }
+    // EXCHANGED: 재제작품 배송 완료 7일 뒤 구매 확정과 같이 정산(상태는 그대로)
+    if (s.exchangeSettleDue && now >= s.exchangeSettleDue) {
+      const sp = settlePreview();
+      app.log('money', `EXCHANGED 7일 경과 → 정산 이벤트 생성 ${won(sp.ev.amount)} · 주문 항목은 '교환·재제작 완료' 그대로`);
+      s.settled = true; s.exchangeSettleDue = null;
+      if (app.state('design') === 'SHIPPED') goDesign('complete', '재제작으로 EXCHANGED가 된 항목을 7일 뒤 확정으로 봄');
+    }
+    if (app.state('item') === 'DELIVERED' && s.deliveredAt && !claimOpen() && now - s.deliveredAt >= GC.Policy.get('order.auto_confirm_days') * GC.DAY) {
+      doConfirm('자동 구매 확정 배치 · 확정 시각은 배송 완료 + 7일로 기록');
+      return;
+    }
+    guide();
+  });
+
+  async function sha256(text) {
+    try {
+      if (window.crypto && crypto.subtle) {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+        return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+      }
+    } catch (e) { /* 보안 컨텍스트가 아니면 아래 간이 해시 */ }
+    let h = 2166136261; for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return ('00000000' + (h >>> 0).toString(16)).slice(-8).repeat(8);
+  }
+})();
+</script>
+</body>
+</html>

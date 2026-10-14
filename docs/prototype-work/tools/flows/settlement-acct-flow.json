@@ -1,0 +1,20 @@
+[
+ {"adv":"86400000"},
+ {"role":"hq"},{"act":"holdItem"},{"act":"okSpike"},
+ {"act":"hqTab","attr":"data-t=\"recon\""},{"act":"runRecon","after":400},{"act":"fixRecon"},
+ {"act":"hqTab","attr":"data-t=\"agg\""},
+ {"act":"confirmStl","shot":"settlement-a01-confirm-disabled"},
+ {"adv":"86400000"},
+ {"act":"acct","attr":"data-a=\"han\""},{"act":"confirmStl","after":300},
+ {"role":"partner"},{"act":"ptTab","attr":"data-t=\"stmt\"","after":300},
+ {"adv":"86400000"},{"adv":"86400000"},
+ {"act":"ptTab","attr":"data-t=\"acct\""},
+ {"act":"chgAccount","after":700,"shot":"settlement-a02-changed"},
+ {"role":"hq"},{"act":"acct","attr":"data-a=\"choi\""},{"act":"hqTab","attr":"data-t=\"pay\"","shot":"settlement-a03-paylist"},
+ {"act":"reqPayout"},{"act":"acct","attr":"data-a=\"han\""},
+ {"act":"approve","after":700,"shot":"settlement-a04-held"},
+ {"act":"hqTab","attr":"data-t=\"agg\""},
+ {"act":"release","shot":"settlement-a05-wait"},
+ {"adv":"86400000"},
+ {"act":"release","after":300,"shot":"settlement-a06-released"}
+]

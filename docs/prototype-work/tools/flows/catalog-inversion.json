@@ -1,0 +1,137 @@
+[
+ {
+  "act": "pstep",
+  "attr": "data-k=\"desc\""
+ },
+ {
+  "act": "cleanDesc"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"ship\""
+ },
+ {
+  "act": "shipTpl",
+  "attr": "data-k=\"basic\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"docs\""
+ },
+ {
+  "act": "upDoc",
+  "attr": "data-k=\"test\"",
+  "after": 400
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"submit\""
+ },
+ {
+  "act": "requestReview"
+ },
+ {
+  "role": "hq"
+ },
+ {
+  "check": "rv_cat"
+ },
+ {
+  "check": "rv_word"
+ },
+ {
+  "check": "rv_doc"
+ },
+ {
+  "check": "rv_img"
+ },
+ {
+  "check": "rv_tpl"
+ },
+ {
+  "check": "rv_mode"
+ },
+ {
+  "check": "rv_desc"
+ },
+ {
+  "act": "approve"
+ },
+ {
+  "role": "partner"
+ },
+ {
+  "eval": "document.querySelector('#gc-device [data-act=\"promoBiz\"]').scrollIntoView({block:'center'})",
+  "shot": "catalog-i01-promo-default"
+ },
+ {
+  "act": "promoBiz",
+  "attr": "data-k=\"0\"",
+  "after": 300
+ },
+ {
+  "eval": "!!document.querySelector('#bizInvWarn') && document.querySelector('#bizInvWarn').textContent.includes(GC.price.BIZ_INVERSION_MSG)"
+ },
+ {
+  "eval": "document.querySelector('#bizInvWarn').scrollIntoView({block:'center'})",
+  "shot": "catalog-i02-inversion-warn"
+ },
+ {
+  "act": "promoSave",
+  "after": 300
+ },
+ {
+  "eval": "document.querySelector('#bizInvWarn').scrollIntoView({block:'center'})",
+  "shot": "catalog-i03-saved-with-warn"
+ },
+ {
+  "role": "customer"
+ },
+ {
+  "act": "cs",
+  "attr": "data-to=\"search\""
+ },
+ {
+  "type": {
+   "sel": "#q",
+   "text": "수저집"
+  },
+  "after": 300
+ },
+ {
+  "act": "doSearch"
+ },
+ {
+  "act": "openP",
+  "attr": "data-id=\"mine\""
+ },
+ {
+  "click": "#gc-aside [data-mem=\"member\"]",
+  "after": 400,
+  "shot": "catalog-i04-pdp-member"
+ },
+ {
+  "click": "#gc-aside [data-mem=\"biz\"]",
+  "after": 400,
+  "shot": "catalog-i05-pdp-biz"
+ },
+ {
+  "role": "partner"
+ },
+ {
+  "act": "promoBiz",
+  "attr": "data-k=\"1\"",
+  "after": 300
+ },
+ {
+  "eval": "!document.querySelector('#bizInvWarn')"
+ },
+ {
+  "act": "promoSave",
+  "after": 300
+ },
+ {
+  "eval": "document.querySelector('#gc-device [data-act=\"promoBiz\"]').scrollIntoView({block:'center'})",
+  "shot": "catalog-i06-applied-no-warn"
+ }
+]

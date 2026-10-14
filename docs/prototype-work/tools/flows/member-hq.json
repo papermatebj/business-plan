@@ -1,0 +1,13 @@
+[
+ {"act":"sns","attr":"data-via=\"kakao\""},
+ {"check":"all"},{"act":"toIdentity"},{"act":"pass","after":300},
+ {"act":"toBiz"},{"act":"bzSample","attr":"data-s=\"space\""},{"act":"ntsCheck"},{"act":"ntsCheck","after":300,"shot":"member-h00-mismatch2","el":"#gc-device"},
+ {"act":"bzSample","attr":"data-s=\"ok\""},{"act":"ntsCheck","after":300},
+ {"act":"industry","attr":"data-v=\"한식\""},{"act":"addrSearch"},{"act":"bizConvert","after":300},
+ {"act":"cs","attr":"data-to=\"home\""},{"act":"cs","attr":"data-to=\"my\"","shot":"member-h01-my","el":"#gc-device"},
+ {"role":"hq"},{"act":"openMember","after":300,"shot":"member-h02-hq-masked","el":"#gc-device"},
+ {"role":"system"},{"act":"ntsAns","attr":"data-v=\"closed\""},{"act":"recheck","after":300},
+ {"role":"hq","shot":"member-h03-hq-check","el":"#gc-device"},
+ {"act":"hqTab","attr":"data-v=\"biz\"","shot":"member-h04-hq-biz","el":"#gc-device"},
+ {"role":"customer","shot":"member-h05-page","full":true}
+]

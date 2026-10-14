@@ -1,0 +1,142 @@
+[
+{
+"act": "toMethod"
+},
+{
+"act": "toRequest"
+},
+{
+"check": "rights"
+},
+{
+"check": "stage"
+},
+{
+"check": "own"
+},
+{
+"act": "toCheckout"
+},
+{
+"check": "co_stage"
+},
+{
+"check": "co_plate"
+},
+{
+"act": "pay",
+"after": 500
+},
+{
+"role": "design"
+},
+{
+"act": "assign"
+},
+{
+"act": "startWork"
+},
+{
+"act": "propose",
+"after": 500
+},
+{
+"role": "customer"
+},
+{
+"act": "cs",
+"attr": "data-to=\"proposal\""
+},
+{
+"act": "cs",
+"attr": "data-to=\"approve\""
+},
+{
+"check": "ap_typo"
+},
+{
+"check": "ap_contact"
+},
+{
+"check": "ap_color"
+},
+{
+"check": "ap_qty"
+},
+{
+"check": "ap_nocancel"
+},
+{
+"act": "doApprove",
+"after": 600
+},
+{
+"role": "design"
+},
+{
+"act": "handOff"
+},
+{
+"role": "partner"
+},
+{
+"act": "download"
+},
+{
+"role": "customer"
+},
+{
+"act": "afterReq",
+"attr": "data-kind=\"change\""
+},
+{
+"role": "partner"
+},
+{
+"act": "plate",
+"attr": "data-v=\"30000\""
+},
+{
+"role": "hq"
+},
+{
+"act": "mediate",
+"attr": "data-r=\"ok\""
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"role": "design",
+"shot": "dc-01-revision"
+},
+{
+"act": "propose",
+"after": 500
+},
+{
+"role": "customer"
+},
+{
+"wait": 50,
+"shot": "dc-02-change-case"
+},
+{
+"act": "afterReq",
+"attr": "data-kind=\"cancel\""
+},
+{
+"role": "hq",
+"shot": "dc-03-mediation"
+},
+{
+"act": "mediate",
+"attr": "data-r=\"ok\""
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+}
+]

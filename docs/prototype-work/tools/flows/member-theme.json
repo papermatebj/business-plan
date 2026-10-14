@@ -1,0 +1,9 @@
+[
+ {"act":"sns","attr":"data-via=\"kakao\""},
+ {"check":"tos"},{"check":"privacy"},{"check":"age"},{"act":"toIdentity"},{"act":"pass","after":300},
+ {"act":"toBiz"},{"act":"bzSample","attr":"data-s=\"ok\""},{"act":"ntsCheck","after":300},
+ {"act":"industry","attr":"data-v=\"한식\""},{"act":"addrSearch"},{"act":"bizConvert","after":300,"shot":"member-t01-bizdone"},
+ {"role":"hq"},{"act":"openMember","after":300,"shot":"member-t02-hq"},
+ {"role":"system"},{"act":"ntsAns","attr":"data-v=\"closed\""},{"act":"recheck","after":300},
+ {"role":"customer"},{"act":"cs","attr":"data-to=\"home\"","shot":"member-t03-home"}
+]

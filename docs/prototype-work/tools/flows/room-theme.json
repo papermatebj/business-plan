@@ -1,0 +1,18 @@
+[
+ {"act":"attachToggle"},
+ {"act":"attach","attr":"data-id=\"jpg\"","after":400},
+ {"wait":2300},
+ {"role":"design"},
+ {"act":"assign"},
+ {"act":"propose","after":400},
+ {"wait":2300},
+ {"act":"savedD","attr":"data-i=\"0\""},
+ {"act":"sendD"},
+ {"role":"customer"},
+ {"act":"exC","attr":"data-i=\"1\""},
+ {"act":"sendC","shot":"room-t1-customer","full":true},
+ {"role":"design","shot":"room-t2-design","full":true},
+ {"role":"hq"},
+ {"act":"hqReason","idx":0},
+ {"act":"reveal","idx":0,"shot":"room-t3-hq","full":true}
+]

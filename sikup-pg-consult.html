@@ -1,0 +1,1250 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>식업 PG 상담 질문서</title>
+<meta name="description" content="식업 오픈마켓 결제·에스크로·지급대행·정기결제·웹뷰 연동에 대해 PG사에 확인할 질문과 원하는 답, 안 될 때의 대안">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F7F9; --surface:#FFFFFF; --surface-2:#F1F3F6; --surface-3:#E9EDF2;
+  --border:#E2E6EC; --border-strong:#CDD3DC;
+  --text:#121821; --text-2:#455162; --text-3:#7A8596;
+  --primary:#0E8A5E; --primary-strong:#0A6A48; --primary-weak:#E2F4EC; --on-primary:#FFFFFF;
+  --accent:#D9770B; --accent-weak:#FDF0DF;
+  --blue:#2563EB; --blue-weak:#E7EEFD;
+  --purple:#7C3AED; --purple-weak:#F0E8FE;
+  --red:#D92D20; --red-weak:#FDECEA;
+  --gray-weak:#ECEFF3;
+  --kraft:#C9A36A; --kraft-weak:#F6EEDF;
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 6px 20px rgba(16,24,40,.06);
+  --radius:14px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1116; --surface:#151A21; --surface-2:#1B212A; --surface-3:#232B35;
+    --border:#29313C; --border-strong:#3A4452;
+    --text:#E7EBF0; --text-2:#A8B2C0; --text-3:#7C8797;
+    --primary:#3CC795; --primary-strong:#6BDAB2; --primary-weak:rgba(60,199,149,.14); --on-primary:#06231A;
+    --accent:#F4A24C; --accent-weak:rgba(244,162,76,.14);
+    --blue:#6E9BFF; --blue-weak:rgba(110,155,255,.14);
+    --purple:#A98BFA; --purple-weak:rgba(169,139,250,.15);
+    --red:#F07167; --red-weak:rgba(240,113,103,.14);
+    --gray-weak:#222A34;
+    --kraft:#D8B67F; --kraft-weak:rgba(216,182,127,.12);
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1116; --surface:#151A21; --surface-2:#1B212A; --surface-3:#232B35;
+  --border:#29313C; --border-strong:#3A4452;
+  --text:#E7EBF0; --text-2:#A8B2C0; --text-3:#7C8797;
+  --primary:#3CC795; --primary-strong:#6BDAB2; --primary-weak:rgba(60,199,149,.14); --on-primary:#06231A;
+  --accent:#F4A24C; --accent-weak:rgba(244,162,76,.14);
+  --blue:#6E9BFF; --blue-weak:rgba(110,155,255,.14);
+  --purple:#A98BFA; --purple-weak:rgba(169,139,250,.15);
+  --red:#F07167; --red-weak:rgba(240,113,103,.14);
+  --gray-weak:#222A34;
+  --kraft:#D8B67F; --kraft-weak:rgba(216,182,127,.12);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:15.5px;line-height:1.7;word-break:keep-all;overflow-wrap:break-word;-webkit-font-smoothing:antialiased}
+a{color:var(--primary)}
+h1,h2,h3,h4,h5{line-height:1.35;margin:0}
+p{margin:0}
+ul{margin:0;padding-left:1.1em}
+b,strong{font-weight:700}
+small{font-size:.85em}
+button,input,select,textarea{font:inherit;color:inherit}
+
+/* Top bar */
+.topbar{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--border)}
+.topbar-in{max-width:1320px;margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:-.02em;font-size:17px;color:var(--text);text-decoration:none;white-space:nowrap}
+.brand-mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--primary-strong));display:grid;place-items:center;color:var(--on-primary);font-size:15px;font-weight:900}
+.brand small{font-weight:500;color:var(--text-3);font-size:13px;margin-left:2px}
+.topbar .spacer{flex:1}
+.icon-btn{border:1px solid var(--border);background:var(--surface);color:var(--text-2);height:36px;padding:0 12px;border-radius:10px;cursor:pointer;font-size:13.5px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;white-space:nowrap}
+.icon-btn:hover{border-color:var(--border-strong);color:var(--text)}
+.icon-btn svg{width:16px;height:16px;flex:none}
+.prog-pill{font-size:13px;color:var(--text-2);background:var(--primary-weak);border-radius:999px;padding:5px 12px;white-space:nowrap}
+.prog-pill b{color:var(--primary-strong);font-variant-numeric:tabular-nums}
+
+/* Layout */
+.layout{max-width:1320px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:232px minmax(0,1fr);gap:40px}
+.toc{position:sticky;top:76px;align-self:start;max-height:calc(100vh - 96px);overflow:auto;padding:28px 0 40px}
+.toc-title{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--text-3);margin:0 0 10px 10px}
+.toc a{display:flex;gap:10px;align-items:baseline;padding:7px 10px;border-radius:9px;color:var(--text-2);text-decoration:none;font-size:14px;line-height:1.4}
+.toc a .n{font-size:11.5px;color:var(--text-3);font-variant-numeric:tabular-nums;min-width:18px}
+.toc a:hover{background:var(--surface-2);color:var(--text)}
+.toc a.active{background:var(--primary-weak);color:var(--primary-strong);font-weight:700}
+.toc a.active .n{color:var(--primary)}
+main{min-width:0;padding:28px 0 96px}
+
+/* Hero */
+.hero{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:44px 44px 36px;overflow:hidden;box-shadow:var(--shadow)}
+.hero::before{content:"";position:absolute;right:-120px;top:-140px;width:420px;height:420px;border-radius:50%;background:radial-gradient(closest-side,var(--primary-weak),transparent);pointer-events:none}
+.hero::after{content:"";position:absolute;right:40px;bottom:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(closest-side,var(--kraft-weak),transparent);pointer-events:none}
+.hero>*{position:relative;z-index:1}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--primary-strong);background:var(--primary-weak);padding:5px 11px;border-radius:999px;letter-spacing:.02em}
+.hero h1{font-size:clamp(28px,4vw,40px);font-weight:900;letter-spacing:-.035em;margin:16px 0 12px}
+.hero h1 em{font-style:normal;color:var(--primary)}
+.hero .lead{font-size:17px;color:var(--text-2);max-width:820px}
+.meta-row{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:18px;color:var(--text-3);font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:30px}
+.kpi{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:16px 16px 14px}
+.kpi .k{font-size:12.5px;color:var(--text-3);font-weight:500}
+.kpi .v{font-size:22px;font-weight:900;letter-spacing:-.03em;margin-top:2px;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12.5px;color:var(--text-2);margin-top:2px;line-height:1.5}
+
+/* Filters */
+.filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:22px}
+.filters .f-l{font-size:12.5px;font-weight:800;color:var(--text-3);margin-right:2px}
+.filters button{border:1px solid var(--border);background:var(--surface);color:var(--text-2);border-radius:999px;padding:6px 14px;font-size:13.5px;cursor:pointer}
+.filters button:hover{border-color:var(--border-strong);color:var(--text)}
+.filters button[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:var(--on-primary);font-weight:700}
+
+/* Sections */
+section.sec{margin-top:56px}
+section.sec[hidden]{display:none}
+.sec-head{display:flex;align-items:flex-end;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.sec-num{font-size:13px;font-weight:900;color:var(--primary);background:var(--primary-weak);border-radius:10px;width:38px;height:38px;display:grid;place-items:center;flex:none}
+.sec-head h2{font-size:clamp(22px,2.6vw,28px);font-weight:900;letter-spacing:-.03em}
+.sec-head p{flex-basis:100%;color:var(--text-2);margin-top:2px}
+h3.sub{font-size:18.5px;font-weight:800;letter-spacing:-.02em;margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+h3.sub::before{content:"";width:4px;height:18px;border-radius:2px;background:var(--primary)}
+.muted{color:var(--text-3)}
+.t2{color:var(--text-2);font-size:14.5px;margin-top:4px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.card h4.ch{font-size:16px;font-weight:800;letter-spacing:-.02em;margin:6px 0 8px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+ul.check{list-style:none;padding:0;display:grid;gap:7px;font-size:14.5px;color:var(--text-2)}
+ul.check li{position:relative;padding-left:20px}
+ul.check li::before{content:"";position:absolute;left:2px;top:.62em;width:8px;height:8px;border-radius:2px;background:var(--primary)}
+ul.check b{color:var(--text)}
+
+.callout{border-radius:14px;padding:16px 18px;border:1px solid var(--border);background:var(--surface-2);display:flex;gap:12px;align-items:flex-start;font-size:14.5px}
+.callout .ic{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-weight:900;font-size:13px}
+.callout.tip{background:var(--primary-weak);border-color:transparent}
+.callout.tip .ic{background:var(--primary);color:var(--on-primary)}
+.callout.warn{background:var(--accent-weak);border-color:transparent}
+.callout.warn .ic{background:var(--accent);color:#fff}
+.callout b{color:var(--text)}
+.callout .newlist{margin-top:6px;display:grid;gap:3px}
+
+/* Badges */
+.b{display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px;line-height:1.5;white-space:nowrap;letter-spacing:.01em;flex:none}
+.b.must{background:var(--red-weak);color:var(--red)}
+.b.rec{background:var(--accent-weak);color:var(--accent)}
+.b.opt{background:var(--gray-weak);color:var(--text-2)}
+.b.p3{background:var(--purple-weak);color:var(--purple)}
+.b.p2{background:var(--blue-weak);color:var(--blue)}
+.b.mvp{background:var(--primary-weak);color:var(--primary-strong)}
+.b.new{background:var(--primary);color:var(--on-primary)}
+
+/* Question card */
+.q{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px 16px;box-shadow:var(--shadow);margin-top:12px;scroll-margin-top:90px}
+.q[hidden]{display:none}
+.q.is-done{border-color:color-mix(in srgb,var(--primary) 50%,var(--border))}
+.q.is-done .q-h h4{color:var(--text-2)}
+.q:target{outline:2px solid var(--primary);outline-offset:2px}
+.q-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qid{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;font-weight:800;color:var(--text-3);min-width:44px}
+.q-h h4{font-size:16.5px;font-weight:800;letter-spacing:-.02em;flex:1 1 260px}
+.done{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);cursor:pointer;user-select:none;margin-left:auto;white-space:nowrap}
+.done input{width:17px;height:17px;accent-color:var(--primary);cursor:pointer}
+.ask{margin-top:12px;padding:12px 14px;border-left:3px solid var(--primary);background:var(--surface-2);border-radius:0 10px 10px 0;font-size:15px}
+.ask-l{display:block;font-size:11.5px;font-weight:800;color:var(--primary-strong);letter-spacing:.02em;margin-bottom:2px}
+.q-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:12px}
+.q-grid h5{font-size:12px;font-weight:800;color:var(--text-3);letter-spacing:.02em;margin:0 0 3px}
+.q-grid p{font-size:14px;color:var(--text-2);line-height:1.65}
+.q-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px;font-size:12.5px;color:var(--text-3)}
+.q-foot>span{font-weight:700;margin-right:2px}
+a.sid,a.xref{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:var(--surface-2);border:1px solid var(--border);padding:1px 7px;border-radius:6px;color:var(--text-2);text-decoration:none;white-space:nowrap}
+a.sid:hover,a.xref:hover{border-color:var(--primary);color:var(--primary)}
+.known{margin-top:12px;padding:10px 14px;border-radius:10px;background:var(--blue-weak);font-size:13.5px;color:var(--text-2);line-height:1.65}
+.known-l{display:block;font-size:11.5px;font-weight:800;color:var(--blue);letter-spacing:.02em;margin-bottom:2px}
+.sources{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:12px;font-size:12.5px}
+.sources a{word-break:break-all}
+.memo{display:block;width:100%;margin-top:12px;min-height:44px;resize:vertical;border:1px dashed var(--border-strong);border-radius:10px;background:transparent;font-size:14px;padding:9px 12px;line-height:1.55}
+.memo:focus{outline:none;border-style:solid;border-color:var(--primary);background:var(--surface)}
+.memo-print{display:none}
+
+/* Flow diagram */
+.flow{display:grid;grid-template-columns:minmax(0,1.25fr) 44px minmax(0,1fr) 44px minmax(0,1.1fr);align-items:center;gap:6px}
+.fl-col{display:grid;gap:8px}
+.fl-h{font-size:12.5px;font-weight:800;color:var(--text-3);letter-spacing:.02em}
+.fl-item{border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:13.5px;background:var(--surface);line-height:1.5}
+.fl-item b{display:block;font-size:13.5px}
+.fl-item span{display:block;font-size:12px;color:var(--text-3)}
+.fl-item.p{border-left:4px solid var(--blue)}
+.fl-item.h{border-left:4px solid var(--primary)}
+.fl-box{border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--surface-2);font-size:13.5px;font-weight:600;line-height:1.7;text-align:center}
+.fl-note{font-size:12px;color:var(--text-3);text-align:center;line-height:1.5}
+.fl-arrow{display:grid;place-items:center}
+.fl-arrow i{display:block;width:100%;height:2px;background:var(--border-strong);position:relative}
+.fl-arrow i::after{content:"";position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left:7px solid var(--border-strong);border-right:0}
+.fl-foot{font-size:12.5px;margin-top:14px}
+
+/* Tables */
+.table-wrap{width:100%;overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:11px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--border)}
+thead th{background:var(--surface-2);font-size:12.5px;font-weight:800;color:var(--text-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tr.grp td{background:var(--surface-2)}
+.minw-760{min-width:760px}
+.matrix td:first-child{min-width:230px}
+.matrix select,.matrix .mx-head,.matrix .mx-note{width:100%;border:1px solid var(--border);border-radius:8px;background:var(--surface);padding:5px 8px;font-size:13.5px}
+.matrix .mx-head{font-weight:800;min-width:110px}
+.matrix select{text-align:center;cursor:pointer}
+.matrix .mx-note{resize:vertical;min-width:130px}
+
+.foot{margin-top:56px;padding-top:18px;border-top:1px solid var(--border);font-size:12.5px;color:var(--text-3)}
+
+/* Responsive */
+@media (max-width:1100px){
+  .layout{grid-template-columns:1fr;gap:0;padding:0 16px}
+  .toc{position:sticky;top:61px;z-index:20;max-height:none;overflow-x:auto;overflow-y:hidden;padding:8px 16px;margin:0 -16px;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--border);display:flex;gap:4px;scrollbar-width:none}
+  .toc::-webkit-scrollbar{display:none}
+  .toc-title{display:none}
+  .toc a{white-space:nowrap;padding:6px 10px;font-size:13px}
+  .toc a .n{display:none}
+  html{scroll-padding-top:120px}
+  .q{scroll-margin-top:120px}
+  .topbar-in{padding:12px 16px}
+}
+@media (max-width:860px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g2,.g3,.q-grid{grid-template-columns:1fr}
+  .q-grid{gap:10px}
+  .hero{padding:28px 20px 24px;border-radius:18px}
+  .flow{grid-template-columns:1fr}
+  .fl-arrow{height:26px}
+  .fl-arrow i{width:2px;height:100%}
+  .fl-arrow i::after{right:auto;left:-4px;top:auto;bottom:-1px;border:5px solid transparent;border-top:7px solid var(--border-strong);border-bottom:0}
+  .icon-btn .lbl{display:none}
+  .icon-btn{padding:0 9px}
+}
+@media (max-width:560px){
+  body{font-size:15px}
+  .brand small{display:none}
+  .prog-pill .lbl{display:none}
+  .hide-sm{display:none}
+  .topbar-in{gap:6px}
+  .kpi .v{font-size:19px}
+  .q{padding:16px 14px 14px}
+  .done{margin-left:0}
+}
+@media print{
+  .topbar,.toc,.filters,.icon-btn{display:none!important}
+  .layout{display:block;padding:0}
+  body{background:#fff;font-size:13px}
+  .hero,.card,.q,.table-wrap{box-shadow:none}
+  .q{break-inside:avoid}
+  .q[hidden],section.sec[hidden]{display:block!important}
+  .memo{display:none}
+  .memo-print{display:block;margin-top:10px;min-height:52px;border:1px dashed #9aa3af;border-radius:8px;padding:8px 10px;white-space:pre-wrap;font-size:12.5px;color:#111}
+  .matrix select{appearance:none;-webkit-appearance:none;border:0;background:none;padding:0}
+  a.sid,a.xref{border:0;background:none;padding:0}
+}
+
+</style>
+</head>
+<body data-doc="pg">
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="#top"><span class="brand-mark">식</span>식업 <small>PG 사전 상담 질문서</small></a>
+    <span class="spacer"></span>
+    <span class="prog-pill" title="확인한 질문 수"><b data-progress>0 / 0</b><span class="lbl"> 확인</span></span>
+    <a class="icon-btn hide-sm" href="sikup-plan.html" title="기획서 열기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg><span class="lbl">기획서</span></a>
+    <a class="icon-btn hide-sm" href="sikup-legal-consult.html" title="법률 자문 질문서 열기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg><span class="lbl">법률 자문</span></a>
+    <button class="icon-btn" id="exportBtn" type="button" title="질문과 답변 메모를 Markdown 파일로 내려받기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg><span class="lbl">답변 내려받기</span></button>
+    <button class="icon-btn" id="printBtn" type="button" title="인쇄 / PDF 저장"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg><span class="lbl">PDF 저장</span></button>
+    <button class="icon-btn hide-sm" id="themeBtn" type="button" title="라이트/다크 전환"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><span class="lbl">테마</span></button>
+  </div>
+</header>
+<div class="layout" id="top">
+  <nav class="toc" id="toc" aria-label="목차">
+    <div class="toc-title">CONTENTS</div>
+    <a href="#prep"><span class="n">00</span>상담 준비</a>
+    <a href="#s-contract"><span class="n">01</span>계약 형태 · 심사</a>
+    <a href="#s-pay"><span class="n">02</span>결제 수단 · 결제창</a>
+    <a href="#s-split"><span class="n">03</span>혼합 결제 · 판매자 분리</a>
+    <a href="#s-refund"><span class="n">04</span>취소 · 부분 취소 · 환불</a>
+    <a href="#s-escrow"><span class="n">05</span>에스크로(구매안전서비스)</a>
+    <a href="#s-payout"><span class="n">06</span>지급대행(파트너 정산 지급)</a>
+    <a href="#s-billing"><span class="n">07</span>정기결제(빌링)</a>
+    <a href="#s-webview"><span class="n">08</span>웹뷰 앱 연동</a>
+    <a href="#s-recon"><span class="n">09</span>정산 데이터 · 대사</a>
+    <a href="#s-fee"><span class="n">10</span>수수료 · 계약 조건</a>
+    <a href="#s-extra"><span class="n">11</span>부가 서비스 · 연동 방식</a>
+    <a href="#s-toss"><span class="n">12</span>토스페이먼츠 지급대행 추가 확인</a>
+    <a href="#matrix"><span class="n">13</span>PG 비교표</a>
+  </nav>
+  <main>
+<section class="hero">
+  <span class="eyebrow">PG 사전 상담 질문서</span>
+  <h1>PG사에 <em>물어볼 것</em>과 받아야 할 답</h1>
+  <p class="lead">토스페이먼츠·KG이니시스·NHN KCP·나이스페이 등 3~4곳에 같은 질문지로 사전 상담을 하고, 답을 <b>서면으로</b> 받아 비교합니다. 결제 1건에 여러 판매자(파트너들 + 본사)가 섞이는 구조라, 일반 쇼핑몰 PG 상담과 질문이 다릅니다.</p>
+  <div class="meta-row"><span>작성일 2026-10-12</span><span>대상: 대표·개발(본인)·재무</span><span>근거: 기획서 07·10장, 기능 명세서 C-PAY·C-STL·A-STL</span><span>금액·요율은 관리자 설정값의 임시 기본값</span></div>
+  <div class="kpis">
+    <div class="kpi"><div class="k">질문</div><div class="v">70개</div><div class="s">12개 주제</div></div>
+    <div class="kpi"><div class="k">필수 질문</div><div class="v">27개</div><div class="s">PG 선택 기준이 되는 질문</div></div>
+    <div class="kpi"><div class="k">상담 대상</div><div class="v">3~4곳</div><div class="s">같은 질문지로 비교</div></div>
+    <div class="kpi"><div class="k">확인 진행</div><div class="v" data-progress>0 / 70</div><div class="s">체크·메모는 이 브라우저에 저장</div></div>
+  </div>
+</section>
+<div class="filters" role="group" aria-label="질문 필터">
+  <span class="f-l">보기</span>
+  <button type="button" data-filter="all" aria-pressed="true">전체</button>
+  <button type="button" data-filter="must" aria-pressed="false">필수만</button>
+  <button type="button" data-filter="open" aria-pressed="false">아직 확인 안 한 것</button>
+</div>
+<section class="sec" id="prep" data-title="상담 준비">
+  <div class="sec-head"><div class="sec-num">00</div><h2>상담 준비</h2><p>상담 전에 PG 담당자에게 우리 구조를 이렇게 설명하고, 아래 자료를 미리 보냅니다.</p></div>
+  <h3 class="sub" style="margin-top:0">우리 결제 구조</h3>
+  <div class="card flow-card">
+    <div class="flow">
+      <div class="fl-col">
+        <div class="fl-h">고객 결제 1건 · 399,000원</div>
+        <div class="fl-item p"><b>파트너 A</b> 수저집 인쇄 250,000 + 판비 50,000<span>맞춤 요율 13%</span></div>
+        <div class="fl-item p"><b>파트너 B</b> 냅킨 60,000<span>일반 요율 10%</span></div>
+        <div class="fl-item h"><b>본사</b> 맞춤 디자인비 39,000<span>본사가 직접 판매자</span></div>
+      </div>
+      <div class="fl-arrow" aria-hidden="true"><i></i></div>
+      <div class="fl-col">
+        <div class="fl-h">PG</div>
+        <div class="fl-box">결제대금 보관<br>하위몰형: 판매자별로 기록<br>지급대행형: 플랫폼 잔액<br>에스크로(현금성 결제)</div>
+        <div class="fl-note">구매 확정 후 플랫폼이 지급액을 계산해 매주 금요일 지급 요청</div>
+      </div>
+      <div class="fl-arrow" aria-hidden="true"><i></i></div>
+      <div class="fl-col">
+        <div class="fl-h">지급대행 결과</div>
+        <div class="fl-item p"><b>파트너 A 계좌</b> 261,000<span>300,000 − 수수료 39,000</span></div>
+        <div class="fl-item p"><b>파트너 B 계좌</b> 54,000<span>60,000 − 수수료 6,000</span></div>
+        <div class="fl-item h"><b>본사 계좌</b> 84,000<span>디자인비 39,000 + 수수료 45,000</span></div>
+      </div>
+    </div>
+    <p class="muted fl-foot">배송비 제외. PG 결제 수수료와 지급대행 수수료는 본사가 부담하므로 파트너 지급액에서 빼지 않습니다. 금액·요율은 모두 임시 기본값이고 실제 값은 관리자가 설정합니다. 결제가 끝난 뒤에도 원 주문에 연결된 추가 결제가 생깁니다(본사 몫: 디자인 부가 결제·맞춤형 전환 차액 / 파트너 몫: 새 판비·추가 배송비·반품 차액, <a class="xref" href="#PG-70">PG-70</a>).</p>
+  </div>
+
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card">
+      <h4 class="ch">미리 보낼 자료</h4>
+      <ul class="check">
+        <li>회사 소개와 서비스 구조 1장 (위 그림)</li>
+        <li>사업자등록증 (법인 설립 후)</li>
+        <li>예상 거래 규모(가정): 오픈 6개월 차 월 1,000건·거래액 약 1.1억원 → 12개월 차 월 4,000건·약 4.5억원 → 24개월 차 월 12,000건·약 13.6억원</li>
+        <li>평균 주문 금액 약 11만원, 맞춤 제작 주문 약 15%(주문당 25만원 이상)</li>
+        <li>결제 수단 예상: 카드·간편결제 중심, 사업자 고객의 법인카드·계좌이체·가상계좌 비중이 일반 쇼핑몰보다 높음</li>
+        <li>파트너 수: 베타 20곳에서 시작</li>
+        <li>일정: 지금은 개발 중, 실심사는 베타 전 테스트 사이트로 희망</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 class="ch">상담 요령</h4>
+      <ul class="check">
+        <li>모든 PG에 <b>같은 질문지</b>를 보내고 <b>서면 답변</b>을 받습니다. 구두 답변은 메모에 날짜와 담당자를 적습니다.</li>
+        <li>“가능합니다”라는 답에는 <b>API 문서 위치</b>와 <b>테스트 환경 지원 여부</b>를 함께 받습니다.</li>
+        <li>상담 당일 <b>테스트 키</b> 발급을 요청합니다. 위험한 부분(혼합 결제·부분 취소·지급대행)을 샌드박스에서 먼저 확인합니다.</li>
+        <li>필수 질문에서 “불가”가 나오면 그 PG는 제외합니다. 맨 아래 비교표에 ○/△/×로 기록합니다.</li>
+        <li>법적 판단이 필요한 답(전자금융업, 에스크로 범위)은 PG 의견으로만 받고, 최종 판단은 <a href="sikup-legal-consult.html">법률 자문</a>으로 확인합니다.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout warn" style="margin-top:14px"><span class="ic">!</span><div><b>PG 선택 기준(필수 질문)</b>은 오픈마켓 정산 방식, 본사 몫 분리, 부분 취소, 에스크로와 지급대행 동시 적용, 주 1회 API 지급, 지급액에서 플랫폼 청구 차감, 카드 매출·증빙 명의입니다. 이 중 하나라도 안 되면 정산·환불 설계를 크게 바꿔야 합니다.</div></div>
+
+  <h3 class="sub" id="toss-docs">토스페이먼츠 공개 문서로 확인한 것 (2026-10-12)</h3>
+  <div class="grid g2">
+    <div class="card">
+      <h4 class="ch">문서로 확인됨</h4>
+      <ul class="check">
+        <li><b>오픈마켓 지급대행 제공</b>: 플랫폼이 가맹점으로 결제를 받고, 정산대금(잔액)에서 셀러에게 송금</li>
+        <li>셀러 등록·수정·삭제·조회, 잔액 조회, 지급 요청·취소·조회 API와 웹훅(seller.changed, payout.changed)</li>
+        <li>바로지급(영업일 08~15시 요청 시 당일) / 예약지급(다음 날~1년 안 영업일)</li>
+        <li>한 번에 100건, 1건 10억 원 미만. 일괄 요청은 1건만 실패해도 전체 실패, 멱등키 지원</li>
+        <li>셀러별 주간 지급 합계 1천만 원 이상이면 KYC(미리 요청 불가, 1년·3년마다 재심사)</li>
+        <li>이용료: 월 고정 + 지급 건당(금액 비공개), 다음 달 초 정산대금에서 차감</li>
+        <li>개발: POST 요청은 JWE 암호화(보안 키). 테스트 환경은 법인 셀러만 등록 가능하고 KYC 불가, 라이브 테스트는 수수료 부과</li>
+        <li>지급한 금액은 회수가 어렵고, 토스페이먼츠는 지급 관련 책임이 없음</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 class="ch">우리 설계에 미치는 영향</h4>
+      <ul class="check">
+        <li>결제 단계에 셀러가 없음 → “본사 하위몰”, “판매자 지정 부분 취소”는 우리 내부 장부로 처리합니다. 설계가 오히려 단순해집니다.</li>
+        <li>지급 금액을 플랫폼이 정함 → 정산 엔진(C-STL-01)을 그대로 쓸 수 있습니다.</li>
+        <li><b>카드 전표·현금영수증·카드 매출이 플랫폼 명의일 가능성</b> → 증빙과 부가세 설계를 다시 봐야 할 수 있습니다. 가장 큰 확인 사항입니다.</li>
+        <li>지급 뒤 환불과 미수 위험은 플랫폼이 집니다.</li>
+        <li>입점 절차에 토스 셀러 상태(본인인증, KYC)를 넣어야 합니다.</li>
+        <li>토스를 고르면 기획서 07장과 명세서 C-PAY-01의 “본사도 하위몰로 등록” 문구를 고쳐야 합니다.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout tip" style="margin-top:14px"><span class="ic">i</span><div><b>토스 상담에서는</b> 이미 확인된 내용은 건너뛰고, 문서에 없는 것에 집중하세요. 질문 카드의 파란 상자가 공개 문서 내용이고, 문서에 없는 것은 아래 <a href="#s-toss">토스페이먼츠 지급대행 추가 확인</a>에 모았습니다.</div></div>
+  <div class="sources">
+    <span class="muted">출처</span>
+    <a href="https://docs.tosspayments.com/resources/glossary/payout" target="_blank" rel="noopener">docs.tosspayments.com/resources/glossary/payout</a>
+    <a href="https://docs.tosspayments.com/guides/v2/payouts" target="_blank" rel="noopener">docs.tosspayments.com/guides/v2/payouts</a>
+    <a href="https://docs.tosspayments.com/reference/additional" target="_blank" rel="noopener">docs.tosspayments.com/reference/additional (지급대행 API)</a>
+    <a href="https://www.tosspayments.com/blog/articles/30365" target="_blank" rel="noopener">tosspayments.com/blog/articles/30365 (지급대행 기본 정책)</a>
+    <a href="https://www.tosspayments.com/blog/articles/amendment" target="_blank" rel="noopener">tosspayments.com/blog/articles/amendment (전자금융거래법 개정 안내)</a>
+    <a href="https://www.tosspayments.com/blog/articles/30355" target="_blank" rel="noopener">tosspayments.com/blog/articles/30355 (지급대행 신청)</a>
+  </div>
+</section>
+<section class="sec" id="s-contract" data-title="계약 형태 · 심사">
+  <div class="sec-head"><div class="sec-num">01</div><h2>계약 형태 · 심사</h2><p>어떤 계약 상품으로, 언제, 무엇을 보고 심사하는지 확인합니다. 여기서 막히면 다른 질문은 의미가 없습니다.</p></div>
+<article class="q" id="PG-01" data-pri="must" data-title="오픈마켓 정산 방식 (하위몰형 / 지급대행형)">
+  <div class="q-h"><span class="qid">PG-01</span><span class="b must">필수</span><h4>오픈마켓 정산 방식 (하위몰형 / 지급대행형)</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>저희는 여러 입점 파트너의 상품과 본사 상품을 한 번에 결제받는 통신판매중개 플랫폼입니다. 오픈마켓형 계약이 가능한가요? 결제 단계부터 파트너를 하위몰로 등록해 매출을 파트너별로 나누는 방식인가요, 플랫폼이 가맹점으로 결제를 받고 정산대금에서 파트너에게 송금하는 지급대행 방식인가요? 두 방식을 모두 제공하나요? 상품명과 계약 구조를 알려 주세요.</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>플랫폼이 판매대금을 직접 받아 나눠 주면 전자금융업 등록 문제가 생길 수 있어, PG가 파트너에게 지급하는 구조를 전제로 설계했습니다. 두 방식은 카드 매출 명의, 부분 취소, 증빙 처리가 다릅니다.</p></div><div><h5>원하는 답</h5><p>PG가 하위몰(파트너)별로 판매대금을 관리하고 지급하는 상품. 계약서 샘플과 상품 설명서를 받습니다.</p></div><div><h5>안 되면</h5><p>다른 PG를 찾습니다. PG를 고르는 1순위 기준입니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>지급대행이 있습니다. 플랫폼이 가맹점으로 결제를 받고, 정산대금(잔액)에서 셀러에게 송금하는 방식입니다. 결제와 셀러를 연결하는 필드는 없고, 셀러 정보와 셀러별 정산금은 플랫폼이 관리합니다. KYC 등 강화된 리스크 검토를 거쳐 계약합니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a><a class="sid" href="sikup-spec.html#A-STL-02">A-STL-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-02" data-pri="must" data-title="본사도 하위몰로 등록해 한 결제 안에서 나눌 수 있는가">
+  <div class="q-h"><span class="qid">PG-02</span><span class="b must">필수</span><h4>본사도 하위몰로 등록해 한 결제 안에서 나눌 수 있는가</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>디자인비·유료 옵션·멤버십·PB 상품은 본사가 직접 판매자입니다. 본사도 하위몰 중 하나로 등록해서, 결제 1건 안에서 파트너 몫과 본사 몫을 나눌 수 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>맞춤 주문 1건에 파트너의 인쇄 대금·판비와 본사의 디자인비가 함께 결제됩니다. 아래 “우리 결제 구조” 예시가 바로 이 경우입니다.</p></div><div><h5>원하는 답</h5><p>본사 하위몰 등록 가능, 본사 몫은 본사 계좌로 정산.</p></div><div><h5>안 되면</h5><p>고객이 두 번 결제하지 않도록 아래 순서로 대안을 봅니다. ① 지급대행형 PG: 결제 1건을 플랫폼이 받고 파트너 몫만 송금하며, 본사 몫은 남은 잔액입니다(<a class="xref" href="#PG-61">PG-61</a>, <a class="xref" href="#PG-62">PG-62</a>, 법률 <a class="xref" href="sikup-legal-consult.html#L-03">L-03</a>). ② 디자인비·유료 옵션을 파트너 판매가에 넣고 본사 몫은 정산에서 차감합니다. 멤버십·PB는 본사 단독 결제로 분리합니다(법률 <a class="xref" href="sikup-legal-consult.html#L-60">L-60</a>, 세무 <a class="xref" href="sikup-legal-consult.html#T-09">T-09</a>). ③ 직판 구조: 본사가 판매자, 파트너는 외주 제작사가 됩니다. 사업 구조 전체가 바뀌므로 마지막에 검토합니다. 충전 포인트로 한 번에 받는 방식은 파트너 주문에 쓰이면 선불전자지급수단이 되므로 쓰지 않습니다(<a class="xref" href="sikup-legal-consult.html#L-04">L-04</a>). 두 번 결제는 마지막 수단입니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>지급대행형에서는 플랫폼이 곧 가맹점이라 “본사 하위몰”이 따로 필요 없고, 본사 몫은 셀러에게 송금하지 않고 남긴 잔액입니다. 남은 잔액이 본사 계좌로 들어오는 방식은 문서에 없습니다(<a class="xref" href="#PG-61">PG-61</a>).</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a><a class="sid" href="sikup-spec.html#D-REQ-04">D-REQ-04</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-03" data-pri="must" data-title="실제 심사 시점과 사이트 요건">
+  <div class="q-h"><span class="qid">PG-03</span><span class="b must">필수</span><h4>실제 심사 시점과 사이트 요건</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>실제 심사는 언제, 무엇을 보고 하나요? 아직 개발 중인데 테스트 사이트(상품·약관·사업자 정보·환불 정책 노출)로 심사받을 수 있나요? 심사 기간은 얼마나 걸리나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>개발 기간에는 운영 사이트가 없습니다. 지금은 테스트 키로 개발하고, 실제 심사는 베타 전에 테스트 사이트로 받을 계획입니다.</p></div><div><h5>원하는 답</h5><p>테스트 키 즉시 발급, 베타 전 테스트 사이트로 실심사. 심사 때 확인하는 화면 목록.</p></div><div><h5>안 되면</h5><p>심사에 필요한 화면(약관, 판매자 정보, 환불 정책)을 개발 순서 앞쪽으로 당깁니다.</p></div></div>
+  
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-04" data-pri="must" data-title="계약 서류와 보증보험·보증금">
+  <div class="q-h"><span class="qid">PG-04</span><span class="b must">필수</span><h4>계약 서류와 보증보험·보증금</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>계약에 필요한 서류 목록(법인 서류, 통신판매업 신고증, 사업 계획서, 정산 구조 설명 등)을 알려 주세요. 보증보험이나 보증금을 요구하나요? 요구한다면 금액은 어떻게 정하나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>오픈마켓형은 정산 위험 때문에 보증보험이나 담보를 요구하는 경우가 있습니다. 필요 자금에 들어가야 합니다.</p></div><div><h5>원하는 답</h5><p>서류 목록, 보증보험 필요 여부와 금액 산정 기준, 거래가 쌓이면 줄어드는지.</p></div><div><h5>안 되면</h5><p>보증 부담이 작은 PG를 우선합니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>보증보험·담보 언급은 없고, “KYC 등 강화된 리스크 검토”를 거친다고만 되어 있습니다.</div>
+  
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-05" data-pri="rec" data-title="파트너(하위몰) 등록 절차와 API">
+  <div class="q-h"><span class="qid">PG-05</span><span class="b rec">중요</span><h4>파트너(하위몰) 등록 절차와 API</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>파트너를 하위몰로 등록할 때 필요한 정보와 서류, 심사 기간을 알려 주세요. API로 등록·조회·수정할 수 있나요? 하위몰 심사에서 거절될 수 있는 업종이나 조건이 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>입점 심사 흐름에 하위몰 등록을 넣어야 합니다. 본사 심사를 통과해도 하위몰 승인이 늦으면 판매 시작이 밀립니다.</p></div><div><h5>원하는 답</h5><p>API 등록, 짧은 심사 기간, 필요한 필드 목록(사업자번호, 대표자, 정산 계좌 등).</p></div><div><h5>안 되면</h5><p>입점 절차에 “PG 승인 대기” 단계를 추가하고, 수동 등록을 운영팀 업무로 둡니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>셀러 등록 API(POST /v2/sellers)가 있습니다. 필드는 refSellerId(7~20자), businessType(INDIVIDUAL·INDIVIDUAL_BUSINESS·CORPORATE), 회사 정보, 정산 계좌입니다. 개인사업자는 등록 후 본인인증 문자를 거쳐야 주 1천만 원 미만까지 지급할 수 있고, 법인은 등록 즉시 가능합니다. 사업자번호는 수정할 수 없습니다(폐업 시 삭제 후 재등록). 상태 변경은 seller.changed 웹훅으로 받습니다(<a class="xref" href="#PG-64">PG-64</a>).</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#P-ONB-01">P-ONB-01</a><a class="sid" href="sikup-spec.html#P-ONB-04">P-ONB-04</a><a class="sid" href="sikup-spec.html#A-PTN-01">A-PTN-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-06" data-pri="rec" data-title="간이·면세 사업자 하위몰과 우대수수료">
+  <div class="q-h"><span class="qid">PG-06</span><span class="b rec">중요</span><h4>간이·면세 사업자 하위몰과 우대수수료</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>간이과세자, 면세사업자, 통신판매업 신고 면제 사업자도 하위몰로 등록할 수 있나요? 하위몰별로 영세·중소 우대 카드 수수료가 적용되나요? 적용되면 플랫폼이 내는 수수료가 줄어드나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>소규모 인쇄소와 도매상이 파트너로 많이 들어올 수 있습니다.</p></div><div><h5>원하는 답</h5><p>등록 가능 범위, 우대수수료 적용 여부와 우리 비용에 미치는 영향.</p></div><div><h5>안 되면</h5><p>등록할 수 없는 유형은 입점 신청 단계에서 미리 안내합니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>개인(비사업자)·개인사업자·법인 모두 셀러로 등록할 수 있습니다. 지급대행형은 결제가 플랫폼 가맹점 기준이라 하위몰 우대수수료는 해당이 없을 것으로 보입니다(문서에 언급 없음).</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#P-ONB-01">P-ONB-01</a><a class="sid" href="sikup-spec.html#U-ORD-05">U-ORD-05</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-07" data-pri="rec" data-title="전자금융업 등록 없이 운영 가능한 구조인지 (PG 의견)">
+  <div class="q-h"><span class="qid">PG-07</span><span class="b rec">중요</span><h4>전자금융업 등록 없이 운영 가능한 구조인지 (PG 의견)</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>PG가 하위몰에 직접 지급하고 플랫폼은 지급액 계산과 지급 요청만 하는 구조에서, 플랫폼이 전자지급결제대행업 등록을 하지 않아도 되도록 PG가 요구하는 조건이 있나요? 다른 오픈마켓 고객사는 보통 어떻게 운영하나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>정산 구조 전체의 전제입니다. 최종 판단은 법률 자문(<a class="xref" href="sikup-legal-consult.html#L-03">L-03</a>)으로 따로 받습니다.</p></div><div><h5>원하는 답</h5><p>PG가 요구하는 조건과 일반적인 운영 방식.</p></div><div><h5>안 되면</h5><p>법률 자문 결과와 함께 정산 차감 방식을 다시 정합니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>토스페이먼츠 안내: 2024년 9월 15일 시행된 개정 전자금융거래법으로 정산을 대행·매개하는 사업자도 PG 등록 대상이 되었고, 지급대행을 쓰면 PG사 정산계좌에서 셀러에게 지급되므로 자체 등록 없이 정산할 수 있다고 설명합니다(자사 홍보 글). 최종 판단은 법률 자문(<a class="xref" href="sikup-legal-consult.html#L-03">L-03</a>)으로 받습니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STL-01">C-STL-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+</section>
+<section class="sec" id="s-pay" data-title="결제 수단 · 결제창">
+  <div class="sec-head"><div class="sec-num">02</div><h2>결제 수단 · 결제창</h2><p>고객이 결제하는 순간의 동작입니다. 웹뷰 앱에서도 같은 화면을 씁니다.</p></div>
+<article class="q" id="PG-08" data-pri="must" data-title="쓸 수 있는 결제 수단">
+  <div class="q-h"><span class="qid">PG-08</span><span class="b must">필수</span><h4>쓸 수 있는 결제 수단</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>오픈마켓 계약에서 신용·체크카드(법인카드 포함), 토스페이·카카오페이·네이버페이, 실시간 계좌이체, 가상계좌를 모두 쓸 수 있나요? 간편결제는 별도 계약이나 추가 수수료가 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>사업자 고객이 많아 법인카드와 계좌이체·가상계좌 비중이 일반 쇼핑몰보다 높을 것으로 봅니다.</p></div><div><h5>원하는 답</h5><p>네 가지 수단 모두 하위몰 분리 정산 가능.</p></div><div><h5>안 되면</h5><p>빠지는 수단은 MVP에서 제외하고 대체 수단을 안내합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#U-ORD-03">U-ORD-03</a><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-09" data-pri="rec" data-title="가상계좌 입금 기한·마감·늦은 입금">
+  <div class="q-h"><span class="qid">PG-09</span><span class="b rec">중요</span><h4>가상계좌 입금 기한·마감·늦은 입금</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>가상계좌 입금 기한을 3일로 지정할 수 있나요? 기한이 지나면 계좌 마감을 확인하는 API가 있나요? 마감 뒤에 들어온 입금은 PG가 자동으로 돌려주나요, 아니면 플랫폼이 환불해야 하나요? 입금 확인 웹훅은 어떻게 오나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>미입금 주문은 자동 취소하고, 맞춤 제작은 입금 확인 뒤에 디자인을 시작합니다.</p></div><div><h5>원하는 답</h5><p>기한 지정, 마감 조회, 입금 웹훅, 늦은 입금 자동 반환.</p></div><div><h5>안 되면</h5><p>늦은 입금은 환불 계좌를 받아 플랫폼이 직접 처리합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#U-ORD-03">U-ORD-03</a><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-10" data-pri="must" data-title="결제 결과를 서버에서 다시 확인하는 방식">
+  <div class="q-h"><span class="qid">PG-10</span><span class="b must">필수</span><h4>결제 결과를 서버에서 다시 확인하는 방식</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>결제창 결과를 GET 리다이렉트로 받고, 서버가 PG 승인·조회 API로 금액과 상태를 다시 확인한 뒤 주문을 확정하려 합니다. 이 방식이 지원되나요? 결제 인증 뒤 서버에서 최종 승인하는 방식인가요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>웹뷰 앱에서는 SameSite 쿠키 때문에 세션이 빠질 수 있어서, 세션 대신 주문 토큰과 서버 조회로 주문을 찾습니다.</p></div><div><h5>원하는 답</h5><p>GET 리다이렉트, 서버 승인 API, 조회 API.</p></div><div><h5>안 되면</h5><p>POST 결과만 주는 경우 웹뷰에서 세션 유지 방법을 PG와 함께 찾아야 합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a><a class="sid" href="sikup-spec.html#C-APP-03">C-APP-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-11" data-pri="must" data-title="웹훅 서명·재전송·이벤트 종류">
+  <div class="q-h"><span class="qid">PG-11</span><span class="b must">필수</span><h4>웹훅 서명·재전송·이벤트 종류</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>웹훅 서명은 어떻게 검증하나요? 실패하면 몇 번, 어떤 간격으로 다시 보내나요? 이벤트 종류(결제 완료, 가상계좌 입금, 취소, 지급 결과 등)와 순서 보장 여부를 알려 주세요.</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>앱이 꺼져 결제 응답을 놓쳐도 웹훅으로 주문을 확정합니다. 같은 알림이 와도 한 번만 처리합니다.</p></div><div><h5>원하는 답</h5><p>서명 검증, 재전송 정책, 이벤트 목록 문서.</p></div><div><h5>안 되면</h5><p>주기적인 상태 조회 배치로 보완합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-12" data-pri="rec" data-title="중복 결제 방지">
+  <div class="q-h"><span class="qid">PG-12</span><span class="b rec">중요</span><h4>중복 결제 방지</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>같은 주문 ID(결제 요청 ID)로 두 번 결제 요청이 오면 PG가 거절하나요? 같은 승인 요청을 네트워크 오류로 다시 보내면 어떻게 동작하나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>결제 버튼을 두 번 누르거나 앱이 재시도해도 결제는 한 번만 되어야 합니다.</p></div><div><h5>원하는 답</h5><p>주문 ID 중복 거절, 재요청 시 기존 결과 반환.</p></div><div><h5>안 되면</h5><p>서버에서 결제 요청 ID로 막는 것만으로 처리합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-13" data-pri="must" data-title="망취소(승인 후 자동 취소)">
+  <div class="q-h"><span class="qid">PG-13</span><span class="b must">필수</span><h4>망취소(승인 후 자동 취소)</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>PG 승인 뒤 우리 서버 처리가 실패하면 승인을 바로 취소하는 API가 있나요? 승인 후 언제까지 가능하고, 망취소가 실패하면 어떻게 되나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>주문과 파트너별 하위 주문을 한 트랜잭션으로 만들고, 하나라도 실패하면 결제를 자동으로 취소합니다.</p></div><div><h5>원하는 답</h5><p>망취소 API와 실패 시 처리 방법.</p></div><div><h5>안 되면</h5><p>일반 취소 API로 처리하고, 실패 건은 재무 담당자에게 알립니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a><a class="sid" href="sikup-spec.html#U-ORD-03">U-ORD-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-14" data-pri="opt" data-title="0원 결제 · 할부 · 결제창 표시">
+  <div class="q-h"><span class="qid">PG-14</span><span class="b opt">확인</span><h4>0원 결제 · 할부 · 결제창 표시</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>쿠폰으로 0원이 된 주문은 PG를 거치지 않고 처리하려는데 문제없나요? 할부(5만원 이상)와 무이자 할부 비용은 누가 내나요? 결제창에 표시되는 상호(식업 또는 파트너)와 결제 수단 순서는 바꿀 수 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>결제창과 증빙에 누구 이름이 나오는지는 고객 문의와 직결됩니다.</p></div><div><h5>원하는 답</h5><p>0원 결제 처리 가능, 할부 정책, 결제창 상호 표시 방식.</p></div><div><h5>안 되면</h5><p>결제창 안내 문구로 보완합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a><a class="sid" href="sikup-spec.html#U-ORD-02">U-ORD-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+</section>
+<section class="sec" id="s-split" data-title="혼합 결제 · 판매자 분리">
+  <div class="sec-head"><div class="sec-num">03</div><h2>혼합 결제 · 판매자 분리</h2><p>가장 중요한 부분입니다. 결제 1건에 여러 판매자(파트너들 + 본사)가 섞입니다.</p></div>
+<article class="q" id="PG-15" data-pri="must" data-title="판매자별 금액은 언제 정하는가">
+  <div class="q-h"><span class="qid">PG-15</span><span class="b must">필수</span><h4>판매자별 금액은 언제 정하는가</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>결제 1건 안에서 하위몰별 금액을 결제 요청 때 정하나요, 지급할 때 정하나요? 결제 뒤에 배분을 바꿀 수 있나요(부분 취소, 클레임 결과, 디자인비 공제 반영)?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>맞춤 주문은 결제 뒤 디자인 단계에서 취소·공제가 생기고, 정산은 구매 확정 뒤 “정산 이벤트” 단위로 계산합니다.</p></div><div><h5>원하는 답</h5><p>결제 때는 하위몰별 금액을 기록하고, 지급 금액은 플랫폼이 지급 요청 때 정하는 방식.</p></div><div><h5>안 되면</h5><p>결제 시점 배분이 고정이면 클레임·공제를 모두 부분 취소로만 처리해야 합니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>결제 단계에서는 셀러를 지정하지 않고, 지급할 때 플랫폼이 셀러별 금액을 정합니다. 우리 설계(정산 이벤트로 지급액 계산)와 맞습니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a><a class="sid" href="sikup-spec.html#C-STL-01">C-STL-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-16" data-pri="must" data-title="카드 전표 · 현금영수증의 판매자 명의">
+  <div class="q-h"><span class="qid">PG-16</span><span class="b must">필수</span><h4>카드 전표 · 현금영수증의 판매자 명의</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>카드 매출전표와 현금영수증은 누구 명의(플랫폼 또는 하위몰)로 발행되나요? 국세청 신용카드 매출 자료는 하위몰별로 넘어가나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>상품 대금 증빙은 파트너 명의, 디자인비·멤버십은 본사 명의로 나눠야 합니다. 파트너와 본사의 부가세 신고에 직접 영향을 줍니다.</p></div><div><h5>원하는 답</h5><p>하위몰 명의 전표·매출 자료.</p></div><div><h5>안 되면</h5><p>세무사와 함께 증빙·신고 방식을 다시 정합니다(<a class="xref" href="sikup-legal-consult.html#T-03">T-03</a>).</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>증빙에 대한 언급은 없습니다. 결제 단계에 셀러가 없으므로 카드 전표와 국세청 카드 매출이 플랫폼 명의로 잡힐 가능성이 높습니다(추정). 토스 상담(<a class="xref" href="#PG-62">PG-62</a>)과 세무사(<a class="xref" href="sikup-legal-consult.html#T-03">T-03</a>) 확인이 필요합니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#U-ORD-05">U-ORD-05</a><a class="sid" href="sikup-spec.html#A-STL-03">A-STL-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-17" data-pri="must" data-title="하위몰 명의 현금영수증 자동 발급">
+  <div class="q-h"><span class="qid">PG-17</span><span class="b must">필수</span><h4>하위몰 명의 현금영수증 자동 발급</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>계좌이체·가상계좌 결제분 현금영수증을 하위몰(파트너) 명의로 PG가 자동 발급할 수 있나요? 한 결제에 판매자가 여럿이면 판매자별로 나눠 발급되나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>개인 회원은 현금영수증, 사업자 회원은 세금계산서를 고릅니다. 세금계산서는 팝빌로 따로 발행합니다.</p></div><div><h5>원하는 답</h5><p>판매자별 자동 발급.</p></div><div><h5>안 되면</h5><p>현금영수증을 팝빌로 직접 발급합니다(건당 비용 추가).</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>언급 없음. 같은 이유로 현금영수증도 플랫폼 명의일 수 있습니다(추정, <a class="xref" href="#PG-62">PG-62</a>).</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#U-ORD-05">U-ORD-05</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-18" data-pri="rec" data-title="플랫폼 수수료를 떼는 방식">
+  <div class="q-h"><span class="qid">PG-18</span><span class="b rec">중요</span><h4>플랫폼 수수료를 떼는 방식</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>플랫폼 판매 수수료(파트너 몫의 10~13%, 관리자 설정값)는 PG가 지급할 때 떼어 플랫폼에 보내 주나요, 아니면 플랫폼이 계산한 순지급액으로 지급을 요청하나요? PG 결제 수수료는 플랫폼이 부담하는데, 이것을 하위몰 지급액에서 빼지 않도록 설정할 수 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>수수료율은 카테고리·파트너·기간별로 다르고 관리자가 바꿉니다. 계산은 우리 정산 엔진 하나로 합니다.</p></div><div><h5>원하는 답</h5><p>플랫폼이 계산한 순지급액으로 지급 요청. PG 수수료는 플랫폼 정산분에서 차감.</p></div><div><h5>안 되면</h5><p>PG의 수수료 설정 방식에 맞춰 정산 엔진 출력을 바꿉니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>수수료를 떼어 주는 기능은 없습니다. 플랫폼이 셀러별 순지급액을 정해 요청하고, 남은 금액이 플랫폼 몫입니다. 지급대행 이용료(월 고정 + 지급 건당)는 다음 달 초 정산대금에서 자동 차감됩니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STL-01">C-STL-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-19" data-pri="opt" data-title="파트너 부가세 신고용 자료">
+  <div class="q-h"><span class="qid">PG-19</span><span class="b opt">확인</span><h4>파트너 부가세 신고용 자료</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>파트너가 부가세 신고에 쓸 결제 수단별 매출 자료(카드·현금성·간편결제)를 PG가 하위몰에 직접 제공하나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>파트너 센터에서 결제 수단별 판매 대금 집계를 제공할 예정입니다.</p></div><div><h5>원하는 답</h5><p>하위몰별 매출 자료 제공 또는 API.</p></div><div><h5>안 되면</h5><p>파트너 센터 집계만 제공합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#P-STL-02">P-STL-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+</section>
+<section class="sec" id="s-refund" data-title="취소 · 부분 취소 · 환불">
+  <div class="sec-head"><div class="sec-num">04</div><h2>취소 · 부분 취소 · 환불</h2><p>부분 취소가 잦고, 맞춤 제작은 단계별로 공제가 있습니다.</p></div>
+<article class="q" id="PG-20" data-pri="must" data-title="판매자를 지정한 부분 취소">
+  <div class="q-h"><span class="qid">PG-20</span><span class="b must">필수</span><h4>판매자를 지정한 부분 취소</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>결제 1건 중 특정 하위몰 몫만 부분 취소할 수 있나요? 여러 번 나눠 부분 취소할 수 있나요(횟수 제한)?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>한 주문에서 냅킨만 먼저 취소하고, 나중에 수저집을 취소하는 식의 부분 취소가 자주 생깁니다.</p></div><div><h5>원하는 답</h5><p>하위몰 지정, 여러 번 부분 취소 가능.</p></div><div><h5>안 되면</h5><p>부분 취소를 막고 전체 취소 후 재결제를 안내해야 합니다. 고객 경험이 크게 나빠집니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>지급대행형이면 결제에 셀러가 없으므로 “판매자 지정”은 우리 내부 장부로 처리하고, PG에는 금액만 지정해 부분 취소를 요청하면 됩니다. 남는 확인 사항은 결제 수단별 제약(<a class="xref" href="#PG-21">PG-21</a>)입니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-21" data-pri="must" data-title="결제 수단별 부분 취소 제약">
+  <div class="q-h"><span class="qid">PG-21</span><span class="b must">필수</span><h4>결제 수단별 부분 취소 제약</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>카드, 간편결제(각사), 계좌이체, 가상계좌별로 부분 취소가 되나요? 안 되는 경우(특정 카드사, 할부, 간편결제사 등)의 목록을 주세요.</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>부분 취소가 안 되는 수단은 다른 방식으로 처리해야 합니다.</p></div><div><h5>원하는 답</h5><p>수단별 지원표.</p></div><div><h5>안 되면</h5><p>해당 수단은 차액을 환불 계좌로 보내거나 전체 취소 후 재결제를 안내합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-22" data-pri="must" data-title="가상계좌·계좌이체 환불 송금">
+  <div class="q-h"><span class="qid">PG-22</span><span class="b must">필수</span><h4>가상계좌·계좌이체 환불 송금</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>가상계좌·계좌이체 결제를 환불할 때 PG가 고객 환불 계좌로 송금해 주나요(환불 계좌 API)? 예금주 확인도 함께 하나요? 수수료는요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>현금성 결제 환불은 고객이 입력한 환불 계좌로 보냅니다.</p></div><div><h5>원하는 답</h5><p>환불 계좌 송금 API와 예금주 확인.</p></div><div><h5>안 되면</h5><p>플랫폼이 직접 송금해야 하는데, 이 경우 자금 흐름 문제를 법률 자문으로 확인해야 합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a><a class="sid" href="sikup-spec.html#U-MY-02">U-MY-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-23" data-pri="must" data-title="파트너에게 지급한 뒤 생긴 환불">
+  <div class="q-h"><span class="qid">PG-23</span><span class="b must">필수</span><h4>파트너에게 지급한 뒤 생긴 환불</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>파트너에게 이미 지급한 뒤 반품 환불이 생기면 누구 돈으로 환불하나요? 다음 지급액에서 상계되나요? 하위몰 잔액이 모자라면 어떻게 되나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>구매 확정 뒤 불량 반품은 다음 정산 주기에 마이너스(역분개)로 반영합니다. 마이너스가 남으면 다음 주기로 넘깁니다.</p></div><div><h5>원하는 답</h5><p>플랫폼이 환불하고 다음 지급에서 상계하는 방식 지원.</p></div><div><h5>안 되면</h5><p>해당 금액을 파트너에게 청구서로 받습니다(미수금 처리).</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>“지급한 금액은 회수하기 어렵고, 토스페이먼츠는 지급 관련 책임이 없다”고 되어 있습니다. 지급 뒤 생긴 환불은 플랫폼 잔액이나 자금으로 처리하고, 파트너에게서는 다음 정산 차감이나 청구로 회수해야 합니다. 미수 위험은 플랫폼이 집니다(<a class="xref" href="#PG-66">PG-66</a>).</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STL-01">C-STL-01</a><a class="sid" href="sikup-spec.html#P-ORD-05">P-ORD-05</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-24" data-pri="rec" data-title="일부 판매자 몫만 남기는 환불">
+  <div class="q-h"><span class="qid">PG-24</span><span class="b rec">중요</span><h4>일부 판매자 몫만 남기는 환불</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>맞춤 주문을 취소할 때 본사 몫(디자인비)은 남기고 파트너 몫만 환불하거나, 파트너 몫 중 판비만 남기고 나머지를 환불하는 처리가 가능한가요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>예: 인쇄 250,000 + 판비 50,000 + 디자인비 39,000 = 339,000원. 첫 시안 뒤 취소면 300,000원 환불(디자인비 공제), 확정 뒤 판 제작이 증빙되면 250,000원 환불(판비도 공제해 파트너에게 보상. 공제액은 증빙한 실비와 고객이 낸 판비 중 적은 금액이라, 실비 30,000원이면 270,000원 환불). 금액은 모두 임시 기본값입니다.</p></div><div><h5>원하는 답</h5><p>판매자별·금액별 부분 취소로 표현 가능.</p></div><div><h5>안 되면</h5><p>공제 대상 금액을 정산 이벤트로 보정합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-70" data-pri="rec" data-title="원 주문에 연결된 추가 결제">
+  <div class="q-h"><span class="qid">PG-70</span><span class="b rec">중요</span><h4>원 주문에 연결된 추가 결제</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>결제가 끝난 뒤에도 원 주문에 연결된 추가 결제가 생깁니다. 본사 몫은 디자인 부가 결제(추가 수정·보정 작업 등)와 맞춤형 전환 차액이고, 파트너 몫은 확정 후 변경 때의 새 판비, 주소 확인 뒤 추가 배송비, 반품 때 차액입니다. ① 추가 결제도 원 결제처럼 판매자(하위몰)를 나눠 넣을 수 있나요? 지급대행형이면 원 주문과 연결해 기록·대사할 방법이 있나요? ② 원 결제와 추가 결제에 걸쳐 환불할 때 어느 승인부터 취소해야 하나요? 승인마다 따로 부분 취소해야 하나요? ③ 추가 결제가 현금성 결제면 에스크로를 따로 걸어야 하나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>예: 인쇄 250,000 + 판비 50,000을 결제한 뒤 보정 작업 10,000원을 따로 결제하고, 보정을 시작하기 전에 취소하면 310,000원을 두 승인에 걸쳐 돌려줘야 합니다. 환불액은 한 잔액으로 계산하지만 실제 취소는 승인 단위로 나눠야 합니다. 금액은 모두 임시 기본값입니다.</p></div><div><h5>원하는 답</h5><p>추가 결제를 원 주문·판매자에 연결해 기록, 여러 승인에 걸친 환불 순서 안내, 추가 결제에도 같은 에스크로 적용.</p></div><div><h5>안 되면</h5><p>환불을 승인별로 나눠 계산하고, 판매자 구분이 안 되는 추가 결제는 플랫폼이 받아 정산 이벤트로 파트너에게 넘깁니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#D-OPT-01">D-OPT-01</a><a class="sid" href="sikup-spec.html#D-REQ-02">D-REQ-02</a><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a><a class="sid" href="sikup-spec.html#C-PRICE-03">C-PRICE-03</a><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a><a class="sid" href="sikup-spec.html#U-MY-03">U-MY-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-25" data-pri="rec" data-title="취소 시 결제 수수료 환급">
+  <div class="q-h"><span class="qid">PG-25</span><span class="b rec">중요</span><h4>취소 시 결제 수수료 환급</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>카드 결제를 취소하면 PG 결제 수수료를 돌려받나요? 부분 취소, 에스크로 건 취소는 어떻게 되나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>플랫폼이 결제 수수료를 모두 부담하므로 취소율이 비용에 직접 영향을 줍니다.</p></div><div><h5>원하는 답</h5><p>취소분 수수료 환급.</p></div><div><h5>안 되면</h5><p>수익 시뮬레이터에 취소분 수수료 손실을 반영합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STL-01">C-STL-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-26" data-pri="rec" data-title="결제 후 취소 가능 기간">
+  <div class="q-h"><span class="qid">PG-26</span><span class="b rec">중요</span><h4>결제 후 취소 가능 기간</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>결제 후 몇 일(몇 개월)까지 취소·부분 취소가 가능한가요? 결제 수단별로 다른가요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>맞춤 제작은 디자인과 생산 때문에 보통 결제 후 2~4주 뒤에 출고되고, 3~5주 뒤에 반품이 생길 수 있습니다. 그런데 디자인 단계는 고객 무응답 보류를 풀면 날짜를 0일부터 다시 세고, 30일 연장·본사 중재 건은 상한이 없어서 결제 후 몇 달 뒤에 취소될 수 있습니다. 출고 뒤에도 불량·표시와 다름 반품은 받은 날부터 3개월까지(구매 확정 뒤에도) 받습니다.</p></div><div><h5>원하는 답</h5><p>최소 수개월 이상(디자인 기간 + 받은 뒤 3개월).</p></div><div><h5>안 되면</h5><p>기간이 지난 건은 환불 계좌 송금으로 처리합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STATE-01">C-STATE-01</a><a class="sid" href="sikup-spec.html#U-MY-03">U-MY-03</a><a class="sid" href="sikup-spec.html#D-ROOM-07">D-ROOM-07</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-27" data-pri="opt" data-title="환불 반영 시점 · 승인 금액 초과 방지">
+  <div class="q-h"><span class="qid">PG-27</span><span class="b opt">확인</span><h4>환불 반영 시점 · 승인 금액 초과 방지</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>카드 환불은 카드사 반영까지 영업일 3~5일로 안내하면 되나요? 환불 실패 웹훅이 있나요? 누적 환불이 승인 금액을 넘으면 PG가 거절하나요? 환불·부분 취소 요청에 우리가 만든 요청 키(멱등키)를 보낼 수 있나요? 응답 없이 끊겼을 때 그 키나 거래 번호로 취소 결과를 조회할 수 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>여러 번 나눠 환불할 때 원 단위 오차로 승인 금액을 넘지 않도록 서버에서도 막습니다.</p></div><div><h5>원하는 답</h5><p>반영 기간 안내, 실패 웹훅, 초과 거절.</p></div><div><h5>안 되면</h5><p>서버 검증만으로 처리합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+</section>
+<section class="sec" id="s-escrow" data-title="에스크로(구매안전서비스)">
+  <div class="sec-head"><div class="sec-num">05</div><h2>에스크로(구매안전서비스)</h2><p>통신판매업 신고와 오픈마켓 구조에 함께 걸리는 부분입니다.</p></div>
+<article class="q" id="PG-28" data-pri="must" data-title="에스크로와 지급대행을 함께 쓸 수 있는가">
+  <div class="q-h"><span class="qid">PG-28</span><span class="b must">필수</span><h4>에스크로와 지급대행을 함께 쓸 수 있는가</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>오픈마켓(지급대행) 구조에서 구매안전서비스(에스크로)를 함께 적용할 수 있나요? 법적으로 적용해야 하는 결제 수단 범위(현금성 결제만인지, 카드도 포함인지)를 안내해 주세요.</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>현금성 결제(계좌이체·가상계좌)에 에스크로를 기본 적용하고 화면에 표시할 계획입니다.</p></div><div><h5>원하는 답</h5><p>동시 적용 가능, 적용 범위 안내.</p></div><div><h5>안 되면</h5><p>에스크로를 별도 서비스로 붙이거나 다른 PG를 찾습니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-29" data-pri="must" data-title="구매안전서비스 이용확인증">
+  <div class="q-h"><span class="qid">PG-29</span><span class="b must">필수</span><h4>구매안전서비스 이용확인증</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>통신판매업 신고에 쓸 구매안전서비스 이용확인증을 언제 받을 수 있나요(계약 전에도 가능한지)? 파트너도 각자 이용확인증이 필요한가요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>통신판매업 신고 → PG 실심사로 이어지는 순서의 출발점입니다. 신고 범위는 법률 자문(<a class="xref" href="sikup-legal-consult.html#L-06">L-06</a>)에서도 확인합니다.</p></div><div><h5>원하는 답</h5><p>계약 초기에 발급, 파트너는 플랫폼 에스크로로 대체 가능.</p></div><div><h5>안 되면</h5><p>은행 에스크로 등 다른 경로로 이용확인증을 먼저 받습니다.</p></div></div>
+  
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-30" data-pri="rec" data-title="배송 등록 · 구매 확정 연동">
+  <div class="q-h"><span class="qid">PG-30</span><span class="b rec">중요</span><h4>배송 등록 · 구매 확정 연동</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>한 결제 안에 여러 파트너·여러 송장이 있을 때 배송 정보를 어떻게 등록하나요(API)? 구매 확정 결과는 어떻게 전달하나요? 배송 완료 7일 뒤 자동 구매 확정을 PG에도 반영할 수 있나요? 한 결제의 일부(항목·금액을 지정해서)만 먼저 구매 확정할 수 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>파트너가 송장을 등록하면 배송 추적으로 배송 완료를 처리하고, 7일 뒤 자동 구매 확정합니다(일수는 관리자 설정값). 구매 확정은 주문 항목 단위입니다. 한 결제 안에서도 일반 상품은 먼저, 맞춤 제작은 몇 주 뒤에 확정되고, 클레임이 열린 항목은 빠지며, 교환품·재제작품은 재배송 완료 7일 뒤에 확정됩니다. 이미 구매 확정한 항목을 재제작해 보낸 경우에는 PG에 다시 확정하지 않습니다. 에스크로가 결제 단위로만 확정되면 일반 상품 정산이 맞춤 제작 출고 때까지 묶입니다.</p></div><div><h5>원하는 답</h5><p>송장 여러 개 등록 API, 구매 확정 API, 부분 구매 확정(항목·금액 지정).</p></div><div><h5>안 되면</h5><p>에스크로 적용 결제 수단을 줄입니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#P-ORD-02">P-ORD-02</a><a class="sid" href="sikup-spec.html#C-STATE-01">C-STATE-01</a><a class="sid" href="sikup-spec.html#C-STATE-02">C-STATE-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-69" data-pri="rec" data-title="재주문 건만 구매 확정을 앞당길 수 있는가">
+  <div class="q-h"><span class="qid">PG-69</span><span class="b rec">중요</span><h4>재주문 건만 구매 확정을 앞당길 수 있는가</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>같은 디자인 재주문 건만 배송 완료 3일 뒤 자동 구매 확정(일반은 7일)으로 바꿔 파트너 정산을 앞당기려 합니다. ① 에스크로가 걸린 결제(계좌이체·가상계좌)는 플랫폼이 주문마다 구매 확정 시점을 다르게 정할 수 있나요, 아니면 PG 에스크로의 자동 구매 확정 규칙을 따라야 하나요? ② 에스크로가 없는 카드 결제는 플랫폼의 구매 확정 기준대로 지급을 요청하면 되나요? ③ 파트너(하위몰·셀러) 지급 요청 시점에 계약상 제한(예: 결제일부터 최소 며칠 뒤)이 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>재주문을 플랫폼에 붙잡는 장치 가운데 “재주문 정산 앞당김”을 이 답이 올 때까지 보류해 두었습니다. 파트너가 직거래보다 플랫폼 재주문을 고를 이유를 하나 더 주려는 장치입니다.</p></div><div><h5>원하는 답</h5><p>결제 수단별로 플랫폼이 구매 확정 시점을 정할 수 있음.</p></div><div><h5>안 되면</h5><p>카드 결제 건만 앞당기거나, 이 장치를 빼고 수수료 인하·연결 보장만 씁니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#D-RE-01">D-RE-01</a><a class="sid" href="sikup-spec.html#C-STL-02">C-STL-02</a><a class="sid" href="sikup-spec.html#A-SYS-03">A-SYS-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-31" data-pri="rec" data-title="맞춤 제작처럼 오래 걸리는 주문">
+  <div class="q-h"><span class="qid">PG-31</span><span class="b rec">중요</span><h4>맞춤 제작처럼 오래 걸리는 주문</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>맞춤 제작은 디자인 협의와 생산 때문에 보통 결제 후 2~4주 뒤 출고되고, 길면 몇 달이 걸립니다. 에스크로 보관 기간에 제한이 있나요? 출고가 늦으면 PG가 자동으로 정산하거나 취소하나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>디자인 확정 전에는 생산을 시작하지 않으므로 출고까지 시간이 걸립니다. 디자인 단계는 고객 무응답 보류를 풀면 날짜를 0일부터 다시 세고, 30일 연장·확정 후 변경 중재 건은 상한이 없습니다. 출고 뒤에도 불량·표시와 다름 반품을 받은 날부터 3개월까지 받습니다(PG-26).</p></div><div><h5>원하는 답</h5><p>장기 보관 가능, 자동 처리 없음(또는 기간 설정 가능).</p></div><div><h5>안 되면</h5><p>맞춤 제작 주문의 결제 수단을 카드 중심으로 안내합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#D-REQ-04">D-REQ-04</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-32" data-pri="opt" data-title="에스크로 수수료와 표시">
+  <div class="q-h"><span class="qid">PG-32</span><span class="b opt">확인</span><h4>에스크로 수수료와 표시</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>에스크로 수수료(공시 기준 카드·계좌이체 +0.2%, 가상계좌 건당 200원)를 협상할 수 있나요? 화면에 표시할 문구·마크 규정은요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>비용표에 반영하고 결제 화면에 표시합니다.</p></div><div><h5>원하는 답</h5><p>협상 가능 범위와 표시 가이드.</p></div><div><h5>안 되면</h5><p>공시 요율로 계산합니다.</p></div></div>
+  
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+</section>
+<section class="sec" id="s-payout" data-title="지급대행(파트너 정산 지급)">
+  <div class="sec-head"><div class="sec-num">06</div><h2>지급대행(파트너 정산 지급)</h2><p>매주 금요일, 플랫폼이 확정한 금액을 파트너 계좌로 보냅니다.</p></div>
+<article class="q" id="PG-33" data-pri="must" data-title="주 1회 API 지급 요청">
+  <div class="q-h"><span class="qid">PG-33</span><span class="b must">필수</span><h4>주 1회 API 지급 요청</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>매주 금요일 플랫폼이 확정한 금액을 API로 지급 요청하면 하위몰 계좌로 보내 주나요? PG가 정한 정산 주기(D+N)에 묶이나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>화요일 마감 → 수~목 확정 → 금요일 지급, 구매 확정 후 최대 10일 안 지급이 목표입니다(주기는 관리자 설정값).</p></div><div><h5>원하는 답</h5><p>지급일과 금액을 플랫폼이 정하는 API 지급.</p></div><div><h5>안 되면</h5><p>PG 정산 주기에 맞춰 우리 정산 주기를 바꿉니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>바로지급(EXPRESS)은 영업일 08:00~15:00에 요청하면 당일 지급되고, 예약지급(SCHEDULED)은 payoutDate를 다음 날부터 1년 안의 영업일로 지정합니다. 이체는 영업일 08~15시에 처리됩니다. 매주 금요일 예약지급으로 운영할 수 있습니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STL-02">C-STL-02</a><a class="sid" href="sikup-spec.html#A-STL-02">A-STL-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-34" data-pri="must" data-title="지급할 수 있는 금액의 범위">
+  <div class="q-h"><span class="qid">PG-34</span><span class="b must">필수</span><h4>지급할 수 있는 금액의 범위</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>지급 요청 금액은 PG가 보관 중인 판매대금 안에서만 되나요? PG가 플랫폼에 정산하기 전 금액도 지급할 수 있나요? 하위몰별 지급 가능 잔액을 조회할 수 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>구매 확정된 건만 지급하지만, 확정 시점과 PG 정산 시점이 다를 수 있습니다.</p></div><div><h5>원하는 답</h5><p>지급 가능 잔액 조회 API, 확정 건 지급 가능.</p></div><div><h5>안 되면</h5><p>PG 정산 주기 뒤로 지급일을 늦춥니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>잔액 조회 API(GET /v2/balances)가 있습니다. availableAmount는 지금 지급할 수 있는 금액, pendingAmount는 매출은 났지만 아직 토스에서 정산받지 않은 금액입니다. 계약한 정산 주기에 따라 pending이 available로 바뀌고, 지급 재원은 가맹점 정산대금입니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STL-02">C-STL-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-35" data-pri="must" data-title="지급액에서 플랫폼 청구를 빼는 것">
+  <div class="q-h"><span class="qid">PG-35</span><span class="b must">필수</span><h4>지급액에서 플랫폼 청구를 빼는 것</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>파트너 유료 플랜 요금·광고비·위약금을 지급액에서 빼고 지급해도 되나요? PG 쪽에서 “판매대금 외 차감”을 제한하나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>정산 차감 순서: 이전 마이너스 이월 → 분쟁 조정 → 위약금 → 플랜료 → 광고비. 못 뺀 금액은 미수금으로 넘깁니다.</p></div><div><h5>원하는 답</h5><p>플랫폼이 계산한 순지급액으로 지급 가능.</p></div><div><h5>안 되면</h5><p>플랜료·광고비는 카드나 별도 청구로 받습니다. 법률 검토도 함께 필요합니다(<a class="xref" href="sikup-legal-consult.html#L-03">L-03</a>).</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>지급 금액을 플랫폼이 정하므로 기술적으로는 차감한 금액으로 지급할 수 있습니다. 법적 판단은 <a class="xref" href="sikup-legal-consult.html#L-03">L-03</a>에서 받습니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STL-01">C-STL-01</a><a class="sid" href="sikup-spec.html#C-STL-02">C-STL-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-36" data-pri="must" data-title="지급 수수료 · 한도 · 최소 금액">
+  <div class="q-h"><span class="qid">PG-36</span><span class="b must">필수</span><h4>지급 수수료 · 한도 · 최소 금액</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>지급 1건당 수수료와 일·건당 한도를 알려 주세요. 최소 지급 금액이 있나요(우리는 1,000원 미만은 다음 주기로 넘길 예정)?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>지급대행 수수료는 플랫폼이 냅니다.</p></div><div><h5>원하는 답</h5><p>건당 수수료와 한도표.</p></div><div><h5>안 되면</h5><p>지급 주기를 늘려 건수를 줄이는 방안을 검토합니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>월 고정 이용료 + 지급 건당 이용료입니다(금액 비공개, 월 지급 건수에 따라 다름). 다음 달 초 정산대금에서 자동 차감되고, 첫 지급이 있는 달부터는 지급이 없어도 매월 고정료가 붙습니다. 한 번에 최대 100건, 1건 10억 원 미만입니다. 셀러별 주간 지급 합계가 1천만 원 이상이면 KYC가 필요합니다(<a class="xref" href="#PG-63">PG-63</a>).</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STL-02">C-STL-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-37" data-pri="must" data-title="지급 결과와 실패 처리">
+  <div class="q-h"><span class="qid">PG-37</span><span class="b must">필수</span><h4>지급 결과와 실패 처리</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>지급 결과는 웹훅과 조회 API로 받을 수 있나요? 실패 사유 코드(계좌 오류, 예금주 불일치 등)를 주나요? 실패한 금액은 PG가 보관하나요? 다시 지급하려면 어떻게 하나요? 지급 요청에 우리가 만든 요청 키를 붙여, 응답이 없을 때 그 키로 결과를 조회하고 같은 키로 다시 보내도 두 번 지급되지 않게 할 수 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>실패하면 정산을 보류하고 사유를 남긴 뒤, 파트너가 계좌를 다시 인증하면 다음 지급일에 보냅니다.</p></div><div><h5>원하는 답</h5><p>결과 웹훅, 사유 코드, 재지급 API.</p></div><div><h5>안 되면</h5><p>실패 건은 재무 담당자가 수동으로 처리합니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>Payout 상태는 REQUESTED·IN_PROGRESS·COMPLETED·FAILED·CANCELED·DELETED·REJECTED이고, 실패 원인은 error 필드에 옵니다. 최종 상태는 payout.changed 웹훅으로 확인합니다(REJECTED는 FAILED로 발송, DELETED는 미발송). 100건 일괄 요청 중 1건만 실패해도 전체가 실패하고, 멱등키를 지원합니다. 실패한 금액이 잔액으로 돌아오는지는 문서에 없습니다(<a class="xref" href="#PG-65">PG-65</a>).</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#A-STL-02">A-STL-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-38" data-pri="rec" data-title="계좌 예금주 확인">
+  <div class="q-h"><span class="qid">PG-38</span><span class="b rec">중요</span><h4>계좌 예금주 확인</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>파트너 정산 계좌와 고객 환불 계좌의 예금주를 확인하는 API를 제공하나요? 건당 비용은요(우리는 건당 50원으로 가정)?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>예금주가 사업자 상호나 대표자명과 같아야 정산 계좌로 등록합니다.</p></div><div><h5>원하는 답</h5><p>PG에서 함께 제공.</p></div><div><h5>안 되면</h5><p>쿠콘·헥토파이낸셜 같은 별도 서비스를 계약합니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>셀러 등록 때 사업자번호와 계좌 유효성을 검증하고, 예금주 확인은 별도 계좌 인증 API(/v2/bank-accounts/verify-holder-name)가 있습니다. 비용은 문서에 없습니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#P-ONB-04">P-ONB-04</a><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-39" data-pri="rec" data-title="하위몰 정산 계좌 변경">
+  <div class="q-h"><span class="qid">PG-39</span><span class="b rec">중요</span><h4>하위몰 정산 계좌 변경</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>하위몰 정산 계좌를 API로 바꿀 수 있나요? PG 쪽 검증이나 보류 절차가 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>파트너 본인만 계좌를 바꿀 수 있고, 바꾼 뒤 첫 지급은 24시간 보류합니다(사기 방지).</p></div><div><h5>원하는 답</h5><p>API 변경과 PG 쪽 검증.</p></div><div><h5>안 되면</h5><p>계좌 변경을 PG 관리자 화면에서 수동으로 처리합니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>셀러 수정 API(POST /v2/sellers/{id})로 계좌를 바꿀 수 있습니다. 사업자번호와 셀러 유형은 바꿀 수 없습니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#P-ONB-04">P-ONB-04</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-40" data-pri="rec" data-title="지급 보류와 유보">
+  <div class="q-h"><span class="qid">PG-40</span><span class="b rec">중요</span><h4>지급 보류와 유보</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>특정 하위몰의 지급을 보류(클레임·분쟁·서류 만료)하거나, 계약이 끝난 파트너의 최종 정산액 30%를 90일 동안 유보할 수 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>보류·유보 비율과 기간은 관리자 설정값입니다.</p></div><div><h5>원하는 답</h5><p>플랫폼이 지급을 요청하지 않으면 PG가 보관.</p></div><div><h5>안 되면</h5><p>보류 규칙을 PG 기능에 맞게 줄입니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>지급은 플랫폼이 요청할 때만 나가므로, 보류·유보는 요청하지 않으면 됩니다. 예약지급은 REQUESTED 상태(지급일 D-1까지)면 취소할 수 있습니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STL-02">C-STL-02</a><a class="sid" href="sikup-spec.html#A-STL-01">A-STL-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-41" data-pri="rec" data-title="압류·가압류 통지">
+  <div class="q-h"><span class="qid">PG-41</span><span class="b rec">중요</span><h4>압류·가압류 통지</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>하위몰 정산금에 압류·가압류 통지가 오면 PG는 어떻게 처리하고 플랫폼에는 어떻게 알리나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>통지가 오면 법무 확인 전까지 지급을 보류합니다. 처리 방법은 법률 자문(<a class="xref" href="sikup-legal-consult.html#L-42">L-42</a>)으로도 확인합니다.</p></div><div><h5>원하는 답</h5><p>PG 처리 절차와 알림 방식.</p></div><div><h5>안 되면</h5><p>운영 매뉴얼로 수동 대응합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#A-STL-02">A-STL-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-42" data-pri="rec" data-title="판매대금 별도 관리 규제 대응">
+  <div class="q-h"><span class="qid">PG-42</span><span class="b rec">중요</span><h4>판매대금 별도 관리 규제 대응</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>온라인 플랫폼 정산 규제(판매대금 별도 관리, 정산 기한)가 강화되면 이 상품은 어떻게 대응하나요(예치, 신탁, 지급보증 등)?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>처음부터 짧은 정산 주기와 PG 지급대행으로 설계했습니다. 적용 기준은 법률 자문(<a class="xref" href="sikup-legal-consult.html#L-05">L-05</a>)에서 확인합니다.</p></div><div><h5>원하는 답</h5><p>규제 대응 방안이 이미 있는 상품.</p></div><div><h5>안 되면</h5><p>규제 시행 전에 PG 이전을 검토합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STL-02">C-STL-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-43" data-pri="opt" data-title="공휴일 지급">
+  <div class="q-h"><span class="qid">PG-43</span><span class="b opt">확인</span><h4>공휴일 지급</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>금요일이 공휴일이면 앞 영업일에 지급하려 합니다. 예약 지급이나 지급일 지정이 되나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>정산 요일과 공휴일 처리는 관리자 설정값입니다.</p></div><div><h5>원하는 답</h5><p>지급일 지정 가능.</p></div><div><h5>안 되면</h5><p>배치에서 지급일을 계산해 요청합니다.</p></div></div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>휴일·공휴일이나 지난 날짜를 지정하면 오류가 납니다. 공휴일에도 지급요청서는 쓸 수 있지만 이체는 영업일에만 됩니다. 앞 영업일 계산은 우리 배치에서 해야 합니다.</div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STL-02">C-STL-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+</section>
+<section class="sec" id="s-billing" data-title="정기결제(빌링)">
+  <div class="sec-head"><div class="sec-num">07</div><h2>정기결제(빌링)</h2><p>사장님 멤버십과 파트너 유료 플랜(2차), 정기배송(3차)이 같은 빌링을 씁니다.</p></div>
+<article class="q" id="PG-44" data-pri="rec" data-title="빌링키 발급과 자동결제">
+  <div class="q-h"><span class="qid">PG-44</span><span class="b rec">중요</span><h4>빌링키 발급과 자동결제</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>카드 빌링키를 발급하고(웹뷰 포함) 자동결제 API로 결제할 수 있나요? 정기결제는 별도 심사나 계약이 필요한가요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>멤버십은 월간·연간 정기결제이고, 실패하면 D+1·D+3에 다시 시도하고 D+7에 해지합니다.</p></div><div><h5>원하는 답</h5><p>빌링키 발급·자동결제·재시도 가능.</p></div><div><h5>안 되면</h5><p>정기결제 전용 PG를 따로 씁니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-03">C-PAY-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-45" data-pri="rec" data-title="빌링 결제의 판매자">
+  <div class="q-h"><span class="qid">PG-45</span><span class="b rec">중요</span><h4>빌링 결제의 판매자</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>멤버십 정기결제를 본사 하위몰로 처리할 수 있나요? 파트너가 본사에 내는 플랜 요금을 카드로 받을 때는 어떤 구조가 되나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>멤버십은 본사 매출이고, 파트너 플랜 요금은 기본적으로 정산에서 빼고 카드는 선택입니다.</p></div><div><h5>원하는 답</h5><p>본사 하위몰로 빌링, 파트너 대상 카드 결제 가능.</p></div><div><h5>안 되면</h5><p>파트너 플랜 요금은 정산 차감만 지원합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-03">C-PAY-03</a><a class="sid" href="sikup-spec.html#A-REV-02">A-REV-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-46" data-pri="opt" data-title="카드 만료 · 정기배송 확장">
+  <div class="q-h"><span class="qid">PG-46</span><span class="b opt">확인</span><h4>카드 만료 · 정기배송 확장</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>카드 만료 예정 정보를 받을 수 있나요? 나중에 파트너 상품을 정기배송으로 빌링 결제할 때도 하위몰 분리가 되나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>만료 7일 전에 알리고 카드 변경을 안내합니다. 정기배송은 3차 기능입니다.</p></div><div><h5>원하는 답</h5><p>만료 정보 제공, 빌링에도 하위몰 분리.</p></div><div><h5>안 되면</h5><p>만료일은 저장하지 않고 실패 후 안내합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-03">C-PAY-03</a><a class="sid" href="sikup-spec.html#U-ORD-07">U-ORD-07</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+</section>
+<section class="sec" id="s-webview" data-title="웹뷰 앱 연동">
+  <div class="sec-head"><div class="sec-num">08</div><h2>웹뷰 앱 연동</h2><p>Android·iOS 앱은 웹앱을 담은 웹뷰입니다. 한국 웹뷰 앱에서 가장 자주 막히는 부분입니다.</p></div>
+<article class="q" id="PG-47" data-pri="must" data-title="웹뷰 가이드와 앱 스킴 목록">
+  <div class="q-h"><span class="qid">PG-47</span><span class="b must">필수</span><h4>웹뷰 가이드와 앱 스킴 목록</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>Android·iOS 웹뷰 연동 가이드를 주세요. iOS에 등록할 앱 스킴 허용 목록(LSApplicationQueriesSchemes) 최신본이 있나요? 카드사·간편결제 앱이 추가되면 어떻게 알려 주나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>카드사 앱이 늘면 앱 업데이트가 필요할 수 있어 목록을 넉넉히 둡니다.</p></div><div><h5>원하는 답</h5><p>최신 가이드와 변경 공지 채널.</p></div><div><h5>안 되면</h5><p>포트원 등 연동 플랫폼의 웹뷰 가이드를 참고합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-APP-03">C-APP-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-48" data-pri="rec" data-title="결제 앱에서 돌아오는 처리">
+  <div class="q-h"><span class="qid">PG-48</span><span class="b rec">중요</span><h4>결제 앱에서 돌아오는 처리</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>ISP·앱카드·간편결제 앱에서 웹뷰로 돌아올 때 알려진 문제(카드사별, OS 버전별)가 있나요? 결제 앱에서 돌아오지 않고 앱을 다시 열면 어떻게 확인하나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>돌아오지 않은 경우 주문 상세에서 서버로 결제 상태를 다시 확인합니다.</p></div><div><h5>원하는 답</h5><p>알려진 이슈 목록과 권장 처리.</p></div><div><h5>안 되면</h5><p>실기기 테스트 목록을 늘립니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-APP-03">C-APP-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-49" data-pri="rec" data-title="실기기 테스트 환경">
+  <div class="q-h"><span class="qid">PG-49</span><span class="b rec">중요</span><h4>실기기 테스트 환경</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>테스트 환경에서 실제 기기로 앱카드·간편결제 앱 전환까지 테스트할 수 있나요? 테스트 카드와 테스트 계좌를 주나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>출시 전마다 카드사·간편결제별 실기기 결제 테스트를 합니다.</p></div><div><h5>원하는 답</h5><p>샌드박스에서 앱 전환 테스트 가능.</p></div><div><h5>안 되면</h5><p>소액 실결제 후 취소하는 방식으로 테스트합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-APP-03">C-APP-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-50" data-pri="opt" data-title="iOS 인앱결제 대상 상품">
+  <div class="q-h"><span class="qid">PG-50</span><span class="b opt">확인</span><h4>iOS 인앱결제 대상 상품</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>원본 AI 파일(디지털 상품)과 멤버십을 iOS 앱에서 팔 때 웹 결제로 안내한 고객사 사례가 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>App Store 인앱결제(가이드라인 3.1.1) 대상인지 확인해야 합니다. MVP는 iOS 앱에서 이 두 상품을 웹 결제로 안내하는 방식을 검토합니다.</p></div><div><h5>원하는 답</h5><p>사례와 주의점.</p></div><div><h5>안 되면</h5><p>iOS 앱에서는 두 상품의 구매 버튼을 숨깁니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-APP-03">C-APP-03</a><a class="sid" href="sikup-spec.html#D-OPT-01">D-OPT-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+</section>
+<section class="sec" id="s-recon" data-title="정산 데이터 · 대사">
+  <div class="sec-head"><div class="sec-num">09</div><h2>정산 데이터 · 대사</h2><p>PG 정산, 은행 입금, 내부 장부를 건별로 맞춥니다(MVP는 엑셀, 2차는 자동).</p></div>
+<article class="q" id="PG-51" data-pri="rec" data-title="PG → 플랫폼 정산 주기">
+  <div class="q-h"><span class="qid">PG-51</span><span class="b rec">중요</span><h4>PG → 플랫폼 정산 주기</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>플랫폼 몫(판매 수수료 수익 + 본사 판매분)은 결제 후 며칠 뒤에 들어오나요? 결제 수단별로 다른가요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>본사 현금 흐름과 지급대행 잔액 계산에 필요합니다.</p></div><div><h5>원하는 답</h5><p>결제 수단별 정산 주기표.</p></div><div><h5>안 되면</h5><p>현금 흐름 계획에 반영합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#A-STL-03">A-STL-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-52" data-pri="rec" data-title="정산 파일 · API 형식">
+  <div class="q-h"><span class="qid">PG-52</span><span class="b rec">중요</span><h4>정산 파일 · API 형식</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>건별(결제·취소·부분 취소), 하위몰별, 수수료별 정산 내역을 API나 파일로 받을 수 있나요? 제공 시점과 형식, 우리 주문 ID와 맞출 수 있는 키를 알려 주세요.</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>불일치가 3일 넘게 풀리지 않으면 팀장에게 알립니다.</p></div><div><h5>원하는 답</h5><p>API 제공, 주문 ID 포함.</p></div><div><h5>안 되면</h5><p>관리자 화면에서 엑셀을 내려받아 올립니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#A-STL-03">A-STL-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-53" data-pri="opt" data-title="PG 수수료 세금계산서 · 신고 자료">
+  <div class="q-h"><span class="qid">PG-53</span><span class="b opt">확인</span><h4>PG 수수료 세금계산서 · 신고 자료</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>PG 결제 수수료와 지급대행 수수료의 세금계산서는 어떻게 발행되나요? 플랫폼 부가세 신고에 필요한 자료는 무엇을 주나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>월 마감 리포트와 세무 처리에 필요합니다.</p></div><div><h5>원하는 답</h5><p>월별 세금계산서와 신고 자료.</p></div><div><h5>안 되면</h5><p>세무사와 처리 방식을 맞춥니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#A-STL-03">A-STL-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+</section>
+<section class="sec" id="s-fee" data-title="수수료 · 계약 조건">
+  <div class="sec-head"><div class="sec-num">10</div><h2>수수료 · 계약 조건</h2><p>아래 “상담 준비”의 예상 거래 규모를 말하고 견적을 받습니다.</p></div>
+<article class="q" id="PG-54" data-pri="must" data-title="오픈마켓 기준 수수료 견적">
+  <div class="q-h"><span class="qid">PG-54</span><span class="b must">필수</span><h4>오픈마켓 기준 수수료 견적</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>카드(일반·우대), 간편결제(각사), 계좌이체(최저 금액 포함), 가상계좌, 에스크로, 지급대행, 빌링 수수료를 오픈마켓 기준으로 견적 주세요.</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>비용표는 공시 상한(카드 3.4%, 계좌이체 2.0%·최저 200원, 가상계좌 건당 400원)으로 잡아 두었습니다.</p></div><div><h5>원하는 답</h5><p>항목별 견적표(VAT 포함 여부 표시).</p></div><div><h5>안 되면</h5><p>—</p></div></div>
+  
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-55" data-pri="rec" data-title="가입비 · 연관리비">
+  <div class="q-h"><span class="qid">PG-55</span><span class="b rec">중요</span><h4>가입비 · 연관리비</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>가입비(22만원)와 연관리비(11만원)를 면제하는 프로모션이 있나요? VAT 포함 금액인가요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>일회성 비용표에 반영합니다.</p></div><div><h5>원하는 답</h5><p>면제 또는 감면.</p></div><div><h5>안 되면</h5><p>공시 금액으로 반영합니다.</p></div></div>
+  
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-56" data-pri="rec" data-title="수수료 재협상과 변경 통지">
+  <div class="q-h"><span class="qid">PG-56</span><span class="b rec">중요</span><h4>수수료 재협상과 변경 통지</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>거래액이 늘면 언제, 어느 구간에서 수수료를 다시 협상할 수 있나요? PG가 수수료를 올릴 때 몇 일 전에 알려 주나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>성장기 월 거래액 10억원 이상을 가정하고 있습니다.</p></div><div><h5>원하는 답</h5><p>거래액 구간별 재협상 기준.</p></div><div><h5>안 되면</h5><p>—</p></div></div>
+  
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-57" data-pri="rec" data-title="계약 기간 · 해지 · PG 이전">
+  <div class="q-h"><span class="qid">PG-57</span><span class="b rec">중요</span><h4>계약 기간 · 해지 · PG 이전</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>최소 계약 기간과 해지 조건, 위약금을 알려 주세요. PG를 옮길 때 하위몰 정보와 빌링키를 이관할 수 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>PG를 바꾸면 멤버십 회원이 카드를 다시 등록해야 할 수 있습니다.</p></div><div><h5>원하는 답</h5><p>짧은 최소 기간, 빌링키 이관 지원.</p></div><div><h5>안 되면</h5><p>처음부터 결제 연동 플랫폼 경유를 검토합니다(<a class="xref" href="#PG-60">PG-60</a>).</p></div></div>
+  
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-58" data-pri="opt" data-title="장애 대응 · 기술 지원">
+  <div class="q-h"><span class="qid">PG-58</span><span class="b opt">확인</span><h4>장애 대응 · 기술 지원</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>장애 SLA와 공지 채널, 장애 보상이 있나요? 전담 매니저나 개발 지원 채널(슬랙 등), Java/REST 문서·SDK, API 호출 한도를 알려 주세요.</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>1인 개발이라 문서 품질과 지원 속도가 개발 기간에 직접 영향을 줍니다.</p></div><div><h5>원하는 답</h5><p>전담 지원과 좋은 문서.</p></div><div><h5>안 되면</h5><p>—</p></div></div>
+  
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+</section>
+<section class="sec" id="s-extra" data-title="부가 서비스 · 연동 방식">
+  <div class="sec-head"><div class="sec-num">11</div><h2>부가 서비스 · 연동 방식</h2><p>PG와 함께 계약하면 편한 것들입니다.</p></div>
+<article class="q" id="PG-59" data-pri="rec" data-title="휴대폰 본인인증">
+  <div class="q-h"><span class="qid">PG-59</span><span class="b rec">중요</span><h4>휴대폰 본인인증</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>휴대폰 본인인증(PASS 등)을 PG를 통해 함께 계약할 수 있나요? 건당 비용과 웹뷰에서 PASS 앱 연동 방법을 알려 주세요.</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>가입할 때 본인인증으로 CI를 받아 1인 1계정과 쿠폰 악용 방지에 씁니다(건당 30~100원 가정).</p></div><div><h5>원하는 답</h5><p>PG 통한 일괄 계약.</p></div><div><h5>안 되면</h5><p>NICE·KCB 등과 별도로 계약합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#U-MEM-03">U-MEM-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-60" data-pri="opt" data-title="포트원 같은 연동 플랫폼 경유">
+  <div class="q-h"><span class="qid">PG-60</span><span class="b opt">확인</span><h4>포트원 같은 연동 플랫폼 경유</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>(PG와 포트원 양쪽에 확인) 포트원 같은 결제 연동 플랫폼을 거쳐 연동해도 지급대행, 하위몰, 에스크로, 빌링을 모두 쓸 수 있나요? 나중에 대체 PG로 자동 전환하려면 하위몰을 이중으로 등록해야 하나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>PG를 바꾸거나 함께 쓰기 쉬워지지만, 오픈마켓 기능이 빠지면 쓸 수 없습니다. 대체 PG 자동 전환은 2차 기능입니다.</p></div><div><h5>원하는 답</h5><p>오픈마켓 기능 모두 지원.</p></div><div><h5>안 되면</h5><p>PG에 직접 연동합니다.</p></div></div>
+  
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+</section>
+<section class="sec" id="s-toss" data-title="토스페이먼츠 지급대행 추가 확인">
+  <div class="sec-head"><div class="sec-num">12</div><h2>토스페이먼츠 지급대행 추가 확인</h2><p>공개 문서로 확인한 지급대행 방식(플랫폼이 가맹점으로 결제를 받고, 잔액에서 셀러에게 송금)을 전제로 토스 상담에서 더 물어볼 것입니다. 같은 방식을 쓰는 다른 PG에도 그대로 씁니다.</p></div>
+<article class="q" id="PG-61" data-pri="must" data-title="셀러에게 보내고 남은 잔액(본사 몫)의 정산">
+  <div class="q-h"><span class="qid">PG-61</span><span class="b must">필수</span><h4>셀러에게 보내고 남은 잔액(본사 몫)의 정산</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>셀러에게 지급하고 남은 잔액(본사 수수료, 디자인비, 멤버십 매출)은 언제, 어떻게 본사 계좌로 들어오나요? 다음 주 환불에 대비해 잔액 일부를 남겨 둘 수 있나요? 정산 주기(pendingAmount가 availableAmount로 바뀌는 시점)는 결제 수단별로 D+며칠인가요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>우리 정산은 구매 확정 후 주 1회이고, 본사 몫과 파트너 몫이 같은 잔액에 섞여 있습니다.</p></div><div><h5>원하는 답</h5><p>남은 잔액의 본사 정산 방식과 시점, 잔액 유지 가능 여부, 수단별 정산 주기.</p></div><div><h5>안 되면</h5><p>현금 흐름 계획과 지급일을 정산 주기에 맞춰 다시 정합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-STL-02">C-STL-02</a><a class="sid" href="sikup-spec.html#A-STL-03">A-STL-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-62" data-pri="must" data-title="지급대행형의 카드 매출 · 현금영수증 명의">
+  <div class="q-h"><span class="qid">PG-62</span><span class="b must">필수</span><h4>지급대행형의 카드 매출 · 현금영수증 명의</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>지급대행을 쓰면 카드 전표, 현금영수증, 국세청 카드 매출 자료가 모두 플랫폼(식업) 명의로 나가나요? 그렇다면 다른 고객사들은 파트너 매출과 부가세 신고를 어떻게 맞추나요? 셀러 명의로 매출을 귀속시키는 하위몰형 상품도 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>상품 대금 증빙은 파트너 명의, 디자인비·멤버십은 본사 명의로 나누도록 설계했습니다. 모두 플랫폼 명의로 잡히면 증빙과 세무 처리가 크게 바뀝니다.</p></div><div><h5>원하는 답</h5><p>명의 처리 방식, 셀러별 매출 자료 제공 여부, 하위몰형 대안.</p></div><div><h5>안 되면</h5><p>세무사(<a class="xref" href="sikup-legal-consult.html#T-03">T-03</a>)와 함께 증빙 설계를 다시 정하고, 하위몰형 PG와 비교합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#U-ORD-05">U-ORD-05</a><a class="sid" href="sikup-spec.html#A-STL-03">A-STL-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-63" data-pri="must" data-title="KYC를 미리 받을 수 있는가">
+  <div class="q-h"><span class="qid">PG-63</span><span class="b must">필수</span><h4>KYC를 미리 받을 수 있는가</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>셀러별 주간 지급 합계가 1천만 원 이상이면 KYC가 필요하고, KYC는 미리 요청할 수 없으며 KYC_REQUIRED 상태에서는 지급이 안 된다고 되어 있습니다. 큰 파트너는 첫 주에 1천만 원을 넘을 수 있는데, 그 주 지급이 막히지 않게 미리 심사받는 방법이 있나요? 심사는 얼마나 걸리나요? 1년·3년 재심사 시점을 미리 알 수 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>매주 금요일 지급이 KYC 대기로 늦어지면 파트너 신뢰를 잃습니다. 재심사 때도 같은 일이 생길 수 있습니다.</p></div><div><h5>원하는 답</h5><p>사전 심사 방법, 소요 기간, 재심사 사전 알림.</p></div><div><h5>안 되면</h5><p>입점 때 예상 매출이 큰 파트너에게 KYC를 미리 안내하고, KYC 대기 중인 지급은 보류 사유로 표시해 다음 지급일로 넘깁니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#P-ONB-01">P-ONB-01</a><a class="sid" href="sikup-spec.html#A-STL-02">A-STL-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-64" data-pri="rec" data-title="개인사업자 셀러 본인인증과 입점 절차">
+  <div class="q-h"><span class="qid">PG-64</span><span class="b rec">중요</span><h4>개인사업자 셀러 본인인증과 입점 절차</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>개인사업자 셀러는 등록 후 휴대폰 본인인증 문자를 받아야 지급할 수 있다고 되어 있습니다. 인증 문자의 발신 이름과 유효 기간, 인증하지 않으면 어떻게 되는지 알려 주세요. 우리 입점 절차 안에서 이 인증을 함께 처리할 수 있나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>입점 신청 때 담당자 본인인증을 이미 받습니다. 파트너가 두 번 인증하지 않게 하고 싶습니다.</p></div><div><h5>원하는 답</h5><p>인증 절차 상세와 우리 화면 연동 가능 여부.</p></div><div><h5>안 되면</h5><p>입점 완료 안내에 “토스페이먼츠 인증 문자”를 따로 안내합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#P-ONB-01">P-ONB-01</a><a class="sid" href="sikup-spec.html#P-ONB-03">P-ONB-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-65" data-pri="rec" data-title="지급 실패 금액과 일괄 요청 실패">
+  <div class="q-h"><span class="qid">PG-65</span><span class="b rec">중요</span><h4>지급 실패 금액과 일괄 요청 실패</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>지급이 FAILED·REJECTED가 되면 그 금액은 바로 지급 가능 잔액으로 돌아오나요? 100건 일괄 요청은 1건만 실패해도 전체가 실패하는데, 요청 전에 셀러 상태와 계좌를 미리 검증하는 방법이 있나요? 1건씩 요청하면 이용료가 달라지나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>매주 파트너 수십~수백 곳에 한 번에 지급합니다.</p></div><div><h5>원하는 답</h5><p>실패 금액 처리, 사전 검증 방법, 요청 단위별 비용.</p></div><div><h5>안 되면</h5><p>셀러 상태를 조회한 뒤 100건 단위로 나눠 보내고, 실패한 묶음은 1건씩 다시 보냅니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#A-STL-02">A-STL-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-66" data-pri="rec" data-title="지급 뒤 환불의 재원">
+  <div class="q-h"><span class="qid">PG-66</span><span class="b rec">중요</span><h4>지급 뒤 환불의 재원</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>이미 지급한 파트너 몫을 환불해야 할 때, 다른 매출로 쌓인 잔액(pending·available)에서 환불이 나가도 되나요? 잔액이 모자라면 플랫폼이 충전해야 하나요? 충전은 어떻게 하나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>확정 후 불량 반품은 다음 정산 주기에 마이너스로 반영하고 파트너에게서 회수합니다.</p></div><div><h5>원하는 답</h5><p>환불 재원 처리 방식과 충전 방법.</p></div><div><h5>안 되면</h5><p>환불에 대비해 잔액을 일정 비율 남겨 두는 운영 규칙을 둡니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a><a class="sid" href="sikup-spec.html#C-STL-01">C-STL-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-67" data-pri="rec" data-title="에스크로 결제의 정산대금과 잔액">
+  <div class="q-h"><span class="qid">PG-67</span><span class="b rec">중요</span><h4>에스크로 결제의 정산대금과 잔액</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>에스크로가 적용된 결제(계좌이체·가상계좌)의 정산대금은 구매 확정 뒤에 잔액으로 들어오나요? 지급대행과 에스크로를 함께 쓸 때 구매 확정 정보는 토스에 어떻게 넘기나요? 한 결제의 일부 항목만 먼저 확정하는 경우(PG-30)는 어떻게 되나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>현금성 결제에는 에스크로를 기본으로 적용할 계획입니다(<a class="xref" href="#PG-28">PG-28</a>).</p></div><div><h5>원하는 답</h5><p>에스크로 건의 정산 시점과 연동 방법.</p></div><div><h5>안 되면</h5><p>에스크로 적용 범위를 줄이거나 다른 방식을 찾습니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-68" data-pri="opt" data-title="테스트 환경의 한계">
+  <div class="q-h"><span class="qid">PG-68</span><span class="b opt">확인</span><h4>테스트 환경의 한계</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>테스트 환경에서는 법인 셀러만 등록할 수 있고 KYC를 할 수 없다고 되어 있습니다. 개인사업자 셀러 본인인증과 KYC 흐름을 시험할 방법이 있나요? 라이브 소액 테스트 수수료는 얼마인가요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>셀러 상태(APPROVAL_REQUIRED → PARTIALLY_APPROVED → KYC_REQUIRED → APPROVED)별 화면과 정산 보류 로직을 만들어야 합니다.</p></div><div><h5>원하는 답</h5><p>샌드박스 시나리오나 테스트 방법.</p></div><div><h5>안 되면</h5><p>상태 전이는 웹훅 모의 데이터로 테스트합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#P-ONB-04">P-ONB-04</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+</section>
+<section class="sec" id="matrix" data-title="PG 비교표">
+  <div class="sec-head"><div class="sec-num">13</div><h2>PG 비교표</h2><p>상담이 끝날 때마다 필수 기준을 ○(가능) / △(조건부) / ×(불가)로 기록합니다. PG 이름은 눌러서 바꿀 수 있습니다. 토스페이먼츠 열의 ○ 4개는 공개 문서(2026-10-12 확인)로 미리 채웠습니다.</p></div>
+  <div class="table-wrap"><table class="matrix minw-760">
+    <thead><tr><th>기준</th><th><input class="mx-head" data-mx="head-0" value="토스페이먼츠" aria-label="PG 이름 1"></th><th><input class="mx-head" data-mx="head-1" value="KG이니시스" aria-label="PG 이름 2"></th><th><input class="mx-head" data-mx="head-2" value="NHN KCP" aria-label="PG 이름 3"></th><th><input class="mx-head" data-mx="head-3" value="나이스페이" aria-label="PG 이름 4"></th></tr></thead>
+    <tbody>
+<tr><td><a class="xref" href="#PG-01">PG-01</a> 오픈마켓 정산(하위몰형·지급대행형)</td><td><select data-mx="openmarket-0" aria-label="오픈마켓 정산(하위몰형·지급대행형) PG1"><option value="">-</option><option selected>○</option><option>△</option><option>×</option></select></td><td><select data-mx="openmarket-1" aria-label="오픈마켓 정산(하위몰형·지급대행형) PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="openmarket-2" aria-label="오픈마켓 정산(하위몰형·지급대행형) PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="openmarket-3" aria-label="오픈마켓 정산(하위몰형·지급대행형) PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-02">PG-02</a> 본사 몫 분리(하위몰 또는 잔액)</td><td><select data-mx="hq_submall-0" aria-label="본사 몫 분리(하위몰 또는 잔액) PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="hq_submall-1" aria-label="본사 몫 분리(하위몰 또는 잔액) PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="hq_submall-2" aria-label="본사 몫 분리(하위몰 또는 잔액) PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="hq_submall-3" aria-label="본사 몫 분리(하위몰 또는 잔액) PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-61">PG-61</a> 남은 잔액(본사 몫) 정산</td><td><select data-mx="remainder-0" aria-label="남은 잔액(본사 몫) 정산 PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="remainder-1" aria-label="남은 잔액(본사 몫) 정산 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="remainder-2" aria-label="남은 잔액(본사 몫) 정산 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="remainder-3" aria-label="남은 잔액(본사 몫) 정산 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-62">PG-62</a> 카드 매출·현금영수증 명의</td><td><select data-mx="card_owner_toss-0" aria-label="카드 매출·현금영수증 명의 PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="card_owner_toss-1" aria-label="카드 매출·현금영수증 명의 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="card_owner_toss-2" aria-label="카드 매출·현금영수증 명의 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="card_owner_toss-3" aria-label="카드 매출·현금영수증 명의 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-15">PG-15</a> 지급 금액을 플랫폼이 지정</td><td><select data-mx="split_timing-0" aria-label="지급 금액을 플랫폼이 지정 PG1"><option value="">-</option><option selected>○</option><option>△</option><option>×</option></select></td><td><select data-mx="split_timing-1" aria-label="지급 금액을 플랫폼이 지정 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="split_timing-2" aria-label="지급 금액을 플랫폼이 지정 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="split_timing-3" aria-label="지급 금액을 플랫폼이 지정 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-20">PG-20</a> 판매자별 부분 취소 처리</td><td><select data-mx="partial_by_seller-0" aria-label="판매자별 부분 취소 처리 PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="partial_by_seller-1" aria-label="판매자별 부분 취소 처리 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="partial_by_seller-2" aria-label="판매자별 부분 취소 처리 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="partial_by_seller-3" aria-label="판매자별 부분 취소 처리 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-21">PG-21</a> 수단별 부분 취소 지원</td><td><select data-mx="partial_by_method-0" aria-label="수단별 부분 취소 지원 PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="partial_by_method-1" aria-label="수단별 부분 취소 지원 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="partial_by_method-2" aria-label="수단별 부분 취소 지원 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="partial_by_method-3" aria-label="수단별 부분 취소 지원 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-22">PG-22</a> 현금성 환불 계좌 송금</td><td><select data-mx="refund_account-0" aria-label="현금성 환불 계좌 송금 PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="refund_account-1" aria-label="현금성 환불 계좌 송금 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="refund_account-2" aria-label="현금성 환불 계좌 송금 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="refund_account-3" aria-label="현금성 환불 계좌 송금 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-23">PG-23</a> 지급 후 환불 상계</td><td><select data-mx="after_payout-0" aria-label="지급 후 환불 상계 PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="after_payout-1" aria-label="지급 후 환불 상계 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="after_payout-2" aria-label="지급 후 환불 상계 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="after_payout-3" aria-label="지급 후 환불 상계 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-28">PG-28</a> 에스크로 + 지급대행 동시</td><td><select data-mx="escrow_combo-0" aria-label="에스크로 + 지급대행 동시 PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="escrow_combo-1" aria-label="에스크로 + 지급대행 동시 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="escrow_combo-2" aria-label="에스크로 + 지급대행 동시 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="escrow_combo-3" aria-label="에스크로 + 지급대행 동시 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-33">PG-33</a> 주 1회 API 지급</td><td><select data-mx="payout_cycle-0" aria-label="주 1회 API 지급 PG1"><option value="">-</option><option selected>○</option><option>△</option><option>×</option></select></td><td><select data-mx="payout_cycle-1" aria-label="주 1회 API 지급 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="payout_cycle-2" aria-label="주 1회 API 지급 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="payout_cycle-3" aria-label="주 1회 API 지급 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-35">PG-35</a> 지급액에서 플랫폼 청구 차감</td><td><select data-mx="payout_deduct-0" aria-label="지급액에서 플랫폼 청구 차감 PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="payout_deduct-1" aria-label="지급액에서 플랫폼 청구 차감 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="payout_deduct-2" aria-label="지급액에서 플랫폼 청구 차감 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="payout_deduct-3" aria-label="지급액에서 플랫폼 청구 차감 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-05">PG-05</a> 하위몰·셀러 등록 API</td><td><select data-mx="submall_reg-0" aria-label="하위몰·셀러 등록 API PG1"><option value="">-</option><option selected>○</option><option>△</option><option>×</option></select></td><td><select data-mx="submall_reg-1" aria-label="하위몰·셀러 등록 API PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="submall_reg-2" aria-label="하위몰·셀러 등록 API PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="submall_reg-3" aria-label="하위몰·셀러 등록 API PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-63">PG-63</a> KYC 사전 진행</td><td><select data-mx="kyc_early-0" aria-label="KYC 사전 진행 PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="kyc_early-1" aria-label="KYC 사전 진행 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="kyc_early-2" aria-label="KYC 사전 진행 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="kyc_early-3" aria-label="KYC 사전 진행 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-47">PG-47</a> 웹뷰 가이드·실기기 테스트</td><td><select data-mx="webview_guide-0" aria-label="웹뷰 가이드·실기기 테스트 PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="webview_guide-1" aria-label="웹뷰 가이드·실기기 테스트 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="webview_guide-2" aria-label="웹뷰 가이드·실기기 테스트 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="webview_guide-3" aria-label="웹뷰 가이드·실기기 테스트 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-44">PG-44</a> 정기결제(빌링)</td><td><select data-mx="billing_key-0" aria-label="정기결제(빌링) PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="billing_key-1" aria-label="정기결제(빌링) PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="billing_key-2" aria-label="정기결제(빌링) PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="billing_key-3" aria-label="정기결제(빌링) PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-04">PG-04</a> 보증보험·보증금 부담</td><td><select data-mx="docs_bond-0" aria-label="보증보험·보증금 부담 PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="docs_bond-1" aria-label="보증보험·보증금 부담 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="docs_bond-2" aria-label="보증보험·보증금 부담 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="docs_bond-3" aria-label="보증보험·보증금 부담 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr><td><a class="xref" href="#PG-54">PG-54</a> 수수료 수준</td><td><select data-mx="fee_table-0" aria-label="수수료 수준 PG1"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="fee_table-1" aria-label="수수료 수준 PG2"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="fee_table-2" aria-label="수수료 수준 PG3"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td><td><select data-mx="fee_table-3" aria-label="수수료 수준 PG4"><option value="">-</option><option>○</option><option>△</option><option>×</option></select></td></tr>
+<tr class="grp"><td>메모</td><td><textarea class="mx-note" data-mx="note-0" rows="3" aria-label="PG1 메모" placeholder="담당자·견적·특이사항"></textarea></td><td><textarea class="mx-note" data-mx="note-1" rows="3" aria-label="PG2 메모" placeholder="담당자·견적·특이사항"></textarea></td><td><textarea class="mx-note" data-mx="note-2" rows="3" aria-label="PG3 메모" placeholder="담당자·견적·특이사항"></textarea></td><td><textarea class="mx-note" data-mx="note-3" rows="3" aria-label="PG4 메모" placeholder="담당자·견적·특이사항"></textarea></td></tr>
+    </tbody>
+  </table></div>
+</section>
+    <footer class="foot">식업 · 식업 PG 상담 질문서 · 2026-10-12 · 내부 검토용 초안. 금액·요율은 모두 관리자 설정값의 임시 기본값입니다. 이 문서는 질문 목록이며 법률 자문이 아닙니다.</footer>
+  </main>
+</div>
+<script>
+(function(){
+  var root = document.documentElement;
+  var DOC = document.body.getAttribute('data-doc');
+  var KEY = 'gc-consult:' + DOC + ':';
+  function get(k){ try { return localStorage.getItem(KEY + k); } catch(e) { return null; } }
+  function set(k, v){ try { if (v === '' || v === null) localStorage.removeItem(KEY + k); else localStorage.setItem(KEY + k, v); } catch(e) {} }
+
+  /* Theme (shared with 기획서·명세서) */
+  try { var saved = localStorage.getItem('pm-theme'); if (saved) root.setAttribute('data-theme', saved); } catch(e) {}
+  document.getElementById('themeBtn').addEventListener('click', function(){
+    var cur = root.getAttribute('data-theme') || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var next = cur === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('pm-theme', next); } catch(e) {}
+  });
+  document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
+
+  /* Question cards: checkbox + memo */
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.q'));
+  var counted = cards.filter(function(c){ return !c.classList.contains('mini'); });
+  function progress(){
+    var done = counted.filter(function(c){ return c.classList.contains('is-done'); }).length;
+    document.querySelectorAll('[data-progress]').forEach(function(el){ el.textContent = done + ' / ' + counted.length; });
+  }
+  cards.forEach(function(c){
+    var id = c.id, cb = c.querySelector('.done input'), memo = c.querySelector('.memo'), mp = c.querySelector('.memo-print');
+    if (get(id + ':done') === '1') { cb.checked = true; c.classList.add('is-done'); }
+    var m = get(id + ':memo'); if (m) { memo.value = m; mp.textContent = m; }
+    cb.addEventListener('change', function(){
+      c.classList.toggle('is-done', cb.checked); set(id + ':done', cb.checked ? '1' : ''); progress(); applyFilter();
+    });
+    memo.addEventListener('input', function(){ set(id + ':memo', memo.value); mp.textContent = memo.value; });
+  });
+  progress();
+
+  /* Filters */
+  var filter = 'all';
+  var fbtns = document.querySelectorAll('.filters button');
+  function applyFilter(){
+    cards.forEach(function(c){
+      var show = filter === 'all' || (filter === 'must' && c.getAttribute('data-pri') === 'must') || (filter === 'open' && !c.classList.contains('is-done'));
+      c.hidden = !show;
+    });
+    document.querySelectorAll('section.sec').forEach(function(s){
+      var qs = s.querySelectorAll('.q');
+      if (!qs.length) { s.hidden = filter !== 'all'; return; }
+      var any = Array.prototype.some.call(qs, function(q){ return !q.hidden; });
+      s.hidden = !any;
+    });
+  }
+  fbtns.forEach(function(b){
+    b.addEventListener('click', function(){
+      filter = b.getAttribute('data-filter');
+      fbtns.forEach(function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      applyFilter();
+    });
+  });
+  window.addEventListener('beforeprint', function(){ cards.forEach(function(c){ c.hidden = false; }); document.querySelectorAll('section.sec').forEach(function(s){ s.hidden = false; }); });
+  window.addEventListener('afterprint', applyFilter);
+
+  /* PG comparison matrix */
+  document.querySelectorAll('[data-mx]').forEach(function(el){
+    var k = 'mx:' + el.getAttribute('data-mx');
+    var v = get(k); if (v !== null) el.value = v;
+    el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', function(){ set(k, el.value); });
+  });
+
+  /* Export answers as Markdown */
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    var title = document.title, today = new Date();
+    var ymd = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + ('0' + today.getDate()).slice(-2);
+    var out = ['# ' + title + ' — 답변 기록 (' + ymd + ')', ''];
+    document.querySelectorAll('section.sec').forEach(function(s){
+      var qs = s.querySelectorAll('.q');
+      if (!qs.length) return;
+      out.push('## ' + s.getAttribute('data-title'), '');
+      qs.forEach(function(c){
+        var badge = c.querySelector('.q-h .b');
+        var ask = c.querySelector('.ask').cloneNode(true); var l = ask.querySelector('.ask-l'); if (l) l.remove();
+        out.push('### ' + c.id + ' ' + c.getAttribute('data-title') + (badge ? ' [' + badge.textContent + ']' : '') + (c.classList.contains('is-done') ? ' — 확인함' : ' — 미확인'));
+        out.push('- 질문: ' + ask.textContent.replace(/\s+/g, ' ').trim());
+        var memo = c.querySelector('.memo').value.trim();
+        out.push('- 답변: ' + (memo ? memo.replace(/\n/g, '\n  ') : '(없음)'), '');
+      });
+    });
+    var mx = document.querySelector('table.matrix');
+    if (mx) {
+      var heads = Array.prototype.map.call(mx.querySelectorAll('thead th'), function(th){ var i = th.querySelector('input'); return i ? i.value : th.textContent; });
+      out.push('## PG 비교표', '', '| ' + heads.join(' | ') + ' |', '|' + heads.map(function(){ return '---'; }).join('|') + '|');
+      mx.querySelectorAll('tbody tr').forEach(function(tr){
+        var cells = Array.prototype.map.call(tr.children, function(td){ var f = td.querySelector('select,textarea'); return (f ? f.value : td.textContent).replace(/\s+/g, ' ').trim() || '-'; });
+        out.push('| ' + cells.join(' | ') + ' |');
+      });
+      out.push('');
+    }
+    var blob = new Blob([out.join('\n')], { type: 'text/markdown;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = title.replace(/\s+/g, '_') + '_답변_' + ymd + '.md';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  });
+
+  /* TOC active state */
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var map = {};
+  links.forEach(function(a){ map[a.getAttribute('href').slice(1)] = a; });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (en.isIntersecting && map[en.target.id]) {
+          links.forEach(function(l){ l.classList.remove('active'); });
+          var a = map[en.target.id]; a.classList.add('active');
+          var toc = document.getElementById('toc');
+          if (toc.scrollWidth > toc.clientWidth) toc.scrollTo({ left: a.offsetLeft - 16, behavior: 'smooth' });
+        }
+      });
+    }, { rootMargin: '-30% 0px -60% 0px' });
+    document.querySelectorAll('section.sec').forEach(function(s){ io.observe(s); });
+  }
+})();
+
+</script>
+</body>
+</html>

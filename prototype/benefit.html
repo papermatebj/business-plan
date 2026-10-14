@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>쿠폰·멤버십 · 식업 프로토타입</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@600;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/gc.css">
+<style>
+  /* 쿠폰 카드: 왼쪽 할인 금액 · 절취선 · 오른쪽 조건 */
+  .cp { display: grid; grid-template-columns: 82px minmax(0, 1fr); border: 1px solid var(--rule); border-radius: 12px; background: var(--sheet); overflow: hidden; }
+  .cp .amt { display: grid; place-content: center; text-align: center; background: var(--spot-weak); border-right: 1px dashed var(--rule-strong); font-weight: 700; font-size: 15px; padding: 10px 4px; line-height: 1.25; font-variant-numeric: tabular-nums; }
+  .cp .amt small { display: block; font-size: 11px; font-weight: 600; color: var(--ink-2); margin-top: 2px; }
+  .cp .bd { padding: 10px 12px; display: grid; gap: 3px; min-width: 0; align-content: start; }
+  .cp .nm { font-weight: 700; font-size: 14px; }
+  .cp .cond { font-size: 12px; color: var(--ink-2); }
+  .cp .bd .btn { justify-self: start; margin-top: 4px; }
+  .cp.is-off { opacity: .55; }
+  .cp.is-off .amt { background: var(--sheet-3); }
+  .codebox { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .linkrow { background: none; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; cursor: pointer; width: 100%; }
+  /* 라디오처럼 고르는 줄 (쿠폰 선택·요금제) */
+  .opt { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--rule-strong); border-radius: 10px; background: var(--sheet); cursor: pointer; font-size: 13.5px; }
+  .opt::before { content: ""; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--rule-strong); box-sizing: border-box; }
+  .opt[aria-checked="true"] { border-color: var(--spot); background: var(--spot-weak); }
+  .opt[aria-checked="true"]::before { border-color: var(--spot); background: radial-gradient(circle, var(--spot) 0 38%, transparent 42%); }
+  .opt .num { white-space: nowrap; }
+  .opt-list { display: grid; gap: 6px; }
+  .save-big { font-size: 22px; font-weight: 700; color: var(--spot); font-variant-numeric: tabular-nums; }
+  .benefits { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; }
+  .judge { display: grid; gap: 6px; }
+  .jrow { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; font-size: 13px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 8px; }
+  .jrow .lno { width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--ink-3); display: grid; place-items: center; font-size: 11px; font-weight: 600; }
+  .jrow.on { border-color: var(--spot); background: var(--spot-weak); }
+  .jrow.on .lno { background: var(--spot); border-color: var(--spot); color: var(--spot-ink); }
+  .jrow.skip, .jrow.na { color: var(--ink-3); }
+  /* 관리자 */
+  .hq-head { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+  .acct { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); flex-wrap: wrap; }
+  .form2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+  @media (max-width: 720px) { .form2 { grid-template-columns: minmax(0, 1fr); } }
+  .form2 .field { align-content: start; }
+  .nw { white-space: nowrap; }
+  .unit-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+  .unit-in span { font-size: 13px; color: var(--ink-2); }
+  .est { border: 1px dashed var(--rule-strong); border-radius: 8px; padding: 10px 12px; }
+  .bar { height: 8px; background: var(--sheet-3); border-radius: 4px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--spot); }
+  .bar.is-full i { background: var(--warn); }
+  .range { width: 100%; accent-color: var(--spot); }
+  .tbl td .btn-sm { min-height: 28px; padding: 2px 8px; }
+  /* 좁은 화면: 표의 최소 폭이 패널 밖으로 밀어내지 않게(표는 .tbl-wrap 안에서 가로 스크롤) */
+  #gc-device .desk-main > *, #gc-device .desk-main .stack-lg > *, #gc-device .panel-b.stack > * { min-width: 0; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="assets/engine.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  const { won, fmtDate, fmtTime, DAY } = GC;
+  const esc = UI.esc, pv = UI.pv;
+  const P = (k) => GC.Policy.get(k);
+
+  /* ── 이 페이지에만 둔 정책값(엔진 정책값에 아직 없음 · 최종 보고에 목록) ── */
+  const PC = { codeFailMax: 5, codeLockMin: 10, expireNoticeDays: 7, withdrawDays: 7, retry: [1, 3], autoCancelDay: 7, noticeMonthly: 3, noticeYearly: 7, avgOrder: 150000 };
+  const pc = (text, label) => `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(label)} — 엔진 정책값에 아직 없어 이 페이지 상수로 둠">${text}</span>`;
+  /* 기획서 멤버십 손익 가정(11장 멤버십 손익 · 연간 회원 한 줄 포함) */
+  const PL = { base: 200000, pgRate: 3, shipUse: 50, designUse: 5, designCost: 53125 };
+  const asm = (text, label) => `<span class="pv" title="기획서 가정값 · ${esc(label)}">${text}</span>`;
+
+  /* ── 상태 머신(페이지 안 정의) ── */
+  GC.sm.define('BENEFIT_COUPON', {
+    name: '본사 쿠폰',
+    states: { DRAFT: { name: '작성 중' }, PENDING: { name: '승인 대기' }, ACTIVE: { name: '게시 중' }, ENDED: { name: '종료' }, PAUSED: { name: '일시 중지' }, EXHAUSTED: { name: '예산 소진' } },
+    main: ['DRAFT', 'PENDING', 'ACTIVE', 'ENDED'],
+    branch: ['PAUSED', 'EXHAUSTED'],
+    stop: ['EXHAUSTED'],
+    transitions: [
+      { from: 'DRAFT', event: 'submit', to: 'PENDING', actor: 'hq', label: '승인 요청(작성자)' },
+      { from: 'PENDING', event: 'reject', to: 'DRAFT', actor: 'hq', label: '반려(팀장) 또는 요청 회수' },
+      { from: 'PENDING', event: 'approve', to: 'ACTIVE', actor: 'hq', label: '승인·게시(팀장 플래그, 요청자 아닌 계정)' },
+      { from: 'ACTIVE', event: 'pause', to: 'PAUSED', actor: 'hq', label: '일시 중지(사유)' },
+      { from: 'PAUSED', event: 'resume', to: 'ACTIVE', actor: 'hq', label: '재개' },
+      { from: 'ACTIVE', event: 'exhaust', to: 'EXHAUSTED', actor: 'system', label: '예산 상한 도달 → 발행 자동 중지' },
+      { from: ['ACTIVE', 'PAUSED', 'EXHAUSTED'], event: 'end', to: 'ENDED', actor: 'hq', label: '종료(받은 쿠폰은 유효기간까지)' },
+    ],
+  });
+  GC.sm.define('BENEFIT_MEMBERSHIP', {
+    name: '사장님 멤버십',
+    states: {
+      NONE: { name: '미가입', customer: '가입 전' }, ACTIVE: { name: '이용 중', customer: '이용 중' }, ENDED: { name: '종료', customer: '종료' },
+      PAY_FAILED: { name: '결제 실패', customer: '결제 확인 필요' }, CANCEL_RESERVED: { name: '해지 예약', customer: '해지 예정' },
+    },
+    main: ['NONE', 'ACTIVE', 'ENDED'],
+    branch: ['PAY_FAILED', 'CANCEL_RESERVED'],
+    stop: [],
+    transitions: [
+      { from: ['NONE', 'ENDED'], event: 'join', to: 'ACTIVE', actor: 'customer', label: '첫 결제 성공(빌링키)' },
+      { from: 'ACTIVE', event: 'pay_fail', to: 'PAY_FAILED', actor: 'system', label: '정기결제 실패 → 혜택 정지' },
+      { from: 'PAY_FAILED', event: 'pay_ok', to: 'ACTIVE', actor: 'system', label: '재시도·카드 변경 결제 성공 → 혜택 복구' },
+      { from: 'PAY_FAILED', event: 'auto_cancel', to: 'ENDED', actor: 'system', label: 'D+7까지 실패 → 자동 해지' },
+      { from: 'ACTIVE', event: 'withdraw', to: 'ENDED', actor: 'customer', label: '결제 후 7일 안·혜택 미사용 → 전액 환불' },
+      { from: 'ACTIVE', event: 'reserve_cancel', to: 'CANCEL_RESERVED', actor: 'customer', label: '월간 해지·연간 갱신 안 함' },
+      { from: 'CANCEL_RESERVED', event: 'undo', to: 'ACTIVE', actor: 'customer', label: '해지 취소' },
+      { from: 'CANCEL_RESERVED', event: 'expire', to: 'ENDED', actor: 'system', label: '기간 끝 → 갱신 안 함' },
+      { from: 'ACTIVE', event: 'annual_cancel', to: 'ENDED', actor: 'customer', label: '연간 중도 해지 → 비례 환불·혜택 즉시 중단' },
+    ],
+  });
+
+  /* ── 시나리오 데이터 ── */
+  const D = (m, d) => new Date(2026, m - 1, d, 23, 59).getTime();
+  // 명세서 C-PRICE-01 예시 주문(엔진 테스트 TC-01·02): 수저집 10박스(즉시 할인 10%) + 냅킨 2박스
+  const ITEMS = [
+    { id: 'spoon', name: '수저집 크라프트 1,000매', partnerId: 'DS', shipKey: 'DS', qty: 10, tiers: [{ min: 1, price: 12000 }, { min: 5, price: 12000 }, { min: 10, price: 10000 }], instant: { type: 'rate', value: 10 } },
+    { id: 'napkin', name: '무형광 냅킨', partnerId: 'DS', shipKey: 'DS', qty: 2, tiers: [{ min: 1, price: 30000 }, { min: 5, price: 28000 }] },
+  ];
+  const SHIP = { DS: { name: '대성포장 기본 배송', type: 'conditional', base: 4000, freeOver: 200000 } };
+  const CODES = { GAGE3000: { name: '배송비 3,000원', kind: 'ship', max: 3000, minOrder: 30000, until: D(10, 31), how: '쿠폰 코드' } };
+  const HISTORY = [{ m: '7월', amount: 180000, shipOrders: 2, design: 0 }, { m: '8월', amount: 210000, shipOrders: 2, design: 1 }, { m: '9월', amount: 250000, shipOrders: 3, design: 0 }];
+  const KIND = { cart: '장바구니', product: '상품', ship: '배송비', design: '디자인비', voucher: '이용권' };
+  const ISSUE = { auto: '자동 지급', download: '다운로드', code: '코드', direct: '직접 지급' };
+  const MEMBERS = { all: '전체', personal: '개인', biz: '사업자', new: '신규', member: '멤버십', grade: '등급' };
+  const TARGET = { all: '전체 상품 (PB 제외)', category: '카테고리: 일회용품', partner: '파트너: 대성포장', product: '상품 지정' };
+  const TEAM = { yoon: { name: '윤마케', role: '마케터', lead: false }, seo: { name: '서팀장', role: '마케터', lead: true } };
+  const OTHER = [
+    ['HC-2609-01', '신규가입 5,000원', '장바구니', '자동 지급(가입)', 'ACTIVE', '412 / 1,380'],
+    ['HC-2609-02', '첫 디자인 무료', '디자인비', '자동 지급(가입)', 'ACTIVE', '37 / 1,380'],
+    ['HC-2610-03', '배송비 3,000원 · 코드 GAGE3000', '배송비', '코드', 'ACTIVE', '88 / 240'],
+    ['HC-2609-05', '추석 기획전 3,000원', '장바구니', '다운로드', 'ENDED', '205 / 600'],
+  ];
+  const DUP = () => [
+    ['파트너 즉시 할인', 'MVP', '파트너 100%', '상품(옵션)당 1개', '뺌'],
+    ['파트너 쿠폰', '2차', '파트너 100%', '주문당 파트너별 1장', '뺌'],
+    ['공동 프로모션 쿠폰', '2차', '비율(예 50:50)', '파트너 쿠폰 자리 공유 · 본사 쿠폰과 함께 못 씀', '파트너 분담분만 뺌'],
+    ['맞춤 디자인비 면제', 'MVP', '본사 100%', '요청당 1개(50만원 → 멤버십 이용권 순)', '해당 없음'],
+    ['본사 쿠폰(장바구니·첫 디자인 무료 등)', 'MVP', '본사 100%', '주문당 1장', '빼지 않음'],
+    ['본사·멤버십 배송비 쿠폰', 'MVP·2차', '본사 100%', '배송 묶음(같은 판매자·출고지·출고 유형)당 1장 · 파트너 배송비 쿠폰과 둘 중 하나', '해당 없음'],
+    ['파트너 배송비 쿠폰', '2차', '파트너 100%', '배송 묶음당 1장', '배송비 정산에서 뺌'],
+    ['포인트 사용', '2차', '본사 100%', '1,000P 이상 · 10P 단위', '빼지 않음'],
+    ['멤버십 추가 적립', '2차', '본사 100%', `월 한도 ${pv('membership.extra_point_cap')}`, '해당 없음'],
+  ];
+
+  /* ── 날짜 도우미 ── */
+  const addMonths = (d, n) => { const x = new Date(d); const day = x.getDate(); x.setDate(1); x.setMonth(x.getMonth() + n); const last = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate(); x.setDate(Math.min(day, last)); return x; };
+  const morning = (d) => { const x = new Date(d); return new Date(x.getFullYear(), x.getMonth(), x.getDate(), 9, 0).getTime(); };
+  function monthsBetween(a, b) { let m = 0; while (addMonths(a, m + 1).getTime() <= b) m += 1; return { months: m, extraDays: Math.floor((b - addMonths(a, m).getTime()) / DAY) }; }
+  const SIM0 = new Date(2026, 9, 12, 9, 0).getTime();
+  const daysOf = (m, d) => Math.round((addMonths(SIM0, m).getTime() - SIM0) / DAY) + d;
+  const TC14 = [
+    { label: '결제 후 5일, 혜택 안 씀', days: 5, used: false },
+    { label: '2개월 10일, 혜택 안 씀', days: daysOf(2, 10), used: false },
+    { label: '2개월 10일, 혜택 57,000원 사용', days: daysOf(2, 10), used: true },
+    { label: '8개월 5일, 혜택 20,000원 사용', days: daysOf(8, 5), used: true },
+    { label: '10개월 15일, 혜택 안 씀', days: daysOf(10, 15), used: false },
+  ];
+
+  const app = UI.mount({
+    domain: 'benefit',
+    title: '쿠폰·멤버십',
+    lede: '본사가 비용을 내는 쿠폰은 마케터가 만들고 팀장이 승인해야 게시돼요. 주문서는 가장 큰 할인을 자동으로 고르고, 본사 쿠폰은 파트너 정산을 줄이지 않아요. 2차 사장님 멤버십은 정기결제·매달 혜택·결제 실패·해지 환불까지 시계로 따라가 봅니다.',
+    meta: '근거: 기능 명세서 U-BEN-01~05 · A-MKT-01 · A-REV-01 · C-PRICE-01·02 · C-PAY-03 · 기획서 멤버십 손익 가정 · 엔진 테스트 TC-01·02·03·14',
+    actors: [
+      { id: 'customer', title: '마이', tab: '마이' },
+      { id: 'hq', nav: ['본사 쿠폰', '멤버십', '포인트', '캠페인'], navOn: '본사 쿠폰', url: 'admin.sikup.co.kr/marketing/coupons', place: '통합 관리자 · 마케팅' },
+      { id: 'system', nav: ['정기결제', '쿠폰 배치', '알림'], navOn: '정기결제', place: '정기결제·쿠폰 배치 · 사람이 누르지 않음' },
+    ],
+    start: 'hq',
+    strips: [
+      { id: 'coupon', machine: 'BENEFIT_COUPON', label: '본사 쿠폰 HC-2610-07', note: 'A-MKT-01 · 팀장 승인 뒤 게시 · MVP', initial: 'DRAFT' },
+      { id: 'mem', machine: 'BENEFIT_MEMBERSHIP', label: '사장님 멤버십 (2차)', note: 'U-BEN-04 · C-PAY-03 정기결제', initial: 'NONE' },
+    ],
+    render: (actor, f) => VIEWS[actor](f),
+    onReset: init,
+    foot: '시나리오: 마케터 윤마케가 "사업자 첫 주문 장바구니 10%" 쿠폰을 만들고 서팀장이 승인합니다. 강남의 한식당 "오늘밥상"이 쿠폰을 받아 대성포장의 수저집·냅킨을 주문하고(명세서 C-PRICE-01 예시 주문), 이어서 2차 사장님 멤버십에 가입합니다.',
+  });
+  const S = () => app.S;
+  const nowT = () => app.clock.now().getTime();
+
+  function w(id, o) { return { id, src: 'hq', status: 'avail', type: 'amount', value: 0, minOrder: 0, ...o }; }
+  function init() {
+    Object.assign(app.S, {
+      cs: 'my', acct: 'yoon', hqView: 'coupon', author: 'yoon',
+      form: { name: '사업자 첫 주문 장바구니 10%', kind: 'cart', type: 'rate', value: 10, max: 10000, minOrder: 100000, target: 'all', members: { biz: true, new: true }, issue: 'download', qty: 300, days: 30, budget: 3000000, includeDesign: false },
+      errors: {}, coupon: null, req: null, reject: null, pauseReason: '',
+      stats: { issued: 0, used: 0, disc: 0, gmv: 0 },
+      wallet: [
+        w('w1', { name: '신규가입 5,000원', kind: 'cart', value: 5000, minOrder: 50000, until: D(10, 31), how: '가입 자동 지급' }),
+        w('w2', { name: '첫 디자인 무료', kind: 'design', until: D(12, 31), how: '가입 자동 지급' }),
+        w('w3', { name: '추석 기획전 3,000원', kind: 'cart', value: 3000, minOrder: 30000, until: D(10, 10), how: '다운로드', status: 'expired', note: '기간 만료' }),
+        w('w4', { name: '사업자 인증 축하 2,000원', kind: 'cart', value: 2000, minOrder: 20000, until: D(10, 20), how: '사업자 인증 자동 지급', status: 'used', note: '9/28 주문에 사용' }),
+      ],
+      boxTab: 'avail', code: '', codeFails: 0, lockUntil: null, codeMsg: '', codeOk: false,
+      pickHq: undefined, pickShip: undefined, orders: [],
+      df: { amount: '495', voucher: false },
+      mem: { plan: 'monthly', card: false, checks: {}, start: null, lastPayAt: null, next: null, payK: 0, grantK: 1, failMode: false, failedAt: null, retried: {}, used: false, saved: 0, everFailed: false, noticed: false, refund: null, seq: 0 },
+      sim: { days: 70, used: false, growth: 30 },
+    });
+    guide();
+  }
+
+  /* ── 계산 ── */
+  const engHq = (x) => ({ name: x.name, type: x.type, value: x.value, max: x.max, minOrder: x.minOrder, includeDesignFee: !!x.includeDesign });
+  function runOrder(hq, ship) {
+    return GC.price.calcOrder({ items: ITEMS, hqCoupon: hq ? engHq(hq) : null, shipping: SHIP, shipCoupons: ship ? { DS: { name: ship.name, max: ship.max, minOrder: ship.minOrder } } : {} });
+  }
+  const best = (arr) => arr.reduce((a, o) => (!a || o.d > a.d ? o : a), null);
+  function checkoutCalc() {
+    const s = S(); const on = memBenefits();
+    const av = s.wallet.filter((x) => x.status === 'avail');
+    const hqC = av.filter((x) => x.kind === 'cart' || x.kind === 'product').map((x) => ({ x, d: runOrder(x, null).totals.hqDisc })).filter((o) => o.d > 0);
+    const bHq = best(hqC);
+    const hq = s.pickHq === undefined ? (bHq ? bHq.x : null) : ((hqC.find((o) => o.x.id === s.pickHq) || {}).x || null);
+    const shAll = av.filter((x) => x.kind === 'ship' && (x.src !== 'mem' || on)).map((x) => ({ x, d: runOrder(hq, x).totals.shipCoupon })).filter((o) => o.d > 0);
+    const shC = []; shAll.forEach((o) => { if (!shC.some((u) => u.x.src === o.x.src && u.x.name === o.x.name)) shC.push(o); }); // 멤버십 쿠폰 4장은 한 줄로
+    const bSh = best(shC);
+    const ship = s.pickShip === undefined ? (bSh ? bSh.x : null) : ((shC.find((o) => o.x.id === s.pickShip) || {}).x || null);
+    const shown = new Set([...hqC, ...shAll].map((o) => o.x.id));
+    return { r: runOrder(hq, ship), hq, ship, hqC, shC, bHq, bSh, hidden: av.filter((x) => !shown.has(x.id)).length, memPaused: app.state('mem') === 'PAY_FAILED' };
+  }
+  const settleOf = (r) => GC.settle.confirmEvent({ sale: r.totals.gross, partnerDisc: r.totals.instantDisc + r.totals.partnerCouponDisc, rate: P('commission.default_rate'), shipping: r.totals.shipping });
+  function dfeeCalc() {
+    const s = S(); const disc = s.df.amount === '495';
+    const base = {
+      items: [{ id: 'c', name: '맞춤 인쇄 수저집', partnerId: 'DS', shipKey: 'DS', qty: 1, tiers: [{ min: 1, price: 550000 }], instant: disc ? { type: 'rate', value: 10 } : null, designGroup: 'D1' }],
+      designGroups: [{ id: 'D1', type: 'CUSTOM', voucher: s.df.voucher }], shipping: { DS: { name: '대성포장 맞춤 제작', type: 'free', base: 0 } },
+    };
+    const pre = GC.price.calcOrder(base); const fee = pre.designFees[0].fee;
+    const dc = s.wallet.find((x) => x.kind === 'design' && x.status === 'avail');
+    const cands = s.wallet.filter((x) => x.status === 'avail' && (x.kind === 'cart' || x.kind === 'product')).map((x) => ({ x, hq: engHq(x) }));
+    if (dc && fee > 0) cands.push({ x: dc, hq: { name: dc.name, type: 'amount', value: fee, includeDesignFee: true } }); // 디자인비 쿠폰: 디자인비만큼만
+    const opts = cands.map((o) => ({ ...o, r: GC.price.calcOrder({ ...base, hqCoupon: o.hq }) })).filter((o) => o.r.totals.hqDisc > 0).map((o) => ({ ...o, d: o.r.totals.hqDisc }));
+    const b = best(opts);
+    return { pre, dc, r: b ? b.r : pre, usedDesign: !!(b && b.x === dc), pick: b };
+  }
+  function avgDisc(fm) {
+    if (fm.kind === 'design') return P('design.fee');
+    if (fm.kind === 'ship') return fm.max || 0;
+    if (fm.type === 'amount') return fm.value || 0;
+    const raw = Math.floor((PC.avgOrder * (fm.value || 0)) / 100);
+    return fm.max ? Math.min(fm.max, raw) : raw;
+  }
+  const estimate = (fm) => { const avg = avgDisc(fm); return { avg, cost: fm.qty ? fm.qty * avg : null }; };
+  function estimateSaving() {
+    const shipOne = Math.min(SHIP.DS.base, P('membership.free_ship_max'));
+    const rows = HISTORY.map((h) => {
+      const ship = Math.min(h.shipOrders, P('membership.free_ship_coupons')) * shipOne;
+      const point = Math.min(P('membership.extra_point_cap'), Math.floor((h.amount * P('membership.extra_point_rate')) / 100));
+      const design = h.design * P('design.fee');
+      return { ...h, ship, point, design, sum: ship + point + design };
+    });
+    return { rows, total: rows.reduce((a, r) => a + r.sum, 0), fee: P('membership.price_monthly') * HISTORY.length };
+  }
+  /* yearly: 연간 회원 1명의 월 손익(회비 공급가 = 연 요금 ÷ 1.1 ÷ 12, 혜택은 월간과 같음) */
+  function profit(g, yearly) {
+    const fee = yearly ? P('membership.price_yearly') / 12 : P('membership.price_monthly');
+    const feeSupply = yearly ? Math.round(GC.vatSplit(P('membership.price_yearly')).supply / 12) : GC.vatSplit(fee).supply;
+    const inc = Math.round((PL.base * g) / 100);
+    const commSupply = GC.vatSplit(Math.floor((inc * P('commission.default_rate')) / 100)).supply;
+    const pgInc = Math.round((inc * PL.pgRate) / 100); const pgFee = Math.round((fee * PL.pgRate) / 100);
+    const ship = Math.round((P('membership.free_ship_coupons') * P('membership.free_ship_max') * PL.shipUse) / 100);
+    const point = Math.min(P('membership.extra_point_cap'), Math.floor(((PL.base + inc) * P('membership.extra_point_rate')) / 100));
+    const design = Math.round((PL.designCost * PL.designUse) / 100);
+    return { feeSupply, inc, commSupply, pgInc, pgFee, ship, point, design, total: feeSupply + commSupply - pgInc - pgFee - ship - point - design };
+  }
+  const breakEven = () => { for (let g = 0; g <= 200; g++) if (profit(g).total >= 0) return g; return null; };
+  function annualSim(days, used) {
+    const mb = monthsBetween(SIM0, SIM0 + days * DAY);
+    const a = GC.membership.annualRefund({ daysSincePay: days, months: mb.months, extraDays: mb.extraDays, benefitUsed: used });
+    return { mb, a, label: `${days}일 (${mb.months}개월 ${mb.extraDays}일)` };
+  }
+
+  /* ── 멤버십 도우미 ── */
+  const memBenefits = () => ['ACTIVE', 'CANCEL_RESERVED'].includes(app.state('mem'));
+  const planPrice = () => P(S().mem.plan === 'monthly' ? 'membership.price_monthly' : 'membership.price_yearly');
+  const planName = () => (S().mem.plan === 'monthly' ? '월간' : '연간');
+  const memShipLeft = () => S().wallet.filter((x) => x.src === 'mem' && x.kind === 'ship' && x.status === 'avail').length;
+  const grantAt = (M) => morning(addMonths(M.start, M.grantK));
+  const memCls = (m) => ({ ACTIVE: 'st-now', PAY_FAILED: 'st-stop', CANCEL_RESERVED: 'st-warn', ENDED: 'st-done' })[m] || '';
+  const stCls = (c) => ({ ACTIVE: 'st-now', PENDING: 'st-warn', ENDED: 'st-done', PAUSED: 'st-warn', EXHAUSTED: 'st-stop' })[c] || '';
+  function grantBenefits(until) {
+    const s = S(); const M = s.mem; M.seq += 1;
+    s.wallet.forEach((x) => { if (x.src === 'mem' && x.status === 'avail') { x.status = 'expired'; x.note = '다음 달로 넘어가지 않음'; } });
+    for (let i = 1; i <= P('membership.free_ship_coupons'); i++) s.wallet.push({ id: `m${M.seq}-${i}`, src: 'mem', kind: 'ship', name: '멤버십 무료배송', type: 'amount', value: 0, max: P('membership.free_ship_max'), minOrder: P('membership.free_ship_min_order'), until, status: 'avail', how: '멤버십 매달 지급' });
+    s.wallet.push({ id: `v${M.seq}`, src: 'mem', kind: 'voucher', name: '맞춤 디자인 무료 이용권', until, status: 'avail', how: '멤버십 매달 지급' });
+    app.log('rule', `멤버십 혜택 지급: 무료배송 쿠폰 ${P('membership.free_ship_coupons')}장 + 맞춤 디자인 무료 이용권 1장 · ${fmtDate(until, false)}까지(다음 달로 안 넘어감)`);
+  }
+  function expireMem(note) { S().wallet.forEach((x) => { if (x.src === 'mem' && x.status === 'avail') { x.status = 'expired'; x.note = note; } }); }
+  function charge(at, label) {
+    const M = S().mem; const price = planPrice();
+    M.lastPayAt = at; M.used = false; M.noticed = false; M.payK += M.plan === 'monthly' ? 1 : 12;
+    M.next = morning(addMonths(M.start, M.payK));
+    app.log('money', `멤버십 ${label} ${won(price)} (${planName()}) · 본사 매출 · 다음 결제 ${fmtY(M.next, false)}`);
+    app.notify('NOTI_MEMBERSHIP_PAID', '고객', ['알림톡', '이메일'], `멤버십 결제 완료 ${won(price)}`);
+    if (M.plan === 'monthly') grantBenefits(M.next - 60000);
+    else if (M.payK === 12) grantBenefits(grantAt(M) - 60000);
+  }
+  function recover(label) {
+    const M = S().mem;
+    app.go('mem', 'pay_ok', { by: label });
+    M.failedAt = null; M.retried = {};
+    charge(nowT(), '재결제');
+    app.log('rule', '결제가 되어 혜택을 바로 되살렸어요');
+  }
+  function nextEvent() {
+    const M = S().mem; const st = app.state('mem');
+    if (st === 'ACTIVE' || st === 'CANCEL_RESERVED') {
+      if (M.plan === 'yearly' && grantAt(M) < M.next) return { at: grantAt(M), name: '다음 혜택 지급일' };
+      return { at: M.next, name: st === 'CANCEL_RESERVED' ? '해지 예정일' : '다음 정기결제일' };
+    }
+    if (st === 'PAY_FAILED') {
+      const d = PC.retry.find((x) => !M.retried[x]);
+      return d ? { at: M.failedAt + d * DAY, name: `D+${d} 재시도` } : { at: M.failedAt + PC.autoCancelDay * DAY, name: `D+${PC.autoCancelDay} 자동 해지` };
+    }
+    return null;
+  }
+  /* 해가 바뀌는 날짜(연간 결제일)는 연도를 붙여 표시 */
+  const fmtY = (t, time = true) => (new Date(t).getFullYear() !== app.clock.now().getFullYear() ? `${new Date(t).getFullYear()}. ` : '') + fmtDate(t, time);
+  const locked = () => !!S().lockUntil && nowT() < S().lockUntil;
+
+  /* ── 시간이 흐를 때: 쿠폰 만료·코드 잠금·정기결제·재시도·자동 해지 ── */
+  function couponTick(t) {
+    const s = S();
+    if (s.lockUntil && t >= s.lockUntil) { s.lockUntil = null; s.codeFails = 0; s.codeMsg = ''; app.log('rule', '쿠폰 코드 입력 잠금이 풀렸어요'); }
+    s.wallet.forEach((x) => {
+      if (x.status !== 'avail' || !x.until) return;
+      if (x.src !== 'mem' && !x.noticed && t >= x.until - PC.expireNoticeDays * DAY) {
+        x.noticed = true;
+        app.notify('NOTI_BENEFIT_EXPIRE_SOON', '고객(마케팅 수신 동의자)', ['앱 푸시', '알림센터'], `"${esc(x.name)}" 쿠폰이 ${fmtDate(x.until, false)}에 끝나요 (${fmtDate(x.until - PC.expireNoticeDays * DAY, false)} 발송분)`);
+      }
+      if (t > x.until) { x.status = 'expired'; if (x.src !== 'mem') { x.note = '기간 만료'; app.log('rule', `쿠폰 기간 만료: ${esc(x.name)}`); } else x.note = '다음 달로 넘어가지 않음'; }
+    });
+  }
+  function tick(t) {
+    const s = S(); const M = s.mem;
+    for (let guard = 0; guard < 40; guard++) {
+      const st = app.state('mem');
+      if (st === 'ACTIVE' || st === 'CANCEL_RESERVED') {
+        const nd = (M.plan === 'monthly' ? PC.noticeMonthly : PC.noticeYearly) * DAY;
+        if (st === 'ACTIVE' && !M.noticed && t >= M.next - nd) { M.noticed = true; app.notify('NOTI_MEMBERSHIP_RENEW_NOTICE', '고객', ['알림톡', '이메일'], `${fmtY(M.next, false)}에 ${won(planPrice())}이 결제돼요 · 해지 방법 안내 (${fmtDate(M.next - nd, false)} 발송분)`); continue; }
+        const g = M.plan === 'yearly' ? grantAt(M) : Infinity;
+        if (g < M.next && t >= g) { M.grantK += 1; app.log('rule', `연간 회원도 매달 지급 · ${fmtDate(g, false)}`); grantBenefits(grantAt(M) - 60000); continue; }
+        if (t >= M.next) {
+          if (st === 'CANCEL_RESERVED') { app.go('mem', 'expire', { by: `${fmtY(M.next, false)} 기간 끝 · 갱신 안 함` }); expireMem('멤버십 종료'); app.notify('NOTI_MEMBERSHIP_CANCELED', '고객', ['알림톡', '이메일'], '멤버십이 끝났어요 · 다시 가입 안내'); continue; }
+          if (M.failMode) {
+            app.go('mem', 'pay_fail', { by: `${fmtY(M.next)} 정기결제 실패(카드 한도 초과)` });
+            M.failedAt = M.next; M.retried = {}; M.everFailed = true;
+            app.log('rule', '실패한 동안 혜택을 멈춰요. 주문은 일반 회원 기준으로 계산해요');
+            app.notify('NOTI_MEMBERSHIP_PAY_FAILED', '고객', ['알림톡', '이메일'], `결제 실패 · 카드 변경 링크 · D+${PC.retry.join('·D+')} 재시도`);
+            continue;
+          }
+          charge(M.next, '정기결제'); continue;
+        }
+      }
+      if (st === 'PAY_FAILED') {
+        const d = PC.retry.find((x) => !M.retried[x] && t >= M.failedAt + x * DAY);
+        if (d) {
+          M.retried[d] = true;
+          if (M.failMode) { app.log('warn', `D+${d} 재시도 결제도 실패했어요`); app.notify('NOTI_MEMBERSHIP_PAY_FAILED', '고객', ['알림톡'], `D+${d} 재시도 실패 · 카드를 바꿔 주세요`); } else recover(`D+${d} 재시도 성공`);
+          continue;
+        }
+        if (t >= M.failedAt + PC.autoCancelDay * DAY) {
+          app.go('mem', 'auto_cancel', { by: `D+${PC.autoCancelDay}까지 결제 실패` }); expireMem('자동 해지');
+          app.notify('NOTI_MEMBERSHIP_AUTO_CANCELED', '고객', ['알림톡', '이메일'], '결제가 안 되어 멤버십을 자동 해지했어요');
+          continue;
+        }
+      }
+      break;
+    }
+  }
+  app.onAdvance((prev, now) => { couponTick(now.getTime()); tick(now.getTime()); guide(); });
+
+  /* ── 지금 차례 ── */
+  function guide() {
+    const s = S(); const c = app.state('coupon'); const m = app.state('mem'); const M = s.mem;
+    const R = {
+      coupon: [{ k: '승인', v: '팀장 플래그 · 요청자와 다른 계정' }, { k: '예산 상한', v: '필수 · 닿으면 자동 중지' }, { k: '정률 쿠폰 최대 할인액', v: '필수' }, { k: '사용 횟수', v: '1인 1회(본인인증 기준)' }],
+      box: [{ k: '코드 오입력', v: `${pc(PC.codeFailMax + '회', '쿠폰 코드 오입력 한도')} → ${pc(PC.codeLockMin + '분', '오입력 잠금 시간')} 잠금` }, { k: '신규가입 쿠폰', v: '본인인증(CI) 기준 1회' }, { k: '만료 안내', v: `${pc(PC.expireNoticeDays + '일 전', '쿠폰 만료 안내 시점')} · 마케팅 동의자만` }],
+      checkout: [{ k: '본사 쿠폰', v: '주문당 1장 · 가장 큰 할인 자동' }, { k: '배송비 쿠폰 · 묶음 = 같은 판매자·출고지·출고 유형', v: '묶음당 1장' }, { k: '수수료 기준가', v: '본사 쿠폰 전 금액' }, { k: '판매 수수료', policy: 'commission.default_rate' }],
+      mem: [{ k: '월간 요금', policy: 'membership.price_monthly' }, { k: '연간 요금', policy: 'membership.price_yearly' }, { k: '무료배송 쿠폰(매달)', policy: 'membership.free_ship_coupons' }, { k: '추가 적립 월 한도', policy: 'membership.extra_point_cap' }, { k: '청약철회', v: pc(PC.withdrawDays + '일 · 혜택 미사용', '청약철회 기간') }],
+      fail: [{ k: '재시도', v: pc(`D+${PC.retry.join(' · D+')}`, '결제 실패 재시도 일정') }, { k: '자동 해지', v: pc(`D+${PC.autoCancelDay}`, '결제 실패 자동 해지 시점') }, { k: '실패 중 혜택', v: '정지 · 결제되면 바로 복구' }],
+      cancel: [{ k: '7일 안·미사용', v: '전액 환불' }, { k: '월간', v: '다음 결제일부터 갱신 안 함' }, { k: '연간 중도 해지', v: `${GC.num(P('membership.price_yearly'))} − ${GC.num(P('membership.price_monthly'))} × 올림(개월)` }, { k: '쓴 혜택 금액', v: '따로 빼지 않음' }],
+    };
+    const memPhase = m !== 'NONE' || ['mem', 'memjoin', 'memhome', 'memcancel'].includes(s.cs) || s.orders.length > 0;
+    if (!memPhase) {
+      if (c === 'DRAFT') return app.turn('hq', s.reject ? `${s.acct === s.author ? '' : `작성자(${TEAM[s.author].name}) 계정으로 돌아가 `}반려 사유를 보고 고친 뒤 다시 [승인 요청]을 누르세요` : '쿠폰 양식을 채우고 예상 비용을 확인한 뒤 [승인 요청]을 누르세요', { hint: '최대 할인액이나 예산 상한을 비우고 요청해 보면 저장을 막아요.', rules: R.coupon });
+      if (c === 'PENDING') return app.turn('hq', '팀장 플래그가 있는 서팀장 계정으로 바꿔 [승인·게시]를 누르세요', { hint: `요청한 ${esc(s.req.byName)} 계정 그대로 [승인·게시]를 누르면 서버가 막아요. [반려]하면 작성 중으로 돌아가요.`, rules: [{ k: '승인 권한', v: '팀장 플래그(돈이 나가는 승인)' }, { k: '요청자 = 승인자', v: '서버가 거부' }, { k: '예상 비용', v: s.req.cost != null ? won(s.req.cost) : '예산 상한까지' }] });
+      if (locked()) return app.turn('customer', `쿠폰 코드를 ${PC.codeFailMax}번 틀려 ${fmtTime(s.lockUntil)}까지 입력이 막혔어요. 위쪽 [+1시간]을 누르면 풀려요`, { rules: R.box });
+      const got = s.wallet.some((x) => x.id === 'new');
+      if (!got && c === 'ACTIVE' && s.coupon.issue === 'download') return app.turn('customer', '마이 > 쿠폰함의 "받을 수 있는 쿠폰"에서 새 쿠폰을 받으세요', { hint: `쿠폰 코드 칸에 GAGE3000을 넣으면 배송비 쿠폰을 받아요. 없는 코드를 ${PC.codeFailMax}번 넣으면 ${PC.codeLockMin}분 동안 입력이 막혀요.`, rules: R.box });
+      if (s.cs === 'checkout') return app.turn('customer', '자동으로 고른 쿠폰과 금액 순서를 확인하고 결제하세요. 다른 쿠폰을 눌러 바꿀 수도 있어요', { hint: '본사 쿠폰 1만원은 수저집 6,000원·냅킨 4,000원으로 나눠 기록해요(안분).', rules: R.checkout });
+      return app.turn('customer', got ? '쿠폰함을 확인했으면 [주문서에서 쿠폰 쓰기]로 가세요' : '새 쿠폰 발행이 멈춰 받을 수 없어요. 가진 쿠폰으로 주문서를 확인하세요', { hint: '첫 디자인 무료 쿠폰의 [어떤 주문에 쓰이는지 보기]에서 디자인비 판정 순서(50만원 → 멤버십 이용권 → 디자인비 쿠폰)를 볼 수 있어요.', rules: R.box });
+    }
+    switch (m) {
+      case 'NONE':
+        if (s.cs === 'memjoin') return app.turn('customer', M.card ? '정기결제·약관 동의에 체크하고 결제하세요' : '결제 카드를 등록하세요. 카드 번호는 저장하지 않고 PG 빌링키만 받아요', { rules: R.mem });
+        if (s.cs === 'mem') return app.turn('customer', '혜택과 예상 절약 금액을 보고 요금제를 고른 뒤 가입하기를 누르세요', { rules: R.mem });
+        return app.turn('customer', '마이 > 멤버십(2차)에서 혜택과 "가입했다면 아꼈을 금액"을 확인하세요', { hint: '본사 화면에서 쿠폰 진행 현황과 "본사 쿠폰은 파트너 정산을 줄이지 않는다"는 계산을 볼 수 있어요.', rules: R.mem });
+      case 'ACTIVE':
+        if (M.plan === 'yearly') return app.turn('customer', '멤버십 관리에서 [해지하기]를 눌러 환불 예정액을 보세요', { hint: '+7일을 열 번(70일) 보내면 2개월 9일 사용 → 올림 3개월 → 69,300원 환불이에요. 7일 안에 혜택을 안 쓰고 해지하면 99,000원 전액이에요.', rules: R.cancel });
+        if (!M.everFailed) return app.turn('system', '다음 정기결제일까지 시간을 보내세요. [카드 한도 초과]를 켜 두면 결제 실패 갈래로 가요', { hint: '가입 후 7일 안에 혜택을 쓰지 않고 해지하면 전액 환불돼요(고객 > 멤버십 관리 > 해지하기).', rules: R.fail });
+        if (!s.orders.some((o) => o.ship && o.ship.src === 'mem')) return app.turn('customer', '주문서에서 멤버십 무료배송 쿠폰이 자동으로 붙는지 보고 결제하세요', { hint: '혜택을 쓰면 이번 결제분은 7일 전액 환불 대상에서 빠져요.', rules: R.checkout });
+        return app.turn('customer', '멤버십 관리에서 [해지하기]를 눌러 보세요. 잃는 혜택과 환불 예정액을 먼저 보여줘요', { rules: R.cancel });
+      case 'PAY_FAILED': return app.turn('customer', '결제 실패로 혜택이 멈췄어요. 멤버십 관리에서 [카드 바꾸고 다시 결제]를 누르세요', { hint: `그대로 두고 +1일씩 보내면 D+${PC.retry.join('·D+')}에 다시 시도하고, D+${PC.autoCancelDay}까지 실패하면 자동 해지돼요.`, rules: R.fail });
+      case 'CANCEL_RESERVED': return app.turn('system', `해지 예약 상태예요. ${fmtY(M.next, false)}까지 시간을 보내면 갱신하지 않고 끝나요`, { hint: '그 전까지는 혜택을 그대로 써요. 고객 화면에서 [해지 취소]도 할 수 있어요.', rules: R.cancel });
+      case 'ENDED': return app.done(`멤버십이 끝났어요.${M.refund != null ? ` 환불 ${won(M.refund)}.` : ''}`, { next: '[처음부터]를 누르고 연간 요금제로 가입한 뒤 +7일을 열 번 보내 해지하면 중도 해지 환불(69,300원)을 볼 수 있어요. 본사 > 멤버십의 환불 계산기와 손익 패널도 확인해 보세요.' });
+    }
+    return null;
+  }
+  function refresh() { guide(); app.refresh(); }
+
+  /* ── 공통 조각 ── */
+  function couponCard(x, o = {}) {
+    let amt;
+    if (x.kind === 'design') amt = '무료<small>디자인비</small>';
+    else if (x.kind === 'voucher') amt = '무료<small>맞춤 디자인</small>';
+    else if (x.kind === 'ship') amt = `${won(x.max)}<small>배송비</small>`;
+    else if (x.type === 'rate') amt = `${x.value}%<small>최대 ${won(x.max)}</small>`;
+    else amt = `${won(x.value)}<small>${KIND[x.kind]}</small>`;
+    const cond = x.kind === 'design' ? `맞춤 디자인비(${pv('design.fee')})에만 · 50만원 무료·멤버십 이용권이 먼저예요`
+      : x.kind === 'voucher' ? `맞춤 디자인비 ${pv('design.fee')} → 0원 · 50만원 무료가 아닐 때만`
+      : [x.minOrder ? `${won(x.minOrder)} 이상` : '최소 주문 없음', x.kind === 'ship' ? '배송 묶음(같은 판매자·출고지·출고 유형) 1개에 1장' : (x.target || '전체 상품')].join(' · ');
+    const paused = x.src === 'mem' && x.status === 'avail' && !memBenefits();
+    const tags = `${x.src === 'mem' ? '<span class="tag tag-phase">멤버십</span>' : ''}${paused ? '<span class="tag tag-stop">정지</span>' : ''}${x.isNew && x.status === 'avail' ? '<span class="tag tag-spot">새 쿠폰</span>' : ''}`;
+    return `<div class="cp${x.status !== 'avail' || paused ? ' is-off' : ''}"><div class="amt">${amt}</div><div class="bd">
+      <div class="split"><span class="nm">${esc(x.name)}</span><span class="cluster" style="gap:4px">${tags}</span></div>
+      <span class="cond">${cond}</span>
+      <span class="xsmall faint">${x.until ? `${fmtDate(x.until, x.src === 'mem')}까지 · ` : ''}${esc(x.how || '')}${x.note ? ` · ${esc(x.note)}` : ''}</span>
+      ${x.kind === 'design' && x.status === 'avail' && !o.btn ? '<button class="btn btn-sm" data-act="cs" data-to="dfee">어떤 주문에 쓰이는지 보기</button>' : ''}${o.btn || ''}</div></div>`;
+  }
+  function asWallet(def) {
+    const t = app.clock.now(); const u = new Date(t.getFullYear(), t.getMonth(), t.getDate() + def.days, 23, 59).getTime();
+    return { id: 'new', src: 'hq', status: 'avail', name: def.name, kind: def.kind, type: def.type, value: def.value, max: def.max, minOrder: def.minOrder || 0, until: u, how: '쿠폰존 다운로드', target: TARGET[def.target], includeDesign: def.includeDesign };
+  }
+  function ladderHtml(r, over = {}) {
+    const PAYER = { partner: '파트너 부담', hq: '본사 부담', customer: '본사 매출' };
+    const rows = r.steps.filter((x) => !x.hidden && !(x.key === 'design' && !r.designFees.length));
+    return `<div class="ladder">${rows.map((x) => `<div class="lrow"><span class="lno">${x.no}</span><span><span class="lhead">${x.label}</span>${x.payer ? `<span class="payer payer-${x.payer}">${PAYER[x.payer]}</span>` : ''}<br><span class="ldetail">${over[x.key] || esc(x.detail)}</span></span><span class="lamt${x.amount < 0 ? ' neg' : ''}">${x.amount < 0 ? '−' + won(-x.amount) : won(x.amount)}</span></div>`).join('')}
+      <div class="lrow is-total"><span></span><span class="lhead">최종 결제 (VAT 포함)</span><span class="lamt">${won(r.totals.pay)}</span></div></div>
+      <p class="xsmall faint" style="text-align:right">공급가 ${won(r.totals.supply)} · 부가세 ${won(r.totals.vat)}</p>`;
+  }
+  const discText = (d) => (d.kind === 'design' ? `디자인비 · 맞춤 디자인비 무료(${pv('design.fee')})` : d.kind === 'ship' ? `배송비 · 장당 최대 ${won(d.max || 0)}` : `${KIND[d.kind]} · ${d.type === 'rate' ? `${d.value}% (최대 ${d.max ? won(d.max) : '없음'})` : won(d.value || 0)}${d.includeDesign ? ' · 디자인비 포함' : ''}`);
+  const memText = (d) => Object.keys(MEMBERS).filter((k) => d.members[k]).map((k) => MEMBERS[k]).join(' · ') || '-';
+
+  /* ── 고객 화면 ── */
+  const VIEWS = {};
+  const PARENT = { box: 'my', checkout: 'my', paid: 'my', dfee: 'box', mem: 'my', memjoin: 'mem', memhome: 'my', memcancel: 'memhome' };
+  // 폰 머리의 뒤로 버튼(공통 틀은 모양만 그림) — 이 페이지에서 동작을 붙임
+  document.addEventListener('click', (e) => { if (!e.target.closest('#gc-device .phone-top .back')) return; S().cs = PARENT[S().cs] || 'my'; refresh(); });
+  VIEWS.customer = (f) => {
+    const s = S(); const m = app.state('mem');
+    if (s.cs === 'paid' && !s.orders.length) s.cs = 'my';
+    if (['memhome', 'memcancel'].includes(s.cs) && (m === 'NONE' || m === 'ENDED')) s.cs = m === 'ENDED' ? 'memhome' : 'mem';
+    if (m === 'PAY_FAILED') f.badge('마이', 1);
+    ({ my, box, checkout, paid, dfee, mem: memIntro, memjoin: memJoinView, memhome: memHome, memcancel: memCancel }[s.cs] || my)(f, s);
+  };
+  function my(f, s) {
+    f.title('마이'); f.tab('마이');
+    const m = app.state('mem'); const M = s.mem; const e = estimateSaving();
+    const avail = s.wallet.filter((x) => x.status === 'avail').length;
+    const on = m !== 'NONE' && m !== 'ENDED';
+    const banner = on
+      ? `<div class="app-card"><div class="split"><b>사장님 멤버십 · ${esc(GC.sm.machine('BENEFIT_MEMBERSHIP').states[m].customer)}</b><span class="tag tag-phase">2차</span></div><span class="small">멤버십으로 <b>${won(M.saved)}</b> 아꼈어요 · 이번 달 무료배송 쿠폰 ${memShipLeft()}장 남음</span><button class="btn btn-sm" data-act="cs" data-to="memhome">멤버십 관리</button></div>`
+      : `<div class="app-card"><div class="split"><b>가입했다면 최근 3개월 ${won(e.total)} 아꼈어요</b><span class="tag tag-phase">2차</span></div><span class="small muted">사장님 멤버십 월 ${pv('membership.price_monthly')} · 무료배송 쿠폰 매달 ${pv('membership.free_ship_coupons')} · 맞춤 디자인 무료 매달 1회</span><button class="btn btn-sm" data-act="cs" data-to="mem">멤버십 알아보기</button></div>`;
+    f.body.innerHTML = `
+      <div class="app-sec"><div class="split"><b>오늘밥상 사장님</b><span class="tag tag-spot">사업자 인증</span></div><p class="xsmall faint">한식 · 강남점 · 마케팅 정보 수신 동의함</p></div>
+      <div class="app-pad">${banner}</div>
+      <div class="app-sec"><div class="app-list">
+        <button class="li linkrow" data-act="cs" data-to="box"><span>쿠폰함</span><span class="small muted">${avail}장 ›</span></button>
+        <button class="li linkrow" data-act="cs" data-to="checkout"><span>장바구니 · 대성포장 2개 상품</span><span class="small muted">주문서 ›</span></button>
+        ${s.orders.length ? `<button class="li linkrow" data-act="cs" data-to="paid"><span>최근 주문</span><span class="small muted">${s.orders.length}건 ›</span></button>` : ''}
+        <button class="li linkrow" data-act="cs" data-to="${on ? 'memhome' : 'mem'}"><span>멤버십 <span class="tag tag-phase">2차</span></span><span class="small muted">${on ? planName() : '가입 전'} ›</span></button>
+      </div></div>`;
+  }
+  function box(f, s) {
+    f.title('쿠폰함'); f.tab('마이'); f.back();
+    const c = app.state('coupon'); const def = s.coupon; const lock = locked();
+    const has = s.wallet.some((x) => x.id === 'new');
+    let offer = '';
+    if (def && !has && def.issue === 'download') {
+      offer = c === 'ACTIVE'
+        ? `<div class="app-sec"><h4>받을 수 있는 쿠폰</h4>${couponCard(asWallet(def), { btn: '<button class="btn btn-sm btn-primary" data-act="download">받기</button>' })}</div>`
+        : `<div class="app-sec"><p class="small muted">"${esc(def.name)}" 쿠폰은 발행이 멈춰 지금은 받을 수 없어요.</p></div>`;
+    }
+    const cnt = (k) => s.wallet.filter((x) => x.status === k).length;
+    const list = s.wallet.filter((x) => x.status === s.boxTab);
+    f.body.innerHTML = `
+      <div class="app-sec"><h4>쿠폰 코드 등록</h4>
+        <div class="codebox"><input class="input" id="cpCode" data-input="codeType" value="${esc(s.code)}" placeholder="예: GAGE3000" autocomplete="off" ${lock ? 'disabled' : ''}><button class="btn" data-act="redeem" ${lock ? 'disabled' : ''}>등록</button></div>
+        ${lock ? `<div class="note note-stop small">코드를 ${PC.codeFailMax}번 잘못 넣어 ${fmtTime(s.lockUntil)}까지 입력을 막았어요. 그 뒤에 다시 넣어 주세요.</div>`
+          : s.codeMsg ? `<p class="small" style="color:var(${s.codeOk ? '--spot' : '--stop'});font-weight:600">${s.codeMsg}</p>`
+          : `<p class="xsmall faint">${pc(PC.codeFailMax + '번', '쿠폰 코드 오입력 한도')} 틀리면 ${pc(PC.codeLockMin + '분', '오입력 잠금 시간')} 동안 입력이 막혀요.</p>`}
+      </div>
+      ${offer}
+      <div class="app-pad">
+        <div class="seg" role="group" aria-label="쿠폰 상태">${[['avail', '사용 가능'], ['used', '사용 완료'], ['expired', '기간 만료']].map(([k, n]) => `<button data-act="boxTab" data-v="${k}" aria-pressed="${s.boxTab === k}">${n} ${cnt(k)}</button>`).join('')}</div>
+        ${list.map((x) => couponCard(x)).join('') || '<p class="small muted">이 탭에 쿠폰이 없어요.</p>'}
+        <p class="xsmall faint">만료 ${pc(PC.expireNoticeDays + '일', '쿠폰 만료 안내 시점')} 전 안내는 마케팅 정보 수신에 동의한 경우에만 보내요.</p>
+      </div>`;
+    f.bottom('<button class="btn btn-primary btn-lg btn-block" data-act="cs" data-to="checkout">주문서에서 쿠폰 쓰기</button>');
+  }
+  function checkout(f, s) {
+    f.title('주문서'); f.tab('다시 사기'); f.back();
+    const k = checkoutCalc(); const r = k.r;
+    const row = (act, o, cur, b) => `<div class="opt" role="radio" tabindex="0" aria-checked="${!!cur && cur.id === o.x.id}" data-act="${act}" data-id="${o.x.id}"><span><b>${esc(o.x.name)}</b>${o.x.src === 'mem' ? ' <span class="tag tag-phase">멤버십</span>' : ''}<br><span class="xsmall faint">${o.x.minOrder ? `${won(o.x.minOrder)} 이상 · ` : ''}${fmtDate(o.x.until, false)}까지${b && b.x.id === o.x.id ? ' · 가장 큰 할인' : ''}</span></span><span class="num strong">−${won(o.d)}</span></div>`;
+    const none = (act, cur) => `<div class="opt" role="radio" tabindex="0" aria-checked="${!cur}" data-act="${act}" data-id=""><span>쓰지 않기</span><span></span></div>`;
+    const notBest = (cur, b) => (b && cur && cur.id !== b.x.id ? `<p class="xsmall" style="color:var(--warn)">"${esc(b.x.name)}"을 쓰면 ${won(b.d - (k.hqC.concat(k.shC).find((o) => o.x.id === cur.id) || { d: 0 }).d)} 더 할인돼요.</p>` : '');
+    f.body.innerHTML = `
+      <div class="app-sec"><h4>대성포장</h4>
+        ${r.lines.map((l) => `<div class="split small"><span>${esc(l.name)} · ${l.qty}박스${l.instantDisc ? ` <span class="tag">즉시 할인 10%</span>` : ''}</span><b class="num nw">${won(l.gross)}</b></div>`).join('')}
+        <p class="xsmall faint">${won(SHIP.DS.freeOver)} 이상이면 무료배송 · 지금 ${won(r.shippingLines[0].basisPartner)} (본사 쿠폰 전 금액으로 판단)</p></div>
+      <div class="app-sec"><div class="split"><h4>쿠폰</h4><span class="xsmall faint">가장 큰 할인 1장 자동 적용</span></div>
+        <span class="small strong">본사 쿠폰 · 주문당 1장</span>
+        <div class="opt-list" role="radiogroup" aria-label="본사 쿠폰">${k.hqC.map((o) => row('pickHq', o, k.hq, k.bHq)).join('') || '<p class="xsmall faint">쓸 수 있는 본사 쿠폰이 없어요.</p>'}${k.hqC.length ? none('pickHq', k.hq) : ''}</div>${notBest(k.hq, k.bHq)}
+        <span class="small strong">배송비 쿠폰 · 배송 묶음당 1장</span>
+        <div class="opt-list" role="radiogroup" aria-label="배송비 쿠폰">${k.shC.map((o) => row('pickShip', o, k.ship, k.bSh)).join('') || '<p class="xsmall faint">쓸 수 있는 배송비 쿠폰이 없어요.</p>'}${k.shC.length ? none('pickShip', k.ship) : ''}</div>
+        <p class="xsmall faint">배송 묶음은 같은 판매자·출고지·출고 유형(일반/맞춤 제작)의 상품끼리예요. 같은 판매자라도 맞춤 제작 상품은 따로 묶여 배송비 쿠폰을 각각 쓸 수 있어요.</p>
+        ${k.memPaused ? '<div class="note note-warn small">멤버십 결제가 안 되어 혜택이 멈췄어요. 이 주문은 일반 회원 기준으로 계산했어요.</div>' : ''}
+        ${k.hidden ? `<p class="xsmall faint">이 주문에 쓸 수 없는 쿠폰 ${k.hidden}장은 숨겼어요(디자인비 쿠폰은 맞춤 디자인비가 있는 주문에만 써요).</p>` : ''}</div>
+      <div class="app-sec"><h4>결제 금액</h4>${ladderHtml(r, { hq: k.hq ? `${esc(k.hq.name)} · 수저집 ${won(r.lines[0].hqAlloc)} · 냅킨 ${won(r.lines[1].hqAlloc)}로 나눠 기록` : '쓴 쿠폰 없음' })}</div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="pay">${won(r.totals.pay)} 결제하기</button>`);
+  }
+  function paid(f, s) {
+    f.title('주문 완료'); f.tab('다시 사기'); f.back();
+    const o = s.orders[s.orders.length - 1]; const r = o.r;
+    f.body.innerHTML = `<div class="app-pad">
+      <p class="app-title">${o.canceled ? '주문을 취소했어요' : '주문이 완료됐어요'}</p>
+      <dl class="kv"><dt>주문번호</dt><dd>${o.no}</dd><dt>결제 금액</dt><dd>${won(r.totals.pay)}</dd><dt>본사 쿠폰</dt><dd>${o.hq ? `${esc(o.hq.name)} −${won(r.totals.hqDisc)}` : '쓰지 않음'}</dd><dt>배송비 쿠폰</dt><dd>${o.ship ? `${esc(o.ship.name)} −${won(r.totals.shipCoupon)}` : '쓰지 않음'}</dd></dl>
+      ${o.canceled ? `<div class="note small">${esc(o.restoreMsg)}</div>`
+        : `<div class="app-card"><b class="small">발주 확인 전이라 바로 취소할 수 있어요</b><span class="xsmall muted">취소하면 쓴 쿠폰은 유효기간이 남았을 때만 쿠폰함으로 돌아와요. 지났으면 소멸해요.</span><button class="btn btn-sm btn-danger" data-act="cancelOrder">주문 취소</button></div>`}
+    </div>`;
+    f.bottom('<button class="btn btn-primary btn-lg btn-block" data-act="cs" data-to="my">마이로</button>');
+  }
+  function dfee(f, s) {
+    f.title('맞춤 주문서 · 디자인비'); f.tab('디자인'); f.back();
+    const j = dfeeCalc(); const pre = j.pre.designFees[0];
+    const thr = pre.reason === 'threshold'; const vou = pre.reason === 'voucher';
+    const label = thr ? '무료(50만원 이상)' : vou ? '무료(멤버십)' : j.usedDesign ? '무료(쿠폰)' : won(pre.fee);
+    const row = (n, title, cls, txt, tail) => `<div class="jrow ${cls}"><span class="lno">${n}</span><span><b>${title}</b><br><span class="xsmall">${txt}</span></span><span class="xsmall strong">${tail}</span></div>`;
+    const r3 = thr || vou ? row(3, '디자인비 쿠폰', 'skip', j.dc ? '앞 단계에서 이미 무료라 쓰지 않고 쿠폰함에 남겨요' : '가진 디자인비 쿠폰이 없어요', '안 씀')
+      : j.usedDesign ? row(3, '디자인비 쿠폰', 'on', `"${esc(j.dc.name)}"로 ${won(pre.fee)} 할인 · 본사 쿠폰 1장 자리를 써요`, '적용')
+      : row(3, '디자인비 쿠폰', 'skip', j.dc ? '장바구니 쿠폰 할인이 더 커서 그쪽을 골랐어요' : '가진 디자인비 쿠폰이 없어 디자인비를 내요', '안 씀');
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="note note-ext small"><b>체험 조건</b> · 실제 화면에는 없는 조절판이에요. 맞춤 인쇄 수저집 550,000원 한 건
+          <div class="stack-sm" style="margin-top:8px">
+            <div class="seg">${[['495', '즉시 할인 10%'], ['550', '할인 없음']].map(([k, n]) => `<button data-act="dfAmt" data-v="${k}" aria-pressed="${s.df.amount === k}">${n}</button>`).join('')}</div>
+            <div class="seg">${[['off', '멤버십 이용권 없음'], ['on', '이용권 있음 (2차)']].map(([k, n]) => `<button data-act="dfVoucher" data-v="${k}" aria-pressed="${(s.df.voucher ? 'on' : 'off') === k}">${n}</button>`).join('')}</div>
+          </div></div>
+        <div class="app-card"><div class="split"><b>디자인비 판정 순서</b><span class="tag tag-spot">${label}</span></div>
+          <div class="judge">
+            ${row(1, '50만원 이상이면 무료', thr ? 'on' : 'skip', `판정 금액 ${won(pre.basis)}(파트너 할인 후·본사 쿠폰 전) ${thr ? '≥' : '<'} ${pv('design.free_threshold')}${thr ? '' : ` · ${won(pre.shortfall)} 모자라요`}`, thr ? '무료' : '아니요')}
+            ${row(2, '멤버십 무료 이용권', thr ? 'na' : vou ? 'on' : 'skip', thr ? '앞에서 무료라 이용권을 쓰지 않아요' : vou ? `이번 달 이용권 1장으로 ${won(P('design.fee'))} → 0원` : '이용권이 없어요', thr ? '안 씀' : vou ? '무료' : '없음')}
+            ${r3}
+          </div>
+          <p class="xsmall faint">본사 쿠폰은 판정 뒤에 적용해서 50만원 판정 결과를 바꾸지 않아요.</p></div>
+        <div class="app-card"><b class="small">결제 금액</b>${ladderHtml(j.r, { design: `디자인비 줄 표시: ${label}`, hq: j.pick ? esc(j.pick.x.name) : '쓴 쿠폰 없음' })}</div>
+        <p class="note small">무료로 받은 맞춤 디자인도 첫 시안을 받은 뒤 취소하면 디자인비 ${pv('design.fee')}을 공제해요. 디자인비 쿠폰·이용권은 첫 시안 전에 취소하면 돌려드려요.</p>
+      </div>`;
+  }
+  function memIntro(f, s) {
+    f.title('사장님 멤버십'); f.tab('마이'); f.back();
+    const e = estimateSaving(); const M = s.mem; const m = app.state('mem');
+    const plan = (k, name, price, sub) => `<div class="opt" role="radio" tabindex="0" aria-checked="${M.plan === k}" data-act="memPlan" data-v="${k}"><span><b>${name}</b><br><span class="xsmall faint">${sub}</span></span><b class="num">${price}</b></div>`;
+    f.body.innerHTML = `
+      <div class="app-sec"><div class="split"><p class="app-title">사장님 멤버십</p><span class="tag tag-phase">2차</span></div>
+        <p class="small muted">배송비·디자인비를 매달 아끼는 유료 구독이에요. 혜택 비용은 식업이 내요.</p>
+        ${m === 'ENDED' ? '<div class="note small">지난 멤버십이 끝났어요. 다시 가입할 수 있어요.</div>' : ''}</div>
+      <div class="app-pad">
+        <div class="app-card"><span class="small muted">최근 3개월 주문으로 계산하면</span><b>가입했다면 <span class="save-big">${won(e.total)}</span> 아꼈어요</b>
+          <table class="tbl small"><thead><tr><th>달</th><th class="num">무료배송</th><th class="num">추가 적립</th><th class="num">디자인비</th></tr></thead><tbody>${e.rows.map((r) => `<tr><td>${r.m}</td><td class="num">${won(r.ship)}</td><td class="num">${won(r.point)}</td><td class="num">${won(r.design)}</td></tr>`).join('')}</tbody></table>
+          <p class="xsmall faint">같은 기간 회비는 ${won(e.fee)}이에요. 추가 적립은 포인트(2차)가 나올 때 함께 시작해요.</p></div>
+        <div class="app-card"><b class="small">매달 받는 혜택 · 가입일 기준, 연간도 매달</b>
+          <ul class="benefits">
+            <li>무료배송 쿠폰 ${pv('membership.free_ship_coupons')} · 장당 최대 ${pv('membership.free_ship_max')} · ${pv('membership.free_ship_min_order')} 이상 주문</li>
+            <li>결제 금액의 ${pv('membership.extra_point_rate')} 추가 적립 · 월 ${pv('membership.extra_point_cap')}까지</li>
+            <li>맞춤 디자인 무료 1회 (${pv('design.fee')})</li>
+            <li>디자인 우선 배정 · 첫 시안 영업일 1일</li>
+            <li>멤버 전용 특가</li></ul>
+          <p class="xsmall faint">쓰지 않은 쿠폰·이용권은 다음 달로 넘어가지 않아요.</p></div>
+        <div class="opt-list" role="radiogroup" aria-label="요금제">
+          ${plan('monthly', '월간', `${won(P('membership.price_monthly'))}/월`, '매달 가입일에 결제 · 언제든 해지')}
+          ${plan('yearly', '연간', `${won(P('membership.price_yearly'))}/년`, `약 ${Math.round(12 - P('membership.price_yearly') / P('membership.price_monthly'))}개월 무료 효과 · 혜택은 매달`)}
+        </div>
+        <p class="xsmall faint">iOS 앱에서는 웹 결제로 안내할 수 있어요(인앱결제 대상인지 확인 중).</p>
+      </div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="cs" data-to="memjoin">${planName()}으로 가입하기</button>`);
+  }
+  function memJoinView(f, s) {
+    f.title('멤버십 가입'); f.tab('마이'); f.back();
+    const M = s.mem; const price = planPrice(); const t = app.clock.now();
+    const when = M.plan === 'monthly' ? `매달 ${t.getDate()}일` : `매년 ${t.getMonth() + 1}월 ${t.getDate()}일`;
+    const agree = (k, html, req = true) => `<label class="check"><input type="checkbox" data-change="memChk" data-k="${k}" ${M.checks[k] ? 'checked' : ''}><span><span class="${req ? 'req' : 'opt'}">(${req ? '필수' : '선택'})</span> ${html}</span></label>`;
+    f.body.innerHTML = `
+      <div class="app-sec"><h4>요금제</h4><dl class="kv"><dt>요금제</dt><dd>${planName()} ${won(price)} (VAT 포함)</dd><dt>결제일</dt><dd>${when} · 오늘 첫 결제</dd><dt>혜택 지급</dt><dd>가입 즉시 첫 달 혜택 · 이후 매달 ${t.getDate()}일</dd></dl></div>
+      <div class="app-sec"><h4>결제 카드</h4>
+        ${M.card ? '<div class="split"><span>신한카드 ****-1234 (개인)</span><span class="st st-done">등록됨</span></div><p class="xsmall faint">카드 번호는 저장하지 않고 PG 빌링키만 보관해요.</p>'
+          : '<button class="btn btn-block btn-ext" data-act="memCard">카드 등록하기</button><p class="xsmall faint">개인·법인 카드 모두 돼요.</p>'}</div>
+      <div class="app-sec">
+        ${agree('m_billing', `정기결제: ${when} ${won(price)}이 자동 결제돼요. 결제 ${pc((M.plan === 'monthly' ? PC.noticeMonthly : PC.noticeYearly) + '일', '정기결제 예정 안내 시점')} 전에 알려 드리고, 마이 > 멤버십에서 언제든 해지할 수 있어요`)}
+        ${agree('m_terms', '멤버십 이용약관(혜택 한도, 해지·환불 규정)')}
+        ${agree('m_ad', '멤버 특가 알림 받기(마케팅 수신 동의와 연동)', false)}
+        <p class="xsmall faint">결제 후 ${pc(PC.withdrawDays + '일', '청약철회 기간')} 안에 혜택을 쓰지 않고 해지하면 전액 환불해요.</p></div>`;
+    const ok = M.card && M.checks.m_billing && M.checks.m_terms;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="memJoin" ${ok ? '' : 'disabled'}>${won(price)} 결제하고 가입</button>`);
+  }
+  function memHome(f, s) {
+    f.title('멤버십'); f.tab('마이'); f.back();
+    const M = s.mem; const m = app.state('mem'); const st = GC.sm.machine('BENEFIT_MEMBERSHIP').states[m];
+    const mine = s.wallet.filter((x) => x.src === 'mem' && x.status === 'avail');
+    const ship = mine.filter((x) => x.kind === 'ship'); const vou = mine.find((x) => x.kind === 'voucher');
+    let body = '';
+    if (m === 'ENDED') body = `<div class="note small">멤버십이 끝났어요.${M.refund != null ? ` 환불 ${won(M.refund)}을 돌려드렸어요.` : ''}</div><button class="btn btn-primary" data-act="cs" data-to="mem">다시 가입하기</button>`;
+    else {
+      body = `
+        ${m === 'PAY_FAILED' ? `<div class="note note-stop small"><b>${fmtDate(M.failedAt)} 결제가 안 됐어요(카드 한도 초과).</b> 혜택을 잠시 멈췄어요. 카드를 바꾸면 바로 다시 결제하고 혜택을 되살려요.<br>다시 시도: ${PC.retry.map((d) => `${fmtDate(M.failedAt + d * DAY, false)}${M.retried[d] ? '(실패)' : ''}`).join(' · ')} · ${fmtDate(M.failedAt + PC.autoCancelDay * DAY, false)}까지 안 되면 자동 해지돼요.</div>
+          <button class="btn btn-primary btn-ext" data-act="memChangeCard">카드 바꾸고 다시 결제</button>` : ''}
+        ${m === 'CANCEL_RESERVED' ? `<div class="note note-warn small">${fmtY(M.next, false)}에 끝나요. 그때까지 혜택은 그대로 써요.</div><button class="btn" data-act="memUndo">해지 취소</button>` : ''}
+        <div class="app-card"><b class="small">이번 달 혜택${memBenefits() ? '' : ' · 정지됨'}</b>
+          <div class="app-list">
+            <div class="li"><span>무료배송 쿠폰</span><span class="small">${ship.length} / ${P('membership.free_ship_coupons')}장 남음</span></div>
+            <div class="li"><span>맞춤 디자인 무료 이용권</span><span class="small">${vou ? '1장 남음' : '사용함·없음'}</span></div>
+            <div class="li"><span>추가 적립 남은 한도</span><span class="small">${pv('membership.extra_point_cap')} <span class="tag tag-phase">포인트 2차</span></span></div>
+          </div>${ship[0] ? `<span class="xsmall faint">${fmtDate(ship[0].until, false)}까지 · 다음 달로 넘어가지 않아요</span>` : ''}</div>
+        <div class="app-card"><span class="small muted">지금까지</span><b>멤버십으로 <span class="save-big">${won(M.saved)}</span> 아꼈어요</b></div>`;
+    }
+    f.body.innerHTML = `<div class="app-pad">
+      <div class="app-card"><div class="split"><b>사장님 멤버십 · ${planName()}</b><span class="st ${memCls(m)}">${esc(st.customer)}</span></div>
+        <dl class="kv small"><dt>가입일</dt><dd>${M.start ? fmtDate(M.start, false) : '-'}</dd>${m !== 'ENDED' ? `<dt>${m === 'CANCEL_RESERVED' ? '종료 예정' : m === 'PAY_FAILED' ? '밀린 결제' : '다음 결제'}</dt><dd>${fmtY(M.next)} · ${won(planPrice())}</dd>` : ''}<dt>결제 카드</dt><dd>신한카드 ****-1234</dd></dl></div>
+      ${body}</div>`;
+    if (m === 'ACTIVE') f.bottom('<button class="btn btn-lg btn-block" data-act="cs" data-to="memcancel">해지하기</button>');
+  }
+  function cancelQuote() {
+    const M = S().mem; const t = nowT(); const days = Math.floor((t - M.lastPayAt) / DAY);
+    const mb = monthsBetween(M.lastPayAt, t);
+    const a = GC.membership.annualRefund({ daysSincePay: days, months: mb.months, extraDays: mb.extraDays, benefitUsed: M.used });
+    return { days, price: planPrice(), withdraw: days <= PC.withdrawDays && !M.used, mb, a, used: M.used };
+  }
+  function memCancel(f, s) {
+    f.title('멤버십 해지'); f.tab('마이'); f.back();
+    const M = s.mem; const q = cancelQuote();
+    let opts;
+    if (q.withdraw) opts = `<div class="app-card"><b>지금 해지하면 ${won(q.price)} 전액 환불</b><span class="small muted">결제 후 ${q.days}일이고 이번 결제 뒤 혜택을 쓰지 않았어요(청약철회).</span><button class="btn btn-danger" data-act="memWithdraw">해지하고 전액 환불받기</button></div>`;
+    else if (M.plan === 'monthly') opts = `<div class="app-card"><b>환불 없이 ${fmtY(M.next, false)}까지 쓰고 끝나요</b><span class="small muted">${q.used ? '이번 결제 뒤 혜택을 써서' : `결제 후 ${PC.withdrawDays}일이 지나`} 환불은 없어요. 다음 결제일부터 갱신하지 않고, 남은 기간 혜택은 그대로 써요.</span><button class="btn btn-danger" data-act="memReserve">해지 예약하기</button></div>`;
+    else opts = `
+      <div class="app-card"><b>갱신 안 함 · 환불 없음</b><span class="small muted">${fmtY(M.next, false)}까지 혜택을 그대로 쓰고 끝나요.</span><button class="btn" data-act="memReserve">갱신 안 함</button></div>
+      <div class="app-card"><div class="split"><b>중도 해지 · ${won(q.a.refund)} 환불</b><span class="tag tag-phase">법률 검토 필요</span></div><span class="small muted">사용 ${q.mb.months}개월 ${q.mb.extraDays}일 → 올림 ${q.a.usedMonths}개월 · ${won(P('membership.price_yearly'))} − ${won(P('membership.price_monthly'))} × ${q.a.usedMonths} = ${won(q.a.refund)}. 쓴 혜택 금액은 따로 빼지 않아요. 해지하는 즉시 혜택이 멈춰요.</span><button class="btn btn-danger" data-act="memAnnualCancel">중도 해지하고 환불받기</button></div>`;
+    f.body.innerHTML = `<div class="app-pad">
+      <div class="app-card"><b class="small">해지하면 잃는 혜택</b><ul class="benefits small"><li>이번 달 무료배송 쿠폰 ${memShipLeft()}장</li><li>맞춤 디자인 무료 이용권</li><li>첫 시안 영업일 1일 · 멤버 특가</li></ul></div>
+      ${opts}
+      <p class="xsmall faint">해지는 가입만큼 쉽게 이 화면에서 바로 끝나요. 회원 탈퇴 전에는 멤버십 해지를 먼저 해야 해요.</p></div>`;
+  }
+
+  /* ── 본사 운영 화면 ── */
+  VIEWS.hq = (f) => {
+    const s = S(); const v = s.hqView;
+    f.nav({ coupon: '본사 쿠폰', mem: '멤버십', point: '포인트' }[v]);
+    f.url(`admin.sikup.co.kr/marketing/${{ coupon: 'coupons', mem: 'membership', point: 'points' }[v]}`);
+    const me = TEAM[s.acct];
+    const head = `<div class="hq-head"><div class="seg" role="group" aria-label="메뉴">${[['coupon', '본사 쿠폰'], ['mem', '멤버십 (2차)'], ['point', '포인트 (2차)']].map(([k, n]) => `<button data-act="hqView" data-v="${k}" aria-pressed="${v === k}">${n}</button>`).join('')}</div>
+      <div class="acct"><span>로그인</span><div class="seg" role="group" aria-label="로그인 계정">${Object.entries(TEAM).map(([k, t]) => `<button data-act="acct" data-v="${k}" aria-pressed="${s.acct === k}">${t.name}${t.lead ? ' · 팀장' : ''}</button>`).join('')}</div><span class="xsmall faint">${me.role}${me.lead ? ' + 팀장 플래그' : ''}</span></div></div>`;
+    f.body.innerHTML = head + (v === 'coupon' ? hqCoupon(s) : v === 'mem' ? hqMem(s) : hqPoint());
+  };
+  function hqCoupon(s) {
+    const c = app.state('coupon');
+    const main = c === 'DRAFT' ? couponForm(s) : `${couponSummary(s.coupon || s.form)}${c === 'PENDING' ? approvalPanel(s) : progressPanel(s)}`;
+    return `<h3>본사 쿠폰</h3>${main}${settlePanel(s)}${couponList(s)}
+      <div class="panel"><div class="panel-h"><h2>할인 중복·비용 분담 (C-PRICE-02)</h2><span class="xsmall faint">발행 때 좁힐 수는 있어도 넓힐 수는 없어요</span></div><div class="tbl-wrap"><table class="tbl small"><thead><tr><th>할인</th><th>부담</th><th>같은 종류</th><th>수수료 기준가에서</th></tr></thead><tbody>
+        ${DUP().map((d) => `<tr><td>${d[0]} <span class="tag ${d[1] === 'MVP' ? '' : 'tag-phase'}">${d[1]}</span></td><td class="nw">${d[2]}</td><td>${d[3]}</td><td>${d[4]}</td></tr>`).join('')}</tbody></table></div></div>`;
+  }
+  function couponForm(s) {
+    const fm = s.form; const e = s.errors; const est = estimate(fm);
+    const seg = (act, cur, opts) => `<div class="seg">${Object.entries(opts).map(([k, n]) => `<button data-act="${act}" data-v="${k}" aria-pressed="${cur === k}">${n}</button>`).join('')}</div>`;
+    const num = (k, label, unit, hint) => `<div class="field"><label for="f_${k}">${label}</label><div class="unit-in"><input class="input${e[k] ? ' is-err' : ''}" id="f_${k}" inputmode="numeric" data-change="fNum" data-f="${k}" value="${fm[k] == null ? '' : fm[k]}"><span>${unit}</span></div>${e[k] ? `<span class="err">${e[k]}</span>` : hint ? `<span class="hint">${hint}</span>` : ''}</div>`;
+    const isDisc = fm.kind === 'cart' || fm.kind === 'product';
+    const raw = Math.floor((PC.avgOrder * (fm.value || 0)) / 100);
+    const avgHow = fm.kind === 'design' ? '맞춤 디자인비' : fm.kind === 'ship' ? '장당 최대 할인' : fm.type === 'rate' ? `평균 주문 ${pc(won(PC.avgOrder), '예상 비용용 평균 주문 금액')} × ${fm.value || 0}% = ${won(raw)}${fm.max && raw > fm.max ? ` → 최대 ${won(fm.max)}` : ''}` : '정액';
+    return `<div class="panel"><div class="panel-h"><h2>쿠폰 만들기 · HC-2610-07</h2><span class="xsmall faint">A-MKT-01 입력 항목</span></div><div class="panel-b stack">
+      ${s.reject ? `<div class="note note-warn small"><b>${esc(s.reject.by)}</b> · ${esc(s.reject.reason)}</div>` : ''}
+      <div class="field"><label for="f_name">쿠폰명 (고객에게 보이는 이름 · 30자)</label><input class="input${e.name ? ' is-err' : ''}" id="f_name" maxlength="30" data-change="fText" data-f="name" value="${esc(fm.name)}">${e.name ? `<span class="err">${e.name}</span>` : ''}</div>
+      <div class="form2">
+        <div class="field"><span class="lbl">종류</span>${seg('fKind', fm.kind, { cart: '장바구니', product: '상품', ship: '배송비', design: '디자인비' })}</div>
+        ${isDisc ? `<div class="field"><span class="lbl">할인 방식</span>${seg('fType', fm.type, { rate: '정률(%)', amount: '정액(원)' })}</div>`
+          : `<div class="note small">${fm.kind === 'ship' ? '배송 묶음의 기본 배송비에만 써요(제주·도서산간 추가 제외). 묶음(같은 판매자·출고지·출고 유형)당 1장.' : `맞춤 디자인비(${pv('design.fee')}, 추가 품목 ${pv('design.multi_item_fee')})에만 써요. 50만원 무료·멤버십 이용권이 먼저예요.`}</div>`}
+        ${isDisc ? num('value', fm.type === 'rate' ? '할인율' : '할인 금액', fm.type === 'rate' ? '%' : '원') : ''}
+        ${(isDisc && fm.type === 'rate') || fm.kind === 'ship' ? num('max', fm.kind === 'ship' ? '장당 최대 할인' : '최대 할인액 (정률이면 필수)', '원') : ''}
+        ${fm.kind !== 'design' ? num('minOrder', '최소 주문 금액', '원', '파트너 할인 후 상품 금액 기준') : ''}
+        <div class="field"><label for="f_target">적용 대상</label><select class="select" id="f_target" data-change="fSel" data-f="target">${Object.entries(TARGET).map(([k, n]) => `<option value="${k}" ${fm.target === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+        <div class="field"><span class="lbl">발행 방식</span>${seg('fIssue', fm.issue, ISSUE)}</div>
+        ${num('qty', '발행 수량 (비우면 무제한) · 1인 1회', '장')}
+        ${num('days', '유효기간 · 발급 후', '일')}
+        ${num('budget', '예산 상한 (필수)', '원', '닿으면 발행을 자동으로 멈춰요')}
+      </div>
+      <div class="field"><span class="lbl">대상 회원 (여러 개 고르기)</span><div class="cluster">${Object.entries(MEMBERS).map(([k, n]) => `<label class="check"><input type="checkbox" data-change="fMem" data-k="mb_${k}" ${fm.members[k] ? 'checked' : ''}><span>${n}${k === 'member' || k === 'grade' ? ' <span class="tag tag-phase">2차</span>' : ''}</span></label>`).join('')}</div>${e.members ? `<span class="err">${e.members}</span>` : ''}</div>
+      ${fm.kind === 'cart' ? `<label class="check"><input type="checkbox" data-change="fIncl" data-k="f_incl" ${fm.includeDesign ? 'checked' : ''}><span>디자인비 포함 (켜면 맞춤 디자인비에도 할인을 나눠 적용)</span></label>` : ''}
+      <div class="est"><table class="tbl small"><tbody>
+        <tr><td class="nw">평균 할인액</td><td class="small">${avgHow}</td><td class="num">${won(est.avg)}</td></tr>
+        <tr><td class="nw">× 발행 수량</td><td></td><td class="num">${fm.qty ? `${GC.num(fm.qty)}장` : '무제한'}</td></tr>
+        <tr class="is-sum"><td class="nw">예상 비용</td><td></td><td class="num">${est.cost != null ? won(est.cost) : '예산 상한까지'}</td></tr>
+        <tr><td class="nw">예산 상한</td><td class="small">닿으면 발행 자동 중지</td><td class="num">${fm.budget ? won(fm.budget) : '<span style="color:var(--stop)">비어 있음</span>'}</td></tr></tbody></table>
+        ${est.cost != null && fm.budget && est.cost > fm.budget ? '<p class="xsmall" style="color:var(--warn)">예상 비용이 예산 상한보다 커요. 상한에 닿으면 발행이 멈춰요.</p>' : ''}</div>
+      <div class="cluster"><button class="btn btn-primary" data-act="submitCoupon">승인 요청</button><span class="xsmall faint">요청하면 팀장 플래그가 있는 다른 마케터가 승인해야 게시돼요.</span></div>
+    </div></div>`;
+  }
+  function couponSummary(d) {
+    const c = app.state('coupon');
+    return `<div class="panel"><div class="panel-h"><h2>HC-2610-07 · ${esc(d.name)}</h2><span class="st ${stCls(c)}">${GC.sm.stateName('BENEFIT_COUPON', c)}</span></div><div class="panel-b">
+      <dl class="kv small"><dt>종류·할인</dt><dd>${discText(d)}</dd><dt>최소 주문</dt><dd>${d.minOrder ? won(d.minOrder) : '없음'}</dd><dt>대상</dt><dd>${TARGET[d.target]}</dd><dt>대상 회원</dt><dd>${memText(d)}</dd>
+        <dt>발행</dt><dd>${ISSUE[d.issue]} · ${d.qty ? GC.num(d.qty) + '장' : '무제한'} · 1인 1회(본인인증 값 기준)</dd><dt>유효기간</dt><dd>발급 후 ${d.days}일</dd><dt>예산 상한</dt><dd>${won(d.budget)}</dd><dt>비용 부담</dt><dd>본사 100% · 파트너 정산에서 빼지 않음</dd></dl></div></div>`;
+  }
+  function approvalPanel(s) {
+    const q = s.req; const me = TEAM[s.acct]; const self = s.acct === q.by;
+    return `<div class="panel"><div class="panel-h"><h2>승인 요청</h2><span class="tag tag-warn">돈이 나가는 승인</span></div><div class="panel-b stack">
+      <dl class="kv small"><dt>요청</dt><dd>${esc(q.byName)} · ${fmtDate(q.at)}</dd><dt>예상 비용</dt><dd>${q.cost != null ? won(q.cost) : '예산 상한까지'} (평균 ${won(q.avg)} × ${q.qty ? GC.num(q.qty) + '장' : '무제한'})</dd><dt>지금 로그인</dt><dd>${me.name} · ${me.role}${me.lead ? ' · 팀장 플래그' : ''}</dd></dl>
+      <div class="cluster"><button class="btn btn-primary" data-act="approveCoupon">승인·게시</button><button class="btn" data-act="rejectCoupon">${self ? '요청 회수' : '반려'}</button></div>
+      <p class="xsmall faint">요청한 계정은 승인할 수 없고, 팀장 플래그가 켜진 다른 계정만 승인할 수 있어요. 버튼을 숨기지 않고 서버에서 한 번 더 막아요.</p>
+      ${s.denied ? '<div class="note note-stop small">방금 승인이 서버에서 거부됐어요. 작업 기록에서 이유를 확인하세요.</div>' : ''}</div></div>`;
+  }
+  function progressPanel(s) {
+    const c = app.state('coupon'); const st = s.stats; const d = s.coupon;
+    const rate = st.issued ? Math.round((st.used / st.issued) * 100) : 0; const pct = Math.min(100, Math.round((st.disc / d.budget) * 100));
+    return `<div class="panel"><div class="panel-h"><h2>진행 현황</h2><span class="xsmall faint">게시 ${fmtDate(d.publishedAt)} · 승인 ${esc(d.approvedBy)}</span></div><div class="panel-b stack">
+      <dl class="kv small"><dt>발행 수</dt><dd>${GC.num(st.issued)}장</dd><dt>사용 수 · 사용률</dt><dd>${GC.num(st.used)}장 · ${rate}%</dd><dt>할인 총액</dt><dd>${won(st.disc)}</dd><dt>쿠폰 사용 주문 GMV</dt><dd>${won(st.gmv)}</dd></dl>
+      <div class="stack-sm"><div class="split xsmall"><span>예산 사용</span><span class="num">${won(st.disc)} / ${won(d.budget)} (${pct}%)</span></div><div class="bar${c === 'EXHAUSTED' ? ' is-full' : ''}"><i style="width:${pct}%"></i></div></div>
+      ${c === 'EXHAUSTED' ? '<div class="note note-warn small">예산 상한에 닿아 새 발급을 자동으로 멈췄어요. 이미 받은 쿠폰은 유효기간까지 쓸 수 있어서 상한을 조금 넘을 수 있어요.</div>' : ''}
+      ${c === 'PAUSED' ? `<div class="note note-warn small">일시 중지 · 사유: ${esc(s.pauseReason)}. 새 발급만 멈추고, 받은 쿠폰은 유효기간까지 써요.</div>` : ''}
+      ${c === 'ENDED' ? '<div class="note small">종료했어요. 이미 받은 쿠폰은 유효기간까지 쓸 수 있어요(즉시 회수는 사유가 필요해요).</div>' : ''}
+      <div class="cluster">${c === 'ACTIVE' ? '<button class="btn" data-act="pauseCoupon">일시 중지</button>' : ''}${c === 'PAUSED' ? '<button class="btn" data-act="resumeCoupon">재개</button>' : ''}${['ACTIVE', 'PAUSED', 'EXHAUSTED'].includes(c) ? '<button class="btn btn-danger" data-act="endCoupon">종료</button>' : ''}</div>
+    </div></div>`;
+  }
+  function settlePanel(s) {
+    const o = [...s.orders].reverse().find((x) => !x.canceled && x.hq); if (!o) return '';
+    const r = o.r; const ev = settleOf(r); const rate = P('commission.default_rate');
+    const wrong = GC.settle.commission(ev.base - r.totals.hqDisc, rate);
+    return `<div class="panel"><div class="panel-h"><h2>쿠폰을 쓴 주문의 파트너 정산 · ${o.no}</h2><span class="xsmall faint">C-STL-01 · C-PRICE-02</span></div><div class="panel-b stack">
+      <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>항목</th><th class="num">금액</th><th>누구 몫·부담</th></tr></thead><tbody>
+        <tr><td>상품 판매가 (VAT 포함)</td><td class="num">${won(r.totals.gross)}</td><td>파트너 매출</td></tr>
+        <tr><td>파트너 즉시 할인</td><td class="num">−${won(r.totals.instantDisc + r.totals.partnerCouponDisc)}</td><td>파트너 부담 · 수수료 기준가에서 뺌</td></tr>
+        <tr><td>본사 쿠폰 · ${esc(o.hq.name)}</td><td class="num">−${won(r.totals.hqDisc)}</td><td>본사 부담 · 파트너 정산에서 빼지 않음</td></tr>
+        <tr><td>수수료 기준가</td><td class="num">${won(ev.base)}</td><td>본사 쿠폰 전 금액</td></tr>
+        <tr><td>판매 수수료 ${pv('commission.default_rate')}</td><td class="num">−${won(ev.fee)}</td><td>공급가 ${won(ev.feeSupply)} · 부가세 ${won(ev.feeVat)}</td></tr>
+        <tr><td>배송비 정산</td><td class="num">+${won(ev.shipping)}</td><td>${r.totals.shipCoupon ? `배송비 쿠폰 ${won(r.totals.shipCoupon)}은 본사가 보전` : '고객이 낸 배송비'}</td></tr>
+        <tr class="is-sum"><td>파트너 정산 예정</td><td class="num">${won(ev.amount)}</td><td>구매 확정 뒤 주간 정산</td></tr></tbody></table></div>
+      <p class="xsmall faint">쿠폰 뒤 금액(${won(ev.base - r.totals.hqDisc)})에 매기면 수수료가 ${won(wrong)}이지만, 본사 쿠폰은 본사가 내는 할인이라 할인 전 금액에 매겨요. 파트너가 받는 돈은 본사 쿠폰이 있든 없든 같아요.</p></div></div>`;
+  }
+  function couponList(s) {
+    const c = app.state('coupon'); const d = s.coupon || s.form;
+    const rows = [['HC-2610-07', d.name, KIND[d.kind], ISSUE[d.issue], c, `${GC.num(s.stats.used)} / ${GC.num(s.stats.issued)}`, true], ...OTHER];
+    return `<div class="panel"><div class="panel-h"><h2>본사 쿠폰 목록</h2><span class="xsmall faint">사용 / 발행</span></div><div class="tbl-wrap"><table class="tbl small"><thead><tr><th>쿠폰</th><th>종류 · 발행</th><th>상태</th><th class="num">사용 / 발행</th></tr></thead><tbody>
+      ${rows.map((r) => `<tr${r[6] ? ' class="is-hl"' : ''}><td>${esc(r[1])}<br><span class="xsmall faint nw">${r[0]}</span></td><td>${r[2]}<br><span class="xsmall faint">${r[3]}</span></td><td><span class="st ${stCls(r[4])}">${GC.sm.stateName('BENEFIT_COUPON', r[4])}</span></td><td class="num">${r[5]}</td></tr>`).join('')}</tbody></table></div></div>`;
+  }
+  function hqMem(s) {
+    const M = s.mem; const m = app.state('mem'); const pf = profit(s.sim.growth); const pfY = profit(s.sim.growth, true); const sim = annualSim(s.sim.days, s.sim.used);
+    const gap = Math.round((pf.total - pfY.total) / 10) * 10;
+    const signed = (n) => (n < 0 ? '−' + won(-n) : '+' + won(n));
+    return `<h3>사장님 멤버십 <span class="tag tag-phase">2차</span></h3>
+      <div class="panel"><div class="panel-h"><h2>상품 설정</h2><span class="xsmall faint">A-REV-01 · 값은 모두 정책값</span></div><div class="panel-b"><dl class="kv small">
+        <dt>요금</dt><dd>월 ${pv('membership.price_monthly')} · 연 ${pv('membership.price_yearly')} (VAT 포함 고객 표시가)</dd>
+        <dt>무료배송 쿠폰</dt><dd>매달 ${pv('membership.free_ship_coupons')} · 장당 최대 ${pv('membership.free_ship_max')} · ${pv('membership.free_ship_min_order')} 이상</dd>
+        <dt>추가 적립</dt><dd>${pv('membership.extra_point_rate')} · 월 ${pv('membership.extra_point_cap')}까지 (포인트 2차와 함께)</dd>
+        <dt>디자인</dt><dd>맞춤 디자인비 매달 1회 무료 · 첫 시안 영업일 1일 · 급행 옵션 판매 안 함</dd>
+        <dt>결제 실패</dt><dd>${pc(`D+${PC.retry.join(' · D+')}`, '결제 실패 재시도 일정')} 재시도 · ${pc(`D+${PC.autoCancelDay}`, '결제 실패 자동 해지 시점')} 자동 해지 · 그동안 혜택 정지</dd>
+        <dt>청약철회</dt><dd>결제 후 ${pc(PC.withdrawDays + '일', '청약철회 기간')} 안 · 혜택 미사용이면 전액 환불</dd></dl></div></div>
+      <div class="panel"><div class="panel-h"><h2>가입자</h2><span class="xsmall faint">본인인증 기준 1인 1멤버십</span></div><div class="tbl-wrap"><table class="tbl small"><thead><tr><th>회원</th><th>주기</th><th>가입일</th><th>다음 결제</th><th>상태</th><th class="num">아낀 금액</th></tr></thead><tbody>
+        ${m !== 'NONE' ? `<tr class="is-hl"><td>오늘밥상</td><td>${planName()}</td><td>${fmtDate(M.start, false)}</td><td>${m === 'ENDED' ? '-' : fmtY(M.next, false)}</td><td><span class="st ${memCls(m)}">${GC.sm.stateName('BENEFIT_MEMBERSHIP', m)}</span></td><td class="num">${won(M.saved)}</td></tr>` : ''}
+        <tr><td>바삭치킨</td><td>연간</td><td>9/3(목)</td><td>2027-09-03</td><td><span class="st st-now">이용 중</span></td><td class="num">${won(12000)}</td></tr>
+        <tr><td>카페 온기</td><td>월간</td><td>8/21(금)</td><td>10/21(수)</td><td><span class="st st-warn">해지 예약</span></td><td class="num">${won(3000)}</td></tr></tbody></table></div></div>
+      <div class="panel"><div class="panel-h"><h2>멤버 1명당 월 손익 (가정)</h2><span class="xsmall faint">기획서 멤버십 손익</span></div><div class="panel-b stack">
+        <div class="field"><label for="simGrowth">멤버가 된 뒤 구매 증가율 <b id="simGrowthOut">${s.sim.growth}%</b></label><input type="range" class="range" id="simGrowth" min="0" max="60" step="1" value="${s.sim.growth}" data-input="simGrowthLive" data-change="simGrowth"><span class="hint">가입 전 월 구매 ${asm(won(PL.base), '멤버 가입 전 월 구매액(VAT 포함)')} 기준 · 본전은 약 ${breakEven()}%</span></div>
+        <div class="tbl-wrap"><table class="tbl small"><tbody>
+          <tr><td>회비 (공급가)</td><td class="num">+${won(pf.feeSupply)}</td></tr>
+          <tr><td>늘어난 구매 ${won(pf.inc)}의 수수료 ${pv('commission.default_rate')} (공급가)</td><td class="num">+${won(pf.commSupply)}</td></tr>
+          <tr><td>늘어난 구매의 결제 수수료 ${asm(PL.pgRate + '%', '결제 수수료율')}</td><td class="num">−${won(pf.pgInc)}</td></tr>
+          <tr><td>회비 결제 수수료</td><td class="num">−${won(pf.pgFee)}</td></tr>
+          <tr><td>무료배송 쿠폰 (사용률 ${asm(PL.shipUse + '%', '무료배송 쿠폰 사용률')})</td><td class="num">−${won(pf.ship)}</td></tr>
+          <tr><td>추가 적립 (월 한도까지)</td><td class="num">−${won(pf.point)}</td></tr>
+          <tr><td>맞춤 디자인비 무료 (사용률 ${asm(PL.designUse + '%', '이용권 사용률')} × 원가 ${asm(won(PL.designCost), '디자인 1건 원가')})</td><td class="num">−${won(pf.design)}</td></tr>
+          <tr class="is-sum"><td>월간 회원 1명당 월 손익</td><td class="num" style="color:var(${pf.total < 0 ? '--stop' : '--spot'})">${signed(pf.total)}</td></tr>
+          <tr><td><b>연간 회원이면</b> <span class="xsmall faint">회비 공급가 월 ${won(pfY.feeSupply)}(연 ${won(P('membership.price_yearly'))} ÷ 1.1 ÷ 12) · 회비 결제 수수료 월 ${won(pfY.pgFee)} · 혜택은 같음</span></td><td class="num" style="color:var(${pfY.total < 0 ? '--stop' : '--spot'})"><b>${asm(signed(pfY.total), '기획서 가정값 · 연간 회원 1명 월 손익(기획서 11장: 구매 30% 증가 가정에서 약 −2,750원/월)')}</b></td></tr></tbody></table></div>
+        <p class="xsmall faint">연간 회원은 혜택을 월간 회원과 똑같이 받는데 회비가 작아서 월간 회원보다 약 ${asm(won(gap), '기획서 가정값 · 월간 대비 차이(기획서 11장 약 1,450원)')} 나빠요(기획서 11장 · 구매 30% 증가 가정에서 약 −2,750원/월). 사업 시나리오는 회원이 모두 월간 회비를 낸다고 가정해서, 연간 회원이 많아지면 멤버십 매출이 그만큼 줄어요.</p>
+        <p class="xsmall faint">혜택 비용이 회비보다 커요. 멤버십은 회비로 버는 상품이 아니라 구매 횟수를 늘리는 상품이라, 적립 한도와 쿠폰 최소 주문으로 비용을 묶고 멤버 구매 증가율을 매달 봐요. 사업 시뮬레이터에는 디자인비 무료분을 넣지 않아요(디자이너 인건비에 이미 들어 있어 두 번 계산됨).</p></div></div>
+      <div class="panel"><div class="panel-h"><h2>연간 중도 해지 환불 계산기</h2><span class="tag tag-phase">법률 검토 필요</span></div><div class="panel-b stack">
+        <div class="field"><label for="simDays">결제 후 지난 날 <b id="simDaysOut">${sim.label}</b></label><input type="range" class="range" id="simDays" min="0" max="365" value="${s.sim.days}" data-input="simDaysLive" data-change="simDays"></div>
+        <label class="check"><input type="checkbox" data-change="simUsed" data-k="sim_used" ${s.sim.used ? 'checked' : ''}><span>혜택을 쓴 적 있음</span></label>
+        <div class="note note-spot small">환불 <b class="num" id="simRefund">${won(sim.a.refund)}</b> · ${sim.a.rule === 'withdraw' ? `결제 후 ${PC.withdrawDays}일 안 · 혜택 미사용 → 청약철회 전액` : `${sim.mb.months}개월 ${sim.mb.extraDays}일 → 올림 ${sim.a.usedMonths}개월 · ${won(P('membership.price_yearly'))} − ${won(P('membership.price_monthly'))} × ${sim.a.usedMonths}`}</div>
+        <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>명세서 C-PAY-03 예시</th><th class="num">환불</th><th></th></tr></thead><tbody>
+          ${TC14.map((p, i) => { const x = annualSim(p.days, p.used); return `<tr${s.sim.days === p.days && s.sim.used === p.used ? ' class="is-hl"' : ''}><td>${p.label}</td><td class="num tc14">${won(x.a.refund)}</td><td><button class="btn btn-sm" data-act="simPreset" data-i="${i}">보기</button></td></tr>`; }).join('')}</tbody></table></div>
+        <p class="xsmall faint">쓴 혜택 금액은 따로 빼지 않아요. 월 요금에 그달 혜택이 들어 있어서, 또 빼면 같은 기간을 쓴 월간 회원보다 더 내게 돼요.</p></div></div>`;
+  }
+  function hqPoint() {
+    return `<h3>포인트 <span class="tag tag-phase">2차</span></h3>
+      <div class="panel"><div class="panel-b"><dl class="kv small">
+        <dt>운영 방식</dt><dd>무상 적립 포인트만 · 현금 충전·환급 없음(선불전자지급수단 해당 방지)</dd>
+        <dt>적립</dt><dd>구매 확정 시 등급별 기본 적립 · 리뷰 · 멤버십 추가 ${pv('membership.extra_point_rate')}(월 ${pv('membership.extra_point_cap')}까지)</dd>
+        <dt>사용</dt><dd>1P = 1원 · 1,000P 이상 · 10P 단위 · 주문서 마지막 단계(⑥)에서 결제 수단처럼 차감</dd>
+        <dt>소멸</dt><dd>적립일부터 1년 · 30일 전 안내 · 소멸일이 가까운 포인트부터 사용</dd>
+        <dt>비용</dt><dd>본사 부담 · 파트너 정산에 영향 없음</dd></dl>
+        <p class="xsmall faint" style="margin-top:10px">포인트는 2차 출시 기능이라 이 프로토타입에서는 규칙만 보여줘요(A-MKT-02 · U-BEN-02).</p></div></div>`;
+  }
+
+  /* ── 시스템 화면 ── */
+  VIEWS.system = (f) => {
+    const s = S(); const M = s.mem; const m = app.state('mem'); const c = app.state('coupon'); const ev = nextEvent();
+    const rows = [];
+    if (s.coupon) rows.push(['본사 쿠폰 예산 감시', `HC-2610-07 할인 총액 ${won(s.stats.disc)} / 상한 ${won(s.coupon.budget)}`, c === 'EXHAUSTED' ? '<span class="sla sla-over">자동 중지됨</span>' : '<span class="sla sla-ok">감시 중</span>']);
+    const soon = s.wallet.filter((x) => x.status === 'avail' && x.src !== 'mem' && x.until).sort((a, b) => a.until - b.until)[0];
+    rows.push(['쿠폰 만료 안내', `만료 ${pc(PC.expireNoticeDays + '일', '쿠폰 만료 안내 시점')} 전 · 마케팅 수신 동의자만${soon ? ` · 다음: ${esc(soon.name)} ${fmtDate(soon.until, false)} 만료` : ''}`, soon && soon.noticed ? '보냄' : '<span class="sla sla-ok">대기</span>']);
+    if (m === 'ACTIVE' || m === 'CANCEL_RESERVED') {
+      rows.push(['멤버십 정기결제', m === 'CANCEL_RESERVED' ? `해지 예약 · ${fmtY(M.next)}에 종료(결제 안 함)` : `${planName()} · 다음 결제 ${fmtY(M.next)} · 결제일 오전 실행`, M.failMode ? '<span class="sla sla-warn">카드 한도 초과</span>' : '<span class="sla sla-ok">정상</span>']);
+      rows.push(['결제 예정 안내', `월간 ${pc(PC.noticeMonthly + '일', '월간 결제 예정 안내')} 전 · 연간 ${pc(PC.noticeYearly + '일', '연간 결제 예정 안내')} 전`, M.noticed ? '보냄' : '<span class="sla sla-ok">대기</span>']);
+      if (M.plan === 'yearly') rows.push(['매달 혜택 지급', `가입일 기준 · 연간도 매달 · 다음 ${fmtDate(grantAt(M))}`, '<span class="sla sla-ok">대기</span>']);
+    }
+    if (m === 'PAY_FAILED') rows.push(['결제 실패 재시도', `${PC.retry.map((d) => `D+${d} ${fmtDate(M.failedAt + d * DAY, false)}${M.retried[d] ? ' 실패' : ''}`).join(' · ')} · D+${PC.autoCancelDay} ${fmtDate(M.failedAt + PC.autoCancelDay * DAY, false)} 자동 해지`, '<span class="sla sla-over">혜택 정지 중</span>']);
+    f.body.innerHTML = `
+      <h3>정기결제·쿠폰 배치</h3>
+      <p class="small muted">사람이 누르지 않아도 시간이 되면 돌아가요. 위쪽 +1일·+7일이나 아래 버튼으로 시간을 보내면 자동으로 실행돼요.</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>작업</th><th>기준</th><th>상태</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${r[0]}</td><td class="small">${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table></div>
+      <div class="panel"><div class="panel-h"><h2>체험 조절</h2><span class="xsmall faint">실제 시스템에는 없는 조절판</span></div><div class="panel-b stack">
+        <label class="check"><input type="checkbox" data-change="sysFail" data-k="failmode" ${M.failMode ? 'checked' : ''}><span>등록 카드가 한도 초과 상태예요 (다음 정기결제·재시도가 실패해요)</span></label>
+        <div class="cluster"><button class="btn btn-primary" data-act="sysJump" ${ev ? '' : 'disabled'}>${ev ? `${ev.name}까지 시간 보내기 · ${fmtY(ev.at)}` : '기다리는 정기결제 작업이 없어요'}</button>
+          <button class="btn" data-act="sysFlood" ${c === 'ACTIVE' ? '' : 'disabled'}>다른 사장님 사용을 예산 상한까지 반영</button></div></div></div>
+      <div class="note note-ext small">외부 연동: 토스페이먼츠(빌링키·정기결제·결제 취소) · 솔라피(알림톡) · FCM(푸시). 같은 결제일에 두 번 결제하지 않도록 결제 요청 ID로 막아요. 프로토타입에서는 안내 창으로 대신해요.</div>
+      <div class="note small">명세서 확인 필요: 쿠폰 만료 안내를 U-BEN-01은 "7일 전 · 마케팅 수신 동의자만", C-NOTI-01은 "쿠폰·포인트 소멸 30일 전 · 정보성(끌 수 없음)"으로 적고 있어요. 이 화면은 U-BEN-01을 따랐어요.</div>`;
+  };
+
+  /* ── 동작 ── */
+  const deny = (why) => { app.log('warn', `서버가 거부했어요: ${why}`); app.toast('서버가 거부했어요'); S().denied = true; refresh(); };
+  function checkBudget() {
+    const s = S();
+    if (app.state('coupon') === 'ACTIVE' && s.stats.disc >= s.coupon.budget) {
+      app.go('coupon', 'exhaust', { by: `예산 상한 ${won(s.coupon.budget)} 도달` });
+      app.log('rule', '새 발급을 자동으로 멈췄어요. 이미 받은 쿠폰은 유효기간까지 쓸 수 있어요');
+    }
+  }
+  app.actions({
+    hqView(b) { S().hqView = b.dataset.v; refresh(); },
+    acct(b) { S().acct = b.dataset.v; S().denied = false; app.log('user', `관리자 계정 전환: ${TEAM[b.dataset.v].name}`); refresh(); },
+    fKind(b) { const fm = S().form; fm.kind = b.dataset.v; if (fm.kind === 'ship' && !fm.max) fm.max = 3000; S().errors = {}; refresh(); },
+    fType(b) { S().form.type = b.dataset.v; refresh(); },
+    fIssue(b) { S().form.issue = b.dataset.v; refresh(); },
+    fNum(t) { const v = t.value.replace(/[^\d]/g, ''); S().form[t.dataset.f] = v === '' ? null : Number(v); refresh(); },
+    fText(t) { S().form[t.dataset.f] = t.value.trim(); refresh(); },
+    fSel(t) { S().form[t.dataset.f] = t.value; refresh(); },
+    fMem(t) { S().form.members[t.dataset.k.slice(3)] = t.checked; refresh(); },
+    fIncl(t) { S().form.includeDesign = t.checked; refresh(); },
+    submitCoupon() {
+      const s = S(); const fm = s.form; const e = {};
+      const isDisc = fm.kind === 'cart' || fm.kind === 'product';
+      if (!fm.name) e.name = '쿠폰명을 넣어 주세요';
+      if (isDisc && !fm.value) e.value = '할인 값을 넣어 주세요';
+      if (isDisc && fm.type === 'rate' && fm.value > 100) e.value = '할인율은 100% 이하로 넣어 주세요';
+      if (((isDisc && fm.type === 'rate') || fm.kind === 'ship') && !fm.max) e.max = fm.kind === 'ship' ? '장당 최대 할인을 넣어 주세요' : '정률 쿠폰은 최대 할인액이 꼭 필요해요. 큰 주문에서 비용이 끝없이 커지는 걸 막아요';
+      if (!fm.days) e.days = '유효기간을 넣어 주세요';
+      if (!fm.budget) e.budget = '예산 상한은 꼭 넣어야 해요. 발행 수량이 무제한이어도 마찬가지예요';
+      if (!Object.values(fm.members).some(Boolean)) e.members = '대상 회원을 하나 이상 골라 주세요';
+      s.errors = e;
+      if (Object.keys(e).length) { app.log('warn', `승인 요청 막힘: ${Object.values(e).map((x) => x.split('.')[0]).join(' · ')}`); app.toast('빠진 항목이 있어 승인 요청을 보낼 수 없어요'); refresh(); return; }
+      const est = estimate(fm);
+      s.req = { by: s.acct, byName: TEAM[s.acct].name, at: app.clock.now(), ...est, qty: fm.qty };
+      s.author = s.acct; s.reject = null; s.denied = false;
+      app.go('coupon', 'submit', { by: `${TEAM[s.acct].name} 승인 요청` });
+      app.log('money', `예상 비용 ${est.cost != null ? won(est.cost) : '예산 상한까지'} = 발행 ${fm.qty ? GC.num(fm.qty) + '장' : '무제한'} × 평균 할인 ${won(est.avg)} · 예산 상한 ${won(fm.budget)}`);
+      refresh();
+    },
+    approveCoupon() {
+      const s = S(); const me = TEAM[s.acct]; const self = s.acct === s.req.by;
+      if (self || !me.lead) return deny(`${self ? `요청한 계정(${me.name})은 같은 건을 승인할 수 없어요` : ''}${self && !me.lead ? ' · ' : ''}${!me.lead ? `${me.name} 계정에는 팀장 플래그가 없어요` : ''} (A-SYS-01 돈이 나가는 승인)`);
+      app.clock.pass(40 * 60000);
+      const fm = s.form; s.coupon = { ...fm, members: { ...fm.members }, publishedAt: app.clock.now(), approvedBy: me.name }; s.denied = false;
+      app.go('coupon', 'approve', { by: `${me.name} 승인 · 쿠폰존 게시` });
+      app.log('rule', `게시: ${ISSUE[fm.issue]} · 1인 1회(본인인증 값으로 중복 계정 차단) · 예산 상한 ${won(fm.budget)}에 닿으면 자동 중지`);
+      refresh();
+    },
+    rejectCoupon() {
+      const s = S(); const me = TEAM[s.acct]; const self = s.acct === s.req.by;
+      if (!self && !me.lead) return deny(`${me.name} 계정에는 팀장 플래그가 없어 반려할 수 없어요`);
+      app.go('coupon', 'reject', { by: self ? `${me.name} 요청 회수` : `${me.name} 반려` });
+      s.reject = { by: self ? `${me.name} 요청 회수` : `${me.name} 반려`, reason: self ? '요청을 회수했어요. 고쳐서 다시 요청하세요.' : '대상 회원이 넓어 예상 비용이 커요. 신규 회원만으로 좁혀 다시 요청해 주세요.' };
+      s.denied = false; refresh();
+    },
+    async pauseCoupon() {
+      if (!(await app.confirm({ title: '쿠폰 발급을 잠시 멈출까요?', body: '<p class="small">새 발급만 멈춰요. 이미 받은 쿠폰은 유효기간까지 쓸 수 있어요.</p>', ok: '일시 중지' }))) return;
+      S().pauseReason = '쿠폰존 노출 오류 점검'; app.go('coupon', 'pause', { by: `${TEAM[S().acct].name} · 사유: 쿠폰존 노출 오류 점검` }); refresh();
+    },
+    resumeCoupon() { app.go('coupon', 'resume', { by: `${TEAM[S().acct].name} 재개` }); refresh(); },
+    async endCoupon() {
+      if (!(await app.confirm({ title: '쿠폰을 종료할까요?', body: '<p class="small">더는 발급하지 않아요. 이미 받은 쿠폰은 유효기간까지 쓸 수 있고, 즉시 회수하려면 사유가 필요해요.</p>', ok: '종료하기', danger: true }))) return;
+      app.go('coupon', 'end', { by: `${TEAM[S().acct].name} 종료` }); refresh();
+    },
+    cs(b) {
+      const s = S(); s.cs = b.dataset.to;
+      if (s.cs === 'dfee') s.df.voucher = memBenefits() && s.wallet.some((x) => x.kind === 'voucher' && x.status === 'avail');
+      refresh();
+    },
+    boxTab(b) { S().boxTab = b.dataset.v; refresh(); },
+    download() {
+      const s = S(); const x = asWallet(s.coupon); x.isNew = true; s.wallet.unshift(x); s.stats.issued += 1; s.boxTab = 'avail';
+      app.log('user', `고객이 "${esc(x.name)}" 쿠폰을 받았어요 · ${fmtDate(x.until, false)}까지`);
+      app.log('rule', '1인 1회 · 본인인증(CI) 값으로 같은 사람의 다른 계정 발급을 막아요');
+      refresh();
+    },
+    codeType(t) { S().code = t.value; },
+    redeem() {
+      const s = S(); if (locked()) return;
+      const inp = app.lastFrame.querySelector('#cpCode'); const raw = (inp ? inp.value : s.code).trim(); const code = raw.toUpperCase();
+      s.code = '';
+      if (!code) { s.codeOk = false; s.codeMsg = '코드를 넣어 주세요.'; refresh(); return; }
+      const def = CODES[code];
+      if (def && s.wallet.some((x) => x.code === code)) { s.codeOk = false; s.codeMsg = '이미 등록한 코드예요. 사용 가능 탭에서 확인해 주세요.'; refresh(); return; }
+      if (!def) {
+        s.codeFails += 1; const left = PC.codeFailMax - s.codeFails;
+        if (left <= 0) { s.lockUntil = nowT() + PC.codeLockMin * 60000; s.codeMsg = ''; app.log('warn', `쿠폰 코드 ${PC.codeFailMax}회 오입력 → ${PC.codeLockMin}분 잠금(무작위 대입 방지)`); }
+        else { s.codeOk = false; s.codeMsg = `"${esc(raw)}"은(는) 없는 코드예요. 철자를 확인해 주세요. ${left}번 더 틀리면 ${PC.codeLockMin}분 동안 입력이 막혀요.`; app.log('user', `쿠폰 코드 오입력 ${s.codeFails}회`); }
+        refresh(); return;
+      }
+      s.codeFails = 0; s.codeOk = true; s.codeMsg = `"${esc(def.name)}" 쿠폰을 받았어요.`; s.boxTab = 'avail';
+      s.wallet.unshift({ id: 'code-' + code, code, src: 'hq', status: 'avail', type: 'amount', value: 0, isNew: true, ...def });
+      app.log('user', `쿠폰 코드 ${esc(code)} 등록 → ${esc(def.name)}`);
+      refresh();
+    },
+    pickHq(b) { S().pickHq = b.dataset.id; refresh(); },
+    pickShip(b) { S().pickShip = b.dataset.id; refresh(); },
+    async pay() {
+      const s = S(); const k = checkoutCalc(); const r = k.r;
+      await app.ext({ service: '토스페이먼츠', what: '결제창 호출', lines: [`결제 금액 ${won(r.totals.pay)}`, '서버가 쿠폰 조건과 금액을 다시 계산해 같을 때만 결제창을 열어요', '쿠폰은 결제 승인과 함께 "사용"으로 바꿔요(두 주문에 동시에 못 씀)'], result: '결제가 승인된 것으로 처리해요' });
+      const t = app.clock.now(); const no = `GC-${t.getFullYear()}${String(t.getMonth() + 1).padStart(2, '0')}${String(t.getDate()).padStart(2, '0')}-0${512 + s.orders.length}`;
+      [k.hq, k.ship].filter(Boolean).forEach((x) => { x.status = 'used'; x.note = `${no} 주문에 사용`; });
+      s.orders.push({ no, at: t, r, hq: k.hq, ship: k.ship, canceled: false });
+      app.log('money', `결제 ${won(r.totals.pay)} = 상품 ${won(r.totals.gross)} − 파트너 할인 ${won(r.totals.instantDisc)}${r.totals.hqDisc ? ` − 본사 쿠폰 ${won(r.totals.hqDisc)}` : ''} + 배송비 ${won(r.totals.shipping)}${r.totals.shipCoupon ? ` − 배송비 쿠폰 ${won(r.totals.shipCoupon)}` : ''}`);
+      if (k.hq) app.log('rule', `본사 쿠폰 안분: 수저집 ${won(r.lines[0].hqAlloc)} · 냅킨 ${won(r.lines[1].hqAlloc)} (항목 금액 비율, 끝전은 큰 항목에)`);
+      if (k.hq && k.hq.id === 'new') { s.stats.used += 1; s.stats.disc += r.totals.hqDisc; s.stats.gmv += r.totals.pay; checkBudget(); }
+      if (k.ship && k.ship.src === 'mem') { s.mem.used = true; s.mem.saved += r.totals.shipCoupon; app.log('rule', '멤버십 혜택을 썼어요 → 이번 결제분은 7일 전액 환불 대상에서 빠져요'); }
+      const ev = settleOf(r); app.log('money', `파트너 정산 예정 ${won(ev.amount)} · 판매 수수료 ${won(ev.fee)}(본사 쿠폰 전 ${won(ev.base)} 기준)`);
+      app.notify('NOTI_ORDER_PAID', '고객', ['알림톡', '푸시'], `주문·결제 완료 ${won(r.totals.pay)}`);
+      s.pickHq = undefined; s.pickShip = undefined; s.cs = 'paid'; refresh();
+    },
+    async cancelOrder() {
+      const s = S(); const o = s.orders[s.orders.length - 1];
+      if (!(await app.confirm({ title: '주문을 취소할까요?', body: `<p>${won(o.r.totals.pay)}을 전액 환불해요. 쓴 쿠폰은 유효기간이 남았으면 돌려드려요.</p>`, ok: '취소하기', cancel: '그대로 두기', danger: true }))) return;
+      await app.ext({ service: '토스페이먼츠', what: '결제 취소(전액)', lines: [`환불 ${won(o.r.totals.pay)}`] });
+      const t = nowT(); const msgs = [];
+      [o.hq, o.ship].filter(Boolean).forEach((x) => {
+        if (t <= x.until) { x.status = 'avail'; x.note = '주문 취소로 돌려받음'; msgs.push(`${x.name}: 쿠폰함으로 돌아왔어요`); }
+        else { x.status = 'expired'; x.note = '취소했지만 기간이 지나 소멸'; msgs.push(`${x.name}: 유효기간이 지나 소멸했어요`); }
+      });
+      if (o.hq && o.hq.id === 'new') { s.stats.used -= 1; s.stats.disc -= o.r.totals.hqDisc; s.stats.gmv -= o.r.totals.pay; }
+      if (o.ship && o.ship.src === 'mem') s.mem.saved -= o.r.totals.shipCoupon;
+      o.canceled = true; o.restoreMsg = msgs.join(' · ') || '쓴 쿠폰이 없어요.';
+      app.log('money', `주문 취소 · 환불 ${won(o.r.totals.pay)} · 파트너 정산 대상에서 빠져요`);
+      app.log('rule', `쿠폰 복원(C-PAY-02): ${esc(o.restoreMsg)}`);
+      refresh();
+    },
+    dfAmt(b) { S().df.amount = b.dataset.v; refresh(); },
+    dfVoucher(b) { S().df.voucher = b.dataset.v === 'on'; refresh(); },
+    memPlan(b) { S().mem.plan = b.dataset.v; refresh(); },
+    async memCard() {
+      await app.ext({ service: '토스페이먼츠', what: '카드 등록 · 빌링키 발급', lines: ['카드 번호는 식업 서버에 저장하지 않아요', 'PG가 준 빌링키만 암호화해 보관해요', '개인·법인 카드 모두 가능'], result: '빌링키를 받은 것으로 처리해요' });
+      S().mem.card = true; refresh();
+    },
+    memChk(t) { S().mem.checks[t.dataset.k] = t.checked; refresh(); },
+    async memJoin() {
+      const s = S(); const M = s.mem; const price = planPrice();
+      await app.ext({ service: '토스페이먼츠', what: '빌링키로 첫 결제', lines: [`${planName()} ${won(price)} (VAT 포함)`, '결제 요청 ID로 같은 결제가 두 번 나가지 않게 막아요', '본사가 파는 상품이라 본사 매출이에요(파트너 정산과 무관)'], result: '결제가 승인된 것으로 처리해요' });
+      Object.assign(M, { start: nowT(), payK: 0, grantK: 1, used: false, refund: null, failedAt: null, retried: {}, everFailed: false });
+      app.go('mem', 'join', { by: `${planName()} 첫 결제 성공` });
+      app.log('rule', `정기결제 동의 기록: 금액 ${won(price)} · 주기 ${planName()} · 해지 방법(마이 > 멤버십)`);
+      charge(M.start, '첫 결제');
+      M.checks = {}; s.cs = 'memhome'; refresh();
+    },
+    async memChangeCard() {
+      await app.ext({ service: '토스페이먼츠', what: '카드 변경 · 새 빌링키로 바로 재결제', lines: ['재시도 날짜를 기다리지 않고 바로 결제해요', `${won(planPrice())}`], result: '새 카드로 결제가 승인된 것으로 처리해요' });
+      S().mem.failMode = false; recover('카드 변경 후 즉시 재결제'); refresh();
+    },
+    async memWithdraw() {
+      const s = S(); const M = s.mem; const q = cancelQuote();
+      if (!(await app.confirm({ title: '멤버십을 해지하고 전액 환불할까요?', body: `<p>결제 후 ${q.days}일이고 혜택을 쓰지 않아 ${won(q.price)}을 모두 돌려드려요.</p>`, ok: '해지하고 환불받기', cancel: '그대로 두기', danger: true }))) return;
+      await app.ext({ service: '토스페이먼츠', what: '결제 취소(전액)', lines: [`환불 ${won(q.price)}`, '빌링키 삭제 · 다음 결제 없음'] });
+      app.go('mem', 'withdraw', { by: `결제 후 ${q.days}일 · 혜택 미사용 · 청약철회` });
+      expireMem('해지로 회수'); M.refund = q.price;
+      app.log('money', `멤버십 전액 환불 ${won(q.price)}`);
+      app.notify('NOTI_MEMBERSHIP_CANCELED', '고객', ['알림톡', '이메일'], `멤버십 해지 · 환불 ${won(q.price)}`);
+      s.cs = 'memhome'; refresh();
+    },
+    async memReserve() {
+      const s = S(); const M = s.mem;
+      if (!(await app.confirm({ title: M.plan === 'monthly' ? '해지를 예약할까요?' : '다음 해에 갱신하지 않을까요?', body: `<p>${fmtY(M.next, false)}까지 혜택을 그대로 쓰고, 그 뒤로 결제하지 않아요. 환불은 없어요.</p>`, ok: '해지 예약', cancel: '그대로 두기', danger: true }))) return;
+      app.go('mem', 'reserve_cancel', { by: M.plan === 'monthly' ? '월간 해지 예약 · 다음 결제일부터 갱신 안 함' : '연간 갱신 안 함 · 만료일까지 유지' });
+      app.notify('NOTI_MEMBERSHIP_CANCELED', '고객', ['알림톡', '이메일'], `해지 예약 · ${fmtY(M.next, false)}까지 이용`);
+      s.cs = 'memhome'; refresh();
+    },
+    async memAnnualCancel() {
+      const s = S(); const M = s.mem; const q = cancelQuote();
+      if (!(await app.confirm({ title: '연간 멤버십을 중도 해지할까요?', body: `<p>${won(q.a.refund)}을 돌려드리고, 해지하는 즉시 남은 혜택이 멈춰요.</p><p class="small">${won(P('membership.price_yearly'))} − ${won(P('membership.price_monthly'))} × ${q.a.usedMonths}개월(올림)</p>`, ok: '중도 해지', cancel: '그대로 두기', danger: true }))) return;
+      await app.ext({ service: '토스페이먼츠', what: '결제 부분 취소', lines: [`환불 ${won(q.a.refund)}`, '빌링키 삭제'] });
+      app.go('mem', 'annual_cancel', { by: `사용 ${q.mb.months}개월 ${q.mb.extraDays}일 → 올림 ${q.a.usedMonths}개월` });
+      expireMem('중도 해지로 혜택 즉시 중단'); M.refund = q.a.refund;
+      app.log('money', `연간 중도 해지 환불 ${won(q.a.refund)} (쓴 혜택 금액은 빼지 않음)`);
+      app.notify('NOTI_MEMBERSHIP_CANCELED', '고객', ['알림톡', '이메일'], `멤버십 중도 해지 · 환불 ${won(q.a.refund)}`);
+      s.cs = 'memhome'; refresh();
+    },
+    memUndo() { app.go('mem', 'undo', { by: '고객이 해지 취소' }); refresh(); },
+    sysFail(t) { S().mem.failMode = t.checked; app.log('user', t.checked ? '체험: 등록 카드를 한도 초과 상태로 바꿨어요' : '체험: 카드 한도 초과를 풀었어요'); refresh(); },
+    sysJump() { const ev = nextEvent(); if (!ev) return; const ms = Math.max(0, ev.at - nowT()); app.clock.advance(ms, `시간을 ${ev.name}까지 보냈어요 → ${fmtY(ev.at)}`); },
+    sysFlood() {
+      const s = S(); const avg = avgDisc(s.coupon); const n = Math.max(1, Math.ceil((s.coupon.budget - s.stats.disc) / avg));
+      s.stats.issued += n; s.stats.used += n; s.stats.disc += n * avg; s.stats.gmv += n * 140000;
+      app.log('user', `체험: 다른 사장님 ${GC.num(n)}명의 쿠폰 사용을 반영했어요`);
+      checkBudget(); refresh();
+    },
+    simGrowthLive(t) { const o = app.lastFrame.querySelector('#simGrowthOut'); if (o) o.textContent = `${t.value}%`; },
+    simGrowth(t) { S().sim.growth = Number(t.value); refresh(); },
+    simDaysLive(t) { const o = app.lastFrame.querySelector('#simDaysOut'); if (o) o.textContent = annualSim(Number(t.value), S().sim.used).label; },
+    simDays(t) { S().sim.days = Number(t.value); refresh(); },
+    simUsed(t) { S().sim.used = t.checked; refresh(); },
+    simPreset(b) { const p = TC14[Number(b.dataset.i)]; Object.assign(S().sim, { days: p.days, used: p.used }); refresh(); },
+  });
+})();
+</script>
+</body>
+</html>

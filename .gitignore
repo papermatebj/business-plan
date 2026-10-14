@@ -1,0 +1,13 @@
+# 검증 도구 라이브러리 — docs/prototype-work/tools 에서 npm i 로 다시 설치
+node_modules/
+
+# 게시용 사본 — python -I docs/prototype-work/tools/build_publish.py 로 다시 만듦
+docs/prototype-work/tools/publish/
+
+# 흐름 검증 스크린샷 — runone.sh / shoot.js 실행 시 다시 생김
+docs/prototype-work/shots/
+
+# OS·파이썬 부산물
+__pycache__/
+.DS_Store
+Thumbs.db

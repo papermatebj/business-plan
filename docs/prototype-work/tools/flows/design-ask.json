@@ -1,0 +1,115 @@
+[
+{
+"act": "toMethod"
+},
+{
+"act": "toRequest"
+},
+{
+"check": "rights"
+},
+{
+"check": "stage"
+},
+{
+"check": "own"
+},
+{
+"act": "toCheckout"
+},
+{
+"check": "co_stage"
+},
+{
+"check": "co_plate"
+},
+{
+"act": "pay",
+"after": 500
+},
+{
+"role": "design"
+},
+{
+"act": "assign"
+},
+{
+"act": "startWork"
+},
+{
+"act": "askQ",
+"shot": "dq-01-asking-studio"
+},
+{
+"role": "customer",
+"shot": "dq-02-answer-needed"
+},
+{
+"adv": "604800000"
+},
+{
+"adv": "604800000"
+},
+{
+"adv": "86400000"
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"act": "resume"
+},
+{
+"act": "answerQ"
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"role": "design"
+},
+{
+"act": "propose",
+"after": 500
+},
+{
+"role": "customer"
+},
+{
+"act": "cs",
+"attr": "data-to=\"proposal\""
+},
+{
+"act": "cs",
+"attr": "data-to=\"revise\""
+},
+{
+"type": {
+"sel": "#rvNote",
+"text": "로고를 조금 더 크게 해 주세요"
+}
+},
+{
+"wait": 700
+},
+{
+"act": "sendRevision",
+"after": 400
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"wait": 50,
+"shot": "dq-03-rev-withdraw"
+},
+{
+"act": "revWithdraw"
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+}
+]

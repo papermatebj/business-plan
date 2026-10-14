@@ -1,0 +1,1225 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>주문·결제·클레임 · 식업 프로토타입</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@600;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/gc.css">
+<style>
+  .changed b { color: var(--ink); }
+  .crow { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; padding: 12px 0; }
+  .crow + .crow { border-top: 1px solid var(--rule); }
+  .crow > input { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--spot); }
+  .crow.is-off { opacity: .55; }
+  .crow .nm { font-weight: 600; font-size: 14.5px; }
+  .crow .meta { font-size: 12px; color: var(--ink-3); }
+  .crow .ctl { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .qty.sm button { width: 32px; height: 32px; font-size: 16px; color: var(--ink); }
+  .qty.sm input { width: 46px; height: 32px; }
+  .was { text-decoration: line-through; color: var(--ink-3); font-weight: 400; }
+  .nudge { font-size: 12.5px; color: var(--spot); font-weight: 600; }
+  .bfoot { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding-top: 10px; border-top: 1px dashed var(--rule-strong); }
+  .bfoot b { white-space: nowrap; }
+  .sumrow { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+  .sumrow.total { font-size: 16px; font-weight: 700; border-top: 1px solid var(--rule); padding-top: 8px; }
+  .sumrow .num { white-space: nowrap; }
+  .coupon { text-align: left; cursor: pointer; font: inherit; color: inherit; width: 100%; padding: 10px 12px; gap: 2px; }
+  .ph2 { border: 1px dashed var(--rule-strong); border-radius: 8px; padding: 10px 12px; }
+  .ph2 .num { white-space: nowrap; }
+  .app-sec > .seg, .app-sec > .btn { justify-self: start; }
+  .olist .oitem { display: grid; gap: 6px; padding: 12px 0; }
+  .olist .oitem + .oitem { border-top: 1px solid var(--rule); }
+  .oitem .nm { font-weight: 600; font-size: 14px; }
+  .linkish { border: 0; background: none; padding: 0; color: var(--c); font: inherit; cursor: pointer; text-decoration: underline; }
+  .claimbox { border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; background: var(--sheet-2); font-size: 13px; }
+  .steps-c { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; }
+  .steps-c span { font-size: 10.5px; text-align: center; padding-top: 4px; border-top: 3px solid var(--rule); color: var(--ink-3); }
+  .steps-c span.done { border-color: var(--kraft); color: var(--ink-2); }
+  .steps-c span.on { border-color: var(--spot); color: var(--ink); font-weight: 600; }
+  .steps-c span.stop { border-color: var(--stop); color: var(--stop); font-weight: 600; }
+  .acct { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .refund-big { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .calc-line { font-size: 12px; color: var(--ink-2); background: var(--sheet-2); border-radius: 6px; padding: 8px 10px; line-height: 1.55; }
+  .inline-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+  .inline-form .field { min-width: 150px; flex: 1; }
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 16px; align-items: start; }
+  .tbl td.why { color: var(--ink-2); font-size: 12.5px; }
+  .medlog td:nth-child(2) { white-space: nowrap; }
+  .stk { display: inline-flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; align-items: center; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="assets/engine.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  const { won, fmtDate, DAY, HOUR } = GC;
+  const esc = UI.esc, pv = UI.pv;
+  const P = (k) => GC.Policy.get(k);
+
+  /* ── 엔진 정책값 목록에 아직 없는 값: 이 페이지 안 상수(점선 표시) ── */
+  const LOCAL = {
+    cartKeepDays: { v: 90, t: '90일', label: '회원 장바구니 보관 (U-ORD-01)' },
+    checkoutHoldMin: { v: 30, t: '30분', label: '주문서·임시 주문 유지 (U-ORD-02 · C-PAY-01)' },
+    acceptRemindBd: { v: 1, t: '영업일 1일', label: '발주 확인 리마인드 (P-ORD-01)' },
+    acceptAlertBd: { v: 2, t: '영업일 2일', label: '발주 확인 미처리 운영팀 알림 (P-ORD-01)' },
+    pickupBd: { v: 2, t: '영업일 2일', label: '회수 미접수 시 자동 회수 접수 · claim.pickup_register_bd (C-STATE-02)' },
+    changeMindDays: { v: 7, t: '받은 날부터 7일', label: '단순 변심 반품 기한 (U-MY-03)' },
+    defectLimit: { v: 0, t: '3개월 · 안 날부터 30일', label: '불량 반품 기한 (U-MY-03)' },
+    pointMin: { v: 1000, t: '1,000P 이상 · 10P 단위', label: '포인트 사용 조건 (U-ORD-02, 2차)' },
+    mediationBd: { v: 5, t: '영업일 5일', label: '중재 판정 목표 기한 (A-ORD-02)' },
+  };
+  const lv = (k) => `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(LOCAL[k].label)} — 엔진 정책값 목록에 아직 없어 이 페이지 안 상수로 둠">${LOCAL[k].t}</span>`;
+  const tv = (text, label) => `<span class="pv" title="파트너 배송비 템플릿 값(임시) · ${esc(label)} — 파트너가 상품 등록 때 정함(P-PRD-04)">${text}</span>`;
+
+  /* ── 시나리오 데이터 (C-PRICE-01 · C-PRICE-03 예시) ── */
+  const STORE = { name: '오늘밥상 강남점', who: '정○○', addr: '서울 강남구 테헤란로 ○○, 1층', time: '평일 10:00~15:00', unload: '1층 매장 앞 하차 · 계단 없음' };
+  const PARTNERS = {
+    A: { name: '대성포장', from: '경기 파주 출고', lead: 1, ship: { name: '대성포장', type: 'conditional', base: 4000, freeOver: 200000 }, retFee: 4000 },
+    B: { name: '한빛컵', from: '경기 김포 출고', lead: 2, ship: { name: '한빛컵', type: 'perQty', base: 3000, per: 10 }, retFee: 3000 },
+  };
+  const PROD = {
+    spoon: { name: '수저집 크라프트', short: '수저집', spec: '1,000매/박스', partner: 'A', tiers: [{ min: 1, price: 12000 }, { min: 10, price: 10000 }], instant: { type: 'rate', value: 10 }, moq: 1, qty: 10 },
+    napkin: { name: '무형광 냅킨', short: '냅킨', spec: '3,000매/박스', partner: 'A', tiers: [{ min: 1, price: 30000 }, { min: 5, price: 28000 }], moq: 2, qty: 2 },
+    cup: { name: '종이컵 6.5oz', short: '종이컵', spec: '1,000개/박스', partner: 'B', tiers: [{ min: 1, price: 21000 }, { min: 20, price: 20000 }, { min: 50, price: 19000 }], moq: 10, qty: 25, was: 19000 },
+  };
+  /* 결제 때 주문 항목 스냅샷에 남기는 상세 설명 버전(P-PRD-09 · U-PDP-07 · U-MY-01). nowVer는 주문 뒤 판매자가 고친 예시 */
+  const DET_SNAP = {
+    spoon: { ver: 2, nowVer: 3, imgs: 3, text: '크라프트지 40g 수저집이에요. 1박스에 1,000매가 들어 있고 식품용 기구 시험성적서를 갖췄어요. 숟가락·젓가락이 함께 들어가는 40×240mm 규격이에요.' },
+    napkin: { ver: 1, nowVer: 1, imgs: 2, text: '형광증백제를 쓰지 않은 2겹 냅킨이에요. 1박스 3,000매, 23×23cm 규격이에요.' },
+    cup: { ver: 3, nowVer: 3, imgs: 4, text: '무형광 원지로 만든 6.5oz 종이컵이에요. 1박스 1,000개, 뜨거운 음료에도 쓸 수 있어요.' },
+  };
+  const HQ_COUPONS = [
+    { key: 'cart10', name: '장바구니 10%', type: 'rate', value: 10, max: 10000, minOrder: 100000, desc: '최대 10,000원 · 10만원 이상' },
+    { key: 'first5', name: '첫 주문 5,000원', type: 'amount', value: 5000, minOrder: 30000, desc: '3만원 이상' },
+  ];
+  const P_COUPON = { name: '냅킨 5,000원', type: 'amount', value: 5000, minOrder: 50000, itemIds: ['napkin'] };
+  const POINTS = 2000;
+  const ORDER_NO = 'GC-20261012-0521';
+  const subNo = (pid) => `${ORDER_NO}-${pid === 'A' ? '01' : '02'}`;
+  const VBANK = { bank: '국민은행', acct: '940-2026-1012-0521', holder: '식업(토스페이먼츠)' };
+  const REASON = { change: '단순 변심', defect: '불량·파손', wrong: '오배송' };
+  const CLOSED = ['CANCELED', 'RETURNED'];
+
+  /* 취소 클레임은 엔진 CLAIM_CANCEL(C-STATE-02, claim_type CANCEL)을 씀. 이의 제기는 상태가 아니라 '이의 제기됨' 표시(U-MY-01 · D8) */
+
+  const app = UI.mount({
+    domain: 'order',
+    title: '주문·결제·클레임',
+    lede: '사장님은 여러 판매자 상품을 한 번에 결제하고, 결제가 끝나면 판매자별 주문으로 나뉘어 파트너가 각자 발주 확인·출고합니다. 취소·반품은 결제 때 저장한 스냅샷으로 남은 항목을 처음부터 다시 계산해 환불해요.',
+    meta: '근거: 기능 명세서 U-ORD-01~05 · U-MY-01~03 · U-PDP-07(주문 시점 상세 설명) · P-ORD-01~05 · C-PRICE-01~03 · C-PAY-01·02 · C-STATE-01·02 · A-ORD-02 · 디자인 요청서 S-20~S-26',
+    actors: [
+      { id: 'customer', title: '장바구니' },
+      { id: 'partner', nav: ['주문', '클레임', '상품', '정산'], navOn: '주문', url: 'partner.sikup.co.kr/orders' },
+      { id: 'system' },
+      { id: 'hq', nav: ['대시보드', '주문', '분쟁 중재', '정산'], navOn: '주문', url: 'admin.sikup.co.kr/orders' },
+    ],
+    strips: [
+      { id: 'order', machine: 'ORDER', label: '주문 항목 · 대표 상태', note: '항목마다 따로 움직이고, 여기엔 가장 앞 단계 항목을 보여줘요 · C-STATE-01' },
+      { id: 'cancel', machine: 'CLAIM_CANCEL', label: '취소 클레임', note: 'claim_type CANCEL · C-STATE-02', hidden: true },
+      { id: 'claim', machine: 'CLAIM_RETURN', label: '반품 클레임', note: 'claim_type RETURN · C-STATE-02', hidden: true },
+    ],
+    render: (actor, f) => VIEWS[actor](f),
+    onReset: init,
+    foot: '시나리오: 강남의 한식당 "오늘밥상"이 대성포장(수저집·냅킨)과 한빛컵(종이컵) 상품을 한 장바구니에 담아 주문합니다. 종이컵을 빼면 기능 명세서 C-PRICE-01 · C-PAY-02 예시와 같은 숫자가 나와요. 회사·계좌번호는 설명용 예시입니다.',
+  });
+  const S = () => app.S;
+  const MAIN_CARD = ['PAID', 'ACCEPTED', 'SHIPPED', 'DELIVERED', 'CONFIRMED'];
+
+  function init() {
+    Object.assign(app.S, {
+      cs: 'cart', cart: { spoon: { on: true, qty: 10 }, napkin: { on: true, qty: 2 }, cup: { on: true, qty: 25 } },
+      ph2: true, hqKey: null, pay: 'card', proof: 'tax', memo: '', flags: {},
+      order: null, recs: [], seq: 1, sheet: null, creq: null, ret: null, pv: 'A', fired: {}, csState: null,
+    });
+    app.strips.cancel.hidden = true; app.strips.claim.hidden = true;
+    app.strips.order.main = MAIN_CARD.slice();
+    syncStrip(); guide();
+  }
+
+  /* ── 금액 계산 입력 ── */
+  function itemOf(b, qty) { const p = PROD[b]; return { id: b, name: p.name, partnerId: p.partner, shipKey: p.partner + '-일반', qty, unit: p.spec, tiers: p.tiers, instant: p.instant }; }
+  const shippingTpl = () => ({ 'A-일반': PARTNERS.A.ship, 'B-일반': PARTNERS.B.ship });
+  const selBases = () => Object.keys(PROD).filter((b) => S().cart[b].on);
+  const baseInput = () => ({ items: selBases().map((b) => itemOf(b, S().cart[b].qty)), shipping: shippingTpl() });
+  const shipCoupon = () => ({ name: '멤버십 무료배송', max: P('membership.free_ship_max'), minOrder: P('membership.free_ship_min_order') });
+  function withPartner() { const b = baseInput(); return S().ph2 ? { ...b, partnerCoupons: { A: P_COUPON } } : b; }
+  function hqOptions() { const w = withPartner(); return HQ_COUPONS.map((c) => ({ c, d: GC.price.calcOrder({ ...w, hqCoupon: c }).totals.hqDisc })); }
+  function checkoutInput() {
+    const s = S(); const w = withPartner();
+    const opts = hqOptions(); const best = opts.reduce((a, b) => (b.d > a.d ? b : a));
+    const input = { ...w, hqCoupon: s.hqKey ? HQ_COUPONS.find((c) => c.key === s.hqKey) : best.c };
+    if (s.ph2) {
+      input.shipCoupons = {};
+      [...new Set(w.items.map((i) => i.shipKey))].forEach((k) => { input.shipCoupons[k] = shipCoupon(); });
+      input.points = POINTS;
+    }
+    return input;
+  }
+
+  /* ── 주문 항목(분할 가능)과 환불 계산 ── */
+  const recById = (id) => S().recs.find((r) => r.id === id);
+  const isActive = (r) => !CLOSED.includes(r.st);
+  const activeQty = (b) => S().recs.filter((r) => r.base === b && isActive(r)).reduce((a, r) => a + r.qty, 0);
+  const totalActive = () => S().recs.filter(isActive).reduce((a, r) => a + r.qty, 0);
+  const bal = () => { const o = S().order; return { pg: o.paid.pg - o.refunded.pg, points: o.paid.points - o.refunded.points }; };
+  const balTotal = () => { const b = bal(); return b.pg + b.points; };
+  const mName = () => (S().order && S().order.method === 'vbank' ? '가상계좌' : '카드');
+  function splitRec(rec, k) {
+    if (k >= rec.qty) return rec;
+    const s = S(); s.seq += 1;
+    const n = { ...rec, id: `${rec.base}-${s.seq}`, qty: k };
+    rec.qty -= k;
+    s.recs.splice(s.recs.indexOf(rec) + 1, 0, n);
+    app.log('rule', `항목 분할(split): ${esc(PROD[rec.base].name)} ${rec.qty + k}박스 → ${rec.qty}박스 + ${k}박스 · 나뉜 항목은 각자 상태가 움직여요`);
+    return n;
+  }
+  /** 결제 스냅샷으로 남은 수량을 다시 계산 (엔진 C-PAY-02). 같은 상품은 총수량으로 구간 단가를 정함 */
+  function refundCalc(cancel, mode = 'before_ship') {
+    const o = S().order; const items = [];
+    Object.keys(PROD).forEach((b) => { const q = activeQty(b) - (cancel[b] || 0); if (q > 0) items.push(itemOf(b, q)); });
+    const cb = Object.keys(cancel)[0];
+    items.push({ ...itemOf(cb, cancel[cb]), id: '__cancel' });
+    return GC.refund.partialCancel({ input: { ...o.snap, items }, paid: o.paid, refunded: o.refunded, cancelIds: ['__cancel'], mode });
+  }
+  /** 고객이 실제로 낸 몫(파트너 할인·본사 쿠폰 안분 뒤) */
+  function paidShare(base, qty) { const o = S().order; const l = o.calc.lines.find((x) => x.id === base); return Math.floor(((l.afterPartner - l.hqAlloc) * qty) / o.origQty[base]); }
+  function splitPay(refund) {
+    const b = bal(); const t = b.pg + b.points;
+    const pointRefund = t > 0 ? GC.floor10((refund * b.points) / t) : 0;
+    return { refund, pointRefund, pgRefund: refund - pointRefund };
+  }
+  /** 파트너 귀책(품절·불량·오배송): 할인 회수 없이 낸 몫 그대로. 단 스냅샷 재계산보다 적게 주지 않음(묶음 배송비·쿠폰 재안분). 남은 항목이 없으면 잔액 전부 */
+  function faultRefund(base, qty) {
+    const b = bal(); const cr = refundCalc({ [base]: qty }, 'return');
+    if (cr.last || totalActive() - qty <= 0) return { refund: b.pg + b.points, pointRefund: b.points, pgRefund: b.pg, last: true, bears: 0, cr };
+    const recompute = cr.zeroRefund ? -cr.shortfall : cr.refund;
+    const refund = Math.min(balTotal(), Math.max(paidShare(base, qty), recompute));
+    return { ...splitPay(refund), bears: Math.max(0, refund - recompute), cr };
+  }
+  function returnRefund(base, qty, fault, pid) {
+    const fee = PARTNERS[pid].retFee;
+    if (fault === 'partner') return { ...faultRefund(base, qty), fee, feeBy: 'partner' };
+    const cr = refundCalc({ [base]: qty }, 'return');
+    if (cr.zeroRefund) return { refund: 0, pointRefund: 0, pgRefund: 0, zero: true, shortfall: cr.shortfall, fee, feeBy: 'customer', cr };
+    const net = cr.refund - fee;
+    if (net <= 0) return { refund: 0, pointRefund: 0, pgRefund: 0, zero: true, shortfall: 0, fee: cr.refund, feeBy: 'customer', cr };
+    return { ...splitPay(net), fee, feeBy: 'customer', gross: cr.refund, cr };
+  }
+  function recalcText(r) {
+    if (r.last) return `남은 상품이 없어 결제 잔액 ${won(r.balance)}을 모두 돌려드려요(마지막 취소는 계산 없이 잔액 전부).`;
+    const o = S().order; const t = r.recalc.totals;
+    const parts = r.recalc.lines.map((l) => `${PROD[l.id].short} ${l.qty}박스 ${won(l.afterPartner)}`).join(' + ');
+    const hq = t.hqDisc ? ` − 본사 쿠폰 ${won(t.hqDisc)}` : o.calc.totals.hqDisc ? ' · 본사 쿠폰 최소 주문 미달 → 0원' : '';
+    return `남은 주문 다시 계산: ${parts}${hq} + 배송비 ${won(t.shipping)}${t.shipCoupon ? ` − 무료배송 쿠폰 ${won(t.shipCoupon)}` : ''} = <b>${won(r.remainingTotal)}</b><br>환불액 = 결제 잔액 ${won(r.balance)} − ${won(r.remainingTotal)} = <b>${won(r.balance - r.remainingTotal)}</b>`;
+  }
+  function couponBack(r, partnerFault) {
+    const o = S().order; const out = []; const t = o.calc.totals;
+    const gone = (k) => !o.restored[k];
+    const rc = r && r.recalc;
+    if (t.partnerCouponDisc && gone('pc') && (!rc || !rc.totals.partnerCouponDisc)) out.push(['pc', `파트너 쿠폰 ${P_COUPON.name}`]);
+    if (!partnerFault || !rc) {
+      if (t.hqDisc && gone('hq') && (!rc || !rc.totals.hqDisc)) out.push(['hq', `본사 쿠폰 ${o.snap.hqCoupon.name}`]);
+      o.calc.shippingLines.forEach((sl) => {
+        const k = 'sc' + sl.shipKey;
+        if (!sl.coupon || !gone(k)) return;
+        const nl = rc && rc.shippingLines.find((x) => x.shipKey === sl.shipKey);
+        if (!nl || !nl.coupon) out.push([k, `멤버십 무료배송 쿠폰(${sl.name})`]);
+      });
+    }
+    return out;
+  }
+  function restoreCoupons(list) {
+    if (!list.length) return;
+    const o = S().order; list.forEach(([k]) => { o.restored[k] = true; });
+    app.log('rule', `쿠폰 되돌림: ${list.map((x) => esc(x[1])).join(' · ')} — 유효기간이 남았으면 쿠폰함으로`);
+  }
+  function refundApply(x, label, silent) {
+    const o = S().order;
+    if (silent) app.log('ext', `토스페이먼츠 · 결제 부분 취소(자동 처리) ${won(x.refund)}`);
+    o.refunded.pg += x.pgRefund; o.refunded.points += x.pointRefund;
+    o.refunds.push({ at: app.clock.now(), total: x.refund, pg: x.pgRefund, points: x.pointRefund, label });
+    const b = bal();
+    app.log('money', `환불 ${won(x.refund)} = ${x.pointRefund ? `포인트 ${GC.num(x.pointRefund)}P + ` : ''}${mName()} ${won(x.pgRefund)} · ${esc(label)} · 남은 잔액 ${won(b.pg + b.points)}${b.points ? ` (${GC.num(b.points)}P + ${won(b.pg)})` : ''}`);
+    app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], `환불 ${won(x.refund)} 진행`);
+  }
+  async function payRefund(x, label, extra = []) {
+    if (!x.refund) { app.log('money', `0원 환불 · ${esc(label)}`); return; }
+    const vb = S().order.method === 'vbank';
+    await app.ext({ service: '토스페이먼츠', what: '결제 부분 취소(환불)', lines: [
+      `환불 ${won(x.refund)} = ${x.pointRefund ? `포인트 ${GC.num(x.pointRefund)}P + ` : ''}${mName()} ${won(x.pgRefund)}`,
+      '결제 수단은 남은 결제 잔액 비율로 나누고, 포인트 몫은 10P 단위로 내려요',
+      vb ? '가상계좌는 환불 계좌로 보내요(쿠콘 예금주 확인 · 건당 50원)' : '카드사 반영까지 3~5영업일',
+      '해당 판매자 몫으로 부분 취소하고 정산 역분개 이벤트를 만들어요', ...extra,
+    ], result: '환불 요청이 성공한 것으로 처리해요' });
+    refundApply(x, label, false);
+  }
+  function bear(pid, amt, why) {
+    if (!amt) return;
+    const o = S().order; o.bears[pid] = (o.bears[pid] || 0) + amt;
+    app.log('money', `차액 ${won(amt)}은 ${esc(PARTNERS[pid].name)} 부담 · ${esc(why)} → 다음 정산에서 차감`);
+  }
+
+  /* ── 상태 이동 ── */
+  const stName = (st) => GC.sm.stateName('ORDER', st);
+  const recLabel = (r) => `${PROD[r.base].name} ${r.qty}박스`;
+  function move(rec, ev, by) {
+    try {
+      const to = GC.sm.next('ORDER', rec.st, ev);
+      app.log('state', `${esc(recLabel(rec))}: ${esc(stName(rec.st))} → <b>${esc(stName(to))}</b>${by ? ` <span class="faint">(${esc(by)})</span>` : ''}`);
+      rec.st = to; return true;
+    } catch (e) {
+      app.log('warn', `${esc(recLabel(rec))}: 지금 상태(${esc(stName(rec.st))})에서는 할 수 없는 동작이라 서버가 막아요`);
+      app.toast('지금 상태에서는 할 수 없는 동작이에요'); return false;
+    }
+  }
+  function repState() {
+    const s = S(); if (!s.order) return null;
+    const main = GC.sm.machine('ORDER').main;
+    const act = s.recs.filter(isActive);
+    if (!act.length) return s.recs.some((r) => r.st === 'RETURNED') ? 'RETURNED' : 'CANCELED';
+    return act.map((r) => r.st).sort((a, b) => main.indexOf(a) - main.indexOf(b))[0];
+  }
+  function syncStrip() { app.setState('order', repState(), { log: false }); }
+  const retOpen = () => { const r = S().ret; return !!(r && !r.done); };
+  /** 취소 클레임이 열려 있음: 요청 중 · 판매자 거부(이의 기한 안·중재 중) · 중재로 인정돼 회수를 기다리는 중 */
+  const creqOpen = () => { const c = S().creq; return !!(c && (['CANCEL_REQUESTED', 'CANCEL_REJECTED'].includes(app.state('cancel')) || c.done === 'won')); };
+  const cancelCollecting = () => { const c = S().creq; return !!(c && c.done === 'won' && c.collect === 'collecting'); };
+  function hasOpenClaim(rec) {
+    const s = S();
+    if (s.ret && !s.ret.done && s.ret.recId === rec.id) return true;
+    return !!(s.creq && s.creq.recId === rec.id && creqOpen());
+  }
+  /** [이의 제기]를 보여 줄지: 엔진 GC.claim.canObject(파트너 거부만, 거부 통지 뒤 claim.objection_days 안) + 아직 이의 전 */
+  const canObj = (claimType, state, rejAt, objected) => !objected && GC.claim.canObject({ claimType, state, rejectedAt: rejAt, now: app.clock.now() });
+  function showStrip(id, main) { const st = app.strips[id]; st.hidden = false; st.current = null; st.lastMainIdx = null; if (main) st.main = main; }
+  const promiseDate = (pid) => GC.addBusinessDays(S().order.paidAt, PARTNERS[pid].lead);
+  const setPv = (pid) => { if (app.current !== 'partner' && pid) S().pv = pid; };
+
+  /* ── 지금 차례 ── */
+  function guide() {
+    const s = S(); const o = s.order;
+    if (!o) {
+      if (s.cs === 'checkout') {
+        return app.turn('customer', '할인·결제 수단·증빙을 확인하고 동의한 뒤 결제하세요', {
+          hint: '“2차 기능 포함”을 끄면 MVP 금액, 켜면 2차 금액이에요. 종이컵을 뺐다면 144,000원 / 134,000원으로 명세서 C-PRICE-01 예시와 같아요.',
+          rules: [{ k: '금액 표시 순서', v: '계산 순서 그대로 6단계' }, { k: '주문서 유지', v: lv('checkoutHoldMin') }, { k: '가격 보장', v: '결제 요청 시점' }, { k: '가상계좌 입금 기한', policy: 'payment.vbank_due_days' }, { k: '무료배송 쿠폰 장당 최대', policy: 'membership.free_ship_max' }, { k: '무료배송 쿠폰 최소 주문', policy: 'membership.free_ship_min_order' }],
+        });
+      }
+      return app.turn('customer', s.cart.cup.on ? '가격이 오른 종이컵은 체크를 풀고 [주문하기]를 누르세요' : '장바구니를 확인하고 [주문하기]를 누르세요', {
+        hint: '종이컵을 빼면 명세서 예시 주문(대성포장 수저집 10박스 + 냅킨 2박스)이 돼요. 넣은 채로 주문해도 끝까지 진행되고, 파트너 화면에서 판매자를 바꿔 볼 수 있어요. 냅킨을 1박스로 줄이고 주문하면 최소 주문 수량 경고가 떠요.',
+        rules: [{ k: '장바구니 보관', v: lv('cartKeepDays') }, { k: '가격 기준', v: '담을 때가 아니라 지금' }, { k: '쿠폰 적용', v: '주문서에서' }, { k: '대성포장 무료배송', v: tv('200,000원 이상', '대성포장 조건부 무료배송') }, { k: '한빛컵 배송비', v: tv('10박스마다 3,000원', '한빛컵 수량별 반복 부과') }],
+      });
+    }
+    const recs = s.recs; const has = (st) => recs.some((r) => r.st === st); const pidOf = (st) => (recs.find((r) => r.st === st) || {}).pid;
+    const cst = app.state('cancel'); const rs = app.state('claim');
+    if (s.cs === 'cancel' && s.sheet) {
+      const rec = recById(s.sheet.recId); const r = refundCalc({ [rec.base]: s.sheet.qty });
+      if (r.blocked) return app.turn('customer', `이 수량만 빼면 환불액이 ${won(r.refund)}이라 부분 취소가 막혀요. 수량을 바꾸거나 [주문 전체 취소]를 고르세요`, { rules: [{ k: '환불액', v: '결제 잔액 − 남은 항목 재계산' }, { k: '0원 이하·출고 전', v: '부분 취소 막고 전체 취소 안내' }] });
+      return app.turn('customer', rec.st === 'ACCEPTED' ? '환불 예정 금액을 확인하고 [취소 요청 보내기]를 누르세요' : '환불 예정 금액을 확인하고 [취소하기]를 누르세요', { hint: '수량을 1박스로 줄여 보면 남은 수량의 구간 단가가 올라 환불액이 0원 아래가 되는 경우를 볼 수 있어요.', rules: [{ k: '계산 기준', v: '결제 때 스냅샷' }, { k: '포인트 몫', v: '잔액 비율 · 10P 내림' }, { k: '판매자 미처리 자동 승인', policy: 'claim.cancel_auto_approve_bd' }] });
+    }
+    if (s.cs === 'ret' && s.sheet) return app.turn('customer', '사유를 고르고(불량·오배송은 사진 필수) 환불 예정 금액을 확인한 뒤 신청하세요', { rules: [{ k: '단순 변심 반품', v: lv('changeMindDays') }, { k: '불량 반품', v: lv('defectLimit') }, { k: '반품 배송비(편도)', v: '변심이면 고객, 불량이면 판매자' }, { k: '0원 이하(변심)', v: '0원 환불 + 차액 동의' }] });
+    if (s.ret && s.ret.objection && rs === 'RETURN_REJECTED') return app.turn('hq', '고객 이의를 판정하세요. 결과는 최종이고 재심이 없어요', { rules: [{ k: '판정 목표 기한', v: lv('mediationBd') }, { k: '판정자', v: 'CS 담당과 다른 사람' }, { k: '근거', v: '클레임 이력 · 양측 사진' }] });
+    if (s.creq && s.creq.objection && cst === 'CANCEL_REJECTED') return app.turn('hq', '고객이 취소 거부에 이의를 제기했어요. 취소 요청 시각과 출고 기록을 비교해 판정하세요. 결과는 최종이고 재심이 없어요', { hint: '[고객 주장 인정]은 이미 나간 상품을 판매자 비용으로 회수한 뒤 환불하는 갈래, [파트너 거부 유지]는 거부가 확정되고 받은 상품은 일반 반품으로만 돌려보내는 갈래예요.', rules: [{ k: '판정 목표 기한', v: lv('mediationBd') }, { k: '판정자', v: 'CS 담당과 다른 사람' }, { k: '근거', v: '취소 요청 시각 · 송장 등록·집하 기록' }, { k: '자동 구매 확정', v: '중재 중에는 멈춤' }] });
+    if (has('PAYMENT_PENDING')) return app.turn('system', `고객 입금을 기다려요. [입금 확인 웹훅 받기]를 누르거나 시간을 보내 입금 기한(${fmtDate(o.vbDue)})을 넘겨 보세요`, { hint: '+1일을 세 번 누르면 기한이 지나 PG 계좌 마감을 확인한 뒤 자동 취소돼요. 고객은 입금 전 [주문 취소]도 할 수 있어요.', rules: [{ k: '입금 기한', policy: 'payment.vbank_due_days' }, { k: '기한 하루 전', v: '입금 안내 알림' }, { k: '늦은 입금', v: '주문을 되살리지 않고 자동 환불' }] });
+    if (s.creq && cst === 'CANCEL_REQUESTED') {
+      const rec = recById(s.creq.recId); setPv(rec.pid);
+      return app.turn('partner', `${PARTNERS[rec.pid].name}: 고객 취소 요청이 왔어요. [취소 승인]하거나, 이미 보냈으면 송장을 넣고 거부하세요`, { hint: `처리하지 않고 +1일을 누르면 영업일 1일이 지나 자동 승인·환불돼요(송장이 있는 건은 자동 승인 안 함). 거부하면 고객이 거부 통지 뒤 ${P('claim.objection_days')}일 안에 이의를 제기할 수 있고 본사가 중재해요.`, rules: [{ k: '처리 기한', policy: 'claim.cancel_auto_approve_bd' }, { k: '자동 승인 시각', v: fmtDate(s.creq.due) }, { k: '거부할 때', v: '송장 필수 · 반품 안내' }, { k: '거부 뒤 고객 이의', policy: 'claim.objection_days' }] });
+    }
+    if (s.creq && cst === 'CANCEL_REJECTED' && !s.creq.objection) {
+      return app.turn('customer', '판매자가 이미 보냈다며 취소를 거부했어요. 동의하지 않으면 주문 상세에서 [이의 제기]를 누르세요', { hint: `동의하면 상품을 받은 뒤 반품을 신청하면 돼요. +1일을 눌러 이의 기한(${fmtDate(s.creq.objDue)})이 지나면 버튼이 사라지고 거부가 확정돼요. 시스템 탭에서 배송 완료를 먼저 확인해도 돼요.`, rules: [{ k: '이의 제기 기한', policy: 'claim.objection_days' }, { k: '마감', v: fmtDate(s.creq.objDue) }, { k: '중재 결과', v: '최종 · 재심 없음' }, { k: '클레임이 열린 항목', v: '자동 구매 확정에서 제외' }] });
+    }
+    if (s.creq && s.creq.done === 'won') {
+      const wonRule = { k: '중재 결과', v: '고객 주장 인정(최종)' };
+      if (recById(s.creq.recId).st === 'SHIPPED') return app.turn('system', '본사가 취소를 인정했어요. 택배 조회로 배송 완료를 확인하면 판매자 비용으로 회수를 접수해요', { rules: [wonRule, { k: '회수 배송비', v: '판매자 부담' }, { k: '환불 시점', v: '회수 확인 뒤' }] });
+      return app.turn('system', '회수 택배가 판매자에게 도착했는지 확인하세요. 확인되면 취소 금액을 환불해요', { rules: [wonRule, { k: '환불 금액', v: '취소 요청 때 안내한 금액(결제 스냅샷 재계산)' }, { k: '회수 배송비', v: '판매자 부담' }, { k: '환불 기한', v: '회수 확인 뒤 3영업일(법정)' }] });
+    }
+    if (retOpen()) {
+      const r = s.ret; const rec = recById(r.recId); setPv(rec.pid);
+      if (rs === 'RETURN_REQUESTED' && r.method === 'self') return app.turn('customer', '반품할 상품을 보내고 [반품 송장 입력]을 누르세요', { rules: [{ k: '안 보내면 자동 철회', policy: 'claim.return_ship_days' }] });
+      if (rs === 'RETURN_REQUESTED') return app.turn('partner', `${PARTNERS[rec.pid].name}: 반품 요청이 왔어요. [회수 접수]를 누르세요`, { hint: '+1일을 두 번 누르면(영업일 2일) 플랫폼이 계약 택배사로 자동 회수 접수해요.', rules: [{ k: '회수 접수', v: lv('pickupBd') }, { k: '자동 회수 접수 시각', v: fmtDate(r.pickupDue) }, { k: '고객 미발송 자동 철회', policy: 'claim.return_ship_days' }] });
+      if (rs === 'RETURN_COLLECTING') return app.turn('system', '회수 택배가 판매자에게 도착했는지 확인하세요(택배 조회)');
+      if (rs === 'RETURN_INSPECTING') return app.turn('partner', `${PARTNERS[rec.pid].name}: 회수한 상품을 검수하고 [반품 승인] 또는 [반품 거부]를 누르세요`, { hint: '검수하지 않고 영업일 2일이 지나면 자동 승인·환불돼요. 거부하면 고객이 3일 안에 이의를 제기할 수 있고 본사가 중재해요.', rules: [{ k: '검수 기한', policy: 'claim.inspect_bd' }, { k: '자동 승인 시각', v: fmtDate(r.inspectDue) }, { k: '환불 기한', v: '회수 확인 뒤 3영업일(법정)' }] });
+      if (rs === 'RETURN_REJECTED') return app.turn('customer', '반품이 거부됐어요. 동의하지 않으면 주문 상세에서 [이의 제기]를 누르세요', { hint: '+1일을 세 번 누르면 이의 기한이 지나 거부가 확정돼요.', rules: [{ k: '이의 제기 기한', policy: 'claim.objection_days' }, { k: '마감', v: fmtDate(r.objDue) }, { k: '중재 결과', v: '최종 · 재심 없음' }] });
+    }
+    if (has('PAID')) {
+      const pid = pidOf('PAID'); setPv(pid);
+      return app.turn('partner', `${PARTNERS[pid].name}: 새 주문을 확인하고 [발주 확인]을 누르세요`, {
+        hint: '발주 확인 전에는 고객이 바로 취소할 수 있어요. 고객 주문 상세에서 냅킨 [취소]를 누르면 부분 취소 환불(스냅샷 재계산)을, 수저집 1박스만 취소하면 환불액이 0원 아래라 막히는 경우를 볼 수 있어요.',
+        rules: [{ k: '발주 확인 리마인드', v: lv('acceptRemindBd') }, { k: '운영팀 알림', v: lv('acceptAlertBd') }, { k: '약속 출고일', v: fmtDate(promiseDate(pid), false) }, { k: '품절 취소', v: '전액 환불 · 평가 기록' }],
+      });
+    }
+    if (has('ACCEPTED')) {
+      const pid = pidOf('ACCEPTED'); setPv(pid);
+      return app.turn('partner', `${PARTNERS[pid].name}: 택배사와 송장번호를 넣고 출고하세요`, { hint: '지금 고객이 취소하면 바로 취소가 아니라 “취소 요청”이 되고, 파트너 승인 또는 영업일 1일 뒤 자동 승인을 거쳐요.', rules: [{ k: '약속 출고일', v: fmtDate(promiseDate(pid), false) }, { k: '송장 검증', v: '택배사별 형식 · 중복 경고' }, { k: '집하 기록 없음', v: '24시간 뒤 운영팀 알림' }] });
+    }
+    if (has('SHIPPED')) return app.turn('system', '택배 조회(스윗트래커)로 배송 완료를 확인하세요');
+    if (recs.some((r) => r.st === 'DELIVERED' && !hasOpenClaim(r))) {
+      return app.turn('customer', '받은 상품을 확인하고 [구매 확정]하거나, 문제가 있으면 [반품 신청]하세요', { hint: '아무것도 누르지 않고 +7일을 누르면 열린 클레임이 없는 항목은 자동 구매 확정돼요. 불량 반품은 사진이 필수이고, 판매자가 거부하면 이의 제기 → 본사 중재로 이어져요.', rules: [{ k: '자동 구매 확정', policy: 'order.auto_confirm_days' }, { k: '단순 변심 반품', v: lv('changeMindDays') }, { k: '불량 반품', v: lv('defectLimit') }] });
+    }
+    if (!o.paidAt) return app.done('입금 전에 주문이 취소됐어요. 결제한 돈이 없어 환불도 없어요.', { next: '[처음부터]로 카드 결제를 하거나, 가상계좌로 다시 주문해 [입금 확인 웹훅 받기]를 눌러 보세요.' });
+    const n = (st) => recs.filter((r) => r.st === st).length;
+    const refundSum = o.refunds.reduce((a, x) => a + x.total, 0);
+    const viaCancel = recs.filter((r) => r.viaCancel).length;
+    const parts = [n('CONFIRMED') && `구매 확정 ${n('CONFIRMED')}건`, n('CANCELED') && `취소 ${n('CANCELED')}건`, viaCancel && `취소 인정(회수) ${viaCancel}건`, n('RETURNED') - viaCancel && `반품 ${n('RETURNED') - viaCancel}건`].filter(Boolean).join(' · ');
+    app.done(`주문이 끝났어요. ${parts}${refundSum ? ` · 환불 누적 ${won(refundSum)}` : ''}`, { next: '[처음부터]로 다른 갈래를 해 보세요: 가상계좌 입금 기한 넘기기 · 발주 확인 전 부분 취소(냅킨 → 수저집) · 1박스 취소 막힘 · 발주 확인 뒤 취소 요청 · 취소 거부와 이의 제기 · 불량 반품 거부와 이의 · 파트너 품절 취소.' });
+  }
+  function refresh() { syncStrip(); guide(); app.refresh(); }
+
+  /* ── 고객 화면 ── */
+  const VIEWS = {};
+  VIEWS.customer = (f) => {
+    const s = S();
+    if (s.order && ['cart', 'checkout'].includes(s.cs)) s.cs = 'detail';
+    if (!s.order && !['cart', 'checkout'].includes(s.cs)) s.cs = 'cart';
+    if (s.cs === 'done' && s.csState && app.state('order') !== s.csState) s.cs = 'detail';
+    if (['cancel', 'ret'].includes(s.cs) && !s.sheet) s.cs = 'detail';
+    if (s.order) {
+      const todo = s.recs.filter((r) => r.st === 'DELIVERED' && !hasOpenClaim(r)).length
+        + (s.ret && !s.ret.done && canObj('RETURN', app.state('claim'), s.ret.rejAt, s.ret.objection) ? 1 : 0)
+        + (s.creq && canObj('CANCEL', app.state('cancel'), s.creq.rejAt, s.creq.objection) ? 1 : 0);
+      if (todo) f.badge('마이', todo);
+    }
+    ({ cart: cartView, checkout: checkoutView, done: doneView, detail: detailView, cancel: cancelView, ret: returnView, snap: snapView }[s.cs] || detailView)(f, s);
+  };
+
+  function cartView(f, s) {
+    f.title('장바구니'); f.back();
+    const r = GC.price.calcOrder(baseInput());
+    const groups = ['A', 'B'].map((pid) => {
+      const pa = PARTNERS[pid];
+      const rows = Object.keys(PROD).filter((b) => PROD[b].partner === pid).map((b) => {
+        const p = PROD[b]; const c = s.cart[b];
+        const unit = GC.price.tierPrice(p.tiers, c.qty); const disc = GC.price.applyInstantUnit(unit, p.instant);
+        const nx = GC.price.nextTier(p.tiers, c.qty);
+        return `<div class="crow${c.on ? '' : ' is-off'}">
+          <input type="checkbox" data-change="pickItem" data-k="${b}" ${c.on ? 'checked' : ''} aria-label="${esc(p.name)} 주문에 넣기">
+          <div>
+            <div class="split"><span class="nm">${esc(p.name)}</span><b class="num">${won(disc * c.qty)}</b></div>
+            <div class="meta">${p.spec} · 박스당 ${p.instant ? `<span class="was">${won(unit)}</span> ${won(disc)} (즉시 할인 ${p.instant.value}%)` : won(unit)}${p.was ? ` · 담을 때 ${won(p.was)}` : ''}</div>
+            <div class="ctl"><span class="qty sm"><button data-act="qty" data-b="${b}" data-d="-1" aria-label="${esc(p.name)} 한 박스 빼기">−</button><input value="${c.qty}" readonly aria-label="수량(박스)"><button data-act="qty" data-b="${b}" data-d="1" aria-label="${esc(p.name)} 한 박스 더하기">+</button></span>
+              ${nx ? `<span class="nudge">${nx.need}박스 더 담으면 박스당 ${won(nx.saving)} 할인</span>` : '<span class="xsmall faint">가장 낮은 단가 구간이에요</span>'}</div>
+            ${c.qty < p.moq ? `<p class="xsmall" style="color:var(--stop);margin-top:4px">최소 주문 수량은 ${p.moq}박스예요. 주문하기를 누르면 맞춰 드릴게요.</p>` : ''}
+          </div></div>`;
+      }).join('');
+      const soldout = pid === 'B' ? `<div class="crow is-off"><input type="checkbox" disabled aria-label="품절 상품"><div><div class="split"><span class="nm">컵홀더 크라프트</span><span class="st st-stop">품절</span></div><div class="meta">고를 수 없어 주문 대상에서 뺐어요</div></div></div>` : '';
+      const sl = r.shippingLines.find((x) => x.shipKey === pid + '-일반');
+      let foot = '<span class="faint">고른 상품이 없어요</span><span></span>';
+      if (sl && pid === 'A') foot = `<span>배송비 ${won(sl.base)}${sl.base ? ` · <span class="nudge">${won(sl.freeShort)} 더 담으면 이 판매자 무료배송</span>` : ' · 무료배송'}</span><span></span>`;
+      if (sl && pid === 'B') { const q = s.cart.cup.qty; const n = Math.ceil(q / pa.ship.per); const room = n * pa.ship.per - q; foot = `<span>배송비 ${won(pa.ship.base)} × ${n} = ${won(sl.base)}${room ? ` · ${room}박스 더 담아도 배송비 같아요` : ''}</span><span></span>`; }
+      return `<div class="app-sec"><div class="split"><h4>${pa.name}</h4><span class="xsmall faint">${pa.from}</span></div>${rows}${soldout}<div class="bfoot">${foot}</div></div>`;
+    }).join('');
+    const t = r.totals; const n = selBases().length;
+    f.body.innerHTML = `
+      <div class="app-pad" style="padding-bottom:0"><div class="note note-warn small changed"><b>변경된 상품이 있어요</b><br>종이컵 6.5oz 박스당 ${won(PROD.cup.was)} → ${won(GC.price.tierPrice(PROD.cup.tiers, s.cart.cup.qty))} · 컵홀더 크라프트 품절(주문에서 빠짐)</div></div>
+      ${groups}
+      <div class="app-sec">
+        <div class="sumrow"><span>상품 금액</span><span class="num">${won(t.gross)}</span></div>
+        <div class="sumrow"><span>즉시 할인</span><span class="num">−${won(t.instantDisc)}</span></div>
+        <div class="sumrow"><span>예상 배송비</span><span class="num">${won(t.shipping)}</span></div>
+        <div class="sumrow total"><span>결제 예정 금액</span><span class="num">${won(t.customerTotal)}</span></div>
+        <p class="xsmall faint">쿠폰·포인트는 주문서에서 적용해요. 금액은 담을 때가 아니라 지금 가격으로 다시 계산했어요.</p>
+      </div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="toCheckout" ${n ? '' : 'disabled'}>${n}개 상품 주문하기</button>`);
+  }
+
+  function ladderHtml(r, ph2) {
+    const L = r.lines; const t = r.totals;
+    const det = {
+      tier: L.map((l) => `${PROD[l.id].short} ${GC.num(l.unitPrice)}×${l.qty}`).join(' · '),
+      partner: [t.instantDisc ? `즉시 할인 ${GC.num(t.instantDisc)}` : '', t.partnerCouponDisc ? `파트너 쿠폰 ${GC.num(t.partnerCouponDisc)}` : ''].filter(Boolean).join(' → ') || '없음',
+      design: '디자인 요청 없음(일반 상품 주문)',
+      hq: t.hqDisc ? `${r.steps.find((x) => x.key === 'hq').detail} · 안분 ${L.map((l) => `${PROD[l.id].short} ${GC.num(l.hqAlloc)}`).join(' / ')}` : '조건에 맞는 쿠폰 없음',
+      ship: r.shippingLines.map((x) => `${x.name} ${GC.num(x.base)}`).join(' · '),
+      shipcoupon: '멤버십 무료배송 · 묶음당 1장 · 기본 배송비에만',
+      points: '결제 수단처럼 마지막에 차감',
+    };
+    const label = { design: '디자인비·유료 옵션' };
+    const rows = r.steps.filter((x) => x.key !== 'plate' && (!x.hidden || (!ph2 && ['shipcoupon', 'points'].includes(x.key))));
+    const payer = { partner: '파트너 부담', hq: '본사 부담', customer: '본사 매출' };
+    return `<div class="ladder">${rows.map((x) => {
+      const off = x.hidden;
+      return `<div class="lrow"><span class="lno">${x.no}</span><span><span class="lhead">${label[x.key] || x.label}</span>${off ? ' <span class="tag tag-phase">2차</span>' : x.payer ? `<span class="payer payer-${x.payer}">${payer[x.payer]}</span>` : ''}<br><span class="ldetail">${esc(det[x.key] || x.detail)}</span></span><span class="lamt${x.amount < 0 ? ' neg' : ''}">${off ? '—' : x.amount < 0 ? '−' + won(-x.amount) : won(x.amount)}</span></div>`;
+    }).join('')}
+      <div class="lrow is-total"><span></span><span class="lhead">최종 결제 (VAT 포함)</span><span class="lamt">${won(t.pay)}</span></div></div>
+      <p class="xsmall faint" style="text-align:right">사업자 회원 · 공급가 ${won(t.supply)} · 부가세 ${won(t.vat)} (고객 부담 총액 ${won(t.customerTotal)} 기준)<br>예시 상품은 파트너가 사업자가를 두지 않아 일반가로 계산했어요(가격 종류 일반가로 스냅샷에 남김)</p>`;
+  }
+
+  function checkoutView(f, s) {
+    f.title('주문서'); f.back();
+    const input = checkoutInput(); const r = GC.price.calcOrder(input);
+    const opts = hqOptions(); const best = opts.reduce((a, b) => (b.d > a.d ? b : a));
+    const pids = [...new Set(r.lines.map((l) => l.partnerId))];
+    const vb = s.pay === 'vbank';
+    f.body.innerHTML = `
+      <div class="app-sec"><h4>주문 상품 ${r.lines.length}개 · 판매자 ${pids.length}곳</h4>
+        ${pids.map((pid) => `<div class="stack-sm"><div class="split small"><b>${PARTNERS[pid].name}</b><span class="xsmall faint">${PARTNERS[pid].from}</span></div>
+          ${r.lines.filter((l) => l.partnerId === pid).map((l) => `<div class="split small"><span>${esc(l.name)} · ${l.qty}박스</span><span class="num">${won(l.afterInstant)}</span></div>`).join('')}</div>`).join('')}
+      </div>
+      <div class="app-sec"><div class="split"><h4>배송지</h4><span class="xsmall faint">기본 배송지</span></div>
+        <dl class="kv small"><dt>받는 곳</dt><dd>${STORE.name} · ${STORE.addr}</dd><dt>수령 가능 시간</dt><dd>${STORE.time}</dd><dt>하차 조건</dt><dd>${STORE.unload}</dd></dl>
+        <div class="field"><label for="memo">배송 요청사항 (선택 · 100자)</label><input class="input" id="memo" data-input="memo" maxlength="100" value="${esc(s.memo)}" placeholder="예: 점심 영업(11:30~13:30) 중에는 뒷문에 놓아 주세요"></div>
+      </div>
+      <div class="app-sec"><h4>할인</h4>
+        <label class="check"><input type="checkbox" data-change="ph2" data-k="ph2" ${s.ph2 ? 'checked' : ''}><span>2차 기능 포함해 보기 <span class="tag tag-phase">2차</span><br><span class="xsmall faint">파트너 쿠폰 · 멤버십 무료배송 쿠폰 · 포인트 ${GC.num(POINTS)}P. 끄면 MVP 금액이에요.</span></span></label>
+        <div class="field"><span class="lbl">본사 쿠폰 · 가장 큰 할인을 골라 뒀어요</span>
+          <div class="stack-sm">${opts.map((x) => `<button class="app-card coupon${x.c.key === input.hqCoupon.key ? ' is-pick' : ''}" data-act="pickHq" data-k="${x.c.key}"><span class="split"><b class="small">${esc(x.c.name)}${x.c.key === best.c.key ? ' <span class="tag tag-spot">추천</span>' : ''}</b><b class="num small">${x.d ? '−' + won(x.d) : '조건 미달'}</b></span><span class="xsmall faint">${esc(x.c.desc)}</span></button>`).join('')}</div></div>
+        ${s.ph2 ? `<div class="ph2 stack-sm small">
+          <div class="split"><span>파트너 쿠폰 · ${esc(P_COUPON.name)} (냅킨 5만원 이상)</span><b class="num">${r.totals.partnerCouponDisc ? '−' + won(r.totals.partnerCouponDisc) : '조건 미달'}</b></div>
+          <div class="split"><span>멤버십 무료배송 쿠폰 · 묶음당 1장</span><b class="num">−${won(r.totals.shipCoupon)}</b></div>
+          <div class="split"><span>포인트 · 보유 3,450P · ${lv('pointMin')}</span><b class="num">−${won(r.totals.points)}</b></div></div>` : ''}
+      </div>
+      <div class="app-sec"><h4>결제 금액</h4>${ladderHtml(r, s.ph2)}</div>
+      <div class="app-sec"><h4>결제 수단</h4>
+        <div class="seg" role="group" aria-label="결제 수단"><button data-act="payMethod" data-m="card" aria-pressed="${!vb}">카드</button><button data-act="payMethod" data-m="vbank" aria-pressed="${vb}">가상계좌</button></div>
+        <p class="xsmall faint">${vb ? `입금 기한 ${pv('payment.vbank_due_days')} · 구매안전서비스(에스크로) 적용 · 입금이 확인되면 판매자에게 주문이 넘어가요` : '할부는 5만원 이상(카드사 정책) · 간편결제(카드)도 같은 흐름이에요. 계좌이체는 가상계좌처럼 증빙을 고르고 환불은 환불 계좌로 받아요'}</p></div>
+      <div class="app-sec"><h4>증빙</h4>
+        ${vb ? `<div class="seg" role="group" aria-label="증빙"><button data-act="proofPick" data-p="tax" aria-pressed="${s.proof === 'tax'}">세금계산서</button><button data-act="proofPick" data-p="cash" aria-pressed="${s.proof === 'cash'}">현금영수증</button><button data-act="proofPick" data-p="none" aria-pressed="${s.proof === 'none'}">미발행</button></div>
+          <p class="xsmall faint">사업자 회원이라 세금계산서가 기본이에요(사업자 정보 자동 입력). ${pids.length > 1 ? '판매자가 둘이라 세금계산서도 판매자별로 2장 나가요.' : '판매자 명의로 식업이 대신 발행해요.'}</p>`
+          : `<p class="small">카드 전표가 증빙이에요. 카드 결제는 세금계산서·현금영수증을 따로 고를 수 없어요.</p>`}
+      </div>
+      <div class="app-sec"><label class="check"><input type="checkbox" data-change="flag" data-k="agree" ${s.flags.agree ? 'checked' : ''}><span><span class="req">(필수)</span> 주문 상품·금액·배송 정보를 확인했고 결제에 동의합니다</span></label></div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="pay" ${s.flags.agree ? '' : 'disabled'}>${won(r.totals.pay)} ${vb ? '가상계좌 발급받기' : '결제하기'}</button>`);
+  }
+
+  function doneView(f, s) {
+    const o = s.order; const vb = o.method === 'vbank'; const pending = s.recs.some((r) => r.st === 'PAYMENT_PENDING');
+    f.title('주문 완료'); f.tab('마이');
+    const pids = [...new Set(s.recs.map((r) => r.pid))];
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <p class="app-title">${pending ? '입금하면 주문이 완료돼요' : '주문이 완료됐어요'}</p>
+        ${vb && pending ? `<div class="app-card"><span class="xsmall faint">${VBANK.bank} · 예금주 ${VBANK.holder}</span>
+          <div class="split"><span class="acct">${VBANK.acct}</span><button class="btn btn-sm" data-act="copyAcct">복사</button></div>
+          <dl class="kv small"><dt>입금 금액</dt><dd>${won(o.paid.pg)}</dd><dt>입금 기한</dt><dd>${fmtDate(o.vbDue)}까지</dd></dl>
+          <p class="xsmall faint">기한까지 입금하지 않으면 주문이 자동 취소되고 쿠폰·포인트는 돌려드려요. 구매안전서비스(에스크로) 적용.</p></div>` : ''}
+        <dl class="kv"><dt>주문번호</dt><dd>${ORDER_NO}</dd><dt>결제 금액</dt><dd>${won(o.paid.pg)}${o.paid.points ? ` + 포인트 ${GC.num(o.paid.points)}P` : ''}</dd><dt>결제 수단</dt><dd>${vb ? '가상계좌' : '카드'}</dd><dt>배송지</dt><dd>${STORE.name}</dd>
+          ${pids.map((pid) => `<dt>${PARTNERS[pid].name} 출고</dt><dd>${pending ? `입금 확인 뒤 영업일 ${PARTNERS[pid].lead}일` : `${fmtDate(promiseDate(pid), false)}까지`}</dd>`).join('')}</dl>
+        ${pids.length > 1 ? '<div class="note small">판매자가 둘이라 상품이 따로 도착해요. 주문 상세에서 판매자별로 확인할 수 있어요.</div>' : ''}
+      </div>`;
+    f.bottom(`<div class="grid2" style="gap:8px"><button class="btn btn-lg" data-act="shop">쇼핑 계속하기</button><button class="btn btn-primary btn-lg" data-act="cs" data-to="detail">주문 상세 보기</button></div>`);
+  }
+
+  function stepsHtml(names, idx, stopIdx) {
+    return `<div class="steps-c">${names.map((n, i) => `<span class="${i === stopIdx ? 'stop' : i < idx ? 'done' : i === idx ? 'on' : ''}">${n}</span>`).join('')}</div>`;
+  }
+  function stCls(rec) {
+    const s = S();
+    if (hasOpenClaim(rec)) {
+      const rej = (s.ret && !s.ret.done && s.ret.recId === rec.id && app.state('claim') === 'RETURN_REJECTED') || (s.creq && s.creq.recId === rec.id && app.state('cancel') === 'CANCEL_REJECTED');
+      return rej ? 'st-stop' : 'st-warn';
+    }
+    return { PAYMENT_PENDING: 'st-todo', PAID: 'st-now', ACCEPTED: 'st-now', SHIPPED: 'st-now', DELIVERED: 'st-todo', CONFIRMED: 'st-done', CANCELED: 'st-stop', RETURNED: 'st-done' }[rec.st] || '';
+  }
+  /** 클레임이 열린 항목은 클레임 상태의 고객 라벨(엔진 customer: 취소 요청 중 · 판매자 거부 · 취소 승인 · 반품 진행 중 …) */
+  function custLabel(rec) {
+    const s = S();
+    if (s.ret && !s.ret.done && s.ret.recId === rec.id) return GC.sm.machine('CLAIM_RETURN').states[app.state('claim')].customer;
+    if (s.creq && s.creq.recId === rec.id && creqOpen()) return GC.sm.machine('CLAIM_CANCEL').states[app.state('cancel')].customer;
+    return GC.sm.machine('ORDER').states[rec.st].customer;
+  }
+  const objTag = '<span class="tag tag-warn">이의 제기됨</span>';
+  function retBox(rec) {
+    const s = S(); const r = s.ret; const st = app.state('claim');
+    const idx = { RETURN_REQUESTED: 0, RETURN_COLLECTING: 1, RETURN_INSPECTING: 2, RETURN_APPROVED: 3, CLAIM_COMPLETED: 4, RETURN_REJECTED: 3 }[st];
+    const kept = ['mediated', 'rejected'].includes(r.done);
+    let body = '';
+    if (!r.done) {
+      const x = returnRefund(rec.base, rec.qty, r.fault, rec.pid);
+      body = `<dl class="kv xsmall"><dt>환불 예정</dt><dd>${x.zero ? '0원 (차액 동의함)' : won(x.refund)}</dd><dt>반품 배송비</dt><dd>${x.feeBy === 'partner' ? '판매자 부담' : `${won(PARTNERS[rec.pid].retFee)} 고객 부담`}</dd>
+        ${st === 'RETURN_REQUESTED' && r.method === 'pickup' ? `<dt>회수 접수</dt><dd>${fmtDate(r.pickupDue)}까지(안 하면 자동 접수)</dd>` : ''}
+        ${st === 'RETURN_INSPECTING' ? `<dt>검수 결과</dt><dd>${fmtDate(r.inspectDue)}까지(넘기면 자동 승인)</dd>` : ''}</dl>`;
+      if (st === 'RETURN_REQUESTED' && r.method === 'self') body += '<button class="btn btn-sm btn-ext" data-act="selfShip">반품 송장 입력</button>';
+      if (st === 'RETURN_REJECTED') {
+        body += `<div class="note note-stop small">판매자가 반품을 거부했어요. 사유: ${esc(r.rejectReason)}</div>`;
+        body += r.objection ? '<p class="small">이의를 접수했어요. 본사가 양쪽 기록을 보고 판정해요. 판정 결과가 최종이에요.</p>'
+          : canObj('RETURN', st, r.rejAt, r.objection) ? `<div class="cluster"><button class="btn btn-sm btn-primary" data-act="objection">이의 제기</button><span class="xsmall faint">${fmtDate(r.objDue)}까지 이의가 없으면 거부가 확정돼요.</span></div>` : '';
+      }
+    } else {
+      body = `<p class="small">${r.done === 'refunded' ? `반품 완료 · 환불 ${won(r.result.refund)}` : r.done === 'withdrawn' ? '7일 안에 보내지 않아 반품 신청이 자동 철회됐어요' : r.done === 'mediated' ? '본사 중재로 거부가 확정됐어요(최종). 회수한 상품은 다시 보내 드려요.' : '이의 기한이 지나 거부가 확정됐어요. 회수한 상품은 다시 보내 드려요.'}</p>`;
+    }
+    /* 끝난 클레임(CLAIM_COMPLETED)의 엔진 고객 라벨은 '반품 완료'라 거부 확정·철회에는 맞지 않아 결과로 바꿔 보여 줌 */
+    const label = r.done && r.done !== 'refunded' ? (kept ? '거부 확정' : '신청 철회') : GC.sm.machine('CLAIM_RETURN').states[st].customer;
+    const cls = kept || (!r.done && st === 'RETURN_REJECTED') ? 'st-stop' : r.done ? 'st-done' : 'st-warn';
+    return `<div class="claimbox"><div class="split"><b>반품 ${r.qty}박스 · ${REASON[r.reason]}</b><span class="stk"><span class="st ${cls}">${esc(label)}</span>${r.objection && !r.done ? objTag : ''}</span></div>
+      ${stepsHtml(['신청', '회수', '검수', '승인', '완료'], kept ? 3 : idx, st === 'RETURN_REJECTED' || kept ? 3 : -1)}${body}</div>`;
+  }
+  /** 취소 요청 상자 = 판매자 거부 통지 화면 겸용(U-MY-01: 거부 통지 화면·주문 상세에 [이의 제기]) */
+  function creqBox() {
+    const s = S(); const c = s.creq; const st = app.state('cancel'); const rec = recById(c.recId);
+    const head = (cls, label, extra = '') => `<div class="split"><b>취소 요청 ${c.qty}박스</b><span class="stk"><span class="st ${cls}">${esc(label)}</span>${extra}</span></div>`;
+    const cLabel = GC.sm.machine('CLAIM_CANCEL').states[st].customer;
+    if (st === 'CANCEL_REQUESTED') return `<div class="claimbox">${head('st-warn', '판매자 확인 중')}<p class="xsmall">판매자가 ${fmtDate(c.due)}까지 처리하지 않으면 자동 승인돼요. 그 사이 출고되면 반품으로 안내해요.</p></div>`;
+    const shipLine = c.ship ? `<div class="note note-stop small">판매자가 이미 보냈다며 취소를 거부했어요. ${esc(c.ship.carrier)} ${esc(c.ship.no)} · ${fmtDate(c.rejAt)} 거부</div>` : '';
+    if (st === 'CANCEL_REJECTED') {
+      let body;
+      if (c.objection) body = `<p class="small">이의를 접수했어요(${fmtDate(c.objAt)}). 본사가 취소 요청 시각과 출고 기록을 보고 판정해요. 판정 결과가 최종이고, 그동안 자동 구매 확정은 멈춰요.</p>`;
+      else {
+        body = '<p class="xsmall">거부에 동의하면 상품을 받은 뒤 반품을 신청할 수 있어요(단순 변심이면 반품 배송비는 고객 부담).</p>';
+        if (canObj('CANCEL', st, c.rejAt, c.objection)) body += `<div class="cluster"><button class="btn btn-sm btn-primary" data-act="objectCancel">이의 제기</button><span class="xsmall faint">${fmtDate(c.objDue)}까지 이의가 없으면 거부가 확정돼요.</span></div>`;
+      }
+      return `<div class="claimbox">${head('st-stop', cLabel, c.objection ? objTag : '')}${shipLine}${body}</div>`;
+    }
+    if (c.done === 'won') {
+      const x = refundCalc({ [rec.base]: rec.qty }, 'return');
+      const step = rec.st === 'SHIPPED' ? '상품을 받으면 판매자 비용으로 회수 기사가 방문해요.' : '판매자 비용으로 회수를 접수했어요. 회수 기사에게 상품을 돌려주세요.';
+      return `<div class="claimbox">${head('st-warn', cLabel)}<p class="small">본사 중재로 취소가 인정됐어요(최종). ${step} 회수가 확인되면 ${won(x.refund)}을 환불해요.</p></div>`;
+    }
+    if (c.done === 'refunded') return `<div class="claimbox">${head('st-done', cLabel)}<p class="small">본사 중재로 취소가 인정됐어요(최종). 상품을 회수하고 ${won(c.refund)}을 환불했어요.</p></div>`;
+    if (c.done === 'kept') return `<div class="claimbox">${head('st-stop', '거부 확정')}${shipLine}<p class="small">본사 중재로 취소 거부가 확정됐어요(최종). 받은 상품은 반품 기한 안에 반품을 신청할 수 있어요.</p></div>`;
+    if (c.done === 'expired') return `<div class="claimbox">${head('st-stop', '거부 확정')}<p class="small">이의 기한이 지나 취소 거부가 확정됐어요. 받은 상품은 반품 기한 안에 반품을 신청할 수 있어요.</p></div>`;
+    return '';
+  }
+  function itemHtml(rec) {
+    const s = S(); const p = PROD[rec.base]; const st = rec.st;
+    const open = hasOpenClaim(rec); const btn = [];
+    const anyRet = retOpen(); const anyReq = creqOpen();
+    if (!open) {
+      if (st === 'PAID') btn.push(`<button class="btn btn-sm" data-act="openCancel" data-id="${rec.id}">취소</button>`);
+      if (st === 'ACCEPTED' && !anyReq) btn.push(`<button class="btn btn-sm" data-act="openCancel" data-id="${rec.id}">취소 요청</button>`);
+      if (st === 'DELIVERED') { btn.push(`<button class="btn btn-sm btn-primary" data-act="confirmItem" data-id="${rec.id}">구매 확정</button>`); if (!anyRet) btn.push(`<button class="btn btn-sm" data-act="openReturn" data-id="${rec.id}">반품 신청</button>`); }
+      if (st === 'CONFIRMED' && !anyRet) btn.push(`<button class="btn btn-sm" data-act="openReturn" data-id="${rec.id}">불량 반품</button>`);
+    }
+    const money = CLOSED.includes(st) ? (rec.refunded != null ? `환불 ${won(rec.refunded)}${rec.viaCancel ? ' · 취소 인정 건(회수 뒤 환불)' : ''}` : rec.refundNote || '결제 전 취소 · 환불할 금액 없음') : `결제 ${won(paidShare(rec.base, rec.qty))}`;
+    return `<div class="oitem"><div class="split"><span class="nm">${esc(p.name)} · ${rec.qty}박스</span><span class="st ${stCls(rec)}">${esc(custLabel(rec))}</span></div>
+      <span class="xsmall faint">${money}${st === 'DELIVERED' && rec.deliveredAt ? ` · ${fmtDate(rec.deliveredAt, false)} 받음` : ''} · <button class="linkish" data-act="snapView" data-id="${rec.id}">주문할 때의 상품 정보 보기</button></span>
+      ${s.ret && s.ret.recId === rec.id ? retBox(rec) : ''}${s.creq && s.creq.recId === rec.id ? creqBox() : ''}
+      ${btn.length ? `<div class="cluster">${btn.join('')}</div>` : ''}</div>`;
+  }
+  function detailView(f, s) {
+    const o = s.order; f.title('주문 상세'); f.tab('마이'); f.back();
+    const pids = [...new Set(s.recs.map((r) => r.pid))];
+    const pending = s.recs.some((r) => r.st === 'PAYMENT_PENDING');
+    const bundles = pids.map((pid) => {
+      const recs = s.recs.filter((r) => r.pid === pid); const act = recs.filter(isActive); const sh = o.ship[pid];
+      const order = ['PAID', 'ACCEPTED', 'SHIPPED', 'DELIVERED', 'CONFIRMED'];
+      const idx = act.length ? Math.min(...act.map((r) => order.indexOf(r.st)).filter((i) => i >= 0).concat([9])) : -1;
+      const track = idx >= 0 && idx < 9 ? stepsHtml(['결제 완료', '상품 준비', '배송 중', '배송 완료', '구매 확정'], idx, -1) : '';
+      return `<div class="app-sec"><div class="split"><h4>${PARTNERS[pid].name}</h4><span class="xsmall faint">${subNo(pid)}</span></div>
+        ${track}${sh ? `<p class="xsmall muted">${esc(sh.carrier)} ${esc(sh.no)}${idx === 2 ? ' · 택배사 정보가 반영되기 전이면 조회가 비어 있을 수 있어요' : ''}</p>` : ''}
+        <div class="olist">${recs.map(itemHtml).join('')}</div></div>`;
+    }).join('');
+    const b = bal();
+    f.body.innerHTML = `
+      <div class="app-pad" style="padding-bottom:4px"><div class="split"><b>${ORDER_NO}</b><span class="xsmall faint">${fmtDate(o.at)} 주문</span></div>
+        <p class="xsmall muted">상태는 상품마다 따로 움직여요. 버튼은 그 상품 상태에 맞을 때만 보여요.</p></div>
+      ${bundles}
+      <div class="app-sec"><h4>결제 정보</h4>
+        <dl class="kv small"><dt>결제</dt><dd>${o.method === 'vbank' ? '가상계좌' : '카드'} ${won(o.paid.pg)}${o.paid.points ? ` + 포인트 ${GC.num(o.paid.points)}P` : ''}</dd>
+          <dt>증빙</dt><dd>${{ card: '카드 전표', tax: '세금계산서(판매자별 · 구매 확정 뒤 발행)', cash: '현금영수증', none: '미발행' }[o.proof]}</dd>
+          ${o.refunds.map((x) => `<dt>환불 ${fmtDate(x.at, false)}</dt><dd>${won(x.total)} · ${x.points ? `${GC.num(x.points)}P + ` : ''}${mName()} ${won(x.pg)}<br><span class="xsmall faint">${esc(x.label)}</span></dd>`).join('')}
+          ${o.refunds.length ? `<dt>남은 결제 잔액</dt><dd>${won(b.pg + b.points)}</dd>` : ''}
+          <dt>배송지</dt><dd>${STORE.name} · ${STORE.time}</dd></dl>
+        ${pending ? `<div class="claimbox"><span class="xsmall faint">${VBANK.bank} ${VBANK.acct} · ${fmtDate(o.vbDue)}까지</span><div class="cluster"><button class="btn btn-sm" data-act="copyAcct">계좌번호 복사</button><button class="btn btn-sm btn-danger" data-act="cancelPending">주문 취소</button></div></div>` : ''}
+        <button class="btn btn-sm btn-ghost" data-act="reAdd">이 주문 그대로 다시 담기</button></div>`;
+  }
+
+  /* 주문할 때의 상품 정보(U-MY-01 · U-PDP-07): 결제 순간의 상세 설명 버전과 가격 조건 */
+  function snapView(f, s) {
+    const p = PROD[s.snapId]; const d = DET_SNAP[s.snapId]; const o = s.order; const pt = PARTNERS[p.partner];
+    f.title('주문할 때의 상품 정보'); f.tab('마이'); f.back();
+    const ship = pt.ship.type === 'conditional' ? `${won(pt.ship.base)} · ${won(pt.ship.freeOver)} 이상 무료` : `${won(pt.ship.base)} × ${pt.ship.per}박스마다`;
+    f.body.innerHTML = `
+      <div class="app-pad"><div class="app-card"><b>${esc(p.name)}</b><span class="xsmall faint">${pt.name} · ${fmtDate(o.at)} 결제 때 저장한 내용</span></div>
+        ${d.nowVer > d.ver ? `<div class="note small">판매자가 주문 뒤에 상세 설명을 고쳤어요(지금 v${d.nowVer}). 여기에는 주문할 때 본 v${d.ver} 버전을 보여 드려요.</div>` : ''}</div>
+      <div class="app-sec"><h4>상세 설명 v${d.ver}</h4><p class="small">${esc(d.text)}</p><p class="xsmall faint">상세 이미지 ${d.imgs}장 · 받은 상품이 이 설명과 다르면 이 내용을 기준으로 반품을 신청할 수 있어요.</p></div>
+      <div class="app-sec"><h4>결제 때 가격 조건</h4>
+        <table class="tbl small"><thead><tr><th>수량</th><th class="num">박스당</th></tr></thead><tbody>${p.tiers.map((t, i) => `<tr><td>${t.min}${p.tiers[i + 1] ? `~${p.tiers[i + 1].min - 1}` : ''}박스${p.tiers[i + 1] ? '' : ' 이상'}</td><td class="num">${won(t.price)}</td></tr>`).join('')}</tbody></table>
+        <dl class="kv small"><dt>즉시 할인</dt><dd>${p.instant ? `${p.instant.value}%` : '없음'}</dd><dt>배송비</dt><dd>${ship}</dd><dt>규격</dt><dd>${esc(p.spec)}</dd></dl></div>`;
+    f.bottom('<button class="btn btn-lg btn-block" data-act="cs" data-to="detail">주문 상세로 돌아가기</button>');
+  }
+
+  function cancelView(f, s) {
+    const sh = s.sheet; const rec = recById(sh.recId); const p = PROD[rec.base]; const req = rec.st === 'ACCEPTED';
+    f.title(req ? '취소 요청' : '주문 취소'); f.tab('마이'); f.back();
+    const r = refundCalc({ [rec.base]: sh.qty }); const restQ = activeQty(rec.base) - sh.qty;
+    const allPaid = s.recs.filter(isActive).every((x) => x.st === 'PAID');
+    const back = couponBack(r);
+    let pre;
+    if (r.blocked) {
+      const u = GC.price.applyInstantUnit(GC.price.tierPrice(p.tiers, restQ), p.instant);
+      pre = `<div class="note note-stop small"><b>이 수량만 취소할 수 없어요</b><br>${p.short} ${restQ}박스가 남으면 단가 구간이 바뀌어 박스당 ${won(u)}이 돼요. 남은 주문을 다시 계산하면 결제 잔액보다 커져 환불액이 ${won(r.refund)}이에요. 출고 전에는 이런 부분 취소를 막고 전체 취소를 안내해요.</div>
+        <div class="calc-line">${recalcText({ ...r, last: false })}</div>
+        ${allPaid ? '<button class="btn btn-danger" data-act="cancelAll">주문 전체 취소</button>' : '<p class="xsmall faint">다른 상품이 이미 진행 중이라 전체 취소는 고객센터로 문의해 주세요.</p>'}`;
+    } else {
+      pre = `<div class="app-card"><span class="xsmall faint">환불 예정 금액</span><span class="refund-big">${won(r.refund)}</span>
+        <span class="small">${r.pointRefund ? `포인트 ${GC.num(r.pointRefund)}P + ` : ''}${mName()} ${won(r.pgRefund)}</span>
+        <div class="calc-line">${recalcText(r)}</div>
+        ${back.length ? `<p class="xsmall">돌려받는 쿠폰: ${back.map((x) => esc(x[1])).join(' · ')} (유효기간이 남은 것만)</p>` : ''}</div>
+        ${req ? `<div class="note small">판매자가 발주를 확인한 뒤라 바로 취소되지 않고 취소 요청을 보내요. 판매자가 ${pv('claim.cancel_auto_approve_bd')} 안에 처리하지 않으면 자동 승인돼요.</div>` : '<p class="xsmall faint">발주 확인 전이라 바로 취소되고, 카드사 반영까지 3~5영업일 걸려요.</p>'}`;
+    }
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="app-card"><div class="split"><b>${esc(p.name)}</b><span class="xsmall faint">${PARTNERS[rec.pid].name}</span></div>
+          <div class="split"><span class="small">취소할 수량 (전체 ${rec.qty}박스)</span><span class="qty sm"><button data-act="sheetQty" data-d="-1" aria-label="한 박스 줄이기">−</button><input value="${sh.qty}" readonly aria-label="취소 수량"><button data-act="sheetQty" data-d="1" aria-label="한 박스 늘리기">+</button></span></div>
+          <div class="cluster"><button class="btn btn-sm btn-ghost" data-act="sheetQty" data-set="1">1박스만</button><button class="btn btn-sm btn-ghost" data-act="sheetQty" data-set="${rec.qty}">전부</button></div></div>
+        <div class="field"><span class="lbl">취소 사유</span><div class="seg" role="group" aria-label="취소 사유">${[['change', '필요 없어짐'], ['mistake', '잘못 주문'], ['slow', '배송 지연']].map(([k, n]) => `<button data-act="sheetReason" data-r="${k}" aria-pressed="${sh.reason === k}">${n}</button>`).join('')}</div></div>
+        ${pre}
+      </div>`;
+    f.bottom(`<div class="grid2" style="gap:8px"><button class="btn btn-lg" data-act="cs" data-to="detail">돌아가기</button><button class="btn btn-lg ${req ? 'btn-primary' : 'btn-danger'}" data-act="doCancel" ${r.blocked ? 'disabled' : ''}>${req ? '취소 요청 보내기' : '취소하기'}</button></div>`);
+  }
+
+  function returnView(f, s) {
+    const sh = s.sheet; const rec = recById(sh.recId); const p = PROD[rec.base];
+    f.title(rec.st === 'CONFIRMED' ? '불량 반품' : '반품 신청'); f.tab('마이'); f.back();
+    const days = rec.deliveredAt ? Math.floor((app.clock.now() - rec.deliveredAt) / DAY) : 0;
+    const canChange = rec.st !== 'CONFIRMED' && days < LOCAL.changeMindDays.v;
+    if (!canChange && sh.reason === 'change') sh.reason = 'defect';
+    const fault = sh.reason === 'change' ? 'customer' : 'partner';
+    const x = returnRefund(rec.base, sh.qty, fault, rec.pid);
+    const needPhoto = fault === 'partner';
+    let pre;
+    if (x.zero) {
+      pre = `<div class="note note-warn small"><b>환불 금액이 0원이에요</b><br>${sh.qty}박스를 빼면 남은 주문이 결제 때 조건으로 다시 계산돼(구간 단가·쿠폰 조건) 결제 잔액보다 ${won(x.shortfall)} 많아요. 차액은 추가 결제하거나 받은 혜택을 포기해야 해요. 반품 배송비 ${won(PARTNERS[rec.pid].retFee)}은 따로 내요.</div>
+        <div class="calc-line">${recalcText({ ...x.cr, last: false })}</div>
+        <label class="check"><input type="checkbox" data-change="flag" data-k="zeroAgree" ${s.flags.zeroAgree ? 'checked' : ''}><span><span class="req">(필수)</span> 0원 환불과 차액 ${won(x.shortfall)} 처리(추가 결제 또는 혜택 포기)에 동의해요</span></label>`;
+    } else {
+      pre = `<div class="app-card"><span class="xsmall faint">환불 예정 금액 · 검수 승인 뒤</span><span class="refund-big">${won(x.refund)}</span>
+        <span class="small">${x.pointRefund ? `포인트 ${GC.num(x.pointRefund)}P + ` : ''}${mName()} ${won(x.pgRefund)}</span>
+        ${fault === 'partner' ? `<div class="calc-line">판매자 책임이라 할인을 되돌려 받지 않고 낸 금액 그대로 환불해요${x.last ? '(마지막 항목이라 잔액 전부)' : ''}. 반품 배송비도 판매자가 내요.</div>`
+          : `<div class="calc-line">${recalcText(x.cr)}<br>반품 배송비(편도) − ${tv(won(x.fee), `${PARTNERS[rec.pid].name} 반품 배송비`)} 고객 부담 → 환불 <b>${won(x.refund)}</b></div>`}</div>`;
+    }
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="app-card"><div class="split"><b>${esc(p.name)}</b><span class="xsmall faint">${rec.deliveredAt ? `${fmtDate(rec.deliveredAt, false)} 받음 · ${days}일째` : ''}</span></div>
+          <div class="split"><span class="small">반품할 수량 (전체 ${rec.qty}박스)</span><span class="qty sm"><button data-act="sheetQty" data-d="-1" aria-label="한 박스 줄이기">−</button><input value="${sh.qty}" readonly aria-label="반품 수량"><button data-act="sheetQty" data-d="1" aria-label="한 박스 늘리기">+</button></span></div>
+          <div class="cluster"><button class="btn btn-sm btn-ghost" data-act="sheetQty" data-set="1">1박스만</button><button class="btn btn-sm btn-ghost" data-act="sheetQty" data-set="${rec.qty}">전부</button></div></div>
+        <div class="field"><span class="lbl">반품 사유</span>
+          <div class="seg" role="group" aria-label="반품 사유">${Object.entries(REASON).map(([k, n]) => `<button data-act="sheetReason" data-r="${k}" aria-pressed="${sh.reason === k}" ${k === 'change' && !canChange ? 'disabled' : ''}>${n}</button>`).join('')}</div>
+          <span class="hint">${canChange ? `단순 변심은 ${lv('changeMindDays')} 안에만 돼요(반품 배송비 고객 부담).` : rec.st === 'CONFIRMED' ? '구매 확정 뒤에는 불량·오배송 반품만 할 수 있어요.' : '받은 지 7일이 지나 단순 변심 반품은 할 수 없어요.'}</span></div>
+        ${needPhoto ? `<div class="field"><span class="lbl">사진 (필수 · 최대 10장)</span>${sh.photo ? `<span class="st st-done">사진 ${sh.photo}장 · 검사 통과</span>` : '<button class="btn btn-sm btn-ext" data-act="photo">사진 올리기</button>'}<span class="hint">앱에서는 카메라로 바로 찍을 수 있어요.</span></div>` : ''}
+        <div class="field"><span class="lbl">회수 방법</span><div class="seg" role="group" aria-label="회수 방법"><button data-act="sheetMethod" data-m="pickup" aria-pressed="${sh.method === 'pickup'}">회수 신청(판매자 지정 택배)</button><button data-act="sheetMethod" data-m="self" aria-pressed="${sh.method === 'self'}">직접 보내기</button></div></div>
+        ${pre}
+        <p class="xsmall faint">판매자가 ${lv('pickupBd')} 안에 회수를 접수해요(안 하면 자동 접수). 회수 뒤 검수 ${pv('claim.inspect_bd')}을 넘기면 자동 승인돼요.</p>
+      </div>`;
+    const ok = (!needPhoto || sh.photo) && (!x.zero || s.flags.zeroAgree);
+    f.bottom(`<div class="grid2" style="gap:8px"><button class="btn btn-lg" data-act="cs" data-to="detail">돌아가기</button><button class="btn btn-primary btn-lg" data-act="doReturn" ${ok ? '' : 'disabled'}>반품 신청하기</button></div>`);
+  }
+
+  /* ── 파트너 화면 ── */
+  function settleFor(pid) {
+    const o = S().order; let sale = 0; let disc = 0;
+    o.calc.lines.filter((l) => l.partnerId === pid).forEach((l) => { const q = activeQty(l.id); sale += l.unitPrice * q; disc += Math.round(((l.instantDisc + l.partnerCouponDisc) * q) / l.qty); });
+    const sl = o.calc.shippingLines.find((x) => x.shipKey === pid + '-일반');
+    const ship = sale > 0 && sl ? sl.base : 0;
+    return { sale, disc, ship, ev: GC.settle.confirmEvent({ sale, partnerDisc: disc, rate: P('commission.default_rate'), shipping: ship }), bears: o.bears[pid] || 0 };
+  }
+  VIEWS.partner = (f) => {
+    const s = S(); const o = s.order;
+    const visible = o ? s.recs.filter((r) => r.st !== 'PAYMENT_PENDING' && !(r.st === 'CANCELED' && !o.paidAt)) : [];
+    if (!visible.length) { f.body.innerHTML = `<h3>주문 관리</h3><p class="muted small">${o && !o.paidAt ? '입금 대기 주문은 입금이 확인되면 여기에 나타나요. 입금 전에 취소된 주문은 들어오지 않아요.' : '아직 들어온 주문이 없어요.'}</p>`; return; }
+    const pids = [...new Set(visible.map((r) => r.pid))];
+    if (!pids.includes(s.pv)) s.pv = pids[0];
+    const pid = s.pv; const pa = PARTNERS[pid]; const mine = visible.filter((r) => r.pid === pid);
+    const cst = app.state('cancel');
+    const creqMine = s.creq && recById(s.creq.recId).pid === pid;
+    const creqHere = creqMine && cst === 'CANCEL_REQUESTED';
+    const creqRej = creqMine && (cst === 'CANCEL_REJECTED' || s.creq.done === 'won');
+    const retHere = s.ret && recById(s.ret.recId).pid === pid && !s.ret.done;
+    const onClaim = creqHere || creqRej || retHere;
+    f.nav(onClaim ? '클레임' : '주문'); f.url(`partner.sikup.co.kr/${onClaim ? 'claims' : 'orders'}`);
+    const cnt = (sts) => mine.filter((r) => sts.includes(r.st)).length;
+    const tabs = [['신규', ['PAID']], ['발주 확인', ['ACCEPTED']], ['배송 중', ['SHIPPED']], ['배송 완료', ['DELIVERED']], ['구매 확정', ['CONFIRMED']], ['취소·반품', ['CANCELED', 'RETURNED']]];
+    const paid = mine.filter((r) => r.st === 'PAID'); const acc = mine.filter((r) => r.st === 'ACCEPTED');
+    const onTab = Math.max(0, tabs.findIndex(([, sts]) => cnt(sts) > 0));
+    const share = (r) => { const l = o.calc.lines.find((x) => x.id === r.base); return Math.round((l.afterPartner * r.qty) / o.origQty[r.base]); };
+    const panels = [];
+    if (paid.length) panels.push(`<div class="panel"><div class="panel-h"><h2>신규 주문 ${paid.length}건</h2><span class="xsmall faint">결제 후 ${lv('acceptRemindBd')} 안에 발주 확인</span></div><div class="panel-b stack-sm">
+      <div class="cluster"><button class="btn btn-primary" data-act="accept">발주 확인 (${paid.length}건 일괄)</button>${paid.map((r) => `<button class="btn btn-sm btn-danger" data-act="stockout" data-id="${r.id}">${PROD[r.base].short} 품절 취소</button>`).join('')}</div>
+      <p class="xsmall faint">약속 출고일 ${fmtDate(promiseDate(pid), false)} = 결제일 + 출고 소요일 ${tv(`영업일 ${pa.lead}일`, `${pa.name} 출고 소요일`)}. 품절 취소는 발주 확인 전후 모두 할 수 있고 고객은 공제 없이 환불받아요.</p></div></div>`);
+    if (creqHere) {
+      const c = s.creq; const rec = recById(c.recId); const r = refundCalc({ [rec.base]: rec.qty });
+      panels.push(`<div class="panel"><div class="panel-h"><h2>취소 요청 · ${esc(recLabel(rec))}</h2><span class="tag tag-warn">${fmtDate(c.due)}까지 처리</span></div><div class="panel-b stack-sm">
+        <dl class="kv small"><dt>요청 시각</dt><dd>${fmtDate(c.at)}</dd><dt>고객 환불 예정</dt><dd>${won(r.refund)} (결제 스냅샷 재계산)</dd><dt>기한 넘기면</dt><dd>자동 승인(송장 없는 건만) · 평가 기록</dd></dl>
+        <div class="inline-form"><div class="field"><label for="carrier">택배사</label><select class="select" id="carrier"><option>CJ대한통운</option><option>한진택배</option><option>롯데택배</option></select></div><div class="field"><label for="inv">송장번호(거부할 때 필수)</label><input class="input" id="inv" value="6890-1234-5678"></div></div>
+        <div class="cluster"><button class="btn btn-primary" data-act="approveCancel">취소 승인</button><button class="btn btn-danger btn-ext" data-act="rejectCancel">거부 · 이미 출고(송장 등록)</button></div>
+        <p class="xsmall faint">출고 준비만 끝났고 집하 전이면 승인을 권장해요. 이미 포장한 비용은 청구할 수 없어요. 거부하면 고객이 거부 통지 뒤 ${pv('claim.objection_days')} 안에 이의를 제기할 수 있고, 본사 중재 결과가 최종이에요.</p></div></div>`);
+    } else if (acc.length) {
+      panels.push(`<div class="panel"><div class="panel-h"><h2>출고 대기 ${acc.length}건</h2><span class="xsmall faint">약속 출고일 ${fmtDate(promiseDate(pid), false)}</span></div><div class="panel-b stack-sm">
+        <div class="inline-form"><div class="field"><label for="carrier">택배사</label><select class="select" id="carrier"><option>CJ대한통운</option><option>한진택배</option><option>롯데택배</option></select></div><div class="field"><label for="inv">송장번호</label><input class="input" id="inv" value="6890-1234-5678"></div></div>
+        <div class="cluster"><button class="btn btn-primary btn-ext" data-act="ship">송장 등록하고 출고</button>${acc.map((r) => `<button class="btn btn-sm btn-danger" data-act="stockout" data-id="${r.id}">${PROD[r.base].short} 품절 취소</button>`).join('')}</div>
+        <p class="xsmall faint">묶음 배송이라 송장 하나로 ${acc.length}개 항목을 처리해요. 24시간 안에 집하 기록이 없으면 허위 송장 의심으로 운영팀에 알려요.</p></div></div>`);
+    }
+    if (creqRej) {
+      const c = s.creq; const rec = recById(c.recId); const isWon = c.done === 'won';
+      const obj = c.objection ? `${fmtDate(c.objAt)} 접수 · 본사 중재${isWon ? ' 끝(고객 주장 인정, 최종)' : ' 중(결과 최종)'}` : `${fmtDate(c.objDue)}까지 받을 수 있어요`;
+      panels.push(`<div class="panel"><div class="panel-h"><h2>${isWon ? '취소 인정 · 회수' : '취소 거부'} · ${esc(recLabel(rec))}</h2><span class="stk"><span class="st ${isWon ? 'st-warn' : 'st-stop'}">${esc(GC.sm.stateName('CLAIM_CANCEL', cst))}</span>${c.objection && !isWon ? '<span class="tag tag-warn">이의 제기됨</span>' : ''}</span></div><div class="panel-b stack-sm">
+        <dl class="kv small"><dt>고객 취소 요청</dt><dd>${fmtDate(c.at)}</dd><dt>거부 · 송장</dt><dd>${fmtDate(c.rejAt)} · ${esc(c.ship.carrier)} ${esc(c.ship.no)}</dd><dt>고객 이의</dt><dd>${obj}</dd></dl>
+        <p class="xsmall faint">${isWon ? '보낸 상품은 계약 택배사로 회수하고 회수 배송비는 판매자가 내요. 회수가 확인되면 고객에게 환불하고 이 항목은 정산에서 빠져요.' : '이의가 들어오면 본사가 취소 요청 시각과 출고 기록을 보고 판정해요. 중재 중에는 이 항목의 자동 구매 확정이 멈춰요.'}</p></div></div>`);
+    }
+    if (s.ret && recById(s.ret.recId).pid === pid && !s.ret.done) {
+      const r = s.ret; const rec = recById(r.recId); const st = app.state('claim'); const x = returnRefund(rec.base, rec.qty, r.fault, rec.pid);
+      let act = '';
+      if (st === 'RETURN_REQUESTED') act = r.method === 'self' ? '<p class="small muted">고객이 직접 보내요. 반품 송장이 들어오면 회수 중으로 바뀌어요.</p>' : `<button class="btn btn-primary btn-ext" data-act="pickup">회수 접수</button><span class="xsmall faint">${fmtDate(r.pickupDue)}까지 안 하면 플랫폼이 자동 접수</span>`;
+      if (st === 'RETURN_COLLECTING') act = '<p class="small muted">회수 중이에요. 택배 조회로 도착이 확인되면 검수할 수 있어요.</p>';
+      if (st === 'RETURN_INSPECTING') act = `<div class="field"><label for="rejWhy">거부 사유(거부할 때)</label><select class="select" id="rejWhy"><option>사용 흔적이 있어요</option><option>허용 오차 안이라 불량이 아니에요</option><option>받은 상품이 주문 상품과 달라요</option></select></div>
+        <div class="cluster"><button class="btn btn-primary" data-act="approveReturn">반품 승인</button><button class="btn btn-danger btn-ext" data-act="rejectReturn">반품 거부 · 사유·사진</button></div><span class="xsmall faint">${fmtDate(r.inspectDue)}까지 결과를 안 내면 자동 승인·환불돼요.</span>`;
+      if (st === 'RETURN_REJECTED') act = `<p class="small">${r.objection ? '고객이 이의를 제기해 본사가 중재하고 있어요. 결과가 최종이에요.' : `거부를 통지했어요. 고객은 ${fmtDate(r.objDue)}까지 이의를 제기할 수 있어요.`}</p>`;
+      panels.push(`<div class="panel"><div class="panel-h"><h2>반품 · ${esc(recLabel(rec))}</h2><span class="st ${st === 'RETURN_REJECTED' ? 'st-stop' : 'st-warn'}">${esc(GC.sm.stateName('CLAIM_RETURN', st))}</span></div><div class="panel-b stack-sm">
+        <dl class="kv small"><dt>사유·귀책</dt><dd>${REASON[r.reason]} · ${r.fault === 'partner' ? '판매자 귀책' : '고객 귀책'}</dd><dt>사진</dt><dd>${r.photo ? `${r.photo}장` : '없음(단순 변심)'}</dd><dt>회수</dt><dd>${r.method === 'self' ? '고객 직접 발송' : '판매자 지정 택배 회수'}</dd>
+          <dt>반품 배송비</dt><dd>${tv(won(pa.retFee), `${pa.name} 반품 배송비(편도)`)} · ${r.fault === 'partner' ? '판매자 부담' : '고객 부담(환불액에서 차감)'}</dd>
+          <dt>고객 환불 예정</dt><dd>${x.zero ? '0원(차액 동의)' : won(x.refund)}${x.bears ? ` · 할인 회수 면제분 ${won(x.bears)} 판매자 부담` : ''}</dd></dl>
+        <div class="cluster">${act}</div></div></div>`);
+    }
+    const sp = settleFor(pid); const conf = mine.filter((r) => r.st === 'CONFIRMED').length;
+    f.body.innerHTML = `
+      <div class="split"><h3>주문 관리</h3>${pids.length > 1 ? `<div class="seg" role="group" aria-label="파트너 계정(시연용 전환)">${pids.map((p) => `<button data-act="pvSwitch" data-p="${p}" aria-pressed="${p === pid}">${PARTNERS[p].name}</button>`).join('')}</div>` : `<span class="small muted">${pa.name}</span>`}</div>
+      <div class="seg" role="group" aria-label="주문 상태 탭">${tabs.map(([n, sts], i) => `<button aria-pressed="${i === onTab}">${n} ${cnt(sts)}</button>`).join('')}</div>
+      <p class="small"><b>하위 주문 ${subNo(pid)}</b> <span class="faint">· ${fmtDate(o.paidAt)} 결제</span></p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>상품</th><th class="num">수량</th><th class="num">결제 금액</th><th>상태</th></tr></thead><tbody>
+        ${mine.map((r) => `<tr class="${['PAID', 'ACCEPTED'].includes(r.st) || hasOpenClaim(r) ? 'is-hl' : ''}"><td>${esc(PROD[r.base].name)}</td><td class="num">${r.qty}박스</td><td class="num">${won(share(r))}</td><td><span class="st ${CLOSED.includes(r.st) ? 'st-stop' : 'st-now'}">${esc(stName(r.st))}</span>${hasOpenClaim(r) ? ' <span class="tag tag-warn">클레임</span>' : ''}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="xsmall faint">결제 금액은 파트너 할인을 반영한 금액이에요. 한 주문에 다른 판매자 상품·본사 쿠폰이 있어도 내 항목과 그 금액만 보여요(서버가 partner_id로 걸러요).</p>
+      <dl class="kv small"><dt>배송지</dt><dd>${STORE.name} · ${STORE.addr} · ${STORE.who} 010-****-5678</dd><dt>수령·하차</dt><dd>${STORE.time} · ${STORE.unload}</dd><dt>요청사항</dt><dd>${esc(o.memo || '없음')}</dd></dl>
+      ${panels.join('')}
+      <div class="panel"><div class="panel-h"><h2>이 주문의 정산 예정</h2><span class="xsmall faint">구매 확정 ${conf}/${mine.filter(isActive).length}건 · 확정 뒤 주간 정산</span></div><div class="panel-b">
+        <table class="tbl small"><tbody>
+          <tr><td>판매가(정가)</td><td class="num">${won(sp.sale)}</td></tr>
+          <tr><td>파트너 부담 할인(즉시 할인·파트너 쿠폰)</td><td class="num">−${won(sp.disc)}</td></tr>
+          <tr><td>판매 수수료 ${pv('commission.default_rate')} · 할인 뒤 금액 기준</td><td class="num">−${won(sp.ev.fee)}</td></tr>
+          <tr><td>배송비 정산(고객 결제 + 본사 쿠폰 보전)</td><td class="num">${won(sp.ship)}</td></tr>
+          ${sp.bears ? `<tr><td>파트너 귀책 차액(할인 회수 면제분)</td><td class="num">−${won(sp.bears)}</td></tr>` : ''}
+          <tr class="is-sum"><td>정산 예정액</td><td class="num">${won(sp.ev.amount - sp.bears)}</td></tr></tbody></table>
+        <p class="xsmall faint">본사 쿠폰·포인트·멤버십 배송비 쿠폰은 본사 부담이라 파트너 몫이 줄지 않아요.</p></div></div>`;
+  };
+
+  /* ── 본사 운영 화면 ── */
+  VIEWS.hq = (f) => {
+    const s = S(); const o = s.order;
+    if (!o) { f.body.innerHTML = '<h3>주문 관리</h3><p class="muted small">주문이 들어오면 돈 흐름과 분쟁 중재 건을 여기서 봐요.</p>'; return; }
+    const cst = app.state('cancel');
+    const rmed = s.ret && s.ret.objection && app.state('claim') === 'RETURN_REJECTED';
+    const cmed = s.creq && s.creq.objection && cst === 'CANCEL_REJECTED';
+    const med = rmed || cmed;
+    f.nav(med ? '분쟁 중재' : '주문'); f.url(`admin.sikup.co.kr/${med ? 'mediation' : 'orders'}`);
+    let medHtml = '';
+    if (cmed) {
+      const c = s.creq; const rec = recById(c.recId); const x = refundCalc({ [rec.base]: rec.qty }, 'return');
+      medHtml += `<div class="panel"><div class="panel-h"><h2>취소 거부 이의 · ${subNo(rec.pid)}</h2><span class="tag tag-stop">이의 제기됨</span></div><div class="panel-b stack">
+        <div class="tbl-wrap"><table class="tbl small medlog"><thead><tr><th>시각</th><th>누가</th><th>내용</th></tr></thead><tbody>
+          <tr><td>${fmtDate(c.at)}</td><td>고객</td><td>${esc(recLabel(rec))} 취소 요청(발주 확인 뒤) · 환불 예정 ${won(x.refund)} 안내</td></tr>
+          <tr><td>${fmtDate(c.rejAt)}</td><td>${PARTNERS[rec.pid].name}</td><td>취소 거부 · 이미 출고 · 송장 ${esc(c.ship.carrier)} ${esc(c.ship.no)}</td></tr>
+          <tr><td>${fmtDate(c.objAt)}</td><td>고객</td><td>이의 제기 · "취소 요청을 보낸 뒤에 출고됐어요"</td></tr></tbody></table></div>
+        <dl class="kv small"><dt>고객 주장 인정</dt><dd>취소 승인 · 이미 나간 상품은 판매자 비용으로 회수 → 회수 확인 뒤 ${won(x.refund)} 환불(요청 때 안내한 금액) · 항목은 정산에서 빠짐</dd>
+          <dt>거부 유지</dt><dd>거부 확정 · 고객은 받은 상품을 일반 반품 절차로만 돌려보낼 수 있어요(단순 변심이면 반품 배송비 고객 부담)</dd>
+          <dt>판단 근거</dt><dd>취소 요청 시각과 택배 집하 시각(요청 전에 이미 보낸 경우만 거부할 수 있음, P-ORD-04) · 클레임 이력 · 주문·배송 기록</dd></dl>
+        <div class="cluster"><button class="btn btn-primary" data-act="mediateCancel" data-r="customer">고객 주장 인정 · 취소 승인</button><button class="btn" data-act="mediateCancel" data-r="partner">파트너 거부 유지</button></div>
+        <p class="xsmall faint">판정 결과는 최종이고 재심이 없어요. 판정자는 이 주문 CS 담당과 다른 사람이어야 해요. 목표 기한 ${lv('mediationBd')}.</p></div></div>`;
+    }
+    if (rmed) {
+      const r = s.ret; const rec = recById(r.recId); const x = returnRefund(rec.base, rec.qty, r.fault, rec.pid);
+      medHtml += `<div class="panel"><div class="panel-h"><h2>반품 거부 이의 · ${subNo(rec.pid)}</h2><span class="tag tag-stop">이의 제기됨</span></div><div class="panel-b stack">
+        <div class="tbl-wrap"><table class="tbl small medlog"><thead><tr><th>시각</th><th>누가</th><th>내용</th></tr></thead><tbody>
+          <tr><td>${fmtDate(r.at)}</td><td>고객</td><td>${esc(recLabel(rec))} 반품 신청 · ${REASON[r.reason]} · 사진 ${r.photo || 0}장</td></tr>
+          <tr><td>${fmtDate(r.rejAt)}</td><td>${PARTNERS[rec.pid].name}</td><td>반품 거부 · ${esc(r.rejectReason)} · 사진 2장</td></tr>
+          <tr><td>${fmtDate(r.objAt)}</td><td>고객</td><td>이의 제기 · "상자를 열자마자 냅킨이 젖어 있었어요"</td></tr></tbody></table></div>
+        <dl class="kv small"><dt>고객 주장 인정</dt><dd>반품 승인 · 환불 ${won(x.refund)}${x.bears ? ` · 할인 회수 면제분 ${won(x.bears)} 파트너 부담` : ''} · 반품 배송비 ${r.fault === 'partner' ? '파트너' : '고객'} 부담</dd>
+          <dt>거부 유지</dt><dd>회수한 상품을 고객에게 다시 보내고 배송비는 고객 부담</dd><dt>판단 근거</dt><dd>양측 사진 · 클레임 이력 · 주문·배송 기록</dd></dl>
+        <div class="cluster"><button class="btn btn-primary" data-act="mediate" data-r="customer">고객 주장 인정 · 반품 승인</button><button class="btn" data-act="mediate" data-r="partner">파트너 거부 유지</button></div>
+        <p class="xsmall faint">판정 결과는 최종이고 재심이 없어요. 판정자는 이 주문 CS 담당과 다른 사람이어야 해요. 목표 기한 ${lv('mediationBd')}.</p></div></div>`;
+    }
+    const t = o.calc.totals; const b = bal();
+    const rows = [
+      ['상품 금액(정가)', t.gross, '파트너 매출'],
+      ['파트너 즉시 할인', -t.instantDisc, '파트너 부담 · 수수료 기준가에서 뺌'],
+      t.partnerCouponDisc ? ['파트너 쿠폰 (2차)', -t.partnerCouponDisc, '파트너 부담 · 수수료 기준가에서 뺌'] : null,
+      ['본사 쿠폰', -t.hqDisc, '본사 부담 · 수수료 기준가에서 빼지 않음 · 정산 때 보전'],
+      ['배송비', t.shipping, '파트너 배송비 정산'],
+      t.shipCoupon ? ['멤버십 무료배송 쿠폰 (2차)', -t.shipCoupon, '본사 부담 · 배송비 보전'] : null,
+      t.points ? ['포인트 (2차)', -t.points, '본사 부담'] : null,
+    ].filter(Boolean);
+    f.body.innerHTML = `<h3>${med ? '분쟁 중재' : `주문 ${ORDER_NO}`}</h3>${medHtml}
+      <div class="pgrid">
+        <div class="panel"><div class="panel-h"><h2>할인별 부담 주체</h2><span class="xsmall faint">결제 스냅샷</span></div><div class="panel-b"><div class="tbl-wrap"><table class="tbl small"><thead><tr><th>항목</th><th class="num">금액</th><th>누구 몫·부담</th></tr></thead><tbody>
+          ${rows.map(([k, v, w]) => `<tr><td>${k}</td><td class="num">${v < 0 ? '−' + won(-v) : won(v)}</td><td class="why">${w}</td></tr>`).join('')}
+          <tr class="is-sum"><td>결제 승인</td><td class="num">${won(t.pay)}</td><td class="why">토스페이먼츠 · 판매자별 금액 나눠 기록 <span class="tag tag-phase">PG 계약 확정 전</span></td></tr></tbody></table></div></div></div>
+        <div class="panel"><div class="panel-h"><h2>결제·환불</h2><span class="xsmall faint">${o.method === 'vbank' ? '가상계좌' : '카드'}</span></div><div class="panel-b"><table class="tbl small"><tbody>
+          <tr><td>결제</td><td class="num">${won(o.paid.pg)}${o.paid.points ? ` + ${GC.num(o.paid.points)}P` : ''}</td></tr>
+          ${o.refunds.map((x) => `<tr><td>환불 · ${esc(x.label)}</td><td class="num">−${won(x.pg)}${x.points ? ` − ${GC.num(x.points)}P` : ''}</td></tr>`).join('')}
+          <tr class="is-sum"><td>남은 잔액</td><td class="num">${won(b.pg)}${o.paid.points ? ` + ${GC.num(b.points)}P` : ''}</td></tr>
+          ${Object.keys(o.bears).length ? `<tr><td>파트너 귀책 차액</td><td class="num">${Object.entries(o.bears).map(([p, v]) => `${PARTNERS[p].name} ${won(v)}`).join(' · ')}</td></tr>` : ''}</tbody></table>
+          <p class="xsmall faint">카드 누적 환불은 승인 금액을 넘지 않아요(잔액 비율 안분 · 마지막은 잔액 전부).</p></div></div>
+      </div>
+      <div class="panel"><div class="panel-h"><h2>주문 항목 모니터</h2><span class="xsmall faint">관리자 강제 변경도 상태 표 안에서만 · 사유 필수</span></div><div class="panel-b"><div class="tbl-wrap"><table class="tbl small"><thead><tr><th>항목</th><th>판매자</th><th class="num">수량</th><th>상태</th><th>클레임</th></tr></thead><tbody>
+        ${s.recs.map((r) => `<tr><td>${esc(PROD[r.base].name)}</td><td>${PARTNERS[r.pid].name}</td><td class="num">${r.qty}</td><td>${esc(stName(r.st))}</td><td>${s.ret && s.ret.recId === r.id ? `반품 · ${esc(GC.sm.stateName('CLAIM_RETURN', app.state('claim')))}${s.ret.objection ? ' · 이의' : ''}` : s.creq && s.creq.recId === r.id ? `취소 · ${esc(GC.sm.stateName('CLAIM_CANCEL', cst))}${s.creq.objection ? ` · 이의${s.creq.done === 'kept' ? ' · 거부 유지' : s.creq.done ? ' · 고객 주장 인정' : ''}` : ''}` : '—'}</td></tr>`).join('')}
+      </tbody></table></div></div></div>`;
+  };
+
+  /* ── 시스템 화면 ── */
+  VIEWS.system = (f) => {
+    const s = S(); const o = s.order; const now = app.clock.now(); const rows = [];
+    const left = (due) => (now >= due ? '<span class="sla sla-over">실행됨</span>' : `<span class="sla sla-ok">${fmtDate(due)}</span>`);
+    if (o) {
+      if (s.recs.some((r) => r.st === 'PAYMENT_PENDING')) rows.push(['가상계좌 입금 기한', `발급 + ${P('payment.vbank_due_days')}일 · 하루 전 안내 · 지나면 PG 마감 확인 후 자동 취소`, left(o.vbDue)]);
+      ['A', 'B'].forEach((pid) => { if (s.recs.some((r) => r.pid === pid && r.st === 'PAID')) rows.push([`발주 확인 리마인드 · ${PARTNERS[pid].name}`, '결제 + 영업일 1일 리마인드, 2일 운영팀 알림', left(GC.addBusinessDays(o.paidAt, LOCAL.acceptRemindBd.v))]); });
+      if (s.creq && app.state('cancel') === 'CANCEL_REQUESTED') rows.push(['취소 요청 자동 승인', '요청 + 영업일 1일 · 송장 있는 건 제외', left(s.creq.due)]);
+      if (s.creq && app.state('cancel') === 'CANCEL_REJECTED') rows.push(s.creq.objection ? ['취소 거부 확정', '고객 이의 접수 · 본사 중재 결과를 기다려요', '<span class="sla sla-warn">멈춤</span>'] : ['취소 거부 확정', `거부 통지 + ${P('claim.objection_days')}일 이의 없음`, left(s.creq.objDue)]);
+      if (s.creq && s.creq.done === 'won') rows.push(['회수 접수(취소 인정)', s.creq.collect === 'collecting' ? '판매자 비용으로 접수함 · 도착 확인 뒤 환불' : '배송 완료가 확인되면 판매자 비용으로 접수', s.creq.collect === 'collecting' ? '<span class="sla sla-ok">회수 중</span>' : '<span class="sla sla-warn">배송 완료 뒤</span>']);
+      if (retOpen()) {
+        const r = s.ret; const st = app.state('claim');
+        if (st === 'RETURN_REQUESTED' && r.method === 'pickup') rows.push(['자동 회수 접수', '신청 + 영업일 2일 미접수', left(r.pickupDue)]);
+        if (st === 'RETURN_REQUESTED' && r.method === 'self') rows.push(['반품 자동 철회', '신청 + 7일 미발송', left(r.shipDue)]);
+        if (st === 'RETURN_INSPECTING') rows.push(['검수 자동 승인', '회수 완료 + 영업일 2일', left(r.inspectDue)]);
+        if (st === 'RETURN_REJECTED' && !r.objection) rows.push(['반품 거부 확정', '거부 통지 + 3일 이의 없음', left(r.objDue)]);
+      }
+      s.recs.filter((r) => r.st === 'DELIVERED').forEach((r) => rows.push([`자동 구매 확정 · ${esc(recLabel(r))}`, hasOpenClaim(r) ? '클레임이 열려 있어 제외' : '배송 완료 + 7일 · 확정 시각은 도래 시각으로 기록', hasOpenClaim(r) ? '<span class="sla sla-warn">멈춤</span>' : left(new Date(r.deliveredAt.getTime() + P('order.auto_confirm_days') * DAY))]));
+    }
+    const pend = s.recs.some((r) => r.st === 'PAYMENT_PENDING'); const shipped = s.recs.some((r) => r.st === 'SHIPPED');
+    const coll = (retOpen() && app.state('claim') === 'RETURN_COLLECTING') || cancelCollecting();
+    f.body.innerHTML = `
+      <h3>배치·외부 연동</h3>
+      <p class="small muted">사람이 누르지 않아도 시간이 되면 돌아가는 일이에요. 위쪽 +1시간·+1일·+7일로 시간을 보내면 자동으로 실행돼요.</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>작업</th><th>기준</th><th>실행 시각</th></tr></thead><tbody>
+        ${rows.map((r) => `<tr><td>${r[0]}</td><td class="small">${r[1]}</td><td>${r[2]}</td></tr>`).join('') || '<tr><td colspan="3" class="faint">지금 기다리는 자동 작업이 없어요.</td></tr>'}</tbody></table></div>
+      <div class="cluster">
+        <button class="btn btn-ext" data-act="deposit" ${pend ? '' : 'disabled'}>입금 확인 웹훅 받기</button>
+        <button class="btn btn-ext" data-act="track" ${shipped ? '' : 'disabled'}>택배 배송 완료 확인</button>
+        <button class="btn btn-ext" data-act="collected" ${coll ? '' : 'disabled'}>회수 택배 도착 확인</button>
+      </div>
+      <div class="note note-ext small">외부 연동: 토스페이먼츠(결제·부분 취소·가상계좌 웹훅) · 택배사(송장·회수) · 스윗트래커(배송 조회) · 쿠콘(환불 계좌 확인) · 솔라피(알림톡) · FCM(푸시). 프로토타입에서는 안내 창으로 대신해요.</div>`;
+  };
+
+  /* ── 동작 ── */
+  const now = () => app.clock.now();
+  function partnersNotify() { [...new Set(S().recs.map((r) => r.pid))].forEach((pid) => app.notify('NOTI_PARTNER_ORDER_NEW', PARTNERS[pid].name, ['알림톡', '이메일'], `새 주문 ${subNo(pid)}`)); }
+  async function cancelClaimImmediate(targets, x, label) {
+    showStrip('cancel', ['CANCEL_APPROVED', 'CLAIM_COMPLETED']);
+    app.setState('cancel', 'CANCEL_APPROVED', { by: '발주 확인 전이라 바로 승인' });
+    targets.forEach((t) => move(t, 'cancel', `고객 취소 · ${label}`));
+    await payRefund(x, label);
+    if (targets.length === 1) targets[0].refunded = x.refund;
+    app.go('cancel', 'refund', { by: '환불 완료' });
+  }
+  app.actions({
+    pickItem(t) { S().cart[t.dataset.k].on = t.checked; app.log('user', `${esc(PROD[t.dataset.k].name)} ${t.checked ? '주문에 넣음' : '이번 주문에서 뺌'}`); refresh(); },
+    qty(b) { const c = S().cart[b.dataset.b]; c.qty = Math.max(1, Math.min(999, c.qty + Number(b.dataset.d))); refresh(); },
+    async toCheckout() {
+      const s = S(); const bad = selBases().filter((b) => s.cart[b].qty < PROD[b].moq);
+      if (bad.length) {
+        const b = bad[0]; const p = PROD[b];
+        app.log('warn', `${esc(p.name)} 최소 주문 수량 미달(${s.cart[b].qty}/${p.moq}박스) → 주문하기에서 경고`);
+        if (await app.confirm({ title: '최소 주문 수량보다 적어요', body: `<p>${esc(p.name)}은 ${p.moq}박스부터 주문할 수 있어요. 지금 ${s.cart[b].qty}박스예요.</p>`, ok: `${p.moq}박스로 맞추기`, cancel: '그대로 두기' })) { s.cart[b].qty = p.moq; app.toast(`${p.name}을 ${p.moq}박스로 맞췄어요`); }
+        refresh(); return;
+      }
+      s.cs = 'checkout'; s.flags = {};
+      app.log('user', `주문하기: ${selBases().map((b) => esc(PROD[b].name)).join(' · ')}`); refresh();
+    },
+    ph2(t) { S().ph2 = t.checked; app.log('user', `2차 기능 ${t.checked ? '포함' : '빼고'} 계산 → ${won(GC.price.calcOrder(checkoutInput()).totals.pay)}`); refresh(); },
+    pickHq(b) { S().hqKey = b.dataset.k; refresh(); },
+    payMethod(b) { S().pay = b.dataset.m; S().proof = 'tax'; refresh(); },
+    proofPick(b) { S().proof = b.dataset.p; refresh(); },
+    memo(t) { S().memo = t.value; },
+    flag(t) { S().flags[t.dataset.k] = t.checked; refresh(); },
+    async pay() {
+      const s = S(); if (s.order) return;
+      const input = checkoutInput(); const r = GC.price.calcOrder(input); const vb = s.pay === 'vbank';
+      await app.ext({ service: '토스페이먼츠', what: vb ? '가상계좌 발급' : '결제창 호출', lines: [
+        `서버가 금액을 다시 계산했어요: ${won(r.totals.pay)} · 화면 금액과 같아서 결제창을 열어요(다르면 막고 주문서로)`,
+        `결제 요청 ID(중복 결제 방지 키)와 임시 주문(${LOCAL.checkoutHoldMin.t})을 만들고 이 순간 가격으로 고정해요`,
+        vb ? `입금 기한 ${P('payment.vbank_due_days')}일 · 구매안전서비스(에스크로) 적용` : '결과는 리다이렉트 + 주문 토큰으로 받고, PG 조회 API로 금액·상태를 한 번 더 확인해요',
+      ], result: vb ? '가상계좌가 발급된 것으로 처리해요' : '카드 결제가 승인된 것으로 처리해요' });
+      const snap = { ...input }; delete snap.items;
+      const o = s.order = { at: now(), paidAt: vb ? null : now(), method: s.pay, proof: vb ? s.proof : 'card', memo: s.memo, snap, calc: r, paid: { pg: r.totals.pay, points: r.totals.points }, refunded: { pg: 0, points: 0 }, refunds: [], ship: {}, restored: {}, bears: {}, origQty: {}, vbDue: vb ? new Date(now().getTime() + P('payment.vbank_due_days') * DAY) : null };
+      r.lines.forEach((l) => { o.origQty[l.id] = l.qty; });
+      s.recs = r.lines.map((l) => ({ id: l.id, base: l.id, qty: l.qty, st: vb ? 'PAYMENT_PENDING' : 'PAID', pid: l.partnerId }));
+      app.strips.order.main = vb ? ['PAYMENT_PENDING', ...MAIN_CARD] : MAIN_CARD.slice();
+      const pids = [...new Set(s.recs.map((x) => x.pid))];
+      app.log('money', `${vb ? '가상계좌 발급' : '카드 승인'} ${won(r.totals.pay)}${r.totals.points ? ` + 포인트 ${GC.num(r.totals.points)}P` : ''} · 결제 스냅샷(단가표·항목별 가격 종류 일반가/사업자가·할인·쿠폰 조건·배송 정책·상품 상세 설명 버전) 저장`);
+      app.log('rule', `주문 1건과 판매자별 하위 주문 ${pids.length}건(${pids.map((p) => PARTNERS[p].name).join('·')})을 한 트랜잭션으로 만들어요. 하나라도 실패하면 전부 되돌리고 결제를 자동 취소해요`);
+      app.log('state', `주문 항목 ${s.recs.length}개: <b>${esc(stName(s.recs[0].st))}</b> <span class="faint">(${vb ? '가상계좌 발급' : '카드 승인'})</span>`);
+      if (vb) app.notify('NOTI_VBANK_ISSUED', '고객', ['알림톡', '이메일'], `가상계좌 ${VBANK.bank} · ${fmtDate(o.vbDue)}까지`);
+      else { app.notify('NOTI_ORDER_PAID', '고객', ['알림톡', '푸시'], '주문·결제 완료'); partnersNotify(); }
+      s.cs = 'done'; s.flags = {}; syncStrip(); s.csState = app.state('order'); refresh();
+    },
+    copyAcct() { app.toast(`${VBANK.bank} ${VBANK.acct} 복사했어요`); },
+    snapView(b) { const s = S(); const rec = recById(b.dataset.id); s.snapId = rec.base; s.cs = 'snap'; app.log('user', `고객이 [주문할 때의 상품 정보 보기] · ${esc(PROD[rec.base].name)} 상세 설명 v${DET_SNAP[rec.base].ver}`); refresh(); },
+    cs(b) { const s = S(); s.cs = b.dataset.to; if (b.dataset.to === 'detail') { s.sheet = null; s.flags = {}; } refresh(); },
+    shop() { app.toast('홈으로 이동해요. 이 프로토타입에서는 주문 화면에 머물러요'); },
+    reAdd() { app.toast('장바구니에 다시 담았어요. 금액은 지금 가격으로 다시 계산해요'); app.log('user', '이 주문 그대로 다시 담기 (U-MY-04)'); },
+    async cancelPending() {
+      if (!(await app.confirm({ title: '입금 전 주문을 취소할까요?', body: '<p class="small">아직 입금 전이라 환불할 돈은 없어요. 쓴 쿠폰·포인트는 돌려드려요.</p>', ok: '주문 취소', cancel: '그대로 두기', danger: true }))) return;
+      S().recs.filter((r) => r.st === 'PAYMENT_PENDING').forEach((r) => move(r, 'cancel', '입금 전 고객 취소'));
+      app.log('rule', '결제 전이라 환불 없음 · 쿠폰·포인트·재고 되돌림 · 가상계좌 발급 취소'); refresh();
+    },
+    openCancel(b) { const s = S(); const rec = recById(b.dataset.id); s.sheet = { recId: rec.id, qty: rec.qty, reason: 'change' }; s.cs = 'cancel'; refresh(); },
+    openReturn(b) { const s = S(); const rec = recById(b.dataset.id); s.sheet = { recId: rec.id, qty: rec.qty, reason: rec.st === 'CONFIRMED' ? 'defect' : 'change', photo: 0, method: 'pickup' }; s.flags = {}; s.cs = 'ret'; refresh(); },
+    sheetQty(b) { const sh = S().sheet; const rec = recById(sh.recId); sh.qty = b.dataset.set ? Number(b.dataset.set) : Math.max(1, Math.min(rec.qty, sh.qty + Number(b.dataset.d))); S().flags.zeroAgree = false; refresh(); },
+    sheetReason(b) { S().sheet.reason = b.dataset.r; S().flags.zeroAgree = false; refresh(); },
+    sheetMethod(b) { S().sheet.method = b.dataset.m; refresh(); },
+    async photo() { await app.ext({ service: 'AWS S3 · GuardDuty', what: '불량 사진 올리기', lines: ['최대 10장 · 서명된 주소로 바로 업로드', '악성코드 검사를 통과해야 판매자·본사가 볼 수 있어요'] }); S().sheet.photo = 3; refresh(); },
+    async doCancel() {
+      const s = S(); const sh = s.sheet; const rec = recById(sh.recId); const p = PROD[rec.base];
+      const r = refundCalc({ [rec.base]: sh.qty }); if (r.blocked) return;
+      if (rec.st === 'ACCEPTED') {
+        const target = splitRec(rec, sh.qty);
+        s.creq = { recId: target.id, qty: sh.qty, at: now(), due: GC.addBusinessDays(now(), P('claim.cancel_auto_approve_bd')) };
+        showStrip('cancel', ['CANCEL_REQUESTED', 'CANCEL_APPROVED', 'CLAIM_COMPLETED']);
+        app.setState('cancel', 'CANCEL_REQUESTED', { by: `고객 취소 요청 · ${p.short} ${sh.qty}박스` });
+        app.notify('NOTI_PARTNER_CLAIM_NEW', PARTNERS[rec.pid].name, ['알림톡'], `취소 요청 · ${fmtDate(s.creq.due)}까지 처리`);
+        app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], '취소 요청 접수');
+        s.sheet = null; s.cs = 'detail'; refresh(); return;
+      }
+      if (!(await app.confirm({ title: `${p.name} ${sh.qty}박스를 취소할까요?`, body: `<p>환불 ${won(r.refund)} (${r.pointRefund ? `포인트 ${GC.num(r.pointRefund)}P + ` : ''}${mName()} ${won(r.pgRefund)})</p><p class="small">결제 때 조건으로 남은 상품을 다시 계산한 금액이에요.</p>`, ok: '취소하기', cancel: '그대로 두기', danger: true }))) return;
+      const back = couponBack(r); const target = splitRec(rec, sh.qty);
+      await cancelClaimImmediate([target], r, `${p.short} ${sh.qty}박스 취소(발주 확인 전)`);
+      restoreCoupons(back);
+      s.sheet = null; s.cs = 'detail'; refresh();
+    },
+    async cancelAll() {
+      const s = S(); const acts = s.recs.filter(isActive); const b = bal();
+      if (!(await app.confirm({ title: '주문 전체를 취소할까요?', body: `<p>남은 결제 잔액 ${won(b.pg + b.points)}을 모두 돌려드려요.</p>`, ok: '전체 취소', cancel: '그대로 두기', danger: true }))) return;
+      const back = couponBack({ recalc: null });
+      await cancelClaimImmediate(acts, { refund: b.pg + b.points, pointRefund: b.points, pgRefund: b.pg }, '주문 전체 취소(부분 취소 대신)');
+      acts.forEach((r) => { r.refundNote = `주문 전체 취소 · 잔액 ${won(b.pg + b.points)} 환불`; });
+      restoreCoupons(back); s.sheet = null; s.cs = 'detail'; refresh();
+    },
+    async doReturn() {
+      const s = S(); const sh = s.sheet; const rec = recById(sh.recId);
+      const fault = sh.reason === 'change' ? 'customer' : 'partner';
+      const target = splitRec(rec, sh.qty);
+      s.ret = { recId: target.id, qty: sh.qty, reason: sh.reason, fault, photo: sh.photo, method: sh.method, at: now(), pickupDue: GC.addBusinessDays(now(), LOCAL.pickupBd.v), shipDue: new Date(now().getTime() + P('claim.return_ship_days') * DAY), objection: false, done: null };
+      showStrip('claim'); app.setState('claim', 'RETURN_REQUESTED', { by: `고객 반품 신청 · ${REASON[sh.reason]}${sh.photo ? ` · 사진 ${sh.photo}장` : ''}` });
+      app.log('rule', `귀책 ${fault === 'partner' ? '판매자(불량·오배송) → 반품 배송비 판매자 부담, 할인 회수 없음' : '고객(단순 변심) → 반품 배송비 고객 부담, 스냅샷 재계산'} · 클레임이 열린 항목은 자동 구매 확정에서 빠져요`);
+      app.notify('NOTI_PARTNER_CLAIM_NEW', PARTNERS[rec.pid].name, ['알림톡'], '반품 요청 · 영업일 2일 안 회수 접수');
+      app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], '반품 신청 접수');
+      s.sheet = null; s.flags = {}; s.cs = 'detail'; refresh();
+    },
+    async selfShip() { await app.ext({ service: '택배사', what: '반품 송장 입력', lines: ['고객이 직접 보낸 송장번호로 회수 추적'] }); app.go('claim', 'pickup', { by: '고객 직접 발송 · 송장 입력' }); refresh(); },
+    async confirmItem(b) {
+      const rec = recById(b.dataset.id);
+      if (!(await app.confirm({ title: '구매를 확정할까요?', body: '<p class="small">확정하면 단순 변심 반품은 할 수 없어요. 불량은 받은 날부터 3개월, 안 날부터 30일 안에 앱에서 신청할 수 있어요.</p>', ok: '구매 확정' }))) return;
+      move(rec, 'confirm', '고객이 직접 구매 확정');
+      app.log('money', `정산 이벤트: ${esc(recLabel(rec))} 구매 확정 → ${PARTNERS[rec.pid].name} 다음 주 정산 대상`); refresh();
+    },
+    objection() {
+      const s = S(); const r = s.ret;
+      if (!canObj('RETURN', app.state('claim'), r.rejAt, r.objection)) { app.toast('이의 제기 기한이 지났어요'); return; }
+      r.objection = true; r.objAt = now();
+      app.log('user', '고객이 반품 거부에 이의 제기 → 상태는 그대로(판매자 거부) + “이의 제기됨” · 본사 중재로');
+      objectionNotify(recById(r.recId).pid, '반품 거부 이의'); refresh();
+    },
+    objectCancel() {
+      const s = S(); const c = s.creq;
+      if (!canObj('CANCEL', app.state('cancel'), c.rejAt, c.objection)) { app.toast('이의 제기 기한이 지났어요'); return; }
+      c.objection = true; c.objAt = now();
+      app.log('user', '고객이 취소 거부에 이의 제기 → 상태는 그대로(판매자 거부) + “이의 제기됨” · 본사 중재로 · 이 항목 자동 구매 확정 멈춤');
+      objectionNotify(recById(c.recId).pid, '취소 거부 이의'); refresh();
+    },
+
+    /* 파트너 */
+    pvSwitch(b) { S().pv = b.dataset.p; refresh(); },
+    accept() {
+      const s = S(); const pid = s.pv; app.clock.pass(90 * 60000);
+      s.recs.filter((r) => r.pid === pid && r.st === 'PAID').forEach((r) => move(r, 'accept', `${PARTNERS[pid].name} 발주 확인`));
+      app.log('rule', '고객 화면 상태가 “상품 준비 중”으로 바뀌어요. 이제 고객 취소는 즉시가 아니라 취소 요청이 돼요 (P-ORD-01의 준비 중 알림은 C-NOTI-01에 코드가 없음)');
+      refresh();
+    },
+    async ship() {
+      const s = S(); const pid = s.pv; const fr = app.lastFrame;
+      const carrier = (fr.querySelector('#carrier') || {}).value || 'CJ대한통운'; const no = ((fr.querySelector('#inv') || {}).value || '').trim() || '6890-1234-5678';
+      await app.ext({ service: `${carrier} · 스윗트래커`, what: '송장 등록', lines: [`${esc(carrier)} ${esc(no)} · 택배사별 송장 형식 검증 · 이미 쓴 번호면 경고`, '묶음 배송이라 송장 하나로 여러 항목을 처리해요', '24시간 안에 집하 기록이 없으면 허위 송장 의심으로 운영팀 알림'] });
+      app.clock.pass(3 * HOUR);
+      s.recs.filter((r) => r.pid === pid && r.st === 'ACCEPTED').forEach((r) => move(r, 'ship', `송장 ${no}`));
+      s.order.ship[pid] = { carrier, no, at: now() };
+      app.notify('NOTI_SHIPPED', '고객', ['알림톡', '푸시'], `${PARTNERS[pid].name} 출고 · 배송 조회 링크`); refresh();
+    },
+    async stockout(b) {
+      const rec = recById(b.dataset.id); const x = faultRefund(rec.base, rec.qty);
+      if (!(await app.confirm({ title: `${PROD[rec.base].name} 품절 취소`, body: `<p class="small">사유: 재고 부족. 고객에게 공제 없이 ${won(x.refund)}을 환불해요. 판매자 사정이라 쿠폰 조건이 깨져도 고객에게서 할인을 되돌려 받지 않아요. 품절 취소는 판매자 평가에 기록돼요(MVP는 기록만).</p>`, ok: '품절 취소', cancel: '닫기', danger: true }))) return;
+      const back = couponBack(x.cr, true);
+      move(rec, 'stockout_cancel', '판매자 품절 취소 · 재고 부족');
+      await payRefund(x, `${PROD[rec.base].short} 품절 취소(전액 환불)`); rec.refunded = x.refund;
+      bear(rec.pid, x.bears, '품절 취소로 깨진 쿠폰 조건(할인 회수 면제분)');
+      restoreCoupons(back);
+      app.notify('NOTI_ITEM_STOCKOUT_CANCELED', '고객', ['알림톡', '푸시'], `${PROD[rec.base].short} 품절 취소 · 전액 환불`);
+      app.log('rule', '품절 취소 기록 → 판매자 평가(페널티는 2차)'); refresh();
+    },
+    approveCancel() { approveCancelCore(false); },
+    async rejectCancel() {
+      const s = S(); const rec = recById(s.creq.recId); const pid = rec.pid; const fr = app.lastFrame;
+      const carrier = (fr.querySelector('#carrier') || {}).value || 'CJ대한통운'; const no = ((fr.querySelector('#inv') || {}).value || '').trim();
+      if (!no) { app.toast('거부하려면 송장번호가 필요해요'); return; }
+      app.clock.pass(2 * HOUR);
+      await app.ext({ service: `${carrier} · 스윗트래커`, what: '송장 등록(이미 출고)', lines: ['취소 거부는 송장이 꼭 있어야 해요', '고객에게 반품 절차를 안내해요'] });
+      app.go('cancel', 'reject', { by: '판매자 거부 · 이미 출고' });
+      s.recs.filter((r) => r.pid === pid && r.st === 'ACCEPTED').forEach((r) => move(r, 'ship', `송장 ${no}`));
+      s.order.ship[pid] = { carrier, no, at: now() };
+      Object.assign(s.creq, { rejAt: now(), ship: { carrier, no }, objection: false, objDue: new Date(now().getTime() + P('claim.objection_days') * DAY) });
+      app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], `판매자 거부 · 받은 뒤 반품 안내 · ${fmtDate(s.creq.objDue)}까지 [이의 제기] 가능`);
+      app.notify('NOTI_SHIPPED', '고객', ['알림톡', '푸시'], '출고 · 배송 조회 링크'); refresh();
+    },
+    async pickup() { await app.ext({ service: '택배사(판매자 지정)', what: '반품 회수 접수', lines: ['회수 기사 방문 요청 · 회수 송장은 고객 화면에 바로 보여요'] }); app.clock.pass(2 * HOUR); app.go('claim', 'pickup', { by: '판매자 회수 접수' }); app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], '회수 접수'); refresh(); },
+    approveReturn() { approveReturnCore('판매자 검수 통과', false).then(refresh); },
+    async rejectReturn() {
+      const s = S(); const why = (app.lastFrame.querySelector('#rejWhy') || {}).value || '사용 흔적이 있어요';
+      await app.ext({ service: 'AWS S3', what: '반품 거부 사진 올리기', lines: ['거부는 사유와 사진이 꼭 있어야 해요', '고객과 본사 중재 화면에 함께 보여요'] });
+      s.ret.rejectReason = why; s.ret.rejAt = now(); s.ret.objDue = new Date(now().getTime() + P('claim.objection_days') * DAY);
+      app.go('claim', 'reject', { by: `판매자 반품 거부 · ${why}` });
+      app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], `반품 거부 · ${fmtDate(s.ret.objDue)}까지 이의 가능`); refresh();
+    },
+
+    /* 시스템 */
+    async deposit() {
+      const s = S(); await app.ext({ service: '토스페이먼츠', what: '가상계좌 입금 확인 웹훅', lines: ['웹훅 서명을 검증하고, 같은 알림을 다시 받아도 한 번만 처리해요', '입금이 확인되면 판매자별 주문이 파트너 센터에 나타나요'], result: '입금이 확인된 것으로 처리해요' });
+      app.clock.pass(5 * HOUR);
+      s.recs.filter((r) => r.st === 'PAYMENT_PENDING').forEach((r) => move(r, 'deposit', '입금 확인(PG 웹훅)'));
+      s.order.paidAt = now();
+      app.notify('NOTI_VBANK_DEPOSITED', '고객', ['알림톡', '푸시'], '입금 확인 · 주문 완료'); partnersNotify(); refresh();
+    },
+    async track() {
+      const s = S(); await app.ext({ service: '스윗트래커', what: '배송 조회 API로 배송 완료 확인', lines: ['배송 완료를 감지하면 주문 항목을 배송 완료로 바꿔요', '7일 동안 완료를 못 받으면 판매자에게 확인을 요청해요'] });
+      app.clock.pass(20 * HOUR);
+      s.recs.filter((r) => r.st === 'SHIPPED').forEach((r) => { move(r, 'deliver', '택배 조회 · 배송 완료'); r.deliveredAt = now(); });
+      app.notify('NOTI_DELIVERED', '고객', ['푸시'], `배송 완료 · ${P('order.auto_confirm_days')}일 뒤 자동 구매 확정`);
+      if (s.creq && s.creq.done === 'won' && s.creq.collect === 'wait' && recById(s.creq.recId).st === 'DELIVERED') startCancelCollect();
+      refresh();
+    },
+    async collected() {
+      if (cancelCollecting()) { await cancelWonRefund(); return; }
+      const s = S(); await app.ext({ service: '스윗트래커', what: '회수 택배 도착 확인', lines: ['회수 송장으로 판매자 도착을 확인해요'] });
+      app.clock.pass(30 * HOUR);
+      app.go('claim', 'collected', { by: '회수 완료' }); s.ret.inspectDue = GC.addBusinessDays(now(), P('claim.inspect_bd'));
+      app.notify('NOTI_PARTNER_CLAIM_DUE', PARTNERS[recById(s.ret.recId).pid].name, ['알림톡'], `검수 기한 ${fmtDate(s.ret.inspectDue)}`); refresh();
+    },
+
+    /* 본사 */
+    async mediate(b) {
+      const s = S(); const r = s.ret; const pid = recById(r.recId).pid;
+      if (b.dataset.r === 'customer') {
+        app.go('claim', 'mediation_customer', { by: '본사 중재 · 고객 주장 인정(최종)' });
+        await approveReturnCore(null, false);
+      } else {
+        app.go('claim', 'mediation_partner', { by: '본사 중재 · 판매자 거부 유지(최종)' });
+        r.done = 'mediated';
+        app.log('rule', '거부 확정 → 회수한 상품을 고객에게 다시 보내고 배송비는 고객 부담');
+      }
+      mediationNotify(pid); refresh();
+    },
+    /* 취소 거부 이의 중재(C-STATE-02 이의 제기·중재 줄 · A-ORD-02). 결과는 최종 */
+    async mediateCancel(b) {
+      const s = S(); const c = s.creq; const rec = recById(c.recId);
+      if (b.dataset.r === 'customer') {
+        if (!app.go('cancel', 'mediation_customer', { by: '본사 중재 · 고객 주장 인정(최종)' })) return;
+        c.done = 'won'; c.collect = 'wait';
+        app.log('rule', '이미 나간 상품이라 판매자 비용으로 회수한 뒤 환불해요(회수 배송비 판매자 부담 · 환불 금액은 취소 요청 때 안내한 스냅샷 재계산). 주문 항목은 C-STATE-01 표 안에서 배송 완료 → 반품 완료로 닫혀요');
+        if (rec.st === 'DELIVERED') startCancelCollect();
+      } else {
+        if (!app.go('cancel', 'mediation_partner', { by: '본사 중재 · 판매자 거부 유지(최종)' })) return;
+        c.done = 'kept';
+        app.log('rule', '거부 확정 → 클레임이 닫혀 이 항목도 자동 구매 확정 대상으로 돌아가요. 받은 상품은 일반 반품 절차(U-MY-03)로만 돌려보낼 수 있어요');
+      }
+      mediationNotify(rec.pid); refresh();
+    },
+  });
+
+  function objectionNotify(pid, what) {
+    app.notify('NOTI_OBJECTION_RECEIVED', '고객', ['알림톡', '이메일'], '이의 접수');
+    app.notify('NOTI_PARTNER_OBJECTION_RECEIVED', PARTNERS[pid].name, ['알림톡'], '고객 이의 · 본사 중재');
+    app.notify('NOTI_INT_MEDIATION_NEW', '운영팀(CS)', ['관리자 알림', 'Slack'], what);
+  }
+  function mediationNotify(pid) {
+    app.notify('NOTI_MEDIATION_DECIDED', '고객', ['알림톡', '이메일'], '중재 결과(최종)');
+    app.notify('NOTI_PARTNER_MEDIATION_DECIDED', PARTNERS[pid].name, ['알림톡', '이메일'], '중재 결과(최종)');
+  }
+  /** 취소 인정 건 회수 접수: 플랫폼이 계약 택배사로 접수하고 회수 배송비는 판매자 부담 */
+  function startCancelCollect() {
+    const c = S().creq; c.collect = 'collecting';
+    app.log('ext', '계약 택배사 · 회수 접수(본사 중재로 취소 인정 · 회수 배송비 판매자 부담)');
+    app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], '취소 인정 · 회수 기사 방문 안내');
+  }
+  /** 회수 확인 → 취소 요청 때 안내한 금액(스냅샷 재계산)을 환불 → 주문 항목 반품 완료 · 클레임 완료 */
+  async function cancelWonRefund() {
+    const s = S(); const c = s.creq; const rec = recById(c.recId);
+    await app.ext({ service: '스윗트래커', what: '회수 택배 도착 확인', lines: ['회수 송장으로 판매자 도착을 확인해요', '본사가 취소를 인정한 건이라 판매자 검수 없이 환불해요'] });
+    app.clock.pass(30 * HOUR);
+    const x = refundCalc({ [rec.base]: rec.qty }, 'return'); const back = couponBack(x);
+    await payRefund(x, `${PROD[rec.base].short} 취소 인정(본사 중재) · 회수 뒤 환불`, ['회수 배송비는 판매자 부담']);
+    move(rec, 'return_done', '취소 인정 상품 회수 완료');
+    rec.refunded = x.refund; rec.viaCancel = true;
+    restoreCoupons(back);
+    app.go('cancel', 'refund', { by: '환불 완료' });
+    Object.assign(c, { done: 'refunded', refund: x.refund, collect: null });
+    refresh();
+  }
+
+  async function approveCancelCore(auto) {
+    const s = S(); const c = s.creq; const rec = recById(c.recId);
+    const r = refundCalc({ [rec.base]: rec.qty });
+    const by = auto ? `영업일 ${P('claim.cancel_auto_approve_bd')}일 미처리 → 자동 승인` : '판매자 취소 승인';
+    if (r.blocked) { app.log('warn', '지금 다시 계산하면 환불액이 0원 이하라 부분 취소를 할 수 없어요 → 전체 취소 안내'); return; }
+    const back = couponBack(r);
+    app.go('cancel', auto ? 'auto_approve' : 'approve', { by });
+    move(rec, 'cancel_approved', by);
+    if (auto) { refundApply(r, '취소 요청 자동 승인', true); app.notify('NOTI_PARTNER_CLAIM_AUTO_APPROVED', PARTNERS[rec.pid].name, ['알림톡'], '취소 요청 자동 승인 · 평가 기록'); }
+    else await payRefund(r, `${PROD[rec.base].short} 취소 요청 승인`);
+    rec.refunded = r.refund;
+    app.go('cancel', 'refund', { by: '환불 완료' });
+    restoreCoupons(back);
+    s.creq = null;
+    if (!auto) refresh();
+  }
+  async function approveReturnCore(by, silent) {
+    const s = S(); const r = s.ret; const rec = recById(r.recId);
+    const x = returnRefund(rec.base, rec.qty, r.fault, rec.pid);
+    if (by) app.go('claim', 'approve', { by });
+    const back = r.fault === 'customer' ? couponBack(x.cr) : [];
+    if (x.zero) app.log('money', `0원 환불 · 차액 ${won(x.shortfall)}은 고객이 동의한 방식(추가 결제 또는 혜택 포기)으로 정리 · 반품 배송비 ${won(x.fee)} 고객 부담`);
+    else if (silent) refundApply(x, '반품 환불(검수 기한 초과 자동 승인)', true);
+    else await payRefund(x, `${PROD[rec.base].short} 반품 환불 · ${REASON[r.reason]}`, [x.feeBy === 'partner' ? '반품 배송비는 판매자 부담' : `반품 배송비 ${won(x.fee)}을 환불액에서 뺐어요`]);
+    if (x.bears) bear(rec.pid, x.bears, '판매자 귀책이라 할인 회수 면제');
+    restoreCoupons(back);
+    app.go('claim', 'refund', { by: '환불 완료' });
+    move(rec, rec.st === 'CONFIRMED' ? 'defect_return_done' : 'return_done', '반품 완료');
+    if (rec.st === 'RETURNED') rec.refunded = x.refund;
+    r.done = 'refunded'; r.result = x;
+  }
+
+  /* ── 시간이 흐를 때: 입금 기한·자동 승인·자동 회수·자동 확정 ── */
+  app.onAdvance((prev, t) => {
+    const s = S(); const o = s.order; if (!o) return;
+    if (o.vbDue && s.recs.some((r) => r.st === 'PAYMENT_PENDING')) {
+      if (!s.fired.vbSoon && t.getTime() >= o.vbDue.getTime() - DAY) { s.fired.vbSoon = true; app.notify('NOTI_VBANK_DUE_SOON', '고객', ['알림톡', '푸시'], `입금 기한 하루 전 · ${fmtDate(o.vbDue)}까지`); }
+      if (t >= o.vbDue) {
+        app.log('ext', '토스페이먼츠 · 가상계좌 마감 확인');
+        s.recs.filter((r) => r.st === 'PAYMENT_PENDING').forEach((r) => move(r, 'vbank_expire', `입금 기한 ${P('payment.vbank_due_days')}일 경과`));
+        app.log('rule', '쿠폰·포인트·재고를 되돌려요. 기한 뒤 들어온 입금은 주문을 되살리지 않고 자동 환불해요');
+        app.notify('NOTI_VBANK_EXPIRED', '고객', ['알림톡', '푸시'], '입금 기한이 지나 주문 취소');
+      }
+    }
+    if (o.paidAt) ['A', 'B'].forEach((pid) => {
+      if (!s.recs.some((r) => r.pid === pid && r.st === 'PAID')) return;
+      if (t >= GC.addBusinessDays(o.paidAt, LOCAL.acceptRemindBd.v) && !s.fired['a1' + pid]) { s.fired['a1' + pid] = true; app.notify('NOTI_PARTNER_ACCEPT_LATE', PARTNERS[pid].name, ['알림톡'], '발주 확인 리마인드'); }
+      if (t >= GC.addBusinessDays(o.paidAt, LOCAL.acceptAlertBd.v) && !s.fired['a2' + pid]) { s.fired['a2' + pid] = true; app.log('warn', `${PARTNERS[pid].name} 발주 확인 영업일 2일 지연 → 운영팀 알림`); }
+    });
+    if (s.creq && app.state('cancel') === 'CANCEL_REQUESTED' && t >= s.creq.due && recById(s.creq.recId).st === 'ACCEPTED') approveCancelCore(true);
+    /* 이의 기한(GC.claim.canObject = 거부 통지 + claim.objection_days)이 지나고 이의가 없으면 거부 확정. 이의가 있으면 중재를 기다림 */
+    const expired = (type, state, rejAt) => !GC.claim.canObject({ claimType: type, state, rejectedAt: rejAt, now: t });
+    if (s.creq && app.state('cancel') === 'CANCEL_REJECTED' && !s.creq.objection && expired('CANCEL', 'CANCEL_REJECTED', s.creq.rejAt)) {
+      app.go('cancel', 'no_objection', { by: `${P('claim.objection_days')}일 동안 이의 없음 → 거부 확정` }); s.creq.done = 'expired';
+      app.log('rule', '이의 기한이 지나 [이의 제기] 버튼을 숨겨요. 클레임이 닫혀 이 항목도 자동 구매 확정 대상으로 돌아가요');
+    }
+    if (retOpen()) {
+      const r = s.ret; const st = app.state('claim');
+      if (st === 'RETURN_REQUESTED' && r.method === 'pickup' && t >= r.pickupDue) { app.log('ext', '계약 택배사 · 자동 회수 접수'); app.go('claim', 'pickup', { by: '영업일 2일 미접수 → 플랫폼 자동 회수 접수' }); app.log('rule', '판매자 기한 초과 자동 처리 → 평가 기록(페널티는 2차)'); }
+      if (st === 'RETURN_REQUESTED' && r.method === 'self' && t >= r.shipDue) { app.go('claim', 'withdraw', { by: '7일 안 미발송 → 자동 철회' }); r.done = 'withdrawn'; app.notify('NOTI_CLAIM_WITHDRAWN', '고객', ['알림톡', '푸시'], '반품 자동 철회'); }
+      if (st === 'RETURN_INSPECTING' && r.inspectDue && t >= r.inspectDue) approveReturnCore(`검수 기한 영업일 ${P('claim.inspect_bd')}일 초과 → 자동 승인`, true);
+      if (st === 'RETURN_REJECTED' && !r.objection && expired('RETURN', st, r.rejAt)) { app.go('claim', 'no_objection', { by: `${P('claim.objection_days')}일 동안 이의 없음 → 거부 확정` }); r.done = 'rejected'; }
+    }
+    const days = P('order.auto_confirm_days');
+    s.recs.forEach((r) => {
+      if (r.st !== 'DELIVERED' || !r.deliveredAt || hasOpenClaim(r)) return;
+      const due = r.deliveredAt.getTime() + days * DAY;
+      if (t.getTime() >= due - DAY && t.getTime() < due && !s.fired['cd' + r.pid]) { s.fired['cd' + r.pid] = true; app.notify('NOTI_CONFIRM_DUE', '고객', ['푸시'], '내일 자동 구매 확정'); }
+      if (t.getTime() >= due) { move(r, 'confirm', `자동 구매 확정 배치 · 확정 시각 ${fmtDate(new Date(due))}(배송 완료 + ${days}일)`); app.log('money', `정산 이벤트: ${esc(recLabel(r))} 구매 확정 → ${PARTNERS[r.pid].name} 다음 주 정산 대상`); }
+    });
+    syncStrip(); guide();
+  });
+})();
+</script>
+</body>
+</html>

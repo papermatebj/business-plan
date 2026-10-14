@@ -1,0 +1,137 @@
+[
+ {
+  "act": "pmode",
+  "attr": "data-k=\"custom\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"desc\""
+ },
+ {
+  "act": "cleanDesc"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"ship\""
+ },
+ {
+  "act": "shipTpl",
+  "attr": "data-k=\"basic\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"custom\""
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#c1price');i.value='31000';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "act": "saveDraft",
+  "shot": "catalog-c01-custom-inverted"
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#c1price');i.value='26000';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "act": "upTemplate",
+  "after": 400
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"docs\""
+ },
+ {
+  "act": "upDoc",
+  "attr": "data-k=\"test\"",
+  "after": 400
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"submit\""
+ },
+ {
+  "act": "requestReview"
+ },
+ {
+  "adv": "86400000"
+ },
+ {
+  "role": "hq",
+  "shot": "catalog-c02-hq-sla"
+ },
+ {
+  "check": "rv_cat"
+ },
+ {
+  "check": "rv_word"
+ },
+ {
+  "check": "rv_doc"
+ },
+ {
+  "check": "rv_img"
+ },
+ {
+  "check": "rv_tpl"
+ },
+ {
+  "check": "rv_mode"
+ },
+ {
+  "check": "rv_desc"
+ },
+ {
+  "act": "approve"
+ },
+ {
+  "role": "customer"
+ },
+ {
+  "act": "logoList",
+  "shot": "catalog-c03-logo-list"
+ },
+ {
+  "act": "openP",
+  "attr": "data-id=\"mine\"",
+  "shot": "catalog-c04-pdp-custom"
+ },
+ {
+  "role": "hq"
+ },
+ {
+  "act": "suspend"
+ },
+ {
+  "role": "partner"
+ },
+ {
+  "act": "appeal",
+  "shot": "catalog-c05-partner-suspended"
+ },
+ {
+  "role": "hq"
+ },
+ {
+  "act": "hqTab",
+  "attr": "data-k=\"dict\""
+ },
+ {
+  "act": "synDel",
+  "attr": "data-w=\"수저봉투\"",
+  "shot": "catalog-c06-dict"
+ },
+ {
+  "act": "hqTab",
+  "attr": "data-k=\"cat\"",
+  "shot": "catalog-c07-category"
+ },
+ {
+  "act": "hqTab",
+  "attr": "data-k=\"review\""
+ },
+ {
+  "act": "unsuspend"
+ }
+]

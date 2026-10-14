@@ -1,0 +1,15 @@
+[
+ {"shot":"settlement-n01-top"},
+ {"role":"system"},{"act":"runClose","after":300},
+ {"role":"hq"},{"act":"holdItem"},{"act":"okSpike","shot":"settlement-n02-hq-stmt","full":true},
+ {"act":"hqTab","attr":"data-t=\"recon\""},{"act":"runRecon","after":400},
+ {"adv":"86400000"},{"act":"acct","attr":"data-a=\"han\""},{"act":"hqTab","attr":"data-t=\"agg\""},{"act":"confirmStl","after":300},
+ {"role":"partner"},{"act":"ptTab","attr":"data-t=\"stmt\"","after":300,"shot":"settlement-n03-partner-stmt","full":true},
+ {"click":"#stl-scn [data-scn=\"pro\"]","after":300,"shot":"settlement-n04-pro","full":true},
+ {"click":"#stl-scn [data-scn=\"mvp\"]","after":300},
+ {"adv":"86400000"},{"adv":"86400000"},
+ {"role":"hq"},{"act":"acct","attr":"data-a=\"choi\""},{"act":"hqTab","attr":"data-t=\"pay\""},
+ {"act":"reqPayout"},{"act":"acct","attr":"data-a=\"han\""},
+ {"act":"pgMode","attr":"data-m=\"unknown\""},
+ {"act":"approve","after":700,"shot":"settlement-n05-checking","full":true}
+]

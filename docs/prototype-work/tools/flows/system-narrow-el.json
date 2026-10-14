@@ -1,0 +1,10 @@
+[
+ {"shot":"system-narrow-el-01-policy","el":"#gc-device"},
+ {"act":"sec","attr":"data-s=\"알림\""},
+ {"act":"simRun"},
+ {"wait":2600},
+ {"shot":"system-narrow-el-02-noti","el":"#gc-device"},
+ {"act":"sec","attr":"data-s=\"권한\"","shot":"system-narrow-el-03-perm","el":"#gc-device"},
+ {"role":"customer"},
+ {"act":"csGo","attr":"data-to=\"settings\"","shot":"system-narrow-el-04-customer","el":"#gc-device"}
+]

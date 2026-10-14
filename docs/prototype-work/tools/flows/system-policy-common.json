@@ -1,0 +1,13 @@
+[
+ {"act":"grp","attr":"data-g=\"공통 · 영업일·배치\"","shot":"system-p01-common-designer"},
+ {"act":"role","attr":"data-r=\"최고관리자\""},
+ {"act":"grp","attr":"data-g=\"공통 · 영업일·배치\"","shot":"system-p02-common"},
+ {"act":"pvEdit","attr":"data-k=\"notify.notice_min_hours\""},
+ {"type":{"sel":"#pvNew","text":"12"},"after":700},
+ {"act":"pvReasonPreset","idx":1},
+ {"act":"pvSubmit","shot":"system-p03-range"},
+ {"act":"pvCancel"},
+ {"act":"grp","attr":"data-g=\"회원·혜택\"","shot":"system-p04-member-text"},
+ {"act":"grp","attr":"data-g=\"디자인\""},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device td.num, #gc-device td.tv')).map(e=>e.textContent).filter(t=>/NaN/.test(t)).length"}
+]

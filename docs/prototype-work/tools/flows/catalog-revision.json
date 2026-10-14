@@ -1,0 +1,176 @@
+[
+ {
+  "act": "pstep",
+  "attr": "data-k=\"desc\""
+ },
+ {
+  "act": "cleanDesc"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"ship\""
+ },
+ {
+  "act": "shipTpl",
+  "attr": "data-k=\"basic\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"docs\""
+ },
+ {
+  "act": "upDoc",
+  "attr": "data-k=\"test\"",
+  "after": 400
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"submit\""
+ },
+ {
+  "act": "requestReview"
+ },
+ {
+  "role": "hq"
+ },
+ {
+  "check": "rv_cat"
+ },
+ {
+  "check": "rv_word"
+ },
+ {
+  "check": "rv_doc"
+ },
+ {
+  "check": "rv_img"
+ },
+ {
+  "check": "rv_tpl"
+ },
+ {
+  "check": "rv_mode"
+ },
+ {
+  "check": "rv_desc"
+ },
+ {
+  "act": "approve"
+ },
+ {
+  "role": "partner"
+ },
+ {
+  "act": "ptab",
+  "attr": "data-k=\"desc\""
+ },
+ {
+  "act": "descEdit"
+ },
+ {
+  "act": "detUpload",
+  "after": 400
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#pdesc');i.value=i.value+' 로고 인쇄 주문은 10,000매부터 받아요.';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "act": "descSubmit",
+  "shot": "catalog-v01-partner-submitted"
+ },
+ {
+  "role": "hq"
+ },
+ {
+  "type": {
+   "sel": "#rvdComment",
+   "text": "로고 인쇄 안내 이미지의 최소 수량 표기를 확인해 주세요."
+  }
+ },
+ {
+  "act": "descFix"
+ },
+ {
+  "role": "partner",
+  "shot": "catalog-v02-partner-needs-fix"
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#pdesc');i.value=i.value+' 로고는 앞면 한 곳에 넣어요.';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "act": "descSubmit"
+ },
+ {
+  "role": "hq"
+ },
+ {
+  "eval": "document.querySelector('#gc-device [data-act=\"descDecline\"]').scrollIntoView({block:'center'})",
+  "shot": "catalog-v03-hq-three-buttons"
+ },
+ {
+  "act": "descDecline",
+  "keepDialog": true,
+  "after": 300,
+  "shot": "catalog-v04-decline-dialog"
+ },
+ {
+  "wait": 100
+ },
+ {
+  "role": "hq",
+  "shot": "catalog-v05-hq-after"
+ },
+ {
+  "role": "partner",
+  "shot": "catalog-v06-partner-declined"
+ },
+ {
+  "act": "ptab",
+  "attr": "data-k=\"list\"",
+  "shot": "catalog-v07-partner-list-declined"
+ },
+ {
+  "role": "customer"
+ },
+ {
+  "act": "cs",
+  "attr": "data-to=\"search\""
+ },
+ {
+  "type": {
+   "sel": "#q",
+   "text": "수저집"
+  },
+  "after": 300
+ },
+ {
+  "act": "doSearch"
+ },
+ {
+  "act": "openP",
+  "attr": "data-id=\"mine\""
+ },
+ {
+  "act": "dvOpen"
+ },
+ {
+  "eval": "!document.querySelector('#gc-device .phone-screen').innerHTML.includes('로고 인쇄 안내') && !document.querySelector('#gc-device .phone-screen').innerText.includes('10,000매부터 받아요')"
+ },
+ {
+  "eval": "[...document.querySelectorAll('#gc-device .app-sec h4')].find(x=>x.textContent.includes('상세 설명')).scrollIntoView({block:'start'})",
+  "shot": "catalog-v08-customer-old"
+ },
+ {
+  "role": "partner"
+ },
+ {
+  "act": "ptab",
+  "attr": "data-k=\"desc\""
+ },
+ {
+  "act": "descEdit",
+  "shot": "catalog-v09-new-revision"
+ }
+]

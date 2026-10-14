@@ -1,0 +1,82 @@
+[
+{
+"act": "toMethod"
+},
+{
+"act": "pickType",
+"attr": "data-type=\"TEMPLATE\""
+},
+{
+"act": "toRequest"
+},
+{
+"check": "rights"
+},
+{
+"check": "own"
+},
+{
+"act": "toCheckout"
+},
+{
+"check": "co_stage"
+},
+{
+"check": "co_plate"
+},
+{
+"act": "pay",
+"after": 500
+},
+{
+"role": "design"
+},
+{
+"act": "assign"
+},
+{
+"act": "startWork"
+},
+{
+"act": "propose",
+"after": 500,
+"shot": "dv-01-withdraw"
+},
+{
+"act": "withdrawProposal"
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"act": "propose",
+"after": 500
+},
+{
+"role": "customer"
+},
+{
+"act": "convertCustom",
+"after": 400
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"wait": 50,
+"shot": "dv-02-cancel-after-convert"
+},
+{
+"eval": "document.querySelector('#gc-device').innerText.replace(/\\s+/g,' ').slice(0,600)"
+},
+{
+"act": "cancelDesign",
+"after": 400
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+}
+]

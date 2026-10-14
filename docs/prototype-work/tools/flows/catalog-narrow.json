@@ -1,0 +1,138 @@
+[
+ {
+  "act": "pmode",
+  "attr": "data-k=\"both\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"desc\""
+ },
+ {
+  "act": "detUpload",
+  "after": 400
+ },
+ {
+  "act": "detRetry",
+  "after": 400
+ },
+ {
+  "act": "detTpl"
+ },
+ {
+  "act": "detPv",
+  "attr": "data-k=\"m\"",
+  "shot": "catalog-n-00-desc-editor"
+ },
+ {
+  "act": "detSave"
+ },
+ {
+  "act": "cleanDesc"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"price\"",
+  "shot": "catalog-n-01-price"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"ship\""
+ },
+ {
+  "act": "shipTpl",
+  "attr": "data-k=\"basic\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"custom\""
+ },
+ {
+  "act": "upTemplate",
+  "after": 400
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"docs\""
+ },
+ {
+  "act": "upDoc",
+  "attr": "data-k=\"test\"",
+  "after": 400
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"submit\""
+ },
+ {
+  "act": "requestReview"
+ },
+ {
+  "role": "hq",
+  "shot": "catalog-n-02-hq"
+ },
+ {
+  "check": "rv_cat"
+ },
+ {
+  "check": "rv_word"
+ },
+ {
+  "check": "rv_doc"
+ },
+ {
+  "check": "rv_img"
+ },
+ {
+  "check": "rv_tpl"
+ },
+ {
+  "check": "rv_mode"
+ },
+ {
+  "check": "rv_desc"
+ },
+ {
+  "act": "approve"
+ },
+ {
+  "role": "customer"
+ },
+ {
+  "act": "cs",
+  "attr": "data-to=\"search\""
+ },
+ {
+  "type": {
+   "sel": "#q",
+   "text": "ㅅㅈㅈ"
+  },
+  "after": 400,
+  "shot": "catalog-n-03-search"
+ },
+ {
+  "act": "pickAc",
+  "idx": 0,
+  "shot": "catalog-n-04-results"
+ },
+ {
+  "act": "openP",
+  "attr": "data-id=\"mine\""
+ },
+ {
+  "click": "#gc-aside [data-mem=\"biz\"]",
+  "shot": "catalog-n-05-pdp"
+ },
+ {
+  "act": "dvOpen",
+  "shot": "catalog-n-07-desc-open"
+ },
+ {
+  "role": "partner",
+  "shot": "catalog-n-06-partner-list"
+ },
+ {
+  "act": "ptab",
+  "attr": "data-k=\"desc\"",
+  "shot": "catalog-n-08-partner-desc"
+ }
+]

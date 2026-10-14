@@ -1,0 +1,16 @@
+[
+ {"eval":"(()=>{const i=document.querySelector('#pname');i.value='최저가 크라프트 수저집 스타벅스 스타일';i.dispatchEvent(new Event('input',{bubbles:true}));})()","after":700,"shot":"catalog-r01-name-error"},
+ {"act":"pstep","attr":"data-k=\"ship\""},
+ {"act":"shipTpl","attr":"data-k=\"cargo\""},
+ {"act":"pstep","attr":"data-k=\"docs\""},
+ {"act":"upDoc","attr":"data-k=\"test\"","after":400},
+ {"act":"pstep","attr":"data-k=\"submit\""},
+ {"act":"requestReview","shot":"catalog-r02-blocked"},
+ {"act":"pstep","attr":"data-k=\"basic\""},
+ {"eval":"(()=>{const i=document.querySelector('#pname');i.value='크라프트 수저집 40×240mm';i.dispatchEvent(new Event('input',{bubbles:true}));})()","after":700},
+ {"act":"pstep","attr":"data-k=\"submit\""},
+ {"act":"requestReview"},
+ {"role":"hq"},
+ {"act":"reject","after":300},
+ {"role":"partner","shot":"catalog-r03-rejected"}
+]

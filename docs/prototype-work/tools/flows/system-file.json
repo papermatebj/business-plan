@@ -1,0 +1,18 @@
+[
+ {"act":"sec","attr":"data-s=\"파일 처리\""},
+ {"act":"fileUp","attr":"data-id=\"lock\""},
+ {"role":"system","shot":"system-f01-scanning"},
+ {"act":"fileScan"},
+ {"role":"hq","shot":"system-f02-unscannable"},
+ {"act":"fileUp","attr":"data-id=\"slow\""},
+ {"role":"system"},
+ {"act":"fileScan","shot":"system-f03-rescan"},
+ {"act":"fileScan"},
+ {"role":"hq","shot":"system-f04-failed","full":true},
+ {"act":"fileUp","attr":"data-id=\"logo\""},
+ {"adv":"3600000"},
+ {"role":"system","shot":"system-f05-timeout"},
+ {"act":"fileScan"},
+ {"act":"fileConvert"},
+ {"role":"hq","shot":"system-f06-pass-after-rescan"}
+]

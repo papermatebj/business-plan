@@ -1,0 +1,143 @@
+[
+{
+"act": "toMethod"
+},
+{
+"act": "toRequest"
+},
+{
+"check": "rights"
+},
+{
+"check": "stage"
+},
+{
+"check": "own"
+},
+{
+"act": "toCheckout"
+},
+{
+"check": "co_stage"
+},
+{
+"check": "co_plate"
+},
+{
+"act": "pay",
+"after": 500
+},
+{
+"role": "design"
+},
+{
+"act": "assign"
+},
+{
+"act": "startWork"
+},
+{
+"act": "propose",
+"after": 500
+},
+{
+"role": "customer"
+},
+{
+"act": "cs",
+"attr": "data-to=\"proposal\""
+},
+{
+"act": "cs",
+"attr": "data-to=\"approve\""
+},
+{
+"check": "ap_typo"
+},
+{
+"check": "ap_contact"
+},
+{
+"check": "ap_color"
+},
+{
+"check": "ap_qty"
+},
+{
+"check": "ap_nocancel"
+},
+{
+"act": "doApprove",
+"after": 600
+},
+{
+"act": "buySource"
+},
+{
+"act": "dlSource",
+"shot": "dk-01-source"
+},
+{
+"role": "design"
+},
+{
+"act": "handOff"
+},
+{
+"role": "partner"
+},
+{
+"act": "download"
+},
+{
+"act": "printable"
+},
+{
+"act": "ship"
+},
+{
+"role": "system"
+},
+{
+"act": "trackDelivery"
+},
+{
+"role": "customer"
+},
+{
+"act": "remakeReq",
+"after": 400
+},
+{
+"role": "partner"
+},
+{
+"act": "remakePhoto"
+},
+{
+"act": "remakeApprove"
+},
+{
+"act": "remakeShip"
+},
+{
+"role": "system"
+},
+{
+"act": "remakeDelivered",
+"shot": "dk-02-system"
+},
+{
+"adv": "604800000"
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"role": "customer",
+"shot": "dk-03-done"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+}
+]

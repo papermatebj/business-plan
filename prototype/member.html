@@ -1,0 +1,1066 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>회원·사업자 인증 · 식업 프로토타입</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@600;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/gc.css">
+<style>
+  .lg-hero { display: grid; gap: 8px; justify-items: start; padding: 10px 0 4px; }
+  .lg-hero .brand-mark { width: 40px; height: 40px; font-size: 21px; border-radius: 10px; }
+  .btn-kakao { background: var(--y-weak); border-color: var(--y); }
+  .linkish { background: none; border: 0; padding: 0; font: inherit; font-size: 13px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; justify-self: start; }
+  .lg-links { justify-content: center; }
+  .row-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .demo { border: 1px dashed var(--ink-3); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+  .demo-h { font-size: 11.5px; font-weight: 600; color: var(--ink-3); }
+  .chipbtn { display: inline-flex; align-items: center; border: 1px solid var(--rule-strong); background: var(--sheet); color: var(--ink-2); border-radius: 999px; padding: 4px 11px; font-size: 12.5px; cursor: pointer; line-height: 1.4; }
+  .chipbtn[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); font-weight: 600; }
+  span.chipbtn { cursor: default; }
+  .inds { display: flex; flex-wrap: wrap; gap: 6px; }
+  .agree-all { font-weight: 700; font-size: 15px; border-bottom: 1px solid var(--rule); padding-bottom: 12px; }
+  .agree-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .chan { display: flex; flex-wrap: wrap; gap: 0 14px; padding-left: 28px; }
+  .rules-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 12.5px; }
+  .rules-list li { display: flex; gap: 8px; align-items: center; color: var(--ink-3); }
+  .rules-list li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--rule-strong); flex: none; }
+  .rules-list li.ok { color: var(--ink); }
+  .rules-list li.ok::before { background: var(--spot); border-color: var(--spot); }
+  .rules-list li.bad { color: var(--stop); }
+  .rules-list li.bad::before { background: var(--stop); border-color: var(--stop); }
+  .steps-mini { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; }
+  .steps-mini span { font-size: 11.5px; text-align: center; padding: 4px 0; border-top: 3px solid var(--rule); color: var(--ink-3); }
+  .steps-mini span.on { border-color: var(--spot); color: var(--ink); font-weight: 600; }
+  .pc-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .pc-thumb { width: 64px; height: 64px; border-radius: 8px; background: var(--kraft-weak); border: 1px solid var(--rule); position: relative; }
+  .pc-thumb::after { content: ""; position: absolute; left: 8px; right: 8px; top: 26px; height: 10px; border-radius: 2px; background: var(--kraft); }
+  .pc-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+  .pc-price .app-price { font-size: 20px; }
+  .cmp { display: grid; gap: 6px; }
+  .cmp-label { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+  .warn-banner { border: 2px solid var(--warn); background: var(--warn-weak); border-radius: 10px; padding: 10px 14px; font-size: 13.5px; }
+  .hold-banner { border: 2px solid var(--stop); background: var(--stop-weak); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; }
+  .cert { border: 1px solid var(--rule-strong); background: var(--sheet-2); border-radius: 6px; padding: 14px 16px; display: grid; gap: 8px; }
+  .cert h4 { text-align: center; font-family: var(--display); font-size: 17px; letter-spacing: .3em; }
+  .blk { display: grid; }
+  .blk .li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 9px 0; border-top: 1px solid var(--rule); font-size: 13.5px; align-items: center; }
+  .blk .li:first-child { border-top: 0; }
+  ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+  .split.wrap { flex-wrap: wrap; align-items: center; }
+  .result-mark { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-family: var(--display); font-size: 22px; background: var(--stop-weak); color: var(--stop); }
+  .grid2.tight { gap: 8px; }
+  .demo .seg { justify-self: start; }
+  .tbl td.nw, .nw { white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="assets/engine.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function () {
+  'use strict';
+  const { won, fmtDate } = GC;
+  const esc = UI.esc, pv = UI.pv;
+  const MIN = 60000;
+
+  /* ── 엔진에 아직 없는 정책값: 이 페이지 상수(임시 기본값) ── */
+  const LP = {
+    'member.biz_verify_fail_max': { v: 3, unit: '회', label: '국세청 진위 불일치 → 서류 심사 요청 가능 횟수' },
+    'member.biz_manual_bd': { v: 1, unit: '영업일', label: '사업자 서류 심사 처리 목표' },
+    'member.biz_closed_grace_days': { v: 30, unit: '일', label: '폐업 확인 후 사업자 혜택 해제까지 유예' },
+    'member.biz_recheck_day': { v: 1, unit: '일', label: '사업자 상태 월 재조회 날짜(매월 n일 03:00)' },
+    'member.email_code_minutes': { v: 5, unit: '분', label: '이메일 인증번호 유효 시간' },
+    'member.email_code_fail_max': { v: 5, unit: '회', label: '이메일 인증번호 오입력 한도' },
+    'member.password_rule': { v: '8~20자 · 2종 이상', unit: '', label: '비밀번호 규칙(영문·숫자·특수문자 중)' },
+    'member.identity_daily_max': { v: 5, unit: '회', label: '같은 사람 본인인증 하루 한도' },
+  };
+  const lp = (k) => LP[k].v;
+  function lpv(k, text) {
+    const m = LP[k];
+    return `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(m.label)} (${k}) · 엔진에 아직 없어 이 페이지 상수로 둠">${text != null ? text : `${m.v}${m.unit}`}</span>`;
+  }
+
+  /* ── 상태 머신: 가입 화면 단계 / 회원 계정 ── */
+  GC.sm.define('MEMBER_JOIN', {
+    name: '가입·사업자 인증 화면 단계',
+    states: {
+      LOGIN: { name: '로그인 선택' }, TERMS: { name: '약관 동의' }, IDENTITY: { name: '본인인증' }, JOINED: { name: '가입 완료' },
+      BIZ_VERIFY: { name: '사업자 인증' }, BIZ_MEMBER: { name: '사업자 회원' },
+      UNDERAGE: { name: '만 19세 미만' }, DUP_CI: { name: '이미 가입됨' }, REJOIN_BLOCKED: { name: '재가입 제한' },
+      BIZ_MANUAL: { name: '서류 심사 대기' }, BIZ_DENIED: { name: '인증 불가' },
+    },
+    main: ['LOGIN', 'TERMS', 'IDENTITY', 'JOINED', 'BIZ_VERIFY', 'BIZ_MEMBER'],
+    branch: ['UNDERAGE', 'DUP_CI', 'REJOIN_BLOCKED', 'BIZ_MANUAL', 'BIZ_DENIED'],
+    stop: ['UNDERAGE', 'DUP_CI', 'REJOIN_BLOCKED', 'BIZ_DENIED'],
+    transitions: [
+      { from: 'LOGIN', event: 'sns_new', to: 'TERMS', actor: 'customer', label: 'SNS 인증 · 처음 온 회원' },
+      { from: 'LOGIN', event: 'email_verified', to: 'TERMS', actor: 'customer', label: '이메일 인증번호 확인' },
+      { from: 'TERMS', event: 'agree', to: 'IDENTITY', actor: 'customer', label: '필수 동의 · 동의 이력 저장' },
+      { from: 'IDENTITY', event: 'verified', to: 'JOINED', actor: 'system', label: '본인인증 통과 · 만 19세 이상' },
+      { from: 'IDENTITY', event: 'underage', to: 'UNDERAGE', actor: 'system', label: '만 19세 미만 · 결과 저장 안 함' },
+      { from: 'IDENTITY', event: 'dup_ci', to: 'DUP_CI', actor: 'system', label: '같은 CI 계정이 있음' },
+      { from: 'IDENTITY', event: 'rejoin_block', to: 'REJOIN_BLOCKED', actor: 'system', label: '탈퇴 후 30일 안' },
+      { from: ['UNDERAGE', 'DUP_CI', 'REJOIN_BLOCKED'], event: 'restart', to: 'LOGIN', actor: 'customer', label: '로그인 화면으로' },
+      { from: 'JOINED', event: 'start_biz', to: 'BIZ_VERIFY', actor: 'customer', label: '사업자 인증 시작' },
+      { from: 'BIZ_VERIFY', event: 'convert', to: 'BIZ_MEMBER', actor: 'customer', label: '진위 일치·계속사업자 · 정보 입력' },
+      { from: 'BIZ_VERIFY', event: 'manual_request', to: 'BIZ_MANUAL', actor: 'customer', label: '3회 불일치 · 등록증 제출' },
+      { from: 'BIZ_VERIFY', event: 'deny', to: 'BIZ_DENIED', actor: 'system', label: '휴업·폐업 또는 계정 수 초과' },
+      { from: 'BIZ_MANUAL', event: 'manual_approve', to: 'BIZ_MEMBER', actor: 'hq', label: '서류 심사 승인' },
+      { from: 'BIZ_MANUAL', event: 'manual_reject', to: 'BIZ_DENIED', actor: 'hq', label: '서류 심사 반려(사유 코드)' },
+      { from: 'BIZ_DENIED', event: 'retry', to: 'BIZ_VERIFY', actor: 'customer', label: '다시 신청' },
+      { from: 'BIZ_MEMBER', event: 'benefit_off', to: 'JOINED', actor: 'system', label: '폐업 유예 끝 · 사업자 혜택 해제' },
+      { from: ['JOINED', 'BIZ_VERIFY', 'BIZ_MANUAL', 'BIZ_DENIED', 'BIZ_MEMBER'], event: 'withdraw', to: 'LOGIN', actor: 'customer', label: '회원 탈퇴 · 즉시 로그아웃' },
+    ],
+  });
+  GC.sm.define('MEMBER_ACCOUNT', {
+    name: '회원 계정 상태',
+    states: { ACTIVE: { name: '정상 · 개인' }, BIZ: { name: '정상 · 사업자' }, BIZ_CHECK: { name: '사업자 확인 필요' }, WITHDRAWN: { name: '탈퇴' } },
+    main: ['ACTIVE', 'BIZ'],
+    branch: ['BIZ_CHECK', 'WITHDRAWN'],
+    stop: ['WITHDRAWN'],
+    transitions: [
+      { from: 'ACTIVE', event: 'biz_verified', to: 'BIZ', actor: 'system', label: '사업자 인증 통과' },
+      { from: 'BIZ', event: 'closure_detected', to: 'BIZ_CHECK', actor: 'system', label: '월 재조회 · 휴업·폐업 감지' },
+      { from: 'BIZ_CHECK', event: 'reverified', to: 'BIZ', actor: 'system', label: '계속사업자로 다시 확인' },
+      { from: 'BIZ_CHECK', event: 'grace_over', to: 'ACTIVE', actor: 'system', label: '유예 끝 · 사업자 혜택 해제' },
+      { from: ['ACTIVE', 'BIZ', 'BIZ_CHECK'], event: 'withdraw', to: 'WITHDRAWN', actor: 'customer', label: '회원 탈퇴' },
+      { from: 'WITHDRAWN', event: 'rejoin', to: 'ACTIVE', actor: 'system', label: '30일 뒤 재가입 · 새 회원 번호' },
+    ],
+  });
+
+  /* ── 시나리오 데이터 (체험용 예시) ── */
+  const OWNER = { name: '홍길동', birth: '1985-03-14', phone: '010-2345-1234' };
+  const MINOR = { name: '김하늘', birth: '2008-05-20', phone: '010-7788-4521' };
+  const SNS = { kakao: { name: '카카오', email: 'gildong.hong@kakao.com' }, apple: { name: 'Apple', email: 'x7k2mq9d@privaterelay.appleid.com' }, email: { name: '이메일' } };
+  const PRODUCT = {
+    name: '크라프트 수저집 40×240mm', partner: '대성포장', unit: '1박스 · 1,000매', perBox: 1000,
+    tiers: [{ min: 1, price: 32000 }, { min: 5, price: 30000 }, { min: 10, price: 28000 }],
+    bizTiers: [{ min: 1, price: 30000 }, { min: 5, price: 28500 }, { min: 10, price: 27000 }], // 사업자 전용가(파트너 설정, 일반가보다 낮게)
+  };
+  const INDUSTRIES = ['한식', '중식', '일식', '양식', '카페', '베이커리', '주점', '배달 전문', '급식', '기타'];
+  const NTS = { // 국세청 응답 예시
+    2148635723: { rep: '홍길동', open: '20210302', status: 'active', statusName: '계속사업자', tax: '일반과세자', accounts: 0 },
+    3142715904: { rep: '홍길동', open: '20190415', status: 'closed', statusName: '폐업', closedAt: '2025-12-31', tax: '일반과세자', accounts: 0 },
+    1058733108: { rep: '홍길동', open: '20200901', status: 'active', statusName: '계속사업자', tax: '일반과세자', accounts: 3 },
+  };
+  const SAMPLES = [
+    ['ok', '2148635723', '홍길동', '20210302', '오늘밥상 · 계속사업자'],
+    ['space', '2148635723', '홍 길동', '20210302', '대표자명 띄어쓰기 다름'],
+    ['closed', '3142715904', '홍길동', '20190415', '폐업한 사업자'],
+    ['limit', '1058733108', '홍길동', '20200901', '이미 3개 계정이 인증'],
+    ['bad', '1234567890', '홍길동', '20210302', '검증번호가 틀린 번호'],
+  ];
+  const TERMS = [
+    { k: 'tos', req: true, t: '이용약관', ver: 'v1.0', view: true },
+    { k: 'privacy', req: true, t: '개인정보 수집·이용', ver: 'v1.0', view: true },
+    { k: 'age', req: true, t: '만 19세 이상입니다' },
+    { k: 'mk_push', grp: 'mk', t: '앱 푸시' },
+    { k: 'mk_brand', grp: 'mk', t: '브랜드 메시지' },
+    { k: 'mk_email', grp: 'mk', t: '이메일' },
+    { k: 'night', t: '야간(21~08시) 광고성 정보 수신' },
+    { k: 'mk_use', t: '개인정보 마케팅 활용', ver: 'v1.0', view: true },
+  ];
+  const TERM_TEXT = {
+    tos: ['이용약관 v1.0 (2026-10-01 시행)', '<p>통신판매중개자로서 식업의 책임 범위, 맞춤 제작 상품의 청약철회 제한, 회원 탈퇴와 재가입 제한(30일)을 담아요.</p><p><span class="tag tag-phase">법률 자문 전 초안</span></p>'],
+    privacy: ['개인정보 수집·이용 v1.0', '<p>이름·휴대폰 번호·CI/DI·이메일을 회원 식별, 중복 가입 확인, 거래 알림에 써요. 본인인증으로 받은 생년월일·성별은 만 나이 확인에만 쓰고 저장하지 않아요(확인 결과·시각만 저장). 탈퇴하면 파기하고 거래 기록(계약·결제 5년)만 따로 보관해요.</p>'],
+    mk_use: ['개인정보 마케팅 활용 v1.0', '<p>구매 이력과 업종으로 맞춤 혜택을 골라 보내요. 동의하지 않아도 가입과 주문에 영향이 없어요.</p>'],
+  };
+  const OTHERS = [
+    { no: 'M-100871', name: '김서연', phone: '010-3381-5521', type: '사업자', st: '정상', joined: '2026-09-14' },
+    { no: 'M-099120', name: '박민수', phone: '010-9012-9083', type: '개인', st: '휴면', joined: '2025-08-02', phase: true },
+  ];
+  const REJECT_CODES = ['서류 불일치', '식별 불가', '휴업·폐업', '인증 계정 수 초과', '기타'];
+  const MASK_REASONS = ['고객 문의 · 본인 확인', '배송 사고 확인', '분쟁 처리'];
+  const EMAIL_CODE = '482913';
+
+  /* ── 도우미 ── */
+  const maskName = (n) => (n.length <= 2 ? n[0] + '*' : n[0] + '*'.repeat(n.length - 2) + n[n.length - 1]);
+  const maskPhone = (p) => p.replace(/^(\d{3})-?(\d{3,4})-?(\d{4})$/, '$1-****-$3');
+  const maskEmail = (e) => { const [id, dom] = e.split('@'); return `${id.slice(0, 2)}***@${dom}`; };
+  const digitsOf = (v) => String(v || '').replace(/\D/g, '').slice(0, 10);
+  function fmtBizNo(d) { d = digitsOf(d); return d.length <= 3 ? d : d.length <= 5 ? `${d.slice(0, 3)}-${d.slice(3)}` : `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`; }
+  /* 국세청 사업자등록번호 검증번호: 가중치 1·3·7·1·3·7·1·3·5, 9번째 자리×5의 십의 자리를 더함 */
+  function bizNoState(d) {
+    if (!d) return { ok: false, msg: '숫자 10자리를 넣으면 하이픈은 자동으로 들어가요' };
+    if (d.length < 10) return { ok: false, msg: `숫자 10자리를 넣어 주세요 (${d.length}/10)` };
+    const W = [1, 3, 7, 1, 3, 7, 1, 3, 5]; const n = d.split('').map(Number);
+    const sum = W.reduce((a, w, i) => a + n[i] * w, 0) + Math.floor((n[8] * 5) / 10);
+    if ((10 - (sum % 10)) % 10 === n[9]) return { ok: true, msg: '번호 형식이 맞아요. 국세청에서 진위와 상태를 확인해요' };
+    return { ok: false, err: true, msg: '사업자등록번호가 올바르지 않아요. 마지막 자리(검증번호)가 계산과 맞지 않으니 사업자등록증의 번호를 다시 확인해 주세요' };
+  }
+  function openOk(v) {
+    if (!/^\d{8}$/.test(v || '')) return false;
+    const y = +v.slice(0, 4), m = +v.slice(4, 6), d = +v.slice(6, 8); const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d && dt <= app.clock.now();
+  }
+  const openHint = (v) => (!v ? '사업자등록증의 개업연월일 8자리 (예: 20210302)' : openOk(v) ? '날짜 형식이 맞아요' : '개업일자를 YYYYMMDD 8자리로 넣어 주세요');
+  const bizReady = (b) => bizNoState(b.no).ok && b.rep.trim() && openOk(b.open);
+  const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(e || '').trim());
+  function manAge(birth, now) {
+    const [y, m, d] = birth.split('-').map(Number); let age = now.getFullYear() - y;
+    if (now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d)) age -= 1;
+    return age;
+  }
+  const firstOfNextMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, lp('member.biz_recheck_day'), 3, 0);
+  const mmss = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  function pwCheck(e) {
+    const pw = e.pw || ''; const kinds = [/[A-Za-z]/, /\d/, /[^A-Za-z0-9]/].filter((r) => r.test(pw)).length;
+    const local = (e.addr.split('@')[0] || '').toLowerCase();
+    return [
+      ['8~20자', pw.length >= 8 && pw.length <= 20],
+      ['영문·숫자·특수문자 중 2종 이상', kinds >= 2],
+      ['이메일 아이디를 그대로 쓰지 않음', !!pw && !(local.length >= 4 && pw.toLowerCase().includes(local))],
+      ['비밀번호 확인과 일치', !!pw && pw === e.pw2],
+    ];
+  }
+  const pwRulesHtml = (e) => pwCheck(e).map(([t, ok]) => `<li class="${ok ? 'ok' : e.pw ? 'bad' : ''}">${t}</li>`).join('');
+  const emReady = (e) => e.verified && pwCheck(e).every((x) => x[1]);
+  const freshBiz = () => ({ no: '', rep: '', open: '', fails: 0, nts: null });
+  const freshForm = () => ({ name: '오늘밥상', type: '음식점업', item: '한식', industry: null, addr: '', addr2: '', homeAddr: false, tax: 'tax@todaybap.kr', cert: false });
+  const formOk = (s, manual) => { const v = s.bizForm; return !!(v.name.trim() && v.type.trim() && v.item.trim() && v.industry && v.addr && emailOk(v.tax) && (!manual || v.cert)); };
+  const orderLabel = (st) => GC.sm.machine('ORDER').states[st].customer;
+  /* 로그인 세션(U-MEM-01): 앱 자동 로그인은 마지막 사용부터, 웹 "로그인 유지"는 로그인부터 */
+  const KEEP = { app: () => GC.Policy.get('member.app_keep_login_days'), web: () => GC.Policy.get('member.web_keep_login_days') };
+  const sessUntil = (x) => new Date((x.kind === 'app' ? x.last : x.at).getTime() + KEEP[x.kind]() * GC.DAY);
+  const freshSessions = (now) => [
+    { kind: 'app', name: '이 휴대폰 · 식업 앱', at: now, last: now },
+    { kind: 'web', name: '매장 PC · 웹(로그인 유지)', at: now, last: now },
+  ];
+
+  const app = UI.mount({
+    domain: 'member',
+    title: '회원·사업자 인증',
+    lede: '사장님이 카카오로 가입하고 휴대폰 본인인증을 거친 뒤, 사업자등록번호를 국세청에 확인하면 사업자 회원이 되어 사업자가가 열립니다. 본사는 개인정보를 가려서 보고, 매달 사업자 상태를 다시 확인합니다.',
+    meta: '근거: 기능 명세서 U-MEM-01(로그인 유지·모든 기기 로그아웃)~05·08 · A-MEM-01~03 · C-SEC-01(본인인증 결과 저장) · C-NOTI-01 · 디자인 요청서 S-02~S-04·S-33 · 가격 표기 규칙',
+    actors: [
+      { id: 'customer', title: '로그인' },
+      { id: 'hq', nav: ['대시보드', '회원', '사업자 인증', '제재'], navOn: '회원', url: 'admin.sikup.co.kr/members' },
+      { id: 'system' },
+    ],
+    strips: [
+      { id: 'join', machine: 'MEMBER_JOIN', label: '가입·사업자 인증', note: '고객 화면 단계(저장하는 상태값이 아니라 화면 흐름) · U-MEM-01~05', initial: 'LOGIN' },
+      { id: 'acct', machine: 'MEMBER_ACCOUNT', label: '회원 계정', note: '회원 테이블의 유형·상태 · A-MEM-01·02 · U-MEM-08' },
+    ],
+    render: (actor, f) => VIEWS[actor](f),
+    onReset: init,
+    foot: '시나리오: 강남 한식당 "오늘밥상"의 홍길동 사장님(1985년생)이 카카오로 가입합니다. 본인인증 결과·사업자등록번호·국세청 응답은 모두 체험용 예시입니다.',
+  });
+  const S = () => app.S;
+  const isBiz = () => ['BIZ', 'BIZ_CHECK'].includes(app.state('acct'));
+
+  function init() {
+    Object.assign(app.S, {
+      cs: 'login', via: null, notice: null, consent: {}, consents: [], idScn: 'ok', person: null, member: null, oldMember: null,
+      biz: freshBiz(), bizForm: freshForm(), bizInfo: null, manual: null, denied: null, limitBlocked: 0,
+      ntsAnswer: 'active', nextRecheck: firstOfNextMonth(app.clock.now()), rechecks: [], grace: null, revoked: false,
+      order: null, wdReason: null, withdrawn: null, rejoined: false,
+      sessions: [], out: null,
+      hqTab: 'member', hqOpen: false, unmasked: false, maskReason: null, maskNote: '', audit: [], hqDone: false, rejCode: null, rejNote: '',
+      email: { addr: '', sentAt: null, input: '', verified: false, fails: 0, err: null, pw: '', pw2: '' },
+    });
+    guide();
+  }
+
+  /* ── 지금 차례 안내 ── */
+  function guide() {
+    const s = S(); const j = app.state('join'); const a = app.state('acct');
+    const max = lp('member.biz_verify_fail_max');
+    if (s.out && s.member) {
+      const how = s.out === 'expired' ? `앱을 ${GC.Policy.get('member.app_keep_login_days')}일 동안 쓰지 않아 자동 로그인이 끝났어요` : '모든 기기에서 로그아웃됐어요';
+      return app.turn('customer', `${how}. 가입한 방식(${SNS[s.member.via].name})으로 다시 로그인하세요`, { hint: '기존 회원은 약관·본인인증 없이 바로 로그인하고, 보던 화면으로 돌아가요.', rules: [{ k: '웹 로그인 유지', policy: 'member.web_keep_login_days' }, { k: '앱 자동 로그인', policy: 'member.app_keep_login_days', v: `마지막 사용부터 ${GC.Policy.get('member.app_keep_login_days')}일` }, { k: '기존 회원', v: '바로 로그인' }] });
+    }
+    if (s.cs === 'withdraw' && s.member) {
+      const b = blockers();
+      return app.turn('customer', b.length ? `${b[0]}이 있어 지금은 탈퇴할 수 없어요. 주문을 구매 확정한 뒤 다시 오세요` : '사라지는 혜택과 재가입 제한을 확인하고 [본인 확인하고 탈퇴하기]를 누르세요', {
+        hint: b.length ? '+1일로 배송 완료를 만든 뒤 마이에서 [구매 확정]을 누르면 풀려요.' : null,
+        rules: [{ k: '탈퇴 불가', v: '진행 중 주문·클레임 등' }, { k: '재가입 제한', policy: 'member.rejoin_block_days' }, { k: '거래 기록 분리 보관', v: '계약·결제 5년' }],
+      });
+    }
+    switch (j) {
+      case 'LOGIN': {
+        if (s.withdrawn && !s.withdrawn.expired) return app.turn('customer', '탈퇴했어요. 같은 사람이 [카카오로 시작하기]로 다시 가입해 보세요. 본인인증 단계에서 재가입 제한에 걸려요', { rules: [{ k: '재가입 제한', policy: 'member.rejoin_block_days' }, { k: '가입 가능일', v: fmtDate(s.withdrawn.until, false) }, { k: '남겨 두는 값', v: 'CI 해시만' }] });
+        if (s.cs === 'email') {
+          const e = s.email;
+          const expired = e.sentAt && !e.verified && app.clock.now() - e.sentAt >= lp('member.email_code_minutes') * MIN;
+          return app.turn('customer', !e.sentAt ? '이메일을 넣고 [인증번호 받기]를 누르세요' : expired ? '인증번호가 만료됐어요. [다시 받기]로 새 번호를 받으세요' : !e.verified ? '메일로 받은 6자리 인증번호를 넣고 [확인]을 누르세요' : '비밀번호를 규칙에 맞게 넣고 [다음: 약관 동의]를 누르세요', {
+            hint: e.sentAt && !e.verified && !expired ? '+1시간을 눌러 보면 유효 시간이 지나 인증번호가 만료돼요.' : null,
+            rules: [{ k: '인증번호', v: `6자리 · ${lpv('member.email_code_minutes')} 유효` }, { k: '재발송', v: '1분 간격 · 하루 10회' }, { k: '비밀번호', v: lpv('member.password_rule') }, { k: '로그인 5회 실패', v: '10분 잠금' }],
+          });
+        }
+        if (s.cs === 'browse') return app.turn('customer', '로그인하지 않아 일반가와 "사업자가 보기" 안내만 보여요. [로그인하고 사업자가 보기]를 누르세요', { rules: [{ k: '비로그인 가격', v: '일반가(VAT 포함)' }, { k: '사업자 전용가', v: '인증 회원만' }] });
+        return app.turn('customer', '로그인 화면에서 [카카오로 시작하기]를 누르세요', { hint: '이메일 가입, 로그인 없이 둘러보기도 눌러 볼 수 있어요.', rules: [{ k: 'MVP 로그인', v: '카카오 · Apple' }, { k: '네이버 · 구글', v: '2차' }, { k: '웹 로그인 유지', policy: 'member.web_keep_login_days' }, { k: '앱 자동 로그인', policy: 'member.app_keep_login_days', v: `마지막 사용부터 ${GC.Policy.get('member.app_keep_login_days')}일` }] });
+      }
+      case 'TERMS': return app.turn('customer', '필수 3개에 동의하고 [동의하고 본인인증하기]를 누르세요. 선택 항목은 처음에 모두 꺼져 있어요', { rules: [{ k: '필수', v: '이용약관 · 개인정보 · 만 19세' }, { k: '마케팅 수신', v: '채널별 · 야간 따로' }, { k: '광고성 동의 재확인', v: '2년마다' }, { k: '알림톡', v: '광고에 안 씀' }] });
+      case 'IDENTITY': return app.turn('customer', '[휴대폰 본인인증 하기]를 누르세요. 체험용으로 본인확인기관이 돌려줄 결과를 고를 수 있어요', { rules: [{ k: '가입 가능 나이', policy: 'member.min_age', v: `만 ${GC.Policy.get('member.min_age')}세 이상` }, { k: '1인 1계정', v: 'CI로 확인' }, { k: '탈퇴 후 재가입', policy: 'member.rejoin_block_days' }, { k: '같은 사람 인증', v: `하루 ${lpv('member.identity_daily_max')}` }] });
+      case 'UNDERAGE': return app.turn('customer', '만 19세 미만이라 가입이 멈췄어요. [로그인 화면으로]를 눌러 다른 갈래를 해 보세요', { rules: [{ k: '인증 결과', v: '저장하지 않음' }, { k: '이유', v: '미성년자 계약 취소 위험' }] });
+      case 'DUP_CI': return app.turn('customer', '이미 가입된 계정이 있다는 안내를 확인하세요. 기존 계정으로 로그인해야 해요', { rules: [{ k: '1인 1계정', v: 'CI 기준' }, { k: '가입 방식 안내', v: '일부 가려 보여줌' }] });
+      case 'REJOIN_BLOCKED':
+        if (!s.withdrawn.expired) return app.turn('system', `탈퇴 후 재가입 제한이에요. +7일로 ${fmtDate(s.withdrawn.until, false)} 뒤까지 시간을 보내세요`, { rules: [{ k: '재가입 제한', policy: 'member.rejoin_block_days' }, { k: '가입 가능일', v: fmtDate(s.withdrawn.until, false) }] });
+        return app.turn('customer', '재가입 제한이 끝났어요. [다시 가입하기]를 누르고 카카오로 다시 시작하세요', { rules: [{ k: '탈퇴 전 쿠폰·포인트', v: '되살리지 않음' }, { k: '신규가입 쿠폰', v: 'CI 기준 1회' }] });
+      case 'JOINED':
+        if (s.rejoined) return app.done(`재가입 제한이 끝나 새 회원 번호(${s.member.no})로 다시 가입했어요. 탈퇴 전 쿠폰·포인트와 신규가입 쿠폰은 다시 주지 않았어요.`, { next: '다른 갈래: [처음부터] → 본인인증에서 "만 19세 미만"·"이미 가입된 사람", 사업자 인증에서 체험용 예시(대표자명 띄어쓰기 3회 → 서류 심사, 폐업, 계정 3개)를 골라 보세요.' });
+        if (s.revoked) return app.turn('customer', '사업자 혜택이 해제돼 홈 가격이 일반가로 돌아왔어요. [마이]에서 [회원 탈퇴]로 탈퇴 갈래를 이어 가세요', { rules: [{ k: '탈퇴 불가', v: '진행 중 주문·클레임 등' }, { k: '재가입 제한', policy: 'member.rejoin_block_days' }] });
+        return app.turn('customer', '[사업자 인증하기]를 누르세요. 사업자가와 세금계산서가 열려요', { rules: [{ k: '건너뛰기', v: '가능(마이에서 나중에)' }, { k: '사업자번호당 인증 계정', policy: 'member.biz_accounts_max' }] });
+      case 'BIZ_VERIFY':
+        if (s.cs === 'bizManual') return app.turn('customer', '사업자등록증을 올리고 사업자 정보를 채워 [서류 심사 요청]을 누르세요', { rules: [{ k: '처리 목표', v: lpv('member.biz_manual_bd') }, { k: '등록증', v: '이미지·PDF 10MB' }] });
+        if (s.cs === 'bizDetail') return app.turn('customer', '업종을 고르고 [주소 검색]으로 사업장 주소를 넣은 뒤 [사업자 회원으로 전환]을 누르세요', { rules: [{ k: '업종', v: '공통 코드 10개 중 하나' }, { k: '입력한 정보', v: '세금계산서 기본값' }, { k: '등록증 업로드', v: '선택' }] });
+        if (s.biz.fails >= max) return app.turn('customer', `국세청 정보와 ${max}번 맞지 않았어요. [서류 심사 요청하기]로 사업자등록증을 올리세요`, { rules: [{ k: '진위 불일치', v: `${lpv('member.biz_verify_fail_max')} → 서류 심사` }, { k: '처리 목표', v: lpv('member.biz_manual_bd') }] });
+        return app.turn('customer', '사업자등록번호·대표자명·개업일자를 넣고 [국세청에서 확인하기]를 누르세요', { hint: '체험용 예시로 띄어쓰기 불일치·폐업·계정 수 초과·검증번호 오류 갈래도 볼 수 있어요.', rules: [{ k: '형식 검사', v: '검증번호 계산' }, { k: '진위 불일치', v: `${lpv('member.biz_verify_fail_max')} → 서류 심사` }, { k: '휴업·폐업', v: '인증 불가' }, { k: '사업자번호당 계정', policy: 'member.biz_accounts_max' }] });
+      case 'BIZ_MANUAL': return app.turn('hq', '사업자 인증 대기열에서 제출한 등록증과 국세청 조회 결과를 비교해 [승인]하거나 사유 코드를 골라 [반려]하세요', { rules: [{ k: '처리 목표', v: lpv('member.biz_manual_bd') }, { k: '반려 사유 코드', v: '5종 + 직접 입력' }, { k: '결과 안내', v: '알림톡' }] });
+      case 'BIZ_DENIED': {
+        const d = s.denied || {};
+        const what = d.code === 'LIMIT' ? '4번째 계정이라 인증이 막혔어요. 상담하거나 [다른 번호로 다시 인증]을 누르세요' : d.code === 'CLOSED' ? '휴업·폐업 사업자라 인증할 수 없어요. [다른 번호로 다시 인증]을 눌러 보세요' : '서류 심사에서 반려됐어요. 사유를 확인하고 [다시 신청하기]를 누르세요';
+        return app.turn('customer', what, { rules: [{ k: '사업자번호당 계정', policy: 'member.biz_accounts_max' }, { k: '직원 계정', v: '3차' }] });
+      }
+      case 'BIZ_MEMBER':
+        if (a === 'BIZ_CHECK') return app.turn('system', `국세청에서 폐업으로 확인돼 사업자 혜택을 유예 중이에요. +7일로 ${fmtDate(s.grace.until, false)} 뒤까지 시간을 보내세요`, { hint: '고객 홈 위쪽에 안내가 떠요. 다시 개업했다면 [다시 인증하기]로 풀 수 있어요.', rules: [{ k: '해제까지 유예', v: lpv('member.biz_closed_grace_days') }, { k: '세금계산서', v: '지금부터 발행 막음' }, { k: '진행 중 주문', v: '영향 없음' }] });
+        if (s.cs === 'bizDone') return app.turn('customer', '같은 상품 카드의 가격이 일반가에서 사업자가(공급가 함께)로 바뀐 걸 확인하고 [홈에서 보기]를 누르세요', { rules: [{ k: '사업자가', v: 'VAT 포함 + 공급가' }, { k: '배지', v: '사업자' }, { k: '인증 전 결제한 주문', v: '차액 환급 없음' }] });
+        if (!s.order) return app.turn('customer', '홈에서 [사업자가로 1박스 바로 구매]를 눌러 주문을 하나 만들어 두세요', { hint: '구매 확정 전에 마이 > 회원 탈퇴로 가 보면 탈퇴가 막혀요.', rules: [{ k: '증빙 기본값', v: '세금계산서(사업자 정보)' }] });
+        if (!s.hqDone) return app.turn('hq', '회원 조회에서 [상세]를 열고, 사유를 골라 개인정보 가림(마스킹)을 풀어 보세요', { rules: [{ k: '목록·상세', v: '기본으로 가림' }, { k: '가림 해제', v: '권한자 · 사유 필수' }, { k: '접근 기록 보관', v: '1년 이상' }] });
+        return app.turn('system', `국세청 응답을 "폐업으로 응답"으로 고르고 [재조회 지금 실행]을 누르세요. 그냥 두면 ${fmtDate(s.nextRecheck)}에 자동으로 돌아요`, { rules: [{ k: '재조회 주기', v: lpv('member.biz_recheck_day', '매월 1일 03:00') }, { k: '폐업 확인 후 유예', v: lpv('member.biz_closed_grace_days') }, { k: '휴면 회원', v: '건너뜀' }] });
+    }
+    app.turn('customer', '고객 화면을 확인하세요');
+  }
+  function refresh() {
+    guide(); app.refresh();
+    const s = S();
+    if (s._top && app.current === 'customer' && app.lastFrame) { const sc = app.lastFrame.querySelector('.phone-screen'); if (sc) sc.scrollTop = 0; }
+    s._top = false;
+  }
+  function go(cs) { S().cs = cs; S()._top = true; refresh(); }
+  const goJoin = (ev, by) => app.go('join', ev, { by });
+  const goAcct = (ev, by) => app.go('acct', ev, { by });
+  function blockers() { const o = S().order; return o && o.status !== 'CONFIRMED' ? ['구매 확정 전 주문 1건'] : []; }
+
+  /* ── 상품 카드: 회원 유형별 가격 표기 (디자인 요청서 가격 표기 규칙) ── */
+  function productCard(mode, extra = '') {
+    const g = PRODUCT.tiers, b = PRODUCT.bizTiers;
+    const per = (t) => t[t.length - 1].price / PRODUCT.perBox;
+    let price;
+    if (mode === 'biz') price = `<div class="pc-price"><span class="tag tag-spot">사업자</span><span class="app-price">${won(b[0].price)}</span><span class="small muted">(공급가 ${won(GC.vatSplit(b[0].price).supply)})</span></div><span class="xsmall faint">사업자가 · VAT 포함 · 1매당 ${per(b)}원~</span>`;
+    else if (mode === 'guest') price = `<div class="pc-price"><span class="app-price">${won(g[0].price)}</span><span class="small muted">· 1매당 ${per(g)}원~</span></div><button class="linkish" data-act="cs" data-to="login">사업자가 보기</button>`;
+    else price = `<div class="pc-price"><span class="app-price">${won(g[0].price)}</span><span class="small muted">· 1매당 ${per(g)}원~</span></div><span class="xsmall faint">일반가 · VAT 포함</span>`;
+    return `<div class="app-card"><div class="pc-row"><div class="pc-thumb" aria-hidden="true"></div><div class="stack-sm"><span class="small strong">${esc(PRODUCT.name)}</span><span class="xsmall faint">${esc(PRODUCT.partner)} · ${PRODUCT.unit}</span>${price}</div></div>${extra}</div>`;
+  }
+  function orderCard(s) {
+    const o = s.order;
+    return `<div class="app-card"><div class="split"><b class="small">최근 주문</b><span class="st ${o.status === 'CONFIRMED' ? 'st-done' : 'st-now'}">${orderLabel(o.status)}</span></div>
+      <span class="small">${esc(PRODUCT.name)} 1박스 · ${won(o.price)} (${o.biz ? '사업자가 · 세금계산서' : '일반가'})</span>
+      ${o.status === 'SHIPPED' ? '<span class="xsmall faint">배송 완료 뒤 7일이 지나면 자동으로 구매 확정돼요.</span>' : ''}
+      ${o.status === 'DELIVERED' ? '<button class="btn btn-sm btn-primary" data-act="confirmOrder">구매 확정</button>' : ''}</div>`;
+  }
+  const result = (title, body) => `<span class="result-mark" aria-hidden="true">!</span><p class="app-title">${title}</p><p class="small muted">${body}</p>`;
+
+  /* ── 고객 화면 ── */
+  const VIEWS = {};
+  VIEWS.customer = (f) => {
+    const s = S();
+    const screens = { login, browse, email, terms, identity, underage, dupci, rejoin, joined, biz, bizDetail, bizManual, bizWait, bizDenied, bizDone, home, my, withdraw };
+    if (!s.member && ['joined', 'home', 'my', 'withdraw', 'biz', 'bizDetail', 'bizManual', 'bizWait', 'bizDenied', 'bizDone'].includes(s.cs)) s.cs = 'login';
+    if (s.member && s.out) return login(f, s);
+    if (s.member) { const me = s.sessions.find((x) => x.kind === 'app'); if (me) me.last = app.clock.now(); }
+    (screens[s.cs] || login)(f, s);
+  };
+  function login(f, s) {
+    f.title('로그인'); f.tab(null);
+    if (s.out && s.member) return relogin(f, s);
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="lg-hero"><span class="brand-mark" aria-hidden="true">식</span>
+          <p class="app-title">사장님 가게에 필요한 건<br>식업에서</p>
+          <p class="small muted">수저집·냅킨 같은 소모품부터 로고 넣은 맞춤 제작까지</p></div>
+        ${s.notice ? `<div class="note note-spot small">${s.notice}</div>` : ''}
+        <div class="stack-sm">
+          <button class="btn btn-lg btn-block btn-kakao btn-ext" data-act="sns" data-via="kakao">카카오로 시작하기</button>
+          <button class="btn btn-lg btn-block btn-ink btn-ext" data-act="sns" data-via="apple">Apple로 계속하기</button>
+          <p class="xsmall faint">iOS 앱에는 카카오와 함께 Apple 로그인을 꼭 넣어요(App Store 심사 가이드라인 4.8).</p>
+          <div class="cluster"><button class="btn btn-sm" disabled>네이버 <span class="tag tag-phase">2차</span></button><button class="btn btn-sm" disabled>구글 <span class="tag tag-phase">2차</span></button></div>
+        </div>
+        <button class="btn btn-block" data-act="cs" data-to="email">이메일로 로그인·가입</button>
+        <div class="cluster lg-links"><button class="linkish" data-act="findId">아이디 찾기</button><span class="faint" aria-hidden="true">|</span><button class="linkish" data-act="resetPw">비밀번호 재설정</button></div>
+        <p class="xsmall faint">웹에서 "로그인 유지"를 고르면 ${pv('member.web_keep_login_days')} 동안 유지돼요. 앱은 자동 로그인이 기본이고, 마지막으로 쓴 뒤 ${pv('member.app_keep_login_days')}이 지나면 다시 로그인해요.</p>
+      </div>`;
+    f.bottom('<button class="btn btn-ghost btn-block" data-act="cs" data-to="browse">로그인 없이 둘러보기</button>');
+  }
+  /* 모든 기기에서 로그아웃한 뒤(또는 앱 자동 로그인 만료 뒤) 기존 회원 다시 로그인 (U-MEM-01) */
+  function relogin(f, s) {
+    const via = s.member.via;
+    const btn = via === 'kakao' ? '<button class="btn btn-lg btn-block btn-kakao btn-ext" data-act="relogin">카카오로 로그인</button>'
+      : via === 'apple' ? '<button class="btn btn-lg btn-block btn-ink btn-ext" data-act="relogin">Apple로 계속하기</button>'
+      : '<button class="btn btn-lg btn-block btn-primary btn-ext" data-act="relogin">이메일로 로그인</button>';
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="lg-hero"><span class="brand-mark" aria-hidden="true">식</span><p class="app-title">다시 로그인해 주세요</p></div>
+        <div class="note note-spot small">${s.out === 'expired' ? `이 앱을 ${GC.Policy.get('member.app_keep_login_days')}일 동안 쓰지 않아 자동 로그인이 끝났어요.` : '모든 기기에서 로그아웃했어요. 다시 쓰려면 기기마다 새로 로그인해야 해요.'}</div>
+        <div class="stack-sm">${btn}<p class="xsmall faint">${esc(s.person.name)}님은 ${SNS[via].name}로 가입했어요. 가입한 방식으로 로그인하면 약관·본인인증 없이 바로 들어가요.</p></div>
+        <p class="xsmall faint">웹 "로그인 유지" ${pv('member.web_keep_login_days')} · 앱 자동 로그인은 마지막으로 쓴 뒤 ${pv('member.app_keep_login_days')}까지예요.</p>
+      </div>`;
+  }
+  function browse(f) {
+    f.title('식업'); f.tab('홈');
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="input small faint" aria-hidden="true">수저집, 냅킨, 물티슈 검색</div>
+        <div class="stack-sm"><span class="small strong">업종별로 보기</span><div class="inds">${INDUSTRIES.map((x) => `<span class="chipbtn">${x}</span>`).join('')}</div></div>
+        <span class="small strong">많이 찾는 상품</span>
+        ${productCard('guest')}
+        <div class="note small">로그인하고 사업자 인증을 하면 사업자 전용가로 살 수 있어요. 로그인 전에는 일반가만 보여요.</div>
+      </div>`;
+    f.bottom('<button class="btn btn-primary btn-lg btn-block" data-act="cs" data-to="login">로그인하고 사업자가 보기</button>');
+  }
+  function email(f, s) {
+    f.title('이메일로 가입'); f.tab(null); f.back();
+    const e = s.email; const ttl = lp('member.email_code_minutes') * MIN;
+    const left = e.sentAt ? e.sentAt.getTime() + ttl - app.clock.now().getTime() : 0;
+    const expired = e.sentAt && left <= 0; const locked = e.fails >= lp('member.email_code_fail_max');
+    const codeMsg = e.verified ? '<span class="st st-done">이메일 인증 완료</span>'
+      : expired ? `<span class="err">인증번호가 만료됐어요(${lp('member.email_code_minutes')}분). [다시 받기]를 눌러 새 번호를 받아 주세요</span>`
+      : e.err && e.err.f === 'code' ? `<span class="err">${e.err.msg}</span>` : `<span class="hint">남은 시간 ${mmss(left)} · ${lpv('member.email_code_minutes')} 안에 넣어 주세요</span>`;
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <p class="small muted">SNS를 쓰지 않는 매장 공용 계정 등을 위한 가입이에요. 이메일 인증 → 약관 동의 → 휴대폰 본인인증 순서로 진행해요.</p>
+        <div class="field"><label for="emAddr">이메일</label>
+          <div class="row-in"><input class="input${e.err && e.err.f === 'addr' ? ' is-err' : ''}" id="emAddr" type="email" data-input="emAddr" value="${esc(e.addr)}" placeholder="store@example.com" autocomplete="email" ${e.verified ? 'readonly' : ''}>
+          <button class="btn btn-ext" data-act="emSend" ${e.verified ? 'disabled' : ''}>${e.sentAt ? '다시 받기' : '인증번호 받기'}</button></div>
+          ${e.err && e.err.f === 'addr' ? `<span class="err">${e.err.msg}</span>` : '<span class="hint">중복을 확인한 뒤 6자리 인증번호를 보내요</span>'}</div>
+        ${!e.sentAt ? `<div class="demo"><span class="demo-h">체험용 이메일 · 눌러서 채우기</span><div class="cluster">
+          <button class="chipbtn" data-act="emSample" data-v="store@todaybap.kr">store@todaybap.kr · 새 이메일</button>
+          <button class="chipbtn" data-act="emSample" data-v="owner@todaybap.kr">owner@todaybap.kr · 카카오로 가입됨</button></div></div>` : ''}
+        ${e.sentAt ? `<div class="field"><label for="emCode">인증번호 6자리</label>
+          <div class="row-in"><input class="input num" id="emCode" inputmode="numeric" maxlength="6" data-input="emCode" value="${esc(e.input)}" ${e.verified ? 'readonly' : ''}>
+          <button class="btn" data-act="emVerify" ${e.verified || locked ? 'disabled' : ''}>확인</button></div>${codeMsg}
+          ${!e.verified ? `<div class="demo"><span class="demo-h">체험용 · 메일로 보낸 인증번호</span><b class="num">${EMAIL_CODE}</b></div>` : ''}</div>` : ''}
+        ${e.verified ? `<div class="field"><label for="emPw">비밀번호</label><input class="input" id="emPw" type="password" data-input="emPw" value="${esc(e.pw)}" autocomplete="new-password">
+          <label for="emPw2">비밀번호 확인</label><input class="input" id="emPw2" type="password" data-input="emPw2" value="${esc(e.pw2)}" autocomplete="new-password">
+          <ul class="rules-list" id="pwRules">${pwRulesHtml(e)}</ul></div>` : ''}
+      </div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="emNext" ${emReady(e) ? '' : 'disabled'}>다음: 약관 동의</button>`);
+  }
+  function terms(f, s) {
+    f.title('약관 동의'); f.tab(null); f.back();
+    const c = s.consent; const all = TERMS.every((t) => c[t.k]);
+    const box = (t) => `<label class="check"><input type="checkbox" data-change="agreeChk" data-k="${t.k}" ${c[t.k] ? 'checked' : ''}><span>${t.req ? '<span class="req">(필수)</span> ' : t.grp ? '' : '<span class="opt">(선택)</span> '}${t.t}</span></label>`;
+    const row = (t) => `<div class="agree-row">${box(t)}${t.view ? `<button class="linkish" data-act="termView" data-t="${t.k}">보기</button>` : ''}</div>`;
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <p class="app-title">식업을 쓰려면<br>동의가 필요해요</p>
+        <label class="check agree-all"><input type="checkbox" data-change="agreeChk" data-k="all" ${all ? 'checked' : ''}><span>전체 동의 <span class="xsmall faint">(선택 항목 포함)</span></span></label>
+        <div class="stack-sm">${TERMS.filter((t) => t.req).map(row).join('')}</div>
+        <div class="hr"></div>
+        <div class="stack-sm">
+          <p class="xsmall faint">선택 항목은 동의하지 않아도 가입돼요. 처음에는 모두 꺼져 있어요.</p>
+          <span class="small strong"><span class="opt">(선택)</span> 마케팅 정보 수신 · 받을 채널</span>
+          <div class="chan">${TERMS.filter((t) => t.grp === 'mk').map(box).join('')}</div>
+          <p class="xsmall faint">알림톡은 광고에 쓰지 않아요. 광고성 정보는 하루 ${pv('notify.ad_daily_max')}·주 ${pv('notify.ad_weekly_max')}까지 보내고, 2년마다 동의를 다시 확인해요.</p>
+          ${TERMS.filter((t) => !t.req && !t.grp).map(row).join('')}
+        </div>
+        <div class="note small">주문·배송·디자인 진행 알림은 동의와 상관없이 보내는 필수 알림이에요.</div>
+      </div>`;
+    const ok = TERMS.filter((t) => t.req).every((t) => c[t.k]);
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="toIdentity" ${ok ? '' : 'disabled'}>동의하고 본인인증하기</button>`);
+  }
+  function identity(f, s) {
+    f.title('휴대폰 본인인증'); f.tab(null); f.back();
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <p class="app-title">휴대폰으로<br>본인인증을 해 주세요</p>
+        <p class="small muted">식업은 한 사람이 계정 하나만 쓸 수 있어요. 본인인증 결과로 이름과 휴대폰 번호를 채워요.</p>
+        <dl class="kv small"><dt>확인하는 것</dt><dd>이름 · 생년월일 · 성별 · 휴대폰 번호 · 중복 가입 확인값(CI·DI)</dd><dt>가입 가능</dt><dd>만 ${pv('member.min_age')} 이상</dd><dt>저장</dt><dd>CI는 암호화해 중복 확인에만 써요. 생년월일·성별은 만 나이 확인에만 쓰고 저장하지 않아요. 주민등록번호는 받지 않아요.</dd></dl>
+        <div class="demo"><span class="demo-h">체험용 · 본인확인기관이 돌려줄 결과</span>
+          <div class="cluster">${[['ok', '정상 · 1985년생'], ['minor', '만 19세 미만 · 2008년생'], ['dup', '이미 가입된 사람']].map(([k, t]) => `<button class="chipbtn" data-act="idScn" data-v="${k}" aria-pressed="${s.idScn === k}">${t}</button>`).join('')}</div></div>
+        <p class="xsmall faint">법인 명의 휴대폰 등으로 인증이 안 되면 신용카드 본인확인을 안내하고, 그래도 안 되면 1:1 문의로 도와드려요.</p>
+      </div>`;
+    f.bottom('<button class="btn btn-primary btn-lg btn-block btn-ext" data-act="pass">휴대폰 본인인증 하기</button>');
+  }
+  function underage(f) {
+    f.title('본인인증 결과'); f.tab(null);
+    f.body.innerHTML = `<div class="app-pad">${result(`식업은 만 ${GC.Policy.get('member.min_age')}세 이상<br>가입할 수 있어요`, '사업자 거래가 중심이라 만 19세 미만은 가입할 수 없어요. 방금 받은 인증 결과는 저장하지 않았어요.')}</div>`;
+    f.bottom('<button class="btn btn-lg btn-block" data-act="restart">로그인 화면으로</button>');
+  }
+  function dupci(f) {
+    f.title('본인인증 결과'); f.tab(null);
+    f.body.innerHTML = `<div class="app-pad">${result('이미 가입된 계정이 있어요', '한 사람은 계정 하나만 쓸 수 있어요. 아래 방식으로 로그인해 주세요.')}
+      <div class="app-card"><dl class="kv small"><dt>가입 방식</dt><dd>이메일 · ${maskEmail('hong.owner@gmail.com')}</dd><dt>가입일</dt><dd>2026-08-03</dd></dl>
+        <span class="xsmall faint">휴면 계정이면 로그인한 뒤 본인인증으로 되살려요. 비밀번호가 기억나지 않으면 비밀번호 재설정을 이용해 주세요.</span></div></div>`;
+    f.bottom('<button class="btn btn-primary btn-lg btn-block" data-act="dupLogin">그 계정으로 로그인</button><button class="btn btn-ghost btn-block" data-act="restart">로그인 화면으로</button>');
+  }
+  function rejoin(f, s) {
+    f.title('본인인증 결과'); f.tab(null);
+    const w = s.withdrawn;
+    f.body.innerHTML = `<div class="app-pad">${result(`탈퇴 후 ${GC.Policy.get('member.rejoin_block_days')}일 동안은<br>다시 가입할 수 없어요`, '같은 본인인증 정보로는 기간 안에 가입할 수 없어요. 신규 가입 혜택을 되풀이해 받는 걸 막으려는 규칙이에요.')}
+      <div class="app-card"><dl class="kv small"><dt>탈퇴일</dt><dd>${fmtDate(w.at, false)}</dd><dt>가입 가능일</dt><dd><b>${fmtDate(w.until, false)}부터</b></dd><dt>재가입 제한</dt><dd>${pv('member.rejoin_block_days')}</dd></dl></div>
+      ${w.expired ? '<div class="note note-spot small">이제 다시 가입할 수 있어요. 처음부터 다시 진행해 주세요.</div>' : ''}</div>`;
+    f.bottom(`<button class="btn ${w.expired ? 'btn-primary' : ''} btn-lg btn-block" data-act="restart">${w.expired ? '다시 가입하기' : '로그인 화면으로'}</button>`);
+  }
+  function joined(f, s) {
+    f.title('가입 완료'); f.tab('홈');
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <p class="app-title">가입을 마쳤어요</p>
+        <p class="small muted">${esc(s.person.name)}님, 반가워요. ${s.member.coupon ? '신규가입 쿠폰을 쿠폰함에 넣어 드렸어요.' : '다시 가입한 경우라 신규가입 쿠폰은 드리지 않아요(본인인증 기준 1회).'}</p>
+        <div class="cmp"><span class="cmp-label">지금 보이는 가격 · 일반 회원</span>${productCard('member')}</div>
+        <div class="app-card is-pick"><b>사업자 인증하고 사업자가 보기</b>
+          <ul class="plain small"><li>사업자 전용가 (VAT 포함 가격과 공급가를 함께 표시)</li><li>세금계산서 발행 (주문서 증빙 기본값)</li><li>대량 견적 <span class="tag tag-phase">2차</span> 지금은 채팅 상담 뒤 운영자 견적</li></ul>
+          <span class="xsmall faint">사업자등록번호·대표자명·개업일자로 국세청에 바로 확인해요.</span></div>
+      </div>`;
+    f.bottom('<button class="btn btn-primary btn-lg btn-block" data-act="toBiz">사업자 인증하기</button><button class="btn btn-ghost btn-block" data-act="cs" data-to="home">다음에 할게요</button>');
+  }
+  function biz(f, s) {
+    f.title('사업자 인증'); f.tab('마이'); f.back();
+    const b = s.biz; const st = bizNoState(b.no); const max = lp('member.biz_verify_fail_max');
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="steps-mini"><span class="on">1 번호 확인</span><span>2 사업자 정보</span></div>
+        <p class="small muted">사업자등록번호로 국세청에 진위와 상태를 확인해요. 인증하면 사업자가와 세금계산서가 열려요.</p>
+        ${b.fails ? `<div class="note note-warn small">입력한 정보가 국세청 등록 정보와 달라요 (${b.fails}/${max}회). 대표자명 띄어쓰기와 개업일자를 사업자등록증과 똑같이 넣어 주세요.</div>` : ''}
+        ${b.fails >= max ? `<div class="app-card"><b class="small">사업자등록증으로 서류 심사를 받을 수 있어요</b><span class="xsmall muted">운영팀이 ${lpv('member.biz_manual_bd')} 안에 확인해 알림톡으로 알려 드려요.</span><button class="btn btn-sm btn-primary" data-act="toManual">서류 심사 요청하기</button></div>` : ''}
+        <div class="field"><label for="bzNo">사업자등록번호</label><input class="input num${st.err ? ' is-err' : ''}" id="bzNo" inputmode="numeric" data-input="bzNo" value="${fmtBizNo(b.no)}" placeholder="000-00-00000" autocomplete="off"><span id="bzNoHint" class="${st.err ? 'err' : 'hint'}">${st.msg}</span></div>
+        <div class="field"><label for="bzRep">대표자명</label><input class="input" id="bzRep" data-input="bzRep" value="${esc(b.rep)}" maxlength="30" placeholder="사업자등록증과 똑같이"></div>
+        <div class="field"><label for="bzOpen">개업일자</label><input class="input num" id="bzOpen" inputmode="numeric" maxlength="8" data-input="bzOpen" value="${esc(b.open)}" placeholder="YYYYMMDD"><span class="hint" id="bzOpenHint">${openHint(b.open)}</span></div>
+        <div class="demo"><span class="demo-h">체험용 예시 · 눌러서 채우기</span><div class="cluster">${SAMPLES.map(([k, , , , t]) => `<button class="chipbtn" data-act="bzSample" data-s="${k}">${t}</button>`).join('')}</div></div>
+        <p class="xsmall faint">인증 전에 개인 회원으로 결제한 주문은 사업자가 차액을 돌려드리지 않아요. 같은 사업자등록번호로는 계정 ${pv('member.biz_accounts_max')}까지 각자 인증할 수 있어요.</p>
+      </div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block btn-ext" data-act="ntsCheck" ${bizReady(b) ? '' : 'disabled'}>국세청에서 확인하기</button>`);
+  }
+  function bizFields(s, manual) {
+    const v = s.bizForm;
+    const inp = (k, label, extra = '') => `<div class="field"><label for="bf_${k}">${label}</label><input class="input" id="bf_${k}" data-input="bf" data-f="${k}" value="${esc(v[k])}" ${extra}></div>`;
+    return `<p class="xsmall faint">체험용으로 일부 값을 미리 채워 뒀어요.</p>
+      ${inp('name', '상호명', 'maxlength="50"')}
+      <div class="grid2 tight">${inp('type', '업태', 'maxlength="50"')}${inp('item', '종목', 'maxlength="50"')}</div>
+      <div class="field"><span class="lbl">업종 · 홈 추천과 업종별 카테고리에 써요</span><div class="inds">${INDUSTRIES.map((x) => `<button class="chipbtn" data-act="industry" data-v="${x}" aria-pressed="${v.industry === x}">${x}</button>`).join('')}</div></div>
+      <div class="field"><span class="lbl">사업장 주소</span>
+        <div class="row-in"><input class="input" value="${esc(v.addr)}" placeholder="도로명 주소 검색" readonly aria-label="사업장 주소"><button class="btn btn-ext" data-act="addrSearch">주소 검색</button></div>
+        ${v.addr ? `<input class="input" id="bf_addr2" data-input="bf" data-f="addr2" value="${esc(v.addr2)}" placeholder="상세 주소" aria-label="상세 주소">` : ''}
+        <label class="check small"><input type="checkbox" data-change="bfHome" data-k="homeAddr" ${v.homeAddr ? 'checked' : ''}><span><span class="opt">(선택)</span> 이 주소를 기본 배송지로 등록</span></label></div>
+      ${inp('tax', '세금계산서 받을 이메일', 'type="email"')}
+      <div class="field"><span class="lbl">사업자등록증 ${manual ? '<span class="req">(서류 심사에 필요)</span>' : '<span class="opt">(선택)</span>'}</span>${v.cert ? '<span class="st st-done">사업자등록증.jpg · 검사 통과</span>' : '<button class="btn btn-sm btn-ext" data-act="uploadCert">이미지·PDF 올리기 (10MB)</button>'}</div>`;
+  }
+  function bizDetail(f, s) {
+    f.title('사업자 정보'); f.tab('마이'); f.back();
+    const b = s.biz; const r = b.nts;
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="steps-mini"><span class="on">1 번호 확인</span><span class="on">2 사업자 정보</span></div>
+        <div class="note note-spot small">국세청 확인 완료 · ${r.statusName} · ${r.tax}<br>${fmtBizNo(b.no)} · 대표자 ${esc(b.rep)}</div>
+        ${bizFields(s, false)}
+      </div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="bizConvert" ${formOk(s, false) ? '' : 'disabled'}>사업자 회원으로 전환</button>`);
+  }
+  function bizManual(f, s) {
+    f.title('서류 심사 요청'); f.tab('마이'); f.back();
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="note note-warn small">국세청 진위 확인이 ${lp('member.biz_verify_fail_max')}번 맞지 않아 사업자등록증으로 확인할게요. 운영팀이 ${lpv('member.biz_manual_bd')} 안에 결과를 알려 드려요.</div>
+        <dl class="kv small"><dt>사업자등록번호</dt><dd>${fmtBizNo(s.biz.no)}</dd><dt>대표자명(입력)</dt><dd>${esc(s.biz.rep)}</dd><dt>개업일자(입력)</dt><dd>${esc(s.biz.open)}</dd></dl>
+        ${bizFields(s, true)}
+      </div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="manualSubmit" ${formOk(s, true) ? '' : 'disabled'}>서류 심사 요청</button>`);
+  }
+  function bizWait(f, s) {
+    f.title('서류 심사 중'); f.tab('마이');
+    f.body.innerHTML = `<div class="app-pad"><p class="app-title">사업자 서류를<br>확인하고 있어요</p>
+      <div class="app-card"><dl class="kv small"><dt>접수</dt><dd>${fmtDate(s.manual.at)}</dd><dt>결과 안내</dt><dd>${fmtDate(s.manual.due)}까지 · 알림톡</dd><dt>사업자등록번호</dt><dd>${fmtBizNo(s.manual.no)}</dd></dl></div>
+      <p class="small muted">심사가 끝날 때까지는 일반가로 보여요.</p></div>`;
+    f.bottom('<button class="btn btn-lg btn-block" data-act="cs" data-to="home">홈으로</button>');
+  }
+  function bizDenied(f, s) {
+    f.title('사업자 인증'); f.tab('마이');
+    const d = s.denied;
+    f.body.innerHTML = `<div class="app-pad">${result(d.title, d.body)}${d.extra || ''}</div>`;
+    f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="retry">${d.code === 'MANUAL' ? '다시 신청하기' : '다른 번호로 다시 인증'}</button>${d.code === 'LIMIT' ? '<button class="btn btn-block btn-ext" data-act="consult">채팅 상담</button>' : ''}<button class="btn btn-ghost btn-block" data-act="cs" data-to="home">홈으로</button>`);
+  }
+  function bizDone(f, s) {
+    f.title('사업자 인증 완료'); f.tab('홈');
+    const bi = s.bizInfo;
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="cluster"><p class="app-title">사업자 회원이 됐어요</p><span class="tag tag-spot">사업자</span></div>
+        <p class="small muted">${esc(bi.name)} · ${fmtBizNo(bi.no)} · ${bi.how}</p>
+        <div class="cmp"><span class="cmp-label">전환 전 · 일반 회원</span>${productCard('member')}</div>
+        <div class="cmp"><span class="cmp-label">지금 · 사업자 회원</span>${productCard('biz')}</div>
+        <div class="app-card"><b class="small">새로 열린 것</b><dl class="kv small"><dt>사업자가</dt><dd>모든 상품에 바로 적용</dd><dt>세금계산서</dt><dd>${esc(bi.name)} · ${esc(bi.tax)} 기본값</dd><dt>홈 추천</dt><dd>${esc(bi.industry)} 업종 블록 먼저</dd><dt>대량 견적</dt><dd><span class="tag tag-phase">2차</span> 지금은 채팅 상담</dd></dl></div>
+        ${s.order && !s.order.biz ? '<div class="note small">인증 전에 일반가로 결제한 주문 1건은 그대로예요. 사업자가 차액은 돌려드리지 않아요.</div>' : ''}
+      </div>`;
+    f.bottom('<button class="btn btn-primary btn-lg btn-block" data-act="cs" data-to="home">홈에서 보기</button>');
+  }
+  function home(f, s) {
+    f.title('식업'); f.tab('홈');
+    const a = app.state('acct'); const j = app.state('join'); const bz = isBiz();
+    const ban = [];
+    if (a === 'BIZ_CHECK') ban.push(`<div class="warn-banner"><b>사업자 상태를 확인해 주세요</b><br><span class="small">국세청에서 폐업으로 확인됐어요. ${fmtDate(s.grace.until, false)}까지 다시 확인되지 않으면 사업자가와 세금계산서가 해제돼요. 세금계산서는 지금부터 발행할 수 없어 현금영수증·카드 전표로 드려요.</span>
+      <div class="cluster" style="margin-top:8px"><button class="btn btn-sm btn-ext" data-act="reverify">다시 인증하기</button><button class="btn btn-sm btn-ext" data-act="consult">상담하기</button></div></div>`);
+    if (s.revoked && a === 'ACTIVE') ban.push(`<div class="note note-warn small">폐업 확인 뒤 ${lp('member.biz_closed_grace_days')}일이 지나 사업자 혜택이 해제됐어요. 지금은 일반가로 보여요. 다시 개업했다면 새 사업자등록번호로 인증해 주세요.</div>`);
+    if (j === 'BIZ_MANUAL') ban.push(`<div class="note note-spot small">사업자 서류를 심사하고 있어요. ${fmtDate(s.manual.due)}까지 알림톡으로 결과를 알려 드려요.</div>`);
+    if (j === 'BIZ_DENIED') ban.push(`<div class="note note-stop small">사업자 인증을 하지 못했어요. <button class="linkish" data-act="cs" data-to="bizDenied">자세히 보기</button></div>`);
+    if (j === 'JOINED') ban.push('<div class="app-card"><b class="small">사업자 인증하고 사업자가 보기</b><span class="xsmall muted">사업자 전용가와 세금계산서가 열려요</span><button class="btn btn-sm btn-primary" data-act="toBiz">사업자 인증하기</button></div>');
+    const who = bz ? `${esc(s.bizInfo.name)} 사장님 <span class="tag tag-spot">사업자</span>` : `${esc(s.person.name)}님`;
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="split"><span class="strong">${who}</span><button class="btn btn-sm" data-act="cs" data-to="my">마이 · 계정</button></div>
+        ${ban.join('')}
+        <span class="small strong">${bz ? `${esc(s.bizInfo.industry)} 사장님이 많이 찾는` : '많이 찾는 상품'}</span>
+        ${productCard(bz ? 'biz' : 'member', s.order ? '' : `<button class="btn btn-primary btn-block btn-ext" data-act="buy">${bz ? '사업자가로 ' : ''}1박스 바로 구매</button>`)}
+        ${s.order ? orderCard(s) : ''}
+      </div>`;
+  }
+  function my(f, s) {
+    f.title('마이'); f.tab('마이');
+    const m = s.member; const p = s.person; const bi = s.bizInfo; const bz = isBiz();
+    const mk = TERMS.filter((t) => !t.req).map((t) => `<div class="li"><span>${t.grp ? `마케팅 · ${t.t}` : t.t}</span><span class="st ${s.consent[t.k] ? 'st-now' : ''}">${s.consent[t.k] ? '받음' : '안 받음'}</span></div>`).join('');
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <div class="app-card"><div class="split"><b>${esc(p.name)}님 ${bz ? '<span class="tag tag-spot">사업자</span>' : ''}</b><span class="xsmall faint">${m.no}</span></div>
+          <dl class="kv small"><dt>가입 방식</dt><dd>${SNS[m.via].name}</dd><dt>휴대폰</dt><dd>${p.phone} · 바꾸려면 다시 본인인증</dd><dt>이메일</dt><dd>${esc(m.email)}</dd><dt>쿠폰·포인트</dt><dd>${m.coupon ? '쿠폰 1장' : '쿠폰 0장'} · 0원</dd></dl></div>
+        <div class="app-card"><b class="small">사업자 정보</b>${bi && bz ? `<dl class="kv small"><dt>상호</dt><dd>${esc(bi.name)}</dd><dt>사업자등록번호</dt><dd>${fmtBizNo(bi.no)}</dd><dt>업종</dt><dd>${esc(bi.industry)}</dd><dt>세금계산서</dt><dd>${esc(bi.tax)}</dd></dl>` : '<span class="xsmall muted">아직 사업자 인증을 하지 않았어요.</span>'}</div>
+        <div class="app-card"><b class="small">알림 설정 · 바꿀 수 있는 건 마케팅 알림뿐이에요</b><div class="blk">${mk}</div><span class="xsmall faint">주문·배송·디자인 알림은 끌 수 없는 필수 알림이에요.</span></div>
+        ${s.order ? orderCard(s) : ''}
+        <div class="app-card"><b class="small">계정 연결</b><div class="blk"><div class="li"><span>연결된 SNS</span><span>${SNS[m.via].name}</span></div><div class="li"><span>Apple 계정 연결</span><button class="btn btn-sm" disabled>연결</button></div></div></div>
+        <div class="app-card"><b class="small">로그인한 기기</b>
+          <div class="blk">${s.sessions.map((x) => `<div class="li"><span>${x.name}<br><span class="xsmall faint">${x.kind === 'app' ? `자동 로그인 · 마지막 사용부터 ${pv('member.app_keep_login_days')}` : `로그인 유지 ${pv('member.web_keep_login_days')}`}</span></span><span class="xsmall nw">${fmtDate(sessUntil(x), false)}까지</span></div>`).join('') || '<div class="li"><span class="xsmall muted">로그인한 기기가 없어요</span><span></span></div>'}</div>
+          <button class="btn btn-block" data-act="logoutAll">모든 기기에서 로그아웃</button>
+          <span class="xsmall faint">${m.via === 'email' ? '비밀번호를 바꿔도 다른 기기는 모두 로그아웃돼요.' : 'SNS로 가입해 비밀번호가 없어요. 다른 기기의 로그인을 끊으려면 이 버튼을 쓰세요.'}</span>
+          <button class="linkish" data-act="cs" data-to="withdraw">회원 탈퇴</button></div>
+      </div>`;
+    f.bottom('<button class="btn btn-lg btn-block" data-act="cs" data-to="home">홈으로</button>');
+  }
+  function withdraw(f, s) {
+    f.title('회원 탈퇴'); f.tab('마이'); f.back();
+    const blk = blockers(); const o = s.order;
+    const until = new Date(app.clock.now().getTime() + GC.Policy.get('member.rejoin_block_days') * GC.DAY);
+    const items = [['구매 확정 전 주문', o && o.status !== 'CONFIRMED' ? `1건 · ${orderLabel(o.status)}` : null], ['진행 중 클레임', null], ['끝나지 않은 디자인 요청', null], ['진행 중 환불', null], ['이용 중인 멤버십 <span class="tag tag-phase">2차</span>', null]];
+    f.body.innerHTML = `
+      <div class="app-pad">
+        <p class="app-title">탈퇴하기 전에<br>확인해 주세요</p>
+        <div class="app-card"><b class="small">이게 남아 있으면 탈퇴할 수 없어요</b>
+          <div class="blk">${items.map(([k, v]) => `<div class="li"><span>${k}</span>${v ? `<span class="st st-stop">${v}</span>` : '<span class="st st-done">없음</span>'}</div>`).join('')}</div>
+          ${blk.length ? `<div class="note note-stop small">${blk[0]}이 있어 지금은 탈퇴할 수 없어요. 구매 확정한 뒤 다시 와 주세요.</div>` : ''}</div>
+        <div class="app-card"><b class="small">탈퇴하면</b><ul class="plain small">
+          <li>쿠폰 ${s.member.coupon ? '1장' : '0장'}·포인트 0원이 사라지고, 다시 가입해도 되살리지 않아요.</li>
+          <li>확정한 디자인은 볼 수도 다시 주문할 수도 없어요. 필요하면 원본 파일을 먼저 사 두세요(지금 0건).</li>
+          <li>작성한 리뷰는 "탈퇴한 회원"으로 남아요. 지우려면 탈퇴 전에 직접 지워 주세요.</li>
+          ${s.bizInfo && isBiz() ? '<li>같은 사업자등록번호로 인증한 다른 계정에는 영향이 없어요.</li>' : ''}
+          <li>거래 기록(계약·결제 5년, 분쟁 3년)은 법에 따라 따로 보관한 뒤 파기해요.</li>
+          <li>같은 본인인증 정보로 ${pv('member.rejoin_block_days')} 동안 다시 가입할 수 없어요. <b>${fmtDate(until, false)}부터</b> 가입할 수 있어요.</li></ul></div>
+        <div class="field"><span class="lbl">탈퇴 사유 <span class="opt">(선택)</span></span><div class="inds">${['자주 쓰지 않아요', '찾는 상품이 없어요', '가격이 맞지 않아요', '기타'].map((r) => `<button class="chipbtn" data-act="wdReason" data-v="${r}" aria-pressed="${s.wdReason === r}">${r}</button>`).join('')}</div></div>
+      </div>`;
+    f.bottom(`<button class="btn btn-danger btn-lg btn-block${s.member.via !== 'email' ? ' btn-ext' : ''}" data-act="withdraw" ${blk.length ? 'disabled' : ''}>본인 확인하고 탈퇴하기</button><button class="btn btn-ghost btn-block" data-act="cs" data-to="my">마이로 돌아가기</button>`);
+  }
+
+  /* ── 본사 운영(통합 관리자) 화면 ── */
+  const stBadge = (a) => (a === 'BIZ_CHECK' ? '<span class="st st-warn">확인 필요</span>' : '<span class="st st-now">정상</span>');
+  VIEWS.hq = (f) => {
+    const s = S();
+    const qn = (s.manual && !s.manual.decided ? 1 : 0) + 1;
+    f.nav(s.hqTab === 'biz' ? '사업자 인증' : '회원');
+    f.url(s.hqTab === 'biz' ? 'admin.sikup.co.kr/biz-verify' : `admin.sikup.co.kr/members${s.hqOpen && s.member ? '/' + s.member.no : ''}`);
+    const tabs = `<div class="seg" role="group" aria-label="관리 화면">${[['member', '회원 조회'], ['biz', `사업자 인증 대기 ${qn}`]].map(([k, t]) => `<button data-act="hqTab" data-v="${k}" aria-pressed="${s.hqTab === k}">${t}</button>`).join('')}</div>`;
+    f.body.innerHTML = `<div class="split wrap"><h3>${s.hqTab === 'biz' ? '사업자 인증 관리' : '회원 조회·상세'}</h3>${tabs}</div>${s.hqTab === 'biz' ? hqBiz(s) : hqMember(s)}`;
+  };
+  function hqMember(s) {
+    const a = app.state('acct'); const rows = [];
+    const who = (no, sub) => `<td class="nw"><b>${no}</b><br><span class="xsmall faint">${sub}</span></td>`;
+    const pii = (n, ph) => `<td class="nw">${n}<br><span class="xsmall faint num">${ph}</span></td>`;
+    if (s.member) rows.push(`<tr class="${s.hqOpen ? 'is-hl' : ''}">${who(s.member.no, `${fmtDate(s.member.joinedAt, false)} 가입`)}${pii(maskName(s.person.name), maskPhone(s.person.phone))}<td>${isBiz() ? '사업자' : '개인'} ${stBadge(a)}</td><td><button class="btn btn-sm" data-act="openMember">상세</button></td></tr>`);
+    if (s.oldMember) rows.push(`<tr>${who(s.oldMember.no, `${fmtDate(s.oldMember.at, false)} 탈퇴`)}<td class="faint">—</td><td><span class="st st-stop">탈퇴</span></td><td class="xsmall faint">분리 보관</td></tr>`);
+    OTHERS.forEach((o) => rows.push(`<tr>${who(o.no, `${o.joined} 가입`)}${pii(maskName(o.name), maskPhone(o.phone))}<td>${o.type} <span class="st">${o.st}</span>${o.phase ? ' <span class="tag tag-phase">2차</span>' : ''}</td><td></td></tr>`));
+    let detail = '';
+    if (!s.member && !s.oldMember) detail = '<p class="muted small">고객 화면에서 가입을 마치면 이 목록에서 찾을 수 있어요.</p>';
+    else if (!s.member) detail = '<div class="note small">탈퇴 회원은 일반 상세를 열지 않아요. 계약·결제 기록(5년)과 분쟁 기록(3년)만 분리 보관 영역에서 별도 권한으로 조회해요. 재가입 제한을 위해 본인인증 값의 해시만 남겨요.</div>';
+    else if (s.hqOpen) detail = memberDetail(s);
+    else detail = '<p class="xsmall faint">[상세]를 열면 그 조회도 접근 기록에 남아요.</p>';
+    return `<div class="cluster"><select class="select" style="width:auto" aria-label="검색 조건"><option>이름</option><option>휴대폰 번호</option><option>이메일</option><option>사업자등록번호</option><option>회원 번호</option></select><input class="input" style="max-width:200px" value="홍길동" aria-label="검색어" readonly><button class="btn btn-sm">검색</button></div>
+      <p class="xsmall faint">이름·휴대폰·이메일은 전체 일치로만 찾아요(암호문 대신 검색용 해시 컬럼). 결과는 최대 1,000건이고 목록은 기본으로 가려 보여줘요.</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>회원 번호</th><th>이름 · 휴대폰</th><th>유형·상태</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table></div>${detail}`;
+  }
+  function memberDetail(s) {
+    const un = s.unmasked; const a = app.state('acct'); const bi = s.bizInfo; const p = s.person; const m = s.member;
+    const basic = [['이름', un ? p.name : maskName(p.name)], ['휴대폰', un ? p.phone : maskPhone(p.phone)], ['이메일', un ? m.email : maskEmail(m.email)], ['만 나이 확인', `만 ${GC.Policy.get('member.min_age')}세 이상 · ${fmtDate(m.ageAt)} 확인<br><span class="xsmall faint">생년월일·성별은 저장 안 함</span>`], ['가입', `${SNS[m.via].name} · ${fmtDate(m.joinedAt, false)}`], ['본인인증 값', 'CI·DI만 저장 · 화면에 표시 안 함']];
+    const bizRows = bi && isBiz() ? [['상호', esc(bi.name)], ['사업자등록번호', fmtBizNo(bi.no)], ['대표자', un ? esc(bi.rep) : maskName(bi.rep.replace(/\s/g, ''))], ['업태·종목', `${esc(bi.type)} · ${esc(bi.item)}`], ['업종', esc(bi.industry)], ['사업장 주소', un ? `${esc(bi.addr)} ${esc(bi.addr2)}` : `${esc(bi.addr)} · 상세 주소 가림`], ['세금계산서 이메일', un ? esc(bi.tax) : maskEmail(bi.tax)], ['인증', `${bi.how} · ${fmtDate(bi.at, false)}`]] : null;
+    const form = un ? `<div class="note note-warn small">가림을 풀어 보고 있어요 · 사유 "${esc(s.maskReason)}"${s.maskNote ? ` · ${esc(s.maskNote)}` : ''} · 접근 기록에 남았어요.</div><div><button class="btn btn-sm" data-act="remask">다시 가리기</button></div>`
+      : `<div class="stack-sm"><span class="small strong">마스킹 해제 · 권한자만, 사유 필수</span>
+          <div class="cluster">${MASK_REASONS.map((r) => `<button class="chipbtn" data-act="maskReason" data-v="${r}" aria-pressed="${s.maskReason === r}">${r}</button>`).join('')}</div>
+          <input class="input" data-input="maskNote" value="${esc(s.maskNote)}" placeholder="상세 사유 (예: 문의 CS-0412 배송지 확인)" aria-label="상세 사유">
+          <div class="cluster"><button class="btn btn-ink" data-act="unmask" ${s.maskReason ? '' : 'disabled'}>마스킹 해제</button><span class="xsmall faint">개인정보 다운로드는 별도 권한이고 사유·파일 암호가 필요해요.</span></div></div>`;
+    const consent = s.consents.length ? `<table class="tbl small"><thead><tr><th>항목</th><th>버전</th><th>동의</th><th>시각 · 채널</th></tr></thead><tbody>${s.consents.map((c) => `<tr><td>${c.item}</td><td>${c.ver}</td><td>${c.on ? '<span class="st st-now">동의</span>' : '<span class="st">거부</span>'}</td><td class="xsmall">${fmtDate(c.at)} · ${c.ch}</td></tr>`).join('')}</tbody></table>` : '<p class="small muted">기록 없음</p>';
+    const audit = s.audit.length ? `<table class="tbl small"><thead><tr><th>시각</th><th>담당</th><th>한 일</th><th>사유</th></tr></thead><tbody>${s.audit.map((x) => `<tr><td class="xsmall">${fmtDate(x.at)}</td><td>${x.who}</td><td>${x.act}</td><td>${esc(x.reason)}</td></tr>`).join('')}</tbody></table>` : '<p class="small muted">기록 없음</p>';
+    return `${a === 'BIZ_CHECK' ? `<div class="hold-banner">국세청 재조회에서 폐업으로 확인됐어요 · ${fmtDate(s.grace.until, false)}에 사업자 혜택 해제 예정 · 세금계산서 발행 막힘</div>` : ''}
+      <div class="panel"><div class="panel-h"><h2>기본 정보 · ${m.no}</h2>${un ? '<span class="tag tag-warn">가림 해제 중</span>' : '<span class="tag">가림</span>'}</div><div class="panel-b stack">
+        <dl class="kv">${basic.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>${form}
+        <p class="xsmall faint">전화로 본인 확인할 때는 전체 번호를 보여주지 않고 끝 4자리로 대조해요.</p></div></div>
+      <div class="panel"><div class="panel-h"><h2>사업자 정보</h2>${bi && isBiz() ? stBadge(a) : ''}</div><div class="panel-b">${bizRows ? `<dl class="kv">${bizRows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>` : '<p class="small muted">사업자 인증 전이에요.</p>'}</div></div>
+      <div class="panel"><div class="panel-h"><h2>동의 이력</h2><span class="xsmall faint">고치거나 지우지 않고 쌓아요</span></div><div class="panel-b tbl-wrap">${consent}</div></div>
+      <div class="panel"><div class="panel-h"><h2>개인정보 접근 기록</h2><span class="xsmall faint">A-SYS-02 · 월 1회 점검</span></div><div class="panel-b tbl-wrap">${audit}</div></div>`;
+  }
+  function hqBiz(s) {
+    const q = [];
+    if (s.manual) q.push(`<tr class="${s.manual.decided ? '' : 'is-hl'}"><td class="nw"><b>BV-3312</b><br><span class="xsmall faint">${maskName(s.person.name)}</span></td><td class="num">${fmtBizNo(s.manual.no)}</td><td>진위 불일치 ${lp('member.biz_verify_fail_max')}회 · 등록증 제출</td><td class="xsmall nw">${fmtDate(s.manual.due)}</td><td>${s.manual.decided ? (s.manual.decided === 'ok' ? '<span class="st st-done">승인</span>' : '<span class="st st-stop">반려</span>') : '<span class="st st-warn">대기</span>'}</td></tr>`);
+    const fakeAt = new Date(2026, 9, 12, 8, 40);
+    q.push(`<tr><td class="nw"><b>BV-3307</b><br><span class="xsmall faint">김*연</span></td><td class="num">220-81-24681</td><td>등록증만 제출</td><td class="xsmall nw">${fmtDate(GC.addBusinessDays(fakeAt, lp('member.biz_manual_bd')))}</td><td><span class="st st-warn">대기</span></td></tr>`);
+    let detail = '';
+    if (s.manual && !s.manual.decided) {
+      const r = NTS[s.manual.no]; const repOk = r && r.rep === s.manual.rep.trim(); const openOk2 = r && r.open === s.manual.open;
+      const v = s.bizForm; const judge = (ok) => (ok ? '<span class="st st-done">일치</span>' : '<span class="st st-stop">불일치</span>');
+      detail = `<div class="panel"><div class="panel-h"><h2>BV-3312 · 제출한 사업자등록증</h2><span class="xsmall faint">S3 · 악성코드 검사 통과</span></div><div class="panel-b">
+          <div class="cert"><h4>사업자등록증</h4><p class="xsmall faint" style="text-align:center">(일반과세자)</p>
+            <dl class="kv small"><dt>등록번호</dt><dd>${fmtBizNo(s.manual.no)}</dd><dt>상호</dt><dd>${esc(v.name)}</dd><dt>대표자</dt><dd>홍길동</dd><dt>개업연월일</dt><dd>2021년 03월 02일</dd><dt>사업장 소재지</dt><dd>${esc(v.addr)} ${esc(v.addr2)}</dd><dt>업태·종목</dt><dd>${esc(v.type)} · ${esc(v.item)}</dd></dl></div></div></div>
+        <div class="panel"><div class="panel-h"><h2>국세청 조회 결과와 비교</h2></div><div class="panel-b stack">
+          <table class="tbl small"><thead><tr><th>항목</th><th>고객 입력</th><th>국세청</th></tr></thead><tbody>
+            <tr><td>사업자등록번호</td><td class="num">${fmtBizNo(s.manual.no)}</td><td>${r ? '<span class="st st-done">등록됨</span>' : '<span class="st st-stop">조회 안 됨</span>'}</td></tr>
+            <tr><td>대표자명</td><td>${esc(s.manual.rep)}</td><td>${judge(repOk)}</td></tr>
+            <tr><td>개업일자</td><td class="num">${esc(s.manual.open)}</td><td>${judge(openOk2)}</td></tr>
+            <tr><td>상태</td><td colspan="2">${r ? `${r.statusName} · ${r.tax}` : '-'}</td></tr></tbody></table>
+          <div class="note small">서류의 대표자명·개업일과 국세청 상태가 맞으면 승인하고, 다르면 사유 코드를 골라 반려해요. 고객 입력의 띄어쓰기 차이는 서류로 확인해요.</div>
+          <div class="stack-sm"><span class="small strong">반려 사유 코드</span><div class="cluster">${REJECT_CODES.map((c) => `<button class="chipbtn" data-act="rejCode" data-v="${c}" aria-pressed="${s.rejCode === c}">${c}</button>`).join('')}</div>
+            <input class="input" data-input="rejNote" value="${esc(s.rejNote)}" placeholder="직접 입력 (고객에게 보여요)" aria-label="반려 메모"></div>
+          <div class="cluster"><button class="btn btn-primary" data-act="hqApprove">승인 · 사업자 회원 전환</button><button class="btn btn-danger" data-act="hqReject" ${s.rejCode ? '' : 'disabled'}>반려</button></div></div></div>`;
+    } else detail = '<p class="small muted">우리 시나리오의 수동 심사 건이 없어요. 고객이 국세청 진위 확인에 3번 실패한 뒤 서류 심사를 요청하면 여기로 와요.</p>';
+    const mine = isBiz() && s.bizInfo ? (s.bizInfo.no === '2148635723' ? 1 : 0) : 0;
+    const accounts = `<table class="tbl small"><thead><tr><th>사업자등록번호</th><th class="num">인증 계정</th><th>비고</th></tr></thead><tbody>
+      <tr><td class="num">214-86-35723</td><td class="num">${mine}/${GC.Policy.get('member.biz_accounts_max')}</td><td class="xsmall">오늘밥상</td></tr>
+      <tr><td class="num">105-87-33108</td><td class="num">3/${GC.Policy.get('member.biz_accounts_max')}</td><td class="xsmall">4번째 신청 차단 ${s.limitBlocked}건 · 직원 계정은 3차</td></tr></tbody></table>`;
+    const check = app.state('acct') === 'BIZ_CHECK' ? `<tr><td>${s.member.no}</td><td>${esc(s.bizInfo.name)}</td><td>폐업 확인 ${fmtDate(s.grace.at, false)}</td><td>${fmtDate(s.grace.until, false)} 혜택 해제</td></tr>` : '<tr><td colspan="4" class="faint">확인 필요 회원이 없어요.</td></tr>';
+    return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>접수 · 회원</th><th>사업자번호</th><th>수동 심사 사유</th><th>처리 목표</th><th>상태</th></tr></thead><tbody>${q.join('')}</tbody></table></div>
+      <p class="xsmall faint">수동 심사 대상: 진위 불일치 · 등록증만 제출 · 국세청 API 장애 중 접수. 처리 목표 ${lpv('member.biz_manual_bd')}.</p>
+      ${detail}
+      <div class="panel"><div class="panel-h"><h2>사업자번호별 인증 계정</h2><span class="xsmall faint">최대 ${pv('member.biz_accounts_max')}</span></div><div class="panel-b tbl-wrap">${accounts}</div></div>
+      <div class="panel"><div class="panel-h"><h2>월 재조회 · 확인 필요</h2></div><div class="panel-b tbl-wrap"><table class="tbl small"><thead><tr><th>회원</th><th>상호</th><th>결과</th><th>조치</th></tr></thead><tbody>${check}</tbody></table></div></div>`;
+  }
+
+  /* ── 시스템 화면 ── */
+  VIEWS.system = (f) => {
+    const s = S(); const a = app.state('acct'); const now = app.clock.now();
+    const target = ['BIZ', 'BIZ_CHECK'].includes(a);
+    const rows = [['사업자 상태 월 재조회', `매월 ${lpv('member.biz_recheck_day', '1일 03:00')} · 다음 ${fmtDate(s.nextRecheck)} · 사업자 회원 전체(휴면 제외)`, target ? '<span class="sla sla-ok">대상에 오늘밥상 포함</span>' : '<span class="xsmall faint">우리 회원은 대상 아님</span>']];
+    if (s.grace) { const left = Math.ceil((s.grace.until - now) / GC.DAY); rows.push(['폐업 유예 감시', `확인 ${fmtDate(s.grace.at, false)} → 해제 ${fmtDate(s.grace.until, false)}`, `<span class="sla ${left <= 7 ? 'sla-warn' : 'sla-ok'}">${left}일 남음</span>`]); }
+    if (s.withdrawn) rows.push(['재가입 제한 해시', `탈퇴 ${fmtDate(s.withdrawn.at, false)} → 해제 ${fmtDate(s.withdrawn.until, false)}`, s.withdrawn.expired ? '<span class="sla sla-ok">파기됨</span>' : `<span class="sla sla-warn">${Math.ceil((s.withdrawn.until - now) / GC.DAY)}일 남음</span>`]);
+    if (s.manual && !s.manual.decided) rows.push(['서류 심사 처리 목표', `${fmtDate(s.manual.due)}까지`, now > s.manual.due ? '<span class="sla sla-over">초과 → 운영팀 알림</span>' : '<span class="sla sla-ok">여유</span>']);
+    if (s.order && s.order.status !== 'CONFIRMED') rows.push(['자동 구매 확정', s.order.deliveredAt ? `배송 완료 + ${GC.Policy.get('order.auto_confirm_days')}일` : '배송 완료 대기(다음 날)', `<span class="sla sla-ok">${orderLabel(s.order.status)}</span>`]);
+    if (s.email.sentAt && !s.email.verified) { const left = s.email.sentAt.getTime() + lp('member.email_code_minutes') * MIN - now.getTime(); rows.push(['이메일 인증번호', `${lpv('member.email_code_minutes')} 유효`, left > 0 ? `<span class="sla sla-ok">${mmss(left)} 남음</span>` : '<span class="sla sla-over">만료</span>']); }
+    f.body.innerHTML = `
+      <h3>배치·외부 연동</h3>
+      <p class="small muted">사람이 누르지 않아도 시간이 되면 돌아가는 일들이에요. 위쪽 +1일·+7일로 시간을 보내면 자동으로 실행돼요.</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>작업</th><th>기준</th><th>상태</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${r[0]}</td><td class="small">${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table></div>
+      <div class="panel"><div class="panel-h"><h2>사업자 상태 월 재조회</h2><span class="tag">A-MEM-02</span></div><div class="panel-b stack">
+        <div class="demo"><span class="demo-h">체험용 · 다음 조회에서 국세청이 오늘밥상(214-86-35723)을</span>
+          <div class="seg">${[['active', '계속사업자로 응답'], ['closed', '폐업으로 응답']].map(([k, t]) => `<button data-act="ntsAns" data-v="${k}" aria-pressed="${s.ntsAnswer === k}">${t}</button>`).join('')}</div></div>
+        ${s.rechecks.length ? `<table class="tbl small"><thead><tr><th>실행</th><th>방식</th><th>결과</th></tr></thead><tbody>${s.rechecks.map((x) => `<tr><td class="xsmall">${fmtDate(x.at)}</td><td>${x.by}</td><td>${x.res}</td></tr>`).join('')}</tbody></table>` : ''}
+        <div class="cluster"><button class="btn btn-primary btn-ext" data-act="recheck" ${target ? '' : 'disabled'}>재조회 지금 실행</button><span class="xsmall faint">${target ? '폐업이면 "확인 필요"로 바꾸고 유예 뒤 혜택을 해제해요.' : '사업자 회원이 생기면 실행할 수 있어요.'}</span></div></div></div>
+      <div class="note note-ext small">외부 연동: 카카오·Apple(소셜 로그인) · PASS·NICE(휴대폰 본인인증) · 국세청 사업자등록정보 API(진위·상태) · AWS SES(이메일) · AWS S3·GuardDuty(등록증 파일) · 채널톡(상담) · 솔라피(알림톡). 프로토타입에서는 안내 창으로 대신해요.</div>`;
+  };
+
+  /* ── 월 재조회 실행 ── */
+  function runRecheck(by) {
+    const s = S(); const a = app.state('acct'); const now = app.clock.now();
+    s.nextRecheck = firstOfNextMonth(now);
+    if (!['BIZ', 'BIZ_CHECK'].includes(a)) { s.rechecks.unshift({ at: now, by, res: '우리 시나리오 회원은 대상 아님' }); app.log('rule', `사업자 상태 재조회(${by}): 이 시나리오의 회원은 사업자 회원이 아니라 건너뜀`); return; }
+    const closed = s.ntsAnswer === 'closed';
+    if (closed && a === 'BIZ') {
+      goAcct('closure_detected', `${by} · 국세청 응답 폐업`);
+      s.grace = { at: now, until: new Date(now.getTime() + lp('member.biz_closed_grace_days') * GC.DAY) };
+      app.log('rule', `사업자 혜택은 ${fmtDate(s.grace.until, false)}까지 유지 · 세금계산서 발행은 지금부터 막고 현금영수증·카드 전표로 안내 · 진행 중 주문은 영향 없음`);
+      app.notify('NOTI_BIZ_STATUS_CHECK (코드 제안)', '고객', ['알림톡', '이메일'], `국세청에서 폐업으로 확인 · ${fmtDate(s.grace.until, false)} 사업자 혜택 해제 예정`);
+      s.rechecks.unshift({ at: now, by, res: '오늘밥상 폐업 → 확인 필요' });
+    } else if (!closed && a === 'BIZ_CHECK') {
+      goAcct('reverified', `${by} · 계속사업자로 다시 확인`); s.grace = null;
+      s.rechecks.unshift({ at: now, by, res: '오늘밥상 계속사업자 → 혜택 유지' });
+    } else {
+      s.rechecks.unshift({ at: now, by, res: closed ? '오늘밥상 여전히 폐업 · 유예 중' : '오늘밥상 계속사업자 · 변동 없음' });
+      app.log('rule', `사업자 상태 재조회(${by}): ${closed ? '여전히 폐업 · 유예 계속' : '변동 없음'}`);
+    }
+  }
+
+  /* ── 동작 ── */
+  app.actions({
+    cs(b) { go(b.dataset.to); },
+    findId() { app.toast('아이디 찾기: 휴대폰 본인인증을 하면 가입 이메일을 일부 가려 보여줘요(예: pa***@gmail.com)'); },
+    resetPw() { app.toast('비밀번호 재설정: 30분짜리 링크를 메일로 보내고, 바꾸면 모든 기기에서 로그아웃돼요'); },
+    async sns(b) {
+      const s = S(); const via = b.dataset.via; const n = SNS[via];
+      await app.ext({ service: via === 'kakao' ? '카카오 로그인' : 'Apple로 로그인', what: `${n.name} 계정으로 인증`, lines: [via === 'kakao' ? '받는 정보: 고유 ID · 이메일 · 이름(꼭 필요한 것만)' : '받는 정보: 고유 ID · 이메일(가리기를 고르면 Apple 중계 이메일) · 이름', '휴대폰 번호는 SNS에서 받지 않고 본인인증으로 받아요', 'SNS 고유 ID로 기존 회원인지 확인해요. 인증을 취소하거나 실패하면 로그인 화면으로 돌아와 안내해요'], result: '처음 온 회원으로 처리해요' });
+      s.via = via; s.notice = null; s.consent = {}; s.idScn = 'ok';
+      goJoin('sns_new', `${n.name} 고유 ID 신규`);
+      go('terms');
+    },
+    emSample(b) { const e = S().email; e.addr = b.dataset.v; e.err = null; refresh(); },
+    emAddr(t) { const e = S().email; e.addr = t.value; },
+    async emSend() {
+      const s = S(); const e = s.email; const addr = e.addr.trim().toLowerCase();
+      if (!emailOk(addr)) { e.err = { f: 'addr', msg: '이메일 형식이 맞지 않아요. 예: store@example.com' }; return refresh(); }
+      if (addr === 'owner@todaybap.kr') { e.err = { f: 'addr', msg: '카카오로 가입된 계정이에요. 카카오로 로그인해 주세요' }; app.log('rule', '이미 SNS로 가입된 이메일 → 가입 방식을 알려 주고 그 SNS 로그인으로 보냄'); return refresh(); }
+      if (e.sentAt && app.clock.now() - e.sentAt < MIN) { app.toast('1분 뒤에 다시 받을 수 있어요'); return; }
+      await app.ext({ service: 'AWS SES', what: '이메일 인증번호 보내기', lines: [`받는 사람 ${esc(addr)}`, `6자리 인증번호 · ${lp('member.email_code_minutes')}분 유효`, '재발송은 1분 간격, 하루 10회까지'], result: '메일이 도착한 것으로 처리해요' });
+      Object.assign(e, { addr, sentAt: app.clock.now(), input: '', err: null, fails: 0 });
+      app.log('user', `이메일 인증번호 발송 · ${esc(addr)}`);
+      refresh();
+    },
+    emCode(t) { S().email.input = t.value.replace(/\D/g, '').slice(0, 6); },
+    emVerify() {
+      const e = S().email; const max = lp('member.email_code_fail_max');
+      const left = e.sentAt.getTime() + lp('member.email_code_minutes') * MIN - app.clock.now().getTime();
+      if (left <= 0) { app.log('warn', '이메일 인증번호 만료 → 다시 받기 안내'); return refresh(); }
+      if (e.input !== EMAIL_CODE) { e.fails += 1; app.log('warn', `이메일 인증번호 불일치 ${e.fails}/${max}회`); e.err = { f: 'code', msg: e.fails >= max ? `${max}번 틀렸어요. [다시 받기]로 새 번호를 받아 주세요` : `인증번호가 맞지 않아요 (${e.fails}/${max}회)` }; return refresh(); }
+      e.verified = true; e.err = null; app.log('user', '이메일 인증 완료'); refresh();
+    },
+    emPw(t) { S().email.pw = t.value; syncPw(); },
+    emPw2(t) { S().email.pw2 = t.value; syncPw(); },
+    emNext() {
+      const s = S(); s.via = 'email'; s.consent = {}; s.idScn = 'ok';
+      goJoin('email_verified', `이메일 ${esc(s.email.addr)} 인증`);
+      app.log('rule', '비밀번호는 일방향 암호화(bcrypt·Argon2)로 저장 · 로그인 5회 실패하면 10분 잠금');
+      go('terms');
+    },
+    agreeChk(t) {
+      const c = S().consent;
+      if (t.dataset.k === 'all') TERMS.forEach((x) => { c[x.k] = t.checked; }); else c[t.dataset.k] = t.checked;
+      refresh();
+    },
+    async termView(b) { const [title, body] = TERM_TEXT[b.dataset.t]; await app.confirm({ title, body, ok: '확인', cancel: '닫기' }); },
+    toIdentity() {
+      const s = S(); const at = app.clock.now(); const c = s.consent;
+      s.consents = TERMS.map((t) => ({ item: t.grp ? `마케팅 수신 · ${t.t}` : t.t, ver: t.ver || 'v1.0', on: !!c[t.k], at, ch: s.via === 'email' ? '웹' : '앱' }));
+      goJoin('agree', '필수 3개 동의');
+      app.log('rule', `동의 이력 저장(항목·약관 버전·시각·채널, 고치지 않고 쌓음): ${TERMS.filter((t) => !t.req).map((t) => `${t.grp ? t.t : t.t.replace(' 광고성 정보 수신', '')} ${c[t.k] ? '동의' : '거부'}`).join(' · ')}`);
+      go('identity');
+    },
+    idScn(b) { S().idScn = b.dataset.v; refresh(); },
+    async pass() {
+      const s = S(); const p = s.idScn === 'minor' ? MINOR : OWNER;
+      await app.ext({ service: 'PASS · 본인확인기관', what: '휴대폰 본인인증', lines: ['통신사를 고르고 PASS 앱 또는 문자로 인증', `돌아온 결과: ${p.name} · ${p.birth} · 성별 · ${p.phone} · CI·DI`, '서버가 본인확인기관에 결과를 직접 조회해 검증해요. 앱·웹이 보낸 값은 믿지 않아요', `건당 비용이 들어 같은 사람은 하루 ${lp('member.identity_daily_max')}회까지`], result: '인증이 끝난 것으로 처리해요' });
+      app.clock.pass(2 * MIN);
+      const now = app.clock.now(); const min = GC.Policy.get('member.min_age'); const age = manAge(p.birth, now);
+      app.log('rule', `만 나이 계산: ${p.birth} 생 → 만 ${age}세 (가입 기준 만 ${min}세 이상) · 생년월일·성별은 계산에만 쓰고 저장하지 않음`);
+      if (age < min) { goJoin('underage', `만 ${age}세`); app.log('rule', '가입을 멈추고 인증 결과는 저장하지 않고 버렸어요'); return go('underage'); }
+      if (s.idScn === 'dup') { goJoin('dup_ci', 'CI 검색용 해시가 기존 계정과 같음'); return go('dupci'); }
+      if (s.withdrawn && !s.withdrawn.expired) { goJoin('rejoin_block', `탈퇴 ${fmtDate(s.withdrawn.at, false)} · ${fmtDate(s.withdrawn.until, false)}까지 제한`); return go('rejoin'); }
+      const re = !!s.withdrawn;
+      s.person = p;
+      s.member = { no: re ? 'M-102511' : 'M-102394', joinedAt: now, ageAt: now, via: s.via, email: s.via === 'email' ? s.email.addr : SNS[s.via].email, coupon: !re };
+      s.sessions = freshSessions(now); s.out = null;
+      app.log('rule', `본인인증 결과 저장: 만 ${min}세 이상 확인 결과 · 확인 시각 ${fmtDate(now)} (생년월일·성별 저장 안 함)`);
+      goJoin('verified', `만 ${age}세 · 처음 보는 CI`);
+      if (re) {
+        goAcct('rejoin', `새 회원 번호 ${s.member.no}`); s.rejoined = true; s.withdrawn = null;
+        app.log('rule', '탈퇴 전 쿠폰·포인트는 되살리지 않고, 신규가입 쿠폰도 CI 기준 1회라 다시 주지 않아요');
+      } else {
+        app.setState('acct', 'ACTIVE', { by: `${SNS[s.via].name} 가입 · 개인 회원 ${s.member.no}` });
+        app.log('rule', '신규가입 쿠폰 지급(본인인증 CI 기준 1회)');
+      }
+      app.log('rule', 'CI는 암호화해 저장하고 중복 확인은 검색용 해시로 · 이름·휴대폰 번호는 본인인증 결과로만 저장(직접 수정 불가)');
+      go('joined');
+    },
+    restart() { const s = S(); goJoin('restart'); s.consent = {}; s.idScn = 'ok'; go('login'); },
+    dupLogin() { app.toast('기존 계정으로 로그인해요. 한 사람은 계정 하나만 쓸 수 있어요'); const s = S(); goJoin('restart', '기존 계정 로그인으로 안내'); s.consent = {}; s.idScn = 'ok'; go('login'); },
+    toBiz() {
+      const s = S();
+      if (app.state('join') === 'JOINED') { goJoin('start_biz'); s.biz = freshBiz(); s.revoked = false; }
+      go(s.biz.nts ? 'bizDetail' : 'biz');
+    },
+    bzNo(t) { const d = digitsOf(t.value); S().biz.no = d; t.value = fmtBizNo(d); syncBiz(); },
+    bzRep(t) { S().biz.rep = t.value; syncBiz(); },
+    bzOpen(t) { const v = t.value.replace(/\D/g, '').slice(0, 8); S().biz.open = v; t.value = v; syncBiz(); },
+    bzSample(b) { const x = SAMPLES.find((y) => y[0] === b.dataset.s); Object.assign(S().biz, { no: x[1], rep: x[2], open: x[3] }); refresh(); },
+    async ntsCheck() {
+      const s = S(); const b = s.biz; const r = NTS[b.no]; const max = lp('member.biz_verify_fail_max'); const lim = GC.Policy.get('member.biz_accounts_max');
+      const match = r && r.rep === b.rep.trim() && r.open === b.open;
+      const out = !match ? 'mismatch' : r.status !== 'active' ? 'closed' : r.accounts >= lim ? 'limit' : 'ok';
+      await app.ext({ service: '국세청 사업자등록정보 API', what: '진위확인 · 상태조회', lines: [`사업자등록번호 ${fmtBizNo(b.no)} · 대표자명 ${esc(b.rep)} · 개업일자 ${esc(b.open)}`, '진위확인: 세 값이 국세청 등록 정보와 모두 같은지', '상태조회: 계속사업자 · 휴업 · 폐업', 'API가 멈추면 입력값을 저장해 "확인 중"으로 두고 자동으로 다시 조회해요'], result: out === 'mismatch' ? '진위가 맞지 않는다고 응답한 것으로 처리해요' : `진위 일치 · ${r.statusName}로 응답한 것으로 처리해요` });
+      app.clock.pass(MIN);
+      if (out === 'mismatch') {
+        b.fails += 1; app.log('warn', `국세청 진위 불일치 ${b.fails}/${max}회 · 대표자명 띄어쓰기·개업일자 확인 안내`);
+        if (b.fails === max) app.log('rule', `${max}회 불일치 → 사업자등록증으로 서류 심사를 요청할 수 있어요`);
+        return go('biz');
+      }
+      if (out === 'closed') {
+        s.denied = { code: 'CLOSED', title: '휴업·폐업 상태라<br>인증할 수 없어요', body: `국세청 조회 결과 이 사업자는 ${r.statusName}(${r.closedAt}) 상태예요. 다시 개업했다면 새 사업자등록번호로 인증해 주세요.` };
+        goJoin('deny', `국세청 상태 ${r.statusName}`); return go('bizDenied');
+      }
+      if (out === 'limit') {
+        s.limitBlocked += 1;
+        s.denied = { code: 'LIMIT', title: `이 번호로 이미 ${lim}개 계정이<br>인증했어요`, body: `같은 사업자등록번호로는 개인 계정 ${lim}개까지 각자 인증할 수 있어요. 기존 계정 중 하나에서 사업자 인증을 해제하거나 상담으로 문의해 주세요.`, extra: '<div class="note small">한 사업자 아래 직원 계정을 두는 기능은 준비 중이에요. <span class="tag tag-phase">3차</span></div>' };
+        goJoin('deny', `인증 계정 ${r.accounts}/${lim} · 4번째 차단`); app.log('rule', `사업자번호당 인증 계정 ${lim}개를 넘어 4번째 인증을 막고 상담 안내`);
+        return go('bizDenied');
+      }
+      b.nts = r; app.log('rule', `진위 일치 · ${r.statusName}(${r.tax}) → 사업자 정보를 받아요`); go('bizDetail');
+    },
+    toManual() { go('bizManual'); },
+    industry(b) { S().bizForm.industry = b.dataset.v; refresh(); },
+    async addrSearch() {
+      await app.ext({ service: '도로명주소 검색 API', what: '사업장 주소 검색', lines: ['도로명 주소를 고르면 우편번호가 자동으로 들어가요', '기본 배송지로 등록할지는 따로 골라요'], result: '서울 강남구 테헤란로 123을 고른 것으로 처리해요' });
+      Object.assign(S().bizForm, { addr: '서울 강남구 테헤란로 123', addr2: '1층 오늘밥상' }); refresh();
+    },
+    bf(t) { S().bizForm[t.dataset.f] = t.value; syncForm(); },
+    bfHome(t) { S().bizForm.homeAddr = t.checked; },
+    async uploadCert() {
+      await app.ext({ service: 'AWS S3 · GuardDuty', what: '사업자등록증 올리기', lines: ['이미지·PDF 10MB까지 · 서명된 주소로 바로 업로드', '악성코드 검사를 통과해야 운영팀이 열 수 있어요'] });
+      S().bizForm.cert = true; refresh();
+    },
+    bizConvert() {
+      const s = S(); const v = s.bizForm; app.clock.pass(3 * MIN);
+      s.bizInfo = { no: s.biz.no, rep: s.biz.rep, name: v.name, type: v.type, item: v.item, industry: v.industry, addr: v.addr, addr2: v.addr2, tax: v.tax, how: '국세청 자동 확인', at: app.clock.now() };
+      goJoin('convert', '사업자 정보 저장');
+      goAcct('biz_verified', `국세청 자동 확인 · ${fmtBizNo(s.biz.no)}`);
+      app.log('rule', `사업자 정보 = 세금계산서 발행 기본값 · 같은 번호 인증 계정 1/${GC.Policy.get('member.biz_accounts_max')}${v.homeAddr ? ' · 기본 배송지 등록' : ''} · 가격 표기 즉시 사업자가로`);
+      app.notify('NOTI_BIZ_VERIFY_RESULT', '고객', ['알림톡', '이메일', '알림센터'], '사업자 인증 완료 · 사업자가 적용');
+      go('bizDone');
+    },
+    manualSubmit() {
+      const s = S(); const now = app.clock.now();
+      s.manual = { no: s.biz.no, rep: s.biz.rep, open: s.biz.open, at: now, due: GC.addBusinessDays(now, lp('member.biz_manual_bd')), decided: null, warned: false };
+      s.rejCode = null; s.rejNote = '';
+      goJoin('manual_request', `진위 불일치 ${s.biz.fails}회 · 등록증 제출`);
+      app.notify('코드 없음 (제안 NOTI_INT_BIZ_REVIEW)', '운영팀(사업자 인증 담당)', ['관리자 알림센터'], '사업자 서류 심사 대기열에 1건 추가');
+      s.hqTab = 'biz'; go('bizWait');
+    },
+    retry() { const s = S(); goJoin('retry', s.denied && s.denied.code === 'MANUAL' ? '반려 후 다시 신청' : '다른 번호로 다시'); s.biz = freshBiz(); s.denied = null; go('biz'); },
+    async consult() { await app.ext({ service: '채널톡', what: '채팅 상담 연결', lines: ['회원 번호·화면 위치를 함께 넘겨 상담원이 바로 확인해요', '운영시간 밖이면 남긴 문의에 다음 영업일에 답해요'] }); },
+    async buy() {
+      const s = S(); const bz = isBiz(); const price = bz ? PRODUCT.bizTiers[0].price : PRODUCT.tiers[0].price;
+      await app.ext({ service: '토스페이먼츠', what: '결제창 호출', lines: [`${esc(PRODUCT.name)} 1박스 · ${won(price)} (${bz ? '사업자가' : '일반가'}, VAT 포함)`, bz ? `증빙: 세금계산서 · 사업자 정보(${esc(s.bizInfo.name)})가 기본값` : '증빙: 카드 전표 · 현금영수증', '체험용으로 배송비 없이 바로 출고해요'], result: '결제가 승인된 것으로 처리해요' });
+      s.order = { price, biz: bz, at: app.clock.now(), status: 'SHIPPED', deliveredAt: null };
+      app.log('money', `주문 결제 ${won(price)} · ${bz ? '사업자가 적용 · 세금계산서 신청' : '일반가'}`);
+      app.log('state', '주문: 결제 완료 → 배송 중 (체험용으로 바로 출고)');
+      refresh();
+    },
+    confirmOrder() { const o = S().order; o.status = 'CONFIRMED'; app.log('state', '주문: 고객이 구매 확정'); refresh(); },
+    async reverify() {
+      const s = S(); const closed = s.ntsAnswer === 'closed';
+      await app.ext({ service: '국세청 사업자등록정보 API', what: '상태 다시 조회', lines: [`사업자등록번호 ${fmtBizNo(s.bizInfo.no)}`], result: closed ? '여전히 폐업으로 응답한 것으로 처리해요' : '계속사업자로 응답한 것으로 처리해요' });
+      if (closed) { app.toast('국세청에서 아직 폐업으로 확인돼요'); app.log('rule', '다시 조회해도 폐업 → 유예 그대로'); return refresh(); }
+      goAcct('reverified', '고객이 다시 인증 · 계속사업자'); s.grace = null; refresh();
+    },
+    async logoutAll() {
+      const s = S(); const n = s.sessions.length;
+      if (!(await app.confirm({ title: '모든 기기에서 로그아웃할까요?', body: `<p class="small">이 휴대폰을 포함해 로그인한 기기 ${n}대가 모두 로그아웃돼요. 다시 쓰려면 ${SNS[s.member.via].name}로 로그인하면 돼요.</p>`, ok: '모두 로그아웃' }))) return;
+      s.sessions = []; s.out = 'all';
+      app.log('rule', `모든 기기에서 로그아웃 · 이 휴대폰 포함 세션 ${n}개 끊음 · SNS 회원은 비밀번호가 없어 이 버튼으로 끊어요`);
+      go('login');
+    },
+    async relogin() {
+      const s = S(); const via = s.member.via;
+      await app.ext({ service: via === 'kakao' ? '카카오 로그인' : via === 'apple' ? 'Apple로 로그인' : '식업 이메일 로그인', what: '기존 회원 로그인', lines: [via === 'email' ? '이메일 + 비밀번호 확인' : 'SNS 고유 ID로 기존 회원인지 확인', '기존 회원이라 약관·본인인증 없이 바로 로그인해요', '로그인 전에 보던 화면으로 돌아가요'], result: '기존 회원으로 로그인한 것으로 처리해요' });
+      const now = app.clock.now();
+      s.out = null; s.sessions = [{ kind: 'app', name: '이 휴대폰 · 식업 앱', at: now, last: now }];
+      app.log('user', `기존 회원 로그인 · ${SNS[via].name} · 이 휴대폰 자동 로그인(마지막 사용부터 ${GC.Policy.get('member.app_keep_login_days')}일)`);
+      go(s.cs === 'login' ? 'my' : s.cs);
+    },
+    wdReason(b) { S().wdReason = b.dataset.v; refresh(); },
+    async withdraw() {
+      const s = S(); if (blockers().length) return;
+      const via = s.member.via; const until = new Date(app.clock.now().getTime() + GC.Policy.get('member.rejoin_block_days') * GC.DAY);
+      if (via !== 'email') await app.ext({ service: via === 'kakao' ? '카카오 로그인' : 'Apple로 로그인', what: '탈퇴 전 본인 확인(재인증)', lines: ['같은 SNS 계정인지 다시 확인해요'], result: '본인 확인이 끝난 것으로 처리해요' });
+      const ok = await app.confirm({ title: '정말 탈퇴할까요?', body: `<p>쿠폰·포인트는 사라지고 되살릴 수 없어요.</p><p class="small">같은 본인인증 정보로 ${fmtDate(until, false)}까지 다시 가입할 수 없어요.${via === 'email' ? ' 비밀번호를 한 번 더 확인해요.' : ''}</p>`, ok: '탈퇴하기', cancel: '그대로 두기', danger: true });
+      if (!ok) return;
+      const now = app.clock.now();
+      goAcct('withdraw', s.wdReason ? `사유: ${s.wdReason}` : '사유 선택 안 함');
+      goJoin('withdraw', '즉시 로그아웃');
+      app.log('rule', '개인정보 파기 · 거래 기록(계약·결제 5년, 분쟁 3년)만 분리 보관 · 재가입 제한용으로 CI 해시만 남김');
+      if (s.bizInfo && s.revoked === false && isBiz()) app.log('rule', '같은 사업자번호로 인증한 다른 계정에는 영향 없음');
+      s.oldMember = { no: s.member.no, at: now };
+      s.withdrawn = { at: now, until, expired: false };
+      Object.assign(s, { sessions: [], out: null, member: null, bizInfo: null, biz: freshBiz(), bizForm: freshForm(), manual: null, denied: null, grace: null, revoked: false, order: null, consent: {}, hqOpen: false, unmasked: false, maskReason: null, maskNote: '', via: null, wdReason: null, notice: '탈퇴가 끝났어요. 그동안 이용해 주셔서 고마워요.' });
+      go('login');
+    },
+    hqTab(b) { S().hqTab = b.dataset.v; refresh(); },
+    openMember() {
+      const s = S(); s.hqOpen = true; app.clock.pass(2 * MIN);
+      s.audit.unshift({ at: app.clock.now(), who: '운영1 (CS)', act: '회원 상세 조회 · 가림 상태', reason: '-' });
+      app.log('rule', `접근 기록: 운영1(CS)이 ${s.member.no} 상세를 가림 상태로 조회`);
+      refresh();
+    },
+    maskReason(b) { S().maskReason = b.dataset.v; refresh(); },
+    maskNote(t) { S().maskNote = t.value; },
+    async unmask() {
+      const s = S(); if (!s.maskReason) return;
+      const ok = await app.confirm({ title: '개인정보 가림을 풀까요?', body: `<p>사유: ${esc(s.maskReason)}${s.maskNote ? ` · ${esc(s.maskNote)}` : ''}</p><p class="small">이름·휴대폰·이메일·주소가 보이고, 누가 언제 왜 열었는지 접근 기록에 남아요. 생년월일은 저장하지 않아 열 것이 없어요.</p>`, ok: '가림 풀기' });
+      if (!ok) return;
+      s.unmasked = true; s.hqDone = true;
+      s.audit.unshift({ at: app.clock.now(), who: '운영1 (CS)', act: '마스킹 해제 · 이름·휴대폰·이메일·주소', reason: s.maskReason + (s.maskNote ? ` · ${s.maskNote}` : '') });
+      app.log('rule', `접근 기록: 마스킹 해제 · 사유 "${esc(s.maskReason)}" · 접속 IP 10.0.**.** · 1년 이상 보관 · 1시간 100건 넘게 조회하면 계정 잠금`);
+      refresh();
+    },
+    remask() { S().unmasked = false; app.log('user', '관리자가 개인정보를 다시 가렸어요'); refresh(); },
+    rejCode(b) { S().rejCode = b.dataset.v; refresh(); },
+    rejNote(t) { S().rejNote = t.value; },
+    hqApprove() {
+      const s = S(); const v = s.bizForm; app.clock.pass(40 * MIN);
+      s.manual.decided = 'ok';
+      s.bizInfo = { no: s.manual.no, rep: (NTS[s.manual.no] || {}).rep || s.manual.rep, name: v.name, type: v.type, item: v.item, industry: v.industry, addr: v.addr, addr2: v.addr2, tax: v.tax, how: '서류 심사 승인', at: app.clock.now() };
+      goJoin('manual_approve', '운영1이 등록증 확인');
+      goAcct('biz_verified', `서류 심사 승인 · ${fmtBizNo(s.manual.no)}`);
+      app.notify('NOTI_BIZ_VERIFY_RESULT', '고객', ['알림톡', '이메일', '알림센터'], '사업자 인증 승인 · 사업자가 적용');
+      s.cs = 'bizDone'; s._top = true; refresh();
+    },
+    hqReject() {
+      const s = S(); if (!s.rejCode) return; app.clock.pass(40 * MIN);
+      s.manual.decided = 'no';
+      s.denied = { code: 'MANUAL', title: '서류 심사에서<br>반려됐어요', body: `사유: ${esc(s.rejCode)}${s.rejNote ? ` · ${esc(s.rejNote)}` : ''}. 내용을 고쳐 다시 신청할 수 있어요.` };
+      goJoin('manual_reject', `사유 코드: ${s.rejCode}`);
+      app.notify('NOTI_BIZ_VERIFY_RESULT', '고객', ['알림톡', '이메일', '알림센터'], `사업자 인증 반려 · ${esc(s.rejCode)}`);
+      s.cs = 'bizDenied'; s._top = true; refresh();
+    },
+    ntsAns(b) { S().ntsAnswer = b.dataset.v; app.log('user', `체험용 국세청 응답: ${b.dataset.v === 'closed' ? '폐업' : '계속사업자'}`); refresh(); },
+    async recheck() {
+      const s = S();
+      await app.ext({ service: '국세청 사업자등록정보 API', what: '사업자 회원 상태 일괄 재조회', lines: ['사업자 회원 전체(휴면 회원 제외)를 100건씩 상태조회', '휴업·폐업이면 "확인 필요"로 표시하고 고객에게 안내', `폐업이면 ${lp('member.biz_closed_grace_days')}일 유예 뒤 사업자 혜택 해제`], result: s.ntsAnswer === 'closed' ? '오늘밥상을 폐업으로 응답한 것으로 처리해요' : '오늘밥상을 계속사업자로 응답한 것으로 처리해요' });
+      runRecheck('관리자가 지금 실행');
+      refresh();
+    },
+  });
+  function syncPw() {
+    const fr = app.lastFrame; if (!fr) return; const e = S().email;
+    const ul = fr.querySelector('#pwRules'); if (ul) ul.innerHTML = pwRulesHtml(e);
+    const btn = fr.querySelector('[data-act="emNext"]'); if (btn) btn.disabled = !emReady(e);
+  }
+  function syncBiz() {
+    const fr = app.lastFrame; if (!fr) return; const b = S().biz; const st = bizNoState(b.no);
+    const h = fr.querySelector('#bzNoHint'); if (h) { h.textContent = st.msg; h.className = st.err ? 'err' : 'hint'; }
+    const i = fr.querySelector('#bzNo'); if (i) i.classList.toggle('is-err', !!st.err);
+    const oh = fr.querySelector('#bzOpenHint'); if (oh) oh.textContent = openHint(b.open);
+    const btn = fr.querySelector('[data-act="ntsCheck"]'); if (btn) btn.disabled = !bizReady(b);
+  }
+  function syncForm() {
+    const fr = app.lastFrame; if (!fr) return; const s = S();
+    const a = fr.querySelector('[data-act="bizConvert"]'); if (a) a.disabled = !formOk(s, false);
+    const m = fr.querySelector('[data-act="manualSubmit"]'); if (m) m.disabled = !formOk(s, true);
+  }
+
+  /* ── 시간이 흐를 때: 월 재조회 · 폐업 유예 · 재가입 제한 · 배송·자동 확정 · 심사 기한 ── */
+  app.onAdvance((prev, now) => {
+    const s = S();
+    if (now >= s.nextRecheck) {
+      app.log('ext', '국세청 사업자등록정보 API · 상태조회(사업자 회원 일괄, 매월 1일 03:00 배치)');
+      runRecheck('매월 1일 자동 배치');
+    }
+    if (s.grace && now >= s.grace.until && app.state('acct') === 'BIZ_CHECK') {
+      goAcct('grace_over', `폐업 확인 후 ${lp('member.biz_closed_grace_days')}일 지남`);
+      if (app.state('join') === 'BIZ_MEMBER') goJoin('benefit_off');
+      s.grace = null; s.revoked = true;
+      app.log('rule', '사업자 혜택 해제: 사업자가·세금계산서 끔 · 회원 유형 개인 · 진행 중 주문은 결제 때 가격 그대로');
+      app.notify('NOTI_BIZ_STATUS_CHECK (코드 제안)', '고객', ['알림톡', '이메일'], '사업자 혜택 해제 · 다시 개업했다면 새로 인증');
+    }
+    if (s.withdrawn && !s.withdrawn.expired && now >= s.withdrawn.until) {
+      s.withdrawn.expired = true;
+      app.log('rule', `재가입 제한(${GC.Policy.get('member.rejoin_block_days')}일) 끝 · 보관하던 CI 해시 파기 → 같은 사람이 다시 가입할 수 있어요`);
+    }
+    if (s.member && !s.out && s.sessions.length) {
+      s.sessions.filter((x) => now >= sessUntil(x)).forEach((x) => {
+        app.log('rule', x.kind === 'web' ? `${x.name}: 웹 "로그인 유지" ${GC.Policy.get('member.web_keep_login_days')}일이 지나 로그아웃됐어요` : `${x.name}: 마지막으로 쓴 뒤 ${GC.Policy.get('member.app_keep_login_days')}일이 지나 자동 로그인이 끝났어요`);
+      });
+      s.sessions = s.sessions.filter((x) => now < sessUntil(x));
+      if (!s.sessions.some((x) => x.kind === 'app')) { s.out = 'expired'; s.cs = 'login'; }
+    }
+    const o = s.order;
+    if (o && o.status === 'SHIPPED' && now - o.at >= GC.DAY) { o.status = 'DELIVERED'; o.deliveredAt = new Date(o.at.getTime() + GC.DAY); app.log('state', '주문: 배송 완료(택배 조회)'); }
+    if (o && o.status === 'DELIVERED' && now - o.deliveredAt >= GC.Policy.get('order.auto_confirm_days') * GC.DAY) { o.status = 'CONFIRMED'; app.log('state', `주문: 자동 구매 확정(배송 완료 + ${GC.Policy.get('order.auto_confirm_days')}일)`); }
+    if (s.manual && !s.manual.decided && !s.manual.warned && now > s.manual.due) { s.manual.warned = true; app.log('warn', `서류 심사 처리 목표(${fmtDate(s.manual.due)})를 넘겼어요 → 운영팀 알림`); }
+    guide();
+  });
+})();
+</script>
+</body>
+</html>
