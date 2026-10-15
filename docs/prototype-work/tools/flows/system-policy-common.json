@@ -7,7 +7,7 @@
  {"act":"pvReasonPreset","idx":1},
  {"act":"pvSubmit","shot":"system-p03-range"},
  {"act":"pvCancel"},
- {"act":"grp","attr":"data-g=\"회원·혜택\"","shot":"system-p04-member-text"},
- {"act":"grp","attr":"data-g=\"디자인\""},
+ {"act":"grp","attr":"data-g=\"회원·혜택·알림\"","shot":"system-p04-member-text"},
+ {"act":"grp","attr":"data-g=\"디자인·파일\""},
  {"eval":"Array.from(document.querySelectorAll('#gc-device td.num, #gc-device td.tv')).map(e=>e.textContent).filter(t=>/NaN/.test(t)).length"}
 ]

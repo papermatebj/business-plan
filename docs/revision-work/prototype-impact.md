@@ -1,4 +1,4 @@
-# 프로토타입 영향 목록 (S7 입력 · S9 입력·S9 결과·S10 입력은 맨 아래)
+# 프로토타입 영향 목록 (S7 입력 · S9 입력·결과 · S10 입력·결과 · S11 입력은 맨 아래)
 
 > 작성: 2026-10-14 S6. 근거: 부록 B 반영(S2~S5)과 S6 교차 검사·결정(D17~D19)으로 바뀐 명세 규칙을 지금 프로토타입(`prototype/`)과 대조한 결과입니다.
 > S7 진행 방법(서버·검증 도구·흐름 재실행·재게시)은 `docs/prototype-work/HANDOFF.md`를 그대로 따릅니다. 줄 번호는 2026-10-14 기준이라 고치다 보면 밀립니다. 함수 이름으로 찾으세요.
@@ -226,3 +226,63 @@
 | 13 | 검수 기한 초과·상품 신고 접수 알림 코드 | 맞춤 | A-PRD-01·C-NOTI-01 | catalog 알림 코드 |
 
 엔진 제안(S10에서 위 항목과 함께 판단): 위 표에 붙은 것 말고 `calcOrder` 고객용 단계 이름(‘판매자 할인’)·줄에 판비 뺀 상품 결제액, DISCARDED 사유 저장, `GC.settle.sumEvents`, 예고·기한 공통 도우미, `claim.tolerance`를 수량 %·위치 mm 두 키로, `addonCascade`가 본 상품 남은 수량도 보기, 업로드 주소 10분·다운로드 5분·변환 5분 정책값 키.
+
+# S10 결과 (2026-10-16, 결정·반영·재게시 끝)
+
+> 시작: 원본 HTML·프로토타입이 S9 커밋 뒤 바뀌지 않음 확인. 조사(읽기 전용 서브에이전트 3갈래: 돈·주문 / 운영·권한 / 맞춤 위치) → 결정 **D36~D45** + PG 질문 추가(AskUserQuestion 3번, `decisions.md` 맨 아래). **추천안과 다른 것: D41**(디자인비 쿠폰도 정액·정률, 첫 시안 뒤 취소 공제는 낸 디자인비만 — 쿠폰으로 깎인 몫은 본사 부담, 쿠폰으로 전액 무료면 0원).
+> 진행: 명세는 메인, 기획서·요청서·법률·PG 질문서는 포크 1개, 엔진은 메인, 페이지는 서브에이전트 5개(order / partner+member / benefit+design / system / catalog).
+
+## 끝난 것
+**문서**
+- 명세: D36·D37(A-ORD-01 ④ 합계 비교·정산 기준 다시 저장, C-PAY-02, C-STL-01 한 줄, C-STATE-01) · D38(A-ORD-01 ⑥, C-STATE-01 두 줄) · D39(C-STATE-01·02, U-MY-02, A-ORD-02, P-PRD-02, 00장 두 행) · D40(A-ORD-01 ⑦, A-PTN-02, D-REQ-04, U-MY-01, C-STATE-01·03, C-NOTI-01 `NOTI_ITEM_PARTNER_CHANGE_WITHDRAWN`·`NOTI_PARTNER_ACCOUNT_REINSTATED`) · D41(공제 문장 11곳, A-MKT-01 할인 방식·최대 할인액, U-BEN-01, U-ORD-02 디자인비 줄, C-PRICE-01 ④ 안분, D-REQ-03) · D42(A-SYS-03 '누가 바꾸나'·'공통 · 보안' 소제목, A-SYS-01) · D43(A-SYS-01, A-SYS-03, C-SEC-01, C-NOTI-01 `NOTI_INT_ADMIN_ACCOUNT_LOCKED`, '보안 담당' → 최고관리자) · D44(P-PRM-01, C-PRICE-01 ②) · D45(U-PDP-02). 맞춤 ③ C-STL-02·P-STL-01·A-STL-02 · ⑦ 알림 8개 · ⑨ `file.max_size_image`·D-REQ-03·D-ROOM-05 · ⑩ C-STATE-02 '진행 중 고객 라벨' · ⑪ 키 2개 · ⑬ 키 2개·알림 2개. `#g-dec4` 16 → 26행, 머리말 26건. 기능 162 그대로, 검사 통과.
+- 기획서(포크): 15장 10-15~16 표 26행, D33 행·07장 F·H·11장 디자인 가격표·04장 쿠폰. 요청서(포크): S-25 판매자 변경 카드(합계 비교·구성품·제안 거둠), 추가 구성품(D39·D45), 주문서 노트 1·3(D41), 상태 라벨 '클레임 진행 중'. 법률: L-14(D41), T-05(D37). PG: **PG-71 '결제 뒤 판매자 변경'**(질문 70 → 71개).
+- 메인 마무리 맞춤: 요청서 주문서 '낸 금액' → '낼 금액'(명세 U-ORD-02와 같게), system 에이전트 지적으로 `design.free_threshold`(A-REV-04 화면 값) → '디자인 옵션 가격' 행, `membership.*`·`ads.*` → '쿠폰 · 캠페인 · 멤버십 · 광고 운영' 행(요금은 최고관리자 승인), `NOTI_INT_BIZ_VERIFY_NEW` Slack ○ → —, 승인 뒤 환불 대기 라벨은 '취소 승인'·'반품 승인'(order 에이전트 지적, 명세 C-STATE-02 문단에도).
+
+**엔진**(검사 40 → **41개 통과**, TC-36·39 고침, TC-41 새로)
+- `GC.refund.partnerChange`: oldPlate·newPlate·addonsPaid 입력, 합계 비교(D36), `settle:{sale, partnerDisc:0, platformDisc}`(D37), `addonRefund`·`totalRefund`(D38). `hqAdjust` 없앰.
+- `GC.order.addonCascade(items, cancel, shippedIds)`: 남은 수량을 봄, `partialParents`. ORDER 새 이벤트 `parent_collected`(DELIVERED → RETURNED, D39)·`partner_change_cancel`(PAID·ACCEPTED → CANCELED, D38).
+- calcOrder 디자인비 쿠폰: `designFees[].couponAlloc`(묶음 품목별 안분), 멤버십 이용권이면 쓰지 않음(D-REQ-04·U-BEN-01과 맞춤). designCancel 라벨·주석(D41).
+- `GC.claim.label(…, claimType)` 유형별 진행 중 라벨·`GC.claim.step`·`OPEN_LABEL`. `GC.Policy.permRow(key)`(D42). `GC.price.optionExtraRange()`.
+- 정책값: 새 키 `product.option_combo_max`·`product.option_extra_range`(text)·`product.review_bd`·`product.review_priority_hours`(2차), 묶음 이름을 명세 영역 이름으로('주문·클레임·CS'·'디자인·파일'·'회원·혜택·알림').
+
+**페이지**(흐름 82 → **92개**, hub 제외 91개 모두 PASS)
+| 페이지 | 반영 | 흐름 | 새 흐름 |
+| --- | --- | --- | --- |
+| order | D36 후보별 판비·'상품만 싼' 장면, D37 '새 파트너 정산 기준' 표(조정 문구 없앰), D38 이쑤시개 구성품 시드, D39 `cascadeOf` → 엔진·`parent_collected`, ⑩ 라벨 | 10개 PASS(2개 eval 고침) | order-addon-collect(+narrow) |
+| partner·member | D40 정지 해제(사유·감사 로그·대표자 알림·제안 거둠·[인쇄 가능] 다시 열림), D36·D37 `chgMoney`, D38 구성품 시드, ⑦ 내부 알림 4개·`NOTI_PARTNER_PASSWORD_CHANGED`, member `NOTI_INT_BIZ_VERIFY_NEW` | 13개 PASS(eval 3개 고침) | partner-change-withdraw |
+| benefit·design | D41 쿠폰 만들기 정액·정률·최소 주문, 주문서 디자인비 쿠폰 칸·일부 할인 표시·공제 안내, design 공제(쿠폰 무료 0원·50만원 무료만 39,000원 + 동의 체크), 재제작 진행 중 라벨 | 17개 PASS | benefit-design-coupon(+narrow), design-d41(+narrow) |
+| system | D42 키 단위 권한(`permRow`, 디자인 팀장 시나리오를 `design.fee`로), D43 관리자 잠금 시연·알림 행, '보안 담당' → 최고관리자, ⑦⑬ 알림 3개, ⑨ 파일 표, 새 키 값 범위 | 12개 PASS(eval 8개 고침) | system-admin-lock(+narrow), system-policy-perm |
+| catalog | ⑪ 옵션 키 → 엔진, ⑬ 검수 기한·신고 알림 코드·`product.review_bd`, D44 라벨, D39 문구 3곳 | 17개 PASS | — |
+| index(메인) | 개요 '근거' D20~D45, 도메인 설명 5곳 | — | — |
+
+**계산 예시**: order — 원래 합계 370,000(결제 344,166) → 340,000이면 환불 27,905·플랫폼 부담 할인 23,739·새 파트너 295,800(13%), 상품만 싸고 판비가 늘어 375,000이면 0원(상계). partner — 180,000 → 175,000이면 환불 4,791·플랫폼 부담 할인 7,291·정산 예정 152,250. benefit — 디자인비 정액 1만원 쿠폰이면 39,000 · −10,000 · 29,000, 첫 시안 뒤 공제 29,000원 / 정률 100%면 0원 / 50만원 무료면 39,000원 + 동의 체크.
+
+**판단해서 넣은 것(결정과 다르면 고칠 것)**
+- 디자인비 쿠폰 최대 할인액은 정률이어도 선택, 묶음 안분은 품목별 디자인비 비율(남는 원은 첫 품목), 이용권과 같이 못 씀(기존 문장대로 — 엔진이 이용권 뒤 남은 추가 품목 디자인비에 쓰던 것을 막음).
+- 정책값 권한 대응: 무료 기준(`design.free_threshold`)은 디자인 옵션 가격 행, 멤버십·광고 키는 쿠폰·캠페인 행(권한 표 행 이름대로).
+- 붙은 구성품은 본 상품 남은 수량 전부에 취소 요청이 열려 있는 동안 그 클레임 안에 있는 것으로 봄(구매 확정 버튼 숨김·자동 확정 제외, order).
+- 정지 해제 사유 목록 4개(임시), 거둔 제안은 다시 정지되면 새로 제안 가능(partner). 새 키 값 범위: 옵션 조합 10~500개, 검수 기한 1~5영업일, 우선 검수 1~24영업시간, 우선 검수가 일반 검수보다 길면 저장 막음(system). 수정본 재검수도 기한 초과 알림(catalog). 시연 쿠폰 '맞춤 디자인 10,000원 할인'(benefit).
+- 참고 파일: C-FILE-01·D-REQ-03·D-ROOM-05의 행 이름은 화면 말 그대로 '참고 이미지'로 두고 형식·키 설명만 맞춤.
+
+## S10 마무리
+- 전체 흐름 91개(hub 제외) PASS, 엔진 검사 41개 통과. 다섯 문서 검사 통과(명세 기능 162 = 119·34·9, 중복 ID 없음, 태그 맞음, 깨진 링크 없음 — 명세 스크립트 템플릿 오탐 2건), texts 5개 다시 뽑음.
+- 재게시: 게시본 13개가 S9 커밋과 같음을 확인(index는 게시 뼈대만 다름)한 뒤 `build_publish.py` → https://claude.ai/artifact/WcNnk7zXsAEJq6jwuhPjDd **버전 8**.
+
+# S11 입력 — S10에서 새로 찾은 확인 거리 (2026-10-16 작성)
+
+> 결정이 급하지 않은 것들입니다. 범위 밖으로 남는 큰 것은 법률·PG 자문 답 반영(PG-71 포함).
+
+| # | 요약 | 종류(대강) | 명세 | 찾은 곳 |
+| --- | --- | --- | --- | --- |
+| 1 | 제안을 거둔 뒤 [인쇄 가능] 확인 기한(`production.print_check_bd`)을 언제부터 다시 세는지, 원래 파트너에게 '이어서 만드세요' 알림 코드 | 맞춤(코드)·결정(기한) | A-ORD-01 ⑦·D-PRD-02·C-NOTI-01 | partner |
+| 2 | 정지 해제 사유 목록 없음 | 맞춤 | A-PTN-02 | partner |
+| 3 | 국세청 재조회로 정지된 파트너가 다시 계속사업자로 확인되면 자동 해제인지 본사가 푸는지 | 결정 | A-PTN-02·P-ONB-04 | partner |
+| 4 | C-NOTI-01 Slack 칸의 ○ 조건이 적혀 있지 않은 행들(`NOTI_INT_ROOM_MESSAGE` 등) | 맞춤 | C-NOTI-01 | partner·system |
+| 5 | 맞춤 항목에 붙은 추가 구성품을 파트너가 언제 발주 확인하는지 | 맞춤 | C-STATE-01·P-ORD-01 | order |
+| 6 | 붙은 구성품이 본 상품 취소 클레임에 들어가는 시점(지금 프로토타입은 요청 때부터) | 맞춤 | C-STATE-01·02 | order |
+| 7 | A-MKT-01 '적용 대상(카테고리·파트너·상품)'이 디자인비 쿠폰에서 무엇을 뜻하는지, 디자인비 쿠폰 최소 주문 기준이 주문 전체인지 그 맞춤 품목인지 | 결정 | A-MKT-01·C-PRICE-01 | benefit |
+| 8 | `product.price_change_alert`(−50% / +200%) 키가 엔진에 없음(catalog는 페이지 상수), '200% 이상 올리면'이 2배인지 3배인지 | 맞춤 | P-PRD-03·A-SYS-03 | catalog |
+| 9 | 엔진 CLAIM_RETURN에 명세 EXCHANGE 행의 `EXCHANGE_REQUESTED` 상태가 없음 | 맞춤(엔진) | C-STATE-02 | S10 조사 |
+| 10 | A-MEM-02 수동 검토 영업일 1일·A-PTN-01 서류 심사 3일·전체 10일 '(정책값)'에 키 없음(키 없는 정책값 약 100곳 중 일부) | 맞춤 | A-MEM-02·A-PTN-01·A-SYS-03 | S10 조사 |
+
+엔진 제안(S9부터 남은 것, 채택 안 함): `calcOrder` 고객용 단계 이름('판매자 할인'), DISCARDED 사유 저장, `GC.settle.sumEvents`, 예고·기한 공통 도우미, `claim.tolerance`를 수량 %·위치 mm 두 키로, 업로드 주소 10분·다운로드 5분·변환 5분 정책값 키. S10에서 채택: `partnerChange` 판비 입력, `addonCascade` 남은 수량, `claim.label` 유형별, 옵션 키 2개.

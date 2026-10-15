@@ -913,7 +913,7 @@
       s.manual = { no: s.biz.no, rep: s.biz.rep, open: s.biz.open, at: now, due: GC.addBusinessDays(now, lp('member.biz_manual_bd')), decided: null, warned: false };
       s.rejCode = null; s.rejNote = '';
       goJoin('manual_request', `진위 불일치 ${s.biz.fails}회 · 등록증 제출`);
-      app.notify('내부 알림(C-NOTI-01에 코드 없음)', '운영팀(사업자 인증 담당)', ['관리자 알림센터'], '사업자 서류 심사 대기열에 1건 추가');
+      app.notify('NOTI_INT_BIZ_VERIFY_NEW', '운영팀(사업자 인증 담당)', ['관리자 알림센터'], `사업자 인증 수동 검토 대기 · 사업자 서류 심사 대기열에 1건 추가 · 처리 목표 ${fmtDate(s.manual.due, false)}`);
       s.hqTab = 'biz'; go('bizWait');
     },
     retry() { const s = S(); goJoin('retry', s.denied && s.denied.code === 'MANUAL' ? '반려 후 다시 신청' : '다른 번호로 다시'); s.biz = freshBiz(); s.denied = null; go('biz'); },

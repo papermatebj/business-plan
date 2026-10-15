@@ -1,0 +1,23 @@
+[
+ {"act":"sec","attr":"data-s=\"권한\""},
+ {"act":"pwFail"},{"act":"pwFail"},{"act":"pwFail"},{"act":"pwFail"},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device .panel')).find(p=>/로그인 보안/.test(p.textContent)).querySelector('.stack-sm').textContent.replace(/\\s+/g,' ').trim()"},
+ {"act":"pwFail","shot":"system-al01-locked","full":true},
+ {"eval":"document.querySelector('#gc-log').textContent.split('NOTI_INT_ADMIN_ACCOUNT_LOCKED').length-1"},
+ {"act":"role","attr":"data-r=\"마케터\""},
+ {"eval":"document.querySelector('#gc-device [data-act=role][aria-pressed=true]').dataset.r"},
+ {"act":"pwUnlock"},
+ {"eval":"(Array.from(document.querySelectorAll('#gc-device .note-stop')).pop()||{}).textContent"},
+ {"act":"role","attr":"data-r=\"최고관리자\""},
+ {"act":"pwUnlock","shot":"system-al02-unlocked"},
+ {"eval":"[(document.querySelector('#gc-device .note-spot')||{}).textContent, document.querySelector('#gc-device [data-act=pwFail]').disabled]"},
+ {"act":"sec","attr":"data-s=\"감사 로그\"","shot":"system-al03-audit","full":true},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device .tbl tbody tr')).slice(0,4).map(r=>r.textContent.replace(/\\s+/g,' ').trim())"},
+ {"act":"sec","attr":"data-s=\"알림\""},
+ {"eval":"(()=>{const s=document.querySelector('#simEv');s.value='NOTI_INT_ADMIN_ACCOUNT_LOCKED';s.dispatchEvent(new Event('change',{bubbles:true}));return s.value})()","after":400},
+ {"act":"simRun","shot":"system-al04-noti","full":true},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device table.mx tbody tr')).filter(r=>/NOTI_INT/.test(r.textContent)).map(r=>r.textContent.replace(/\\s+/g,' ').trim())"},
+ {"act":"role","attr":"data-r=\"마케터\""},
+ {"eval":"document.querySelector('#gc-device [data-act=role][aria-pressed=true]').dataset.r"},
+ {"role":"system","shot":"system-al05-system"}
+]

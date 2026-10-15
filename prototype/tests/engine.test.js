@@ -532,9 +532,9 @@ test('TC-36 추가 구성품(D24) — 판매가 × 수량, 파트너 할인 없�
   assert.equal(d.designFees[0].basis, 480000);
   assert.equal(d.designFees[0].fee, 39000);
   const items = [{ id: 'napkin' }, { id: 'wipe', addonOf: 'napkin' }];
-  assert.deepEqual(GC.order.addonCascade(items, ['napkin']), { cascade: ['wipe'], toReturn: [] });
-  assert.deepEqual(GC.order.addonCascade(items, ['napkin'], ['wipe']), { cascade: [], toReturn: ['wipe'] });
-  assert.deepEqual(GC.order.addonCascade(items, ['wipe']), { cascade: [], toReturn: [] }); // 추가 구성품만 혼자 취소
+  assert.deepEqual(GC.order.addonCascade(items, ['napkin']), { cascade: ['wipe'], toReturn: [], partialParents: [] });
+  assert.deepEqual(GC.order.addonCascade(items, ['napkin'], ['wipe']), { cascade: [], toReturn: ['wipe'], partialParents: [] }); // 출고됐으면 같은 회수로 함께 환불(D39)
+  assert.deepEqual(GC.order.addonCascade(items, ['wipe']), { cascade: [], toReturn: [], partialParents: [] }); // 추가 구성품만 혼자 취소
   assert.equal(GC.sm.next('ORDER', 'ACCEPTED', 'parent_canceled'), 'CANCELED');
   assert.equal(GC.sm.can('ORDER', 'SHIPPED', 'parent_canceled'), false);
 });
@@ -570,12 +570,24 @@ test('TC-38 끝난 클레임 라벨(D30) — 상태는 하나, 완료 결과로 
   }
 });
 
-test('TC-39 제작 파트너 변경(D33) — 거절·무응답은 공제 없이 전액, 더 싸면 차액 × 결제 비율, 비싸면 본사 보전', () => {
+test('TC-39 제작 파트너 변경(D33 · D36~D38) — 거절·무응답은 공제 없이 전액, 상품 + 판비 합계로 비교, 새 상품 금액 기준 정산, 붙은 구성품 환불', () => {
   const p = GC.refund.partnerChange;
-  assert.deepEqual(p({ choice: 'refund', oldList: 300000, paidTotal: 389000 }), { choice: 'refund', refund: 389000, deduction: 0, hqAdjust: 0, restoreBenefits: true });
-  assert.equal(p({ choice: 'agree', oldList: 300000, newList: 280000, oldPaid: 270000 }).refund, 18000); // 20,000 × 270,000 ÷ 300,000
-  const up = p({ choice: 'agree', oldList: 300000, newList: 320000, oldPaid: 270000 });
-  assert.deepEqual([up.refund, up.hqAdjust], [0, 20000]);
+  const r = p({ choice: 'refund', oldList: 300000, oldPlate: 50000, paidTotal: 389000, addonsPaid: 15000 });
+  assert.deepEqual([r.refund, r.addonRefund, r.totalRefund, r.restoreBenefits, r.settle], [389000, 15000, 404000, true, null]);
+  // 합계 비교 D36: (350,000 − 310,000) × 325,500 ÷ 350,000 = 37,200 / 판비 같으면 20,000 × 0.93 = 18,600
+  const down = p({ choice: 'agree', oldList: 300000, oldPlate: 50000, newList: 280000, newPlate: 30000, oldPaid: 325500, addonsPaid: 15000 });
+  assert.deepEqual([down.refund, down.addonRefund, down.totalRefund], [37200, 15000, 52200]);
+  assert.deepEqual(down.settle, { sale: 310000, partnerDisc: 0, platformDisc: 21700 }); // 310,000 − (325,500 − 37,200)
+  assert.equal(p({ choice: 'agree', oldList: 300000, oldPlate: 50000, newList: 280000, newPlate: 50000, oldPaid: 325500 }).refund, 18600);
+  // 비싸면 0원, 차이는 플랫폼 부담 할인(D37 — '조정' 이벤트 없음)
+  const up = p({ choice: 'agree', oldList: 300000, oldPlate: 50000, newList: 320000, newPlate: 50000, oldPaid: 325500 });
+  assert.deepEqual([up.refund, up.settle.sale, up.settle.platformDisc], [0, 370000, 44500]);
+  assert.equal(GC.settle.confirmEvent({ sale: up.settle.sale, partnerDisc: up.settle.partnerDisc, rate: 13 }).amount, 321900); // 370,000 − 48,100
+  // 판비 면제 재주문이 판비 있는 파트너로 가면 판비가 새로 생겨도 더 받지 않음
+  const plateNew = p({ choice: 'agree', oldList: 300000, oldPlate: 0, newList: 280000, newPlate: 50000, oldPaid: 270000 });
+  assert.deepEqual([plateNew.refund, plateNew.settle.platformDisc], [0, 60000]);
+  assert.equal(GC.sm.next('ORDER', 'PAID', 'partner_change_cancel'), 'CANCELED'); // 붙은 구성품(D38)
+  assert.equal(GC.sm.can('ORDER', 'SHIPPED', 'partner_change_cancel'), false);
   assert.equal(GC.sm.next('ORDER_CUSTOM', 'DESIGN_CONFIRMED', 'partner_change_refund'), 'CANCELED');
   assert.equal(GC.sm.next('DESIGN', 'HANDED_OFF', 'partner_changed'), 'HANDED_OFF');
   assert.equal(GC.sm.next('DESIGN', 'PROPOSED', 'partner_change_refund'), 'CANCELED');
@@ -590,4 +602,45 @@ test('TC-40 새 정책값 키(2026-10-15) — 보안·인쇄 확인·즉시 할�
   assert.deepEqual([g('file.max_size_chat'), g('file.max_size_original'), g('file.max_size_logo'), g('file.max_size_image')], [100, 500, 100, 20]);
   assert.equal(typeof g('claim.tolerance'), 'string');
   assert.throws(() => g('file.max_size'), /UNKNOWN_POLICY/); // 값 셋을 담던 예전 키는 없음
+});
+
+test('TC-41 S10 결정(2026-10-16) — 디자인비 쿠폰 정액·정률·안분, 공제는 낸 디자인비만(D41), 구성품 남은 수량(D39), 진행 중 라벨·새 키·권한 행(D42)', () => {
+  const bundle = (designCoupon, voucher = false) => GC.price.calcOrder({
+    items: [CUSTOM_ITEM({ tiers: [{ min: 1, price: 200000 }] }), CUSTOM_ITEM({ id: 'c2', name: '인쇄 컵홀더', tiers: [{ min: 1, price: 150000 }], plateFee: 0 })],
+    designGroups: [{ id: 'D1', type: 'CUSTOM', voucher }], shipping: FREE_SHIP, designCoupon,
+  });
+  const rate = bundle({ name: '디자인비 50%', type: 'rate', value: 50 });
+  assert.deepEqual([rate.designFees[0].fee, rate.totals.designCoupon, rate.designFees[0].couponAlloc], [58000, 29000, [19500, 9500]]);
+  const amt = bundle({ name: '디자인비 1만원', type: 'amount', value: 10000 });
+  assert.deepEqual(amt.designFees[0].couponAlloc, [6725, 3275]); // 품목별 디자인비 39,000 : 19,000, 남는 원은 첫 품목
+  assert.equal(bundle({ name: '첫 디자인 무료', type: 'rate', value: 100 }).totals.designCoupon, 58000); // 전액 무료 = 정률 100%
+  const v = bundle({ name: '첫 디자인 무료', type: 'free' }, true); // 멤버십 이용권과 동시에 못 씀
+  assert.deepEqual([v.designFees[0].reason, v.designFees[0].fee, v.totals.designCoupon], ['voucher', 19000, 0]);
+  const dc = (o) => GC.refund.designCancel({ type: 'CUSTOM', stage: 'AFTER_PROPOSAL', itemsAmount: 350000, ...o });
+  assert.equal(dc({ paidDesignFee: 0, freeCustom: false }).deduction, 0); // 쿠폰으로 전액 무료 → 공제 0원
+  assert.deepEqual([dc({ paidDesignFee: 29000 }).deduction, dc({ paidDesignFee: 29000 }).refund], [29000, 350000]); // 일부 할인 → 낸 디자인비만
+  assert.equal(dc({ paidDesignFee: 0, freeCustom: true }).deduction, 39000); // 50만원·멤버십 무료는 그대로 39,000원
+  // 본 상품 일부만 취소하면 구성품은 그대로, 남은 수량을 다 취소하면 함께
+  const items = [{ id: 'napkin', qty: 4 }, { id: 'wipe', addonOf: 'napkin', qty: 2 }];
+  assert.deepEqual(GC.order.addonCascade(items, [{ id: 'napkin', qty: 2 }]), { cascade: [], toReturn: [], partialParents: ['napkin'] });
+  assert.deepEqual(GC.order.addonCascade([{ id: 'napkin', qty: 4, canceledQty: 2 }, items[1]], [{ id: 'napkin', qty: 2 }]).cascade, ['wipe']);
+  assert.equal(GC.sm.next('ORDER', 'DELIVERED', 'parent_collected'), 'RETURNED');
+  // 진행 중 라벨은 클레임 유형으로, 거부는 '판매자 거부', 단계는 따로
+  const L = GC.claim.label;
+  assert.equal(L('CLAIM_RETURN', 'RETURN_COLLECTING', null, 'REMAKE'), '재제작 진행 중');
+  assert.equal(L('CLAIM_RETURN', 'EXCHANGE_SHIPPED', null, 'EXCHANGE'), '교환 진행 중');
+  assert.equal(L('CLAIM_RETURN', 'RETURN_REJECTED', null, 'REMAKE'), '판매자 거부');
+  assert.equal(L('CLAIM_CANCEL', 'CANCEL_REQUESTED', null, 'CUSTOM_CANCEL'), '취소 중재 중');
+  assert.equal(L('CLAIM_RETURN', 'RETURN_COLLECTING'), '반품 진행 중');
+  assert.deepEqual([L('CLAIM_CANCEL', 'CANCEL_APPROVED', null, 'CANCEL'), L('CLAIM_RETURN', 'RETURN_APPROVED', null, 'RETURN'), L('CLAIM_RETURN', 'RETURN_APPROVED', null, 'REMAKE')], ['취소 승인', '반품 승인', '재제작 진행 중']); // 승인 뒤 환불 대기는 승인 라벨
+  assert.equal(GC.claim.step('CLAIM_RETURN', 'RETURN_COLLECTING'), '회수 중');
+  // 새 정책값 키·옵션 추가 금액 범위
+  const g = (k) => GC.Policy.get(k);
+  assert.deepEqual([g('product.option_combo_max'), g('product.review_bd'), g('product.review_priority_hours')], [100, 1, 4]);
+  assert.deepEqual(GC.price.optionExtraRange(), { down: -50, up: 200 });
+  // 키별 권한 행(D42): 보안·파일 한도는 최고관리자만
+  const R = (k) => GC.Policy.permRow(k);
+  assert.deepEqual([R('security.login_fail_lock'), R('file.max_size_image'), R('commission.custom_rate'), R('design.fee'), R('promo.instant_discount_max')],
+    ['관리자 계정 · 권한 · 정책값', '관리자 계정 · 권한 · 정책값', '수수료율 변경', '디자인 옵션 가격', '쿠폰 · 캠페인 · 멤버십 · 광고 운영']);
+  assert.deepEqual([R('design.free_threshold'), R('membership.price_monthly')], ['디자인 옵션 가격', '쿠폰 · 캠페인 · 멤버십 · 광고 운영']); // A-REV-04 화면 값 · 권한 표 행 이름대로
 });

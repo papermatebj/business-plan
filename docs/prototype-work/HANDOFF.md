@@ -10,6 +10,8 @@
 
 **2026-10-16 S9(S8 결정 D20~D35 반영, 재게시 전)**: 엔진에 판비 = 상품 금액(`instant.plate`·`platePaid`), 본사 쿠폰 두 자리(`hqCoupon` 상품 할인 + `designCoupon`, `includeDesignFee` 없앰), 추가 구성품(`addonOf`·`GC.order.addonCascade`), `GC.refund.partnerChange`, 클레임 완료 결과(`result`·`GC.claim.label`), 새 전이(수정본 DISCARDED·정산 보류 → 확정·출고 뒤 취소 이의·파트너 변경), 정책값 키 14개(새 묶음 '공통 · 보안'). 검사 40개. 페이지 10개 고침(MOVED 없앰, order에 '시작 장면' 고르기), 흐름 64 → 82개(hub 제외 81). 결과·판단·남은 확인 거리는 `docs/revision-work/prototype-impact.md` 맨 아래 'S9 결과'. **마무리(10-16)**: 흐름 81개 PASS·엔진 40개 → 같은 URL 재게시(버전 7, 개요 ‘근거’ 줄에 D20~D35). **새 세션에서 같은 URL로 올릴 때**: 게시 도구가 ‘읽지 않은 기존 파일’이라며 막으면 Artifact `read`의 `paths`로 12개를 받아 커밋본 `prototype/`과 해시(줄바꿈 무시)를 비교해 밖에서 바뀐 게 없는지 본 뒤 다시 publish. 이 세션엔 파일 수정 훅이 있어 publish의 `edits`가 막힘 → 소스를 고치고 `build_publish.py` 다시 → publish. 다음은 S10(`docs/revision-work/prototype-impact.md` 맨 아래 ‘S10 입력’).
 
+**2026-10-16 S10(결정 D36~D45 반영, 재게시 끝)**: 엔진에 `partnerChange` 판비·정산 기준·붙은 구성품(`settle`·`addonRefund`, `hqAdjust` 없앰), `addonCascade` 남은 수량(`partialParents`), ORDER `parent_collected`·`partner_change_cancel`, 디자인비 쿠폰 묶음 안분(`couponAlloc`)·이용권과 같이 안 씀, `claim.label(…, claimType)` 유형별 진행 중 라벨·`claim.step`, `Policy.permRow(key)`(정책값 키별 권한 행), `price.optionExtraRange()`, 새 키 4개, 묶음 이름을 명세 영역 이름으로('주문·클레임·CS'·'디자인·파일'·'회원·혜택·알림'). 검사 41개. 페이지 9개 + index 고침, 흐름 82 → 92개(hub 제외 91 PASS). 결과는 `docs/revision-work/prototype-impact.md` ‘S10 결과’. 같은 URL 재게시(버전 8) — 이번엔 Artifact `read`의 `paths`로 게시본 13개를 받아 직전 커밋 `prototype/`과 해시(줄바꿈 무시, index는 게시 뼈대를 뺀 뒤)로 같음을 확인하고, 페이지를 `read`(path 없이) 한 번 한 뒤 publish하니 막히지 않음. **흐름 일괄 실행은 3개씩**(`xargs -P 3`) — 서브에이전트들이 동시에 서버를 쓰면 ERR_CONNECTION_REFUSED가 날 수 있어, 실패하면 그 흐름만 다시 돌려 봄. 다음은 S11(`prototype-impact.md` 맨 아래 ‘S11 입력’).
+
 ---
 아래는 일시 중지 시점(2026-10-13 새벽)의 원래 인수인계 기록입니다.
 

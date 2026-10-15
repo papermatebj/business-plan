@@ -21,6 +21,8 @@
  {"act":"doReturn"},
  {"role":"partner"},{"act":"pickup"},
  {"role":"system"},{"act":"collected"},
+ {"role":"customer"},
+ {"eval":"[Array.from(document.querySelectorAll('#gc-device .oitem')).map(e=>e.querySelector('.nm').textContent.trim()+' ['+e.querySelector('.stk, .st').innerText.split(String.fromCharCode(10)).join(' ')+']').join(' / '), document.querySelector('#gc-device .claimbox .split').innerText.split(String.fromCharCode(10)).join(' ')]"},
  {"role":"partner","shot":"order-11-inspect"},
  {"act":"rejectReturn"},
  {"role":"customer"},{"act":"objection"},

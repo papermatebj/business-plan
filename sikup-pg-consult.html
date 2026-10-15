@@ -301,10 +301,10 @@ tr.grp td{background:var(--surface-2)}
   <p class="lead">토스페이먼츠·KG이니시스·NHN KCP·나이스페이 등 3~4곳에 같은 질문지로 사전 상담을 하고, 답을 <b>서면으로</b> 받아 비교합니다. 결제 1건에 여러 판매자(파트너들 + 본사)가 섞이는 구조라, 일반 쇼핑몰 PG 상담과 질문이 다릅니다.</p>
   <div class="meta-row"><span>작성일 2026-10-12</span><span>대상: 대표·개발(본인)·재무</span><span>근거: 기획서 07·10장, 기능 명세서 C-PAY·C-STL·A-STL</span><span>금액·요율은 관리자 설정값의 임시 기본값</span></div>
   <div class="kpis">
-    <div class="kpi"><div class="k">질문</div><div class="v">70개</div><div class="s">12개 주제</div></div>
+    <div class="kpi"><div class="k">질문</div><div class="v">71개</div><div class="s">12개 주제</div></div>
     <div class="kpi"><div class="k">필수 질문</div><div class="v">27개</div><div class="s">PG 선택 기준이 되는 질문</div></div>
     <div class="kpi"><div class="k">상담 대상</div><div class="v">3~4곳</div><div class="s">같은 질문지로 비교</div></div>
-    <div class="kpi"><div class="k">확인 진행</div><div class="v" data-progress>0 / 70</div><div class="s">체크·메모는 이 브라우저에 저장</div></div>
+    <div class="kpi"><div class="k">확인 진행</div><div class="v" data-progress>0 / 71</div><div class="s">체크·메모는 이 브라우저에 저장</div></div>
   </div>
 </section>
 <div class="filters" role="group" aria-label="질문 필터">
@@ -338,7 +338,7 @@ tr.grp td{background:var(--surface-2)}
         <div class="fl-item h"><b>본사 계좌</b> 84,000<span>디자인비 39,000 + 수수료 45,000</span></div>
       </div>
     </div>
-    <p class="muted fl-foot">배송비 제외. PG 결제 수수료와 지급대행 수수료는 본사가 부담하므로 파트너 지급액에서 빼지 않습니다. 금액·요율은 모두 임시 기본값이고 실제 값은 관리자가 설정합니다. 결제가 끝난 뒤에도 원 주문에 연결된 추가 결제가 생깁니다(본사 몫: 디자인 부가 결제·맞춤형 전환 차액 / 파트너 몫: 새 판비·추가 배송비·반품 차액, <a class="xref" href="#PG-70">PG-70</a>).</p>
+    <p class="muted fl-foot">배송비 제외. PG 결제 수수료와 지급대행 수수료는 본사가 부담하므로 파트너 지급액에서 빼지 않습니다. 금액·요율은 모두 임시 기본값이고 실제 값은 관리자가 설정합니다. 결제가 끝난 뒤에도 원 주문에 연결된 추가 결제가 생깁니다(본사 몫: 디자인 부가 결제·맞춤형 전환 차액 / 파트너 몫: 새 판비·추가 배송비·반품 차액, <a class="xref" href="#PG-70">PG-70</a>). 고객이 동의하면 결제 뒤 맞춤 항목의 판매자가 다른 파트너로 바뀔 수도 있습니다(<a class="xref" href="#PG-71">PG-71</a>).</p>
   </div>
 
   <div class="grid g2" style="margin-top:14px">
@@ -650,6 +650,15 @@ tr.grp td{background:var(--surface-2)}
   <p class="ask"><span class="ask-l">물어볼 말</span>결제가 끝난 뒤에도 원 주문에 연결된 추가 결제가 생깁니다. 본사 몫은 디자인 부가 결제(추가 수정·보정 작업 등)와 맞춤형 전환 차액이고, 파트너 몫은 확정 후 변경 때의 새 판비, 주소 확인 뒤 추가 배송비, 반품 때 차액입니다. ① 추가 결제도 원 결제처럼 판매자(하위몰)를 나눠 넣을 수 있나요? 지급대행형이면 원 주문과 연결해 기록·대사할 방법이 있나요? ② 원 결제와 추가 결제에 걸쳐 환불할 때 어느 승인부터 취소해야 하나요? 승인마다 따로 부분 취소해야 하나요? ③ 추가 결제가 현금성 결제면 에스크로를 따로 걸어야 하나요?</p>
   <div class="q-grid"><div><h5>왜 묻나</h5><p>예: 인쇄 250,000 + 판비 50,000을 결제한 뒤 보정 작업 10,000원을 따로 결제하고, 보정을 시작하기 전에 취소하면 310,000원을 두 승인에 걸쳐 돌려줘야 합니다. 환불액은 한 잔액으로 계산하지만 실제 취소는 승인 단위로 나눠야 합니다. 금액은 모두 임시 기본값입니다.</p></div><div><h5>원하는 답</h5><p>추가 결제를 원 주문·판매자에 연결해 기록, 여러 승인에 걸친 환불 순서 안내, 추가 결제에도 같은 에스크로 적용.</p></div><div><h5>안 되면</h5><p>환불을 승인별로 나눠 계산하고, 판매자 구분이 안 되는 추가 결제는 플랫폼이 받아 정산 이벤트로 파트너에게 넘깁니다.</p></div></div>
   <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#D-OPT-01">D-OPT-01</a><a class="sid" href="sikup-spec.html#D-REQ-02">D-REQ-02</a><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a><a class="sid" href="sikup-spec.html#C-PRICE-03">C-PRICE-03</a><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a><a class="sid" href="sikup-spec.html#U-MY-03">U-MY-03</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="PG-71" data-pri="rec" data-title="결제 뒤 판매자 변경">
+  <div class="q-h"><span class="qid">PG-71</span><span class="b rec">중요</span><h4>결제 뒤 판매자 변경</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>파트너가 판매를 멈추거나 정지·계약 종료되면, 아직 인쇄 전인 맞춤 주문 항목을 같은 사양의 다른 파트너 상품으로 옮길 수 있습니다(고객 동의를 받은 경우만). 새 상품이 더 싸면 차액을 부분 환불하고, 비싸도 고객에게 더 받지 않습니다. ① 하위몰형이면 이미 승인된 결제 안에서 그 항목의 판매자(하위몰)를 다른 판매자로 바꿀 수 있나요? 부분 취소 뒤 다시 결제하지 않고 할 방법이 있나요? ② 안 된다면 원래 판매자 몫을 부분 취소하고 새 판매자 몫을 어떻게 다시 잡아야 하나요(고객 재결제 없이)? ③ 지급대행형이면 결제 기록은 그대로 두고 내부 장부의 판매자만 바꿔 새 판매자에게 지급하면 되나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>예: 인쇄 300,000 + 판비 50,000을 결제한 맞춤 항목을 원래 파트너가 만들 수 없게 되어 인쇄 280,000 + 판비 50,000인 다른 파트너 상품으로 옮기면, 차액 20,000원(결제 비율 반영)을 돌려주고 새 파트너에게 정산해야 합니다. 원래 파트너에게는 지급하지 않습니다. 금액은 모두 임시 기본값입니다.</p></div><div><h5>원하는 답</h5><p>결제 안에서 판매자 변경, 또는 고객 재결제 없이 판매자를 옮기는 처리 방법.</p></div><div><h5>안 되면</h5><p>원래 판매자 몫을 전액 부분 취소하고 플랫폼이 받은 것으로 기록한 뒤, 정산 이벤트로 새 파트너에게 지급합니다.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#A-ORD-01">A-ORD-01</a><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a><a class="sid" href="sikup-spec.html#C-STL-01">C-STL-01</a></div>
   <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
   <div class="memo-print"></div>
 </article>

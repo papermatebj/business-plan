@@ -95,10 +95,10 @@
   /* 로그인 보안은 관리자와 같은 정책값(공통 · 보안, C-SEC-01 · P-ONB-04) */
   const P = (k) => GC.Policy.get(k);
   const PW_LEN = 'security.password_min_length', FAIL_LOCK = 'security.login_fail_lock', IDLE_MIN = 'security.idle_logout_minutes';
-  /* 알림: 보안·계정 알림은 담당자가 아니라 대표자에게(C-NOTI-01 · D32) · 내부 MD 알림은 C-NOTI-01에 코드가 없음 */
+  /* 알림: 보안·계정 알림은 담당자가 아니라 대표자에게(C-NOTI-01 · D32) · 내부 알림(입점 신청·샘플 미도착·계약 미서명·OTP 다시 등록 요청)은 관리자 알림센터 + Slack(C-NOTI-01, 2026-10-16) */
   const CH_CEO = ['알림톡', 'SMS 대체', '이메일', '알림센터'];
   const CH_CUST = ['알림톡', 'SMS 대체', '앱 푸시', '이메일', '알림센터'];
-  const NO_CODE_INT = '내부 알림(C-NOTI-01에 코드 없음)';
+  const CH_INT = ['관리자 알림센터', 'Slack'];
   function lpv(k, text) {
     const m = LOCAL[k];
     return `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(m.label)} — 엔진에 아직 없는 값이라 이 페이지 상수로 둠">${text != null ? text : GC.num(m.v) + m.unit}</span>`;
@@ -132,6 +132,7 @@
   ];
   const REASONS = { '서류 미비': '필수 서류가 빠졌거나 내용이 맞지 않아요', '품목 부적합': '취급 품목이 외식업 소모품 범위와 맞지 않아요', '품질 미달': '인쇄 샘플의 색 재현·재단 품질이 기준에 못 미쳐요', '기타': '내부 기준에 따라 이번에는 입점이 어려워요' };
   const STOP_REASONS = ['서류 유효기간 만료', '직거래 위반', '클레임율 급증', '파트너 요청'];
+  const REL_REASONS = ['정지 사유 해소', '파트너 소명 인정', '사업자 상태 정상 확인', '본사 오처리 정정']; // 정지 해제 사유(D40 · 감사 로그) — 명세에 목록이 없어 임시
   const INV_AMTS = { a: { v: 1200000, label: '확인된 직거래 120만원' }, b: { v: 8000000, label: '확인된 직거래 800만원' }, c: { v: 3600000, label: '금액 확인 불가 · 직전 12개월 플랫폼 거래액' } };
   const STEPS = ['담당자 인증', '사업자 확인', '회사·판매 정보', '서류', '정산 계좌', '확인·제출'];
 
@@ -156,23 +157,35 @@
   const PRE_PRINT = ['DESIGNING', 'DESIGN_CONFIRMED'];
   const chgTargets = (s) => s.orders.filter((o) => o.kind === 'custom' && PRE_PRINT.includes(o.st) && !o.movedAway);
   const chgPending = (o) => !!(o.chg && !o.chg.result);
-  /* 같은 사양의 다른 파트너 상품 후보(할인 전 금액 · 같은 수량·결제 때 가격 종류) */
+  /* 정지가 풀려 거둔 제안(D40)은 다시 정지되면 새로 제안할 수 있음 */
+  const chgFresh = (o) => !o.chg || o.chg.result === 'withdrawn';
+  const chgWithdrawn = (o) => !!(o.chg && o.chg.result === 'withdrawn');
+  /* 같은 사양의 다른 파트너 상품 후보(할인 전 상품 대금 · 같은 수량·결제 때 가격 종류 + 그 파트너 판비, D36).
+     newPartner = 그 파트너가 신규 입점 인하 기간 → 새 정산 요율에 반영(D37: 동의 시점 그 상품 요율, 재주문 인하 없음) */
   const OFFERS = {
     'GC-2610-1038': [
-      { k: 'a', seller: '새한인쇄(주)', name: '로고 수저집 40×240mm 5,000매 · 별색 1도', list: 140000 },
-      { k: 'b', seller: '푸른패키지', name: '로고 수저집 40×240mm 5,000매 · 별색 1도', list: 158000 },
+      { k: 'a', seller: '새한인쇄(주)', name: '로고 수저집 40×240mm 5,000매 · 별색 1도', list: 140000, plate: 35000 },
+      { k: 'b', seller: '푸른패키지', name: '로고 수저집 40×240mm 5,000매 · 별색 1도', list: 158000, plate: 30000, newPartner: true },
     ],
     'GC-2610-1045': [
-      { k: 'a', seller: '푸른패키지', name: '로고 컵홀더 2,000개 · 1도', list: 104000 },
+      { k: 'a', seller: '푸른패키지', name: '로고 컵홀더 2,000개 · 1도', list: 104000, plate: 15000, newPartner: true },
     ],
   };
+  const offerRate = (x) => GC.settle.finalRate({ base: GC.Policy.get('commission.custom_rate'), newPartner: !!x.newPartner }).rate;
+  /* 붙은 추가 구성품(D24 같은 송장 · D38): 출고 전이면 제작 파트너 변경 때 함께 취소·전액 환불 */
+  const ADDON_LIVE = ['PAID', 'ACCEPTED'];
+  const addonsOf = (o) => S().orders.filter((x) => x.kind === 'addon' && x.parent === o.id);
+  const liveAddons = (o) => addonsOf(o).filter((x) => ADDON_LIVE.includes(x.st));
+  const addonsPaid = (o) => liveAddons(o).reduce((a, x) => a + x.paid, 0);
   /* 체험용 주문: 2단계 인증 뒤 검수를 마친 상품에 들어온 주문이라고 가정 (P-ORD-01). 맞춤 주문은 맞춤 인쇄 파트너만 */
   function seedOrders(now, custom) {
     const t = now.getTime();
     return [
       { id: 'GC-2610-1041', kind: 'normal', item: '크라프트 수저집 40×240mm · 10박스', st: 'ACCEPTED', who: { name: '홍길동', phone: '010-2345-1234', addr: '서울 강남구 테헤란로 123 1층 오늘밥상' } },
-      custom && { id: 'GC-2610-1038', kind: 'custom', item: '로고 수저집 40×240mm 5,000매 · 별색 1도', st: 'DESIGN_CONFIRMED', design: 'HANDED_OFF', list: 150000, paid: 142500, paidTotal: 172500, paidNote: '상품 142,500원(파트너 즉시 할인 5%) + 판비 30,000원 · 디자인비 0원(멤버십 무료 이용권)', who: { name: '김서연', phone: '010-3381-5521', addr: '서울 마포구 ○○로 45 카페 소금' } },
-      custom && { id: 'GC-2610-1045', kind: 'custom', item: '로고 컵홀더 2,000개 · 1도', st: 'DESIGNING', design: 'PROPOSED', list: 96000, paid: 96000, paidTotal: 135000, paidNote: '상품 96,000원 + 디자인비 39,000원', who: { name: '최유진', phone: '010-4471-2209', addr: '서울 송파구 ○○로 77 베이커리 온' } },
+      /* list·plate = 할인 전 상품 대금·판비, paid = 상품 대금·판비 줄 결제 금액 합(D36 결제 비율의 분자), paidTotal = 그 항목에 낸 전부(디자인비 포함) */
+      custom && { id: 'GC-2610-1038', kind: 'custom', item: '로고 수저집 40×240mm 5,000매 · 별색 1도', st: 'DESIGN_CONFIRMED', design: 'HANDED_OFF', list: 150000, plate: 30000, paid: 172500, paidTotal: 172500, benefit: '멤버십 무료 이용권', paidNote: '상품 142,500원(파트너 즉시 할인 5%) + 판비 30,000원 · 디자인비 0원(멤버십 무료 이용권)', who: { name: '김서연', phone: '010-3381-5521', addr: '서울 마포구 ○○로 45 카페 소금' } },
+      custom && { id: 'GC-2610-1038-A1', kind: 'addon', parent: 'GC-2610-1038', item: '종이 이쑤시개 1박스', st: 'ACCEPTED', paid: 12000, who: { name: '김서연', phone: '010-3381-5521', addr: '서울 마포구 ○○로 45 카페 소금' } },
+      custom && { id: 'GC-2610-1045', kind: 'custom', item: '로고 컵홀더 2,000개 · 1도', st: 'DESIGNING', design: 'PROPOSED', list: 96000, plate: 20000, paid: 116000, paidTotal: 155000, paidNote: '상품 96,000원 + 판비 20,000원 + 디자인비 39,000원', who: { name: '최유진', phone: '010-4471-2209', addr: '서울 송파구 ○○로 77 베이커리 온' } },
       custom && { id: 'GC-2610-1029', kind: 'custom', item: '로고 수저집 40×240mm 3,000매 · 1도', st: 'IN_PRODUCTION', design: 'IN_PRODUCTION', who: { name: '정하늘', phone: '010-6624-1180', addr: '경기 고양시 ○○로 31 국밥집 한솥' } },
       { id: 'GC-2610-1033', kind: 'normal', item: '종이 포장 용기 750ml · 4박스', st: 'SHIPPED', shippedAt: new Date(t - 6 * HOUR), who: { name: '박민수', phone: '010-9012-9083', addr: '경기 성남시 분당구 ○○로 8 분식나라' } },
       { id: 'GC-2610-0987', kind: 'normal', item: '테이크아웃 봉투 · 6박스', st: 'DELIVERED', deliveredAt: new Date(t - 5 * DAY), who: { name: '이정은', phone: '010-5521-7730', addr: '서울 중구 ○○길 12 한그릇' } },
@@ -227,7 +240,7 @@
       contractAt: null, reminded: 0, mdCall: false, clauses: {}, prior: false, signer: 'ceo', proxyDoc: false,
       activeAt: null, mfa: false, newEnded: false, hqTab: 'review', trail: [],
       rp: { kind: 'custom', reorder: 0, plan: 'BASIC', when: 'now', exc: 0, promo: 0 },
-      stopReason: null, suspendReason: null, term: null, inv: null, invAmt: 'a', invEv: false,
+      stopReason: null, suspendReason: null, relReason: REL_REASONS[0], reinstated: null, term: null, inv: null, invAmt: 'a', invEv: false,
       ptTab: 'info', orders: [], shipOpen: null, pkg: {}, claim: null, maskedLogged: false, chgPick: {},
       sec: { out: false, why: null, step: 'pw', fails: 0, lastAt: null, otpAt: null, pwSetAt: null, lostAt: null, devices: [] },
     });
@@ -307,7 +320,7 @@
     if (out) {
       const step = s.sec.step;
       if (step === 'locked') return app.turn('partner', `비밀번호를 ${P(FAIL_LOCK)}번 연속 틀려 계정이 잠겼어요. [대표자 휴대폰 본인인증]을 누르세요`, { rules: [{ k: '해제', v: '본인인증 + 새 비밀번호' }, { k: '시간이 지나면', v: '저절로 안 풀림' }, { k: '알림', v: '대표자에게 계정 잠금' }, secRules[0]] });
-      if (step === 'reset') return app.turn('partner', '새 비밀번호를 규칙에 맞게 정하고 [새 비밀번호 저장]을 누르세요', { rules: [secRules[0], { k: '저장하면', v: '잠금 해제 · 다시 로그인' }] });
+      if (step === 'reset') return app.turn('partner', '새 비밀번호를 규칙에 맞게 정하고 [새 비밀번호 저장]을 누르세요', { rules: [secRules[0], { k: '저장하면', v: '잠금 해제 · 다시 로그인' }, { k: '알림', v: '대표자에게 비밀번호 변경' }] });
       if (step === 'otpLost') return app.turn('hq', '[파트너 관리]에서 대표자·연락처를 입점 서류와 대조하고 [확인하고 OTP 다시 등록 허용]을 누르세요', { rules: [{ k: 'OTP 분실', v: '대표자 본인인증 + 담당 MD 확인' }, { k: '확인 기록', v: '감사 로그(A-SYS-02)' }] });
       if (step === 'otpNew') return app.turn('partner', 'OTP 앱으로 새 QR을 찍고 6자리를 넣어 [다시 등록하고 로그인]을 누르세요', { rules: [{ k: '다시 등록하면', v: '모든 기기에서 로그아웃' }, { k: '알림', v: '대표자에게 등록 사실' }] });
     }
@@ -329,14 +342,16 @@
       const nm = GC.sm.stateName('PARTNER_ACCOUNT', ac);
       const rem = remaining(s);
       const rules = [{ k: '남은 주문 처리', v: ac === 'SUSPENDED' ? '됨 · 정지 전 건만' : '됨 · 남은 건만' }, { k: '엑셀·인쇄 패키지', v: '받을 수 없음' }, { k: '고객 정보', v: '건별로만 열림' }, { k: '모두 배송 완료되면', v: '바로 가림' }];
-      const toShip = rem.filter((o) => ['ACCEPTED', 'IN_PRODUCTION'].includes(o.st));
+      /* 붙은 추가 구성품은 본 상품과 같은 송장으로만 나가므로(D24) 따로 출고할 일로 세지 않음 */
+      const toShip = rem.filter((o) => o.kind !== 'addon' && ['ACCEPTED', 'IN_PRODUCTION'].includes(o.st));
       const targets = chgTargets(s);
-      const fresh = targets.filter((o) => !o.chg);
+      const fresh = targets.filter(chgFresh);
       const waiting = targets.filter(chgPending);
-      const chgRules = [{ k: '답변 기한', policy: 'order.partner_change_reply_days' }, { k: '무응답', v: `하루 전 다시 알림 → 예고 뒤 ${pv('notify.notice_min_hours')} 지나 전액 환불` }, { k: '차액', v: '싸면 환불 · 비싸도 더 안 받음' }, { k: '비용', v: '파트너 귀책(디자인비까지 환불)' }];
+      const chgRules = [{ k: '답변 기한', policy: 'order.partner_change_reply_days' }, { k: '무응답', v: `하루 전 다시 알림 → 예고 뒤 ${pv('notify.notice_min_hours')} 지나 전액 환불` }, { k: '차액', v: '상품 + 판비 합계로 비교 · 싸면 환불 · 비싸도 더 안 받음' }, { k: '붙은 구성품', v: '함께 취소 · 전액 환불' }, { k: '비용', v: '파트너 귀책(디자인비까지 환불)' }];
+      if (ac === 'SUSPENDED') chgRules.push({ k: '정지가 풀리면', v: '답 안 한 제안은 거둠' });
       if (fresh.length) return turn('hq', `[인쇄 가능] 전 맞춤 항목 ${fresh.length}건은 대성포장이 인쇄 패키지를 받을 수 없어 만들 수 없어요. [파트너 관리]의 '제작 파트너 변경'에서 같은 사양 상품을 고르고 [고객에게 제안]을 누르세요`, { rules: chgRules, hint: '이미 [인쇄 가능]을 누른 생산 중 항목은 옮기지 않고 대성포장이 마저 만들어 출고해요.' });
       if (toShip.length) return turn('partner', `${nm} 중이에요. 남은 주문 ${toShip.length}건은 [주문]에서 [송장 등록]으로 마저 출고하세요. 엑셀·인쇄 패키지는 받을 수 없어요`, { rules, hint: `고객 배송 정보는 목록에서 가려지고 [배송 정보 보기]로 한 건씩만 열려요.${toShip.some((o) => o.kind === 'custom') ? ' 생산 중인 맞춤 항목은 [인쇄 가능] 뒤라 다른 파트너로 옮기지 않아요.' : ''}` });
-      if (waiting.length) return turn('hq', `고객 답변을 기다려요(제작 파트너 변경 제안 ${waiting.length}건). 고객 화면은 주문 페이지에 있어요. 여기서는 결과 칸의 [고객 동의]·[고객 전액 환불]로 대신 눌러 보거나 +1일로 기한을 보내세요`, { rules: chgRules, hint: '+1일을 6번 누르면 기한 하루 전 다시 알림, 7번째에 무응답 전액 환불이 일어나요.' });
+      if (waiting.length) return turn('hq', `고객 답변을 기다려요(제작 파트너 변경 제안 ${waiting.length}건). 고객 화면은 주문 페이지에 있어요. 여기서는 결과 칸의 [고객 동의]·[고객 전액 환불]로 대신 눌러 보거나 +1일로 기한을 보내세요`, { rules: chgRules, hint: `+1일을 6번 누르면 기한 하루 전 다시 알림, 7번째에 무응답 전액 환불이 일어나요.${ac === 'SUSPENDED' ? ' 그 전에 [정지 해제]를 누르면 답하지 않은 제안은 거두고 대성포장이 이어서 만들어요.' : ''}` });
       if (rem.length) return turn('system', `배송 중인 주문 ${rem.length}건이 남았어요. +1일로 배송 완료를 보내세요. 모두 배송 완료되면 고객 정보를 바로 가려요`, { rules });
       if (s.claim && !s.claim.done) {
         const crules = [{ k: '보이는 범위', v: '클레임이 열린 그 건만' }, { k: '보이는 기간', v: '클레임이 끝날 때까지' }];
@@ -348,10 +363,13 @@
       if (s.term && s.term.released) return done(`계약 종료 정산이 끝났어요. 유보했던 ${won(s.term.hold)}까지 지급했어요.`, { next: '직거래 금지는 종료 뒤에도 정해진 기간 동안 이어져요. [처음부터]로 다른 갈래를 볼 수 있어요.' });
       return done(`계약이 종료됐어요. 최종 정산액의 ${GC.Policy.get('settlement.final_holdback')}%를 ${L('holdback_days')}일 유보해요.`, { next: `${s.orders.length ? '남은 주문은 모두 배송 완료돼 고객 정보를 가렸어요. ' : ''}+7일을 여러 번 눌러 유보 기간을 보내면 남은 유보금이 지급돼요.` });
     }
-    if (ac === 'SUSPENDED') return turn('hq', `본사 정지 중이에요.${s.orders.length ? ' 남은 주문이 모두 배송 완료돼 고객 정보를 가렸어요.' : ''} 사유가 풀리면 [정지 해제]를, 계속 문제면 [계약 종료]를 누르세요`, { rules: [{ k: '정지 사유', v: esc(s.suspendReason || '-') }, { k: '상품 노출', v: '즉시 중단' }, { k: '정지 해제하면', v: '열람 원래대로' }], hint: s.orders.length && !s.claim ? '[파트너 관리]의 [교환 클레임 열기 · 체험]으로 그 건만 다시 보이는 예외를 볼 수 있어요.' : null });
+    if (ac === 'SUSPENDED') return turn('hq', `본사 정지 중이에요.${s.orders.length ? ' 남은 주문이 모두 배송 완료돼 고객 정보를 가렸어요.' : ''} 사유가 풀리면 [정지 해제]를, 계속 문제면 [계약 종료]를 누르세요`, { rules: [{ k: '정지 사유', v: esc(s.suspendReason || '-') }, { k: '상품 노출', v: '즉시 중단' }, { k: '정지 해제하면', v: '열람 원래대로 · 답 안 한 변경 제안 거둠' }, { k: '해제 사유', v: '감사 로그 · 대표자에게 알림' }], hint: s.orders.length && !s.claim ? '[파트너 관리]의 [교환 클레임 열기 · 체험]으로 그 건만 다시 보이는 예외를 볼 수 있어요.' : null });
     if (ac === 'PAUSED') return turn('partner', '휴점 중이에요. 상품 노출은 멈췄고 진행 중 주문·클레임은 계속 처리해요. [재개]를 누르면 다시 팔아요', { rules: [{ k: '휴점·재개', v: '파트너가 직접' }, { k: '엑셀·인쇄 패키지', v: '받을 수 있음' }] });
     if (ac === 'ACTIVE') {
       if (!s.mfa) return turn('partner', '대표 계정의 2단계 인증을 등록하세요. 등록하면 상품 등록·주문·정산 메뉴가 열려요', { rules: [{ k: '대표 계정', v: '1개(부계정은 2차)' }, { k: '2단계 인증', v: 'OTP 앱(TOTP) 필수' }, secRules[0], secRules[3]] });
+      /* 정지가 풀려 거둔 제안(D40): 확정된 건은 [인쇄 가능]이 다시 열려 대성포장이 이어서 만듦 */
+      const back = s.orders.filter((o) => chgWithdrawn(o) && o.st === 'DESIGN_CONFIRMED');
+      if (back.length) return turn('partner', `정지가 풀려 ${back.map((o) => o.id).join(', ')}의 제작 파트너 변경 제안을 거뒀어요. [주문]에서 [인쇄 패키지 받기]를 누르고 [인쇄 가능]을 눌러 이어서 만드세요`, { rules: [{ k: '거둔 제안', v: '표시 내림 · 무응답 환불 기한 멈춤' }, { k: '붙은 구성품', v: '그대로 · 같은 송장' }, { k: '[인쇄 가능] 기한', policy: 'production.print_check_bd' }, { k: '이미 동의·환불된 건', v: '그대로' }] });
       return done('입점이 끝났어요. 대성포장 계정이 판매 가능 상태이고 상품 등록·주문·정산 메뉴가 열렸어요.', { next: `본사 화면의 [수수료율]에서 적용 요율을 미리 보고, [파트너 관리]에서 직거래 위약금 예시·본사 정지·계약 종료를 눌러 보세요.${s.custom ? ' 정지·종료하면 [인쇄 가능] 전 맞춤 항목의 제작 파트너 변경(제안 → 고객 동의·전액 환불)을 볼 수 있어요.' : ''} 파트너 화면에서는 [주문]의 엑셀·인쇄 패키지 받기, [휴점], 로그인 보안의 [로그아웃]을 눌러 볼 수 있어요.` });
     }
     switch (st) {
@@ -608,12 +626,13 @@
     <p class="xsmall faint">남은 주문 처리 = 배송 정보·송장·클레임. 엑셀·인쇄 패키지 = 주문 엑셀과 맞춤 제작 인쇄 패키지 다운로드. 휴점은 파트너가 [재개]로, 본사 정지는 본사만 풀어요.</p>
     <p class="xsmall faint">정지·계약 종료 중에는 진행 중 건의 배송 정보를 주문 상세에서 건별로만 봐요. 남은 주문이 모두 배송 완료되면 배송 완료 후 ${lpv('ship_info_days')} 규칙을 기다리지 않고 바로 고객 정보를 가려요. 그 뒤 열린 교환·재제작 클레임은 그 건의 배송 정보만 클레임이 끝날 때까지 보여요.</p>
     <p class="xsmall faint">인쇄 패키지를 받을 수 없어 정지·계약 종료 뒤에는 [인쇄 가능]으로 새 생산을 시작할 수 없어요. 그 전 맞춤 항목은 운영팀이 같은 사양의 다른 파트너 상품을 고객에게 제안하고, 고객이 동의하지 않거나 ${pv('order.partner_change_reply_days')} 안에 답이 없으면 전액 환불해요(파트너 귀책). 이미 [인쇄 가능]을 누른 건은 지금 파트너가 마저 만들어요.</p>
-    <p class="xsmall faint">정지가 풀리면 열람도 원래대로 돌아와요. 화면과 서버가 모두 이 표로 막고, 열람·다운로드 시도는 접근 기록에 남아요.</p>`;
+    <p class="xsmall faint">정지가 풀리면 열람도 원래대로 돌아오고, 고객이 아직 답하지 않은 제작 파트너 변경 제안은 거둬 지금 파트너가 이어서 만들어요(이미 동의·환불된 건은 그대로, 계약 종료는 되돌릴 수 없어 해당 없음). 화면과 서버가 모두 이 표로 막고, 열람·다운로드 시도는 접근 기록에 남아요.</p>`;
   }
   function secKv(s) {
     const sec = s.sec;
     return `<dl class="kv small"><dt>비밀번호</dt><dd>${pv(PW_LEN)} 이상 · 영문·숫자·특수문자 3종 조합${sec.pwSetAt ? ` · ${fmtDate(sec.pwSetAt)}에 바꿈` : ''}</dd>
       <dt>잠금</dt><dd>${pv(FAIL_LOCK)} 연속으로 틀리면 잠기고 대표자에게 알려요. 대표자 휴대폰 본인인증 뒤 비밀번호를 다시 정해 풀어요</dd>
+      <dt>비밀번호 변경</dt><dd>바꾸면(잠금을 풀 때 포함) 대표자에게 알려요</dd>
       <dt>2단계 인증</dt><dd>OTP 앱(TOTP) · 로그인할 때마다${sec.otpAt ? ` · ${fmtDate(sec.otpAt)} 등록` : ''}</dd>
       <dt>자동 로그아웃</dt><dd>${pv(IDLE_MIN)} 동안 쓰지 않으면</dd>
       <dt>OTP 분실</dt><dd>대표자 본인인증 + 담당 MD 확인 뒤 다시 등록 · 모든 기기에서 로그아웃 · 대표자에게 알림</dd>
@@ -642,6 +661,7 @@
         ${s.inv.replied ? '<span class="st st-done">소명 자료 제출함 · 운영팀 판단 대기</span>' : '<div><button class="btn btn-primary btn-ext" data-act="invReply">소명 자료 제출</button></div>'}</div></div>`
       : s.inv && s.inv.decided ? `<div class="note note-stop small">직거래 조사 결과: 위반 · 위약금 ${won(s.inv.penalty)}을 이번 주 정산에서 빼요. 결과 통지 뒤 이의 신청은 1회 할 수 있어요.</div>` : '';
     const banner = ac === 'SUSPENDED' ? `<div class="note note-stop small">본사가 판매를 멈췄어요 · 사유: ${esc(s.suspendReason || '')}. 상품 노출은 멈췄고, 정지 전에 들어온 진행 중 주문·클레임은 [주문]에서 계속 처리해요. 주문 엑셀·인쇄 패키지는 받을 수 없어요. 담당 MD에게 문의해 주세요.</div>`
+      : ac === 'ACTIVE' && s.reinstated ? `<div class="note note-spot small">본사 정지가 풀렸어요(${fmtDate(s.reinstated.at)} · 사유: ${esc(s.reinstated.reason)}). 상품 노출과 주문 엑셀·인쇄 패키지 받기가 원래대로 돌아왔어요.${s.reinstated.withdrawn ? ` 고객이 아직 답하지 않은 제작 파트너 변경 제안 ${s.reinstated.withdrawn}건은 거둬져 대성포장이 이어서 만들어요.` : ''}</div>`
       : ac === 'TERMINATED' ? `<div class="note note-stop small">계약이 종료됐어요(${esc(s.term ? s.term.reason : '')}). 로그인과 남은 주문 처리·정산 화면은 계속 열려 있고, 주문 엑셀·인쇄 패키지는 받을 수 없어요.</div>` : '';
     const ctl = ac === 'ACTIVE' ? '<button class="btn" data-act="pause">휴점</button>' : ac === 'PAUSED' ? '<button class="btn btn-primary" data-act="resume">재개</button>'
       : ac === 'SUSPENDED' ? '<span class="xsmall faint">본사 정지는 본사만 풀 수 있어요.</span>' : '<span class="xsmall faint">계약이 끝나 상태를 바꿀 수 없어요.</span>';
@@ -683,9 +703,14 @@
       const who = v === 'full' ? `${esc(o.who.name)} · ${o.who.phone}<br><span class="xsmall faint">${esc(o.who.addr)}</span>${isClaim ? '<br><span class="tag tag-warn">교환 클레임 · 이 건만</span>' : ''}`
         : v === 'one' ? `<span class="xsmall faint">목록에서는 가려요</span><br><button class="btn btn-sm" data-act="shipView" data-id="${o.id}">배송 정보 보기</button>`
         : `${maskName(o.who.name)} · ${maskPhone(o.who.phone)}<br><span class="xsmall faint">상세 주소 가림</span>`;
-      const proposing = chgPending(o) ? '<span class="tag tag-warn">제작 파트너 변경 제안 중</span>' : '';
+      const proposing = chgPending(o) ? '<span class="tag tag-warn">제작 파트너 변경 제안 중</span>' : chgWithdrawn(o) && !o.movedAway && !ORDER_END.includes(o.st) ? '<span class="tag">변경 제안 거둠</span>' : '';
+      const parent = o.kind === 'addon' ? findOrder(o.parent) : null;
       let act = '';
-      if (o.movedAway) act = '<div class="cluster"><button class="btn btn-sm" disabled>인쇄 패키지 받기</button></div><span class="xsmall faint">고객이 제작 파트너 변경에 동의해 이 항목은 이제 다른 파트너가 만들어요. 인쇄 패키지는 더 받을 수 없어요(서버가 막음).</span>';
+      if (parent) {
+        if (o.st === 'CANCELED' && o.cancelWhy === 'partner_change') act = `<span class="xsmall faint">본 상품의 제작 파트너 변경으로 함께 취소·전액 환불됐어요(공제 없음)</span>`;
+        else if (ADDON_LIVE.includes(o.st)) act = `<span class="xsmall faint">${chgPending(parent) ? '본 상품이 제작 파트너 변경 제안 중이에요. 고객이 동의하든 환불을 고르든 답이 없든 함께 취소·전액 환불돼요' : '본 상품과 같은 송장으로 함께 출고해요'}</span>`;
+        else if (o.st === 'SHIPPED') act = '<span class="xsmall faint">본 상품과 같은 송장 · 다음 날 배송 완료</span>';
+      } else if (o.movedAway) act = '<div class="cluster"><button class="btn btn-sm" disabled>인쇄 패키지 받기</button></div><span class="xsmall faint">고객이 제작 파트너 변경에 동의해 이 항목은 이제 다른 파트너가 만들어요. 인쇄 패키지는 더 받을 수 없어요(서버가 막음).</span>';
       else if (o.st === 'ACCEPTED' || o.st === 'IN_PRODUCTION') act = `<div><button class="btn btn-sm btn-primary" data-act="ship" data-id="${o.id}">송장 등록</button></div>${R && o.kind === 'custom' ? '<span class="xsmall faint">[인쇄 가능] 뒤라 다른 파트너로 옮기지 않아요. 마저 만들어 출고해요.</span>' : ''}`;
       else if (o.st === 'DESIGNING') act = `<span class="xsmall faint">${R ? '정지·종료 중이라 운영팀이 고객에게 다른 파트너 상품을 제안해요' : '고객이 디자인을 확정하면 인쇄 패키지가 와요'}</span>`;
       else if (o.st === 'DESIGN_CONFIRMED') act = R || chgPending(o) ? `<div class="cluster"><button class="btn btn-sm" disabled>인쇄 패키지 받기</button><button class="btn btn-sm" disabled>인쇄 가능</button></div><span class="xsmall stop-txt">${R ? '정지·종료 뒤에는 새 생산을 시작할 수 없어요' : '제작 파트너 변경 제안 중이라 생산을 시작할 수 없어요'}</span>`
@@ -694,7 +719,8 @@
       else if (isClaim) act = s.claim.stage === 'OPEN' ? '<div><button class="btn btn-sm btn-primary" data-act="claimShip">교환품 송장 등록</button></div>' : '<span class="xsmall faint">교환품 배송 중</span>';
       else if (o.chg && o.chg.result === 'refunded') act = `<span class="xsmall faint">제작 파트너 변경 제안에 ${o.chg.by === 'expired' ? '답이 없어' : '고객이 전액 환불을 골라'} 취소됐어요(파트너 귀책)</span>`;
       const stCell = o.movedAway ? '<span class="tag">다른 파트너로 변경됨</span>' : `<span class="st ${stc(o)}">${stLabel(o)}</span>`;
-      return `<tr${s.shipOpen === o.id || isClaim ? ' class="is-hl"' : ''}><td><b class="nw">${o.id}</b> <span class="xsmall faint">${o.kind === 'custom' ? '맞춤' : '일반'}</span><br>${esc(o.item)}</td>
+      const kindTxt = parent ? '추가 구성품' : o.kind === 'custom' ? '맞춤' : '일반';
+      return `<tr${s.shipOpen === o.id || isClaim ? ' class="is-hl"' : ''}><td><b class="nw">${o.id}</b> <span class="xsmall faint">${kindTxt}</span><br>${esc(o.item)}${parent ? `<br><span class="xsmall faint">${parent.id}에 붙음 · 같은 송장</span>` : ''}</td>
         <td><div class="stack-sm"><span class="cluster">${stCell}${proposing}</span>${act}</div></td><td>${who}</td></tr>`;
     }).join('');
     const open = s.shipOpen && R ? s.orders.find((x) => x.id === s.shipOpen) : null;
@@ -841,12 +867,14 @@
       <tr><td>한결주방상사</td><td>입점 판매</td><td><span class="st">판매 가능</span></td><td>베이직</td><td>박정우 MD</td><td><span class="tag tag-phase">2차</span></td></tr>
       <tr><td>오성인쇄</td><td>입점 판매</td><td><span class="st st-warn">파트너 휴점</span></td><td>베이직</td><td>이수진 MD</td><td><span class="tag tag-phase">2차</span></td></tr></tbody></table></div>`;
     if (!ac) return `<h3>파트너 관리</h3>${list}<div class="note small">대성포장은 아직 계약 전이에요. 전자 서명을 마치면 파트너 계정이 생겨 여기서 관리해요.</div>`;
-    const reasonOk = !!s.stopReason;
+    const reasonOk = !!s.stopReason; const pendN = s.orders.filter(chgPending).length;
     const ops = ac === 'TERMINATED' ? `<table class="tbl small"><tbody><tr><td>최종 정산액</td><td class="num">${won(s.term.final)}</td></tr><tr><td>지금 지급</td><td class="num">${won(s.term.final - s.term.hold)}</td></tr><tr><td>유보(${GC.Policy.get('settlement.final_holdback')}%)</td><td class="num">${won(s.term.hold)}</td></tr><tr class="is-sum"><td>유보금 지급일</td><td class="num">${s.term.released ? '지급 완료' : fmtLong(s.term.release)}</td></tr></tbody></table>`
-      : `<div class="field"><span class="lbl">사유 (정지·종료 때 필수)</span>${seg('stopReason', 'reason', STOP_REASONS.map((r) => [r, r]), s.stopReason)}</div>
-        <div class="cluster">${ac === 'SUSPENDED' ? '<button class="btn btn-primary" data-act="unsuspend">정지 해제</button>' : `<button class="btn" data-act="suspend" ${reasonOk ? '' : 'disabled'}>본사 정지</button>`}
+      : `${ac === 'SUSPENDED' ? `<div class="field"><span class="lbl">해제 사유 (감사 로그 · 대표자에게 알림)</span>${seg('relReason', 'reason', REL_REASONS.map((r) => [r, r]), s.relReason)}</div>
+        <div class="cluster"><button class="btn btn-primary" data-act="unsuspend">정지 해제</button>${pendN ? `<span class="xsmall faint">고객이 아직 답하지 않은 제작 파트너 변경 제안 ${pendN}건은 거둬요</span>` : ''}</div><hr class="hr">` : ''}
+        <div class="field"><span class="lbl">사유 (${ac === 'SUSPENDED' ? '계약 종료' : '정지·종료'} 때 필수)</span>${seg('stopReason', 'reason', STOP_REASONS.map((r) => [r, r]), s.stopReason)}</div>
+        <div class="cluster">${ac === 'SUSPENDED' ? '' : `<button class="btn" data-act="suspend" ${reasonOk ? '' : 'disabled'}>본사 정지</button>`}
           <button class="btn btn-danger" data-act="terminate" ${reasonOk ? '' : 'disabled'}>계약 종료</button></div>
-        <p class="xsmall faint">휴점은 파트너가 직접 켜고 꺼요. 본사 정지·계약 종료는 사유를 남기고 파트너에게 알리며 상품 노출을 바로 멈춰요. 계약 종료는 최종 정산액의 ${pv('settlement.final_holdback')}를 ${lpv('holdback_days')} 유보해요.</p>`;
+        <p class="xsmall faint">휴점은 파트너가 직접 켜고 꺼요. 본사 정지·계약 종료는 사유를 남기고 파트너에게 알리며 상품 노출을 바로 멈춰요. 정지 해제도 사유를 감사 로그에 남기고 대표자에게 알려요. 계약 종료는 되돌릴 수 없고 최종 정산액의 ${pv('settlement.final_holdback')}를 ${lpv('holdback_days')} 유보해요.</p>`;
     const otp = s.sec.out && s.sec.step === 'otpLost' ? `<div class="panel"><div class="panel-h"><h2>OTP 다시 등록 요청 · 대성포장 대표 계정</h2><span class="st st-todo">확인 필요</span></div><div class="panel-b stack">
         <p class="small">대표자가 휴대폰 본인인증을 마쳤어요(${fmtDate(s.sec.lostAt)}). 입점 서류와 맞는지 대조한 뒤 다시 등록을 허용하세요.</p>
         <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>대조 항목</th><th>입점 서류</th><th>본인인증 결과</th><th></th></tr></thead><tbody>
@@ -866,65 +894,103 @@
   function hqOrders(s, ac) {
     if (!s.orders.length) return '';
     const R = RESTRICTED(ac); const rem = remaining(s); const cur = accessCur(s, ac);
-    const hqSt = (o) => (o.movedAway ? `${stLabel(o)} · <b>${esc(o.partner)}</b>로 변경` : `${stLabel(o)}${chgPending(o) ? ' · <span class="tag tag-warn">제작 파트너 변경 제안 중</span>' : ''}`);
+    const hqSt = (o) => (o.movedAway ? `${stLabel(o)} · <b>${esc(o.partner)}</b>로 변경`
+      : `${stLabel(o)}${chgPending(o) ? ' · <span class="tag tag-warn">제작 파트너 변경 제안 중</span>' : chgWithdrawn(o) && !ORDER_END.includes(o.st) ? ' · <span class="tag">변경 제안 거둠</span>' : ''}${o.cancelWhy === 'partner_change' ? ' · 제작 파트너 변경으로 함께 취소' : ''}`);
+    const itemCell = (o) => (o.kind === 'addon' ? `${esc(o.item)} <span class="xsmall faint">추가 구성품 · ${o.parent}에 붙음</span>` : esc(o.item));
     return `<div class="panel"><div class="panel-h"><h2>대성포장 주문</h2><span class="xsmall faint">남은 ${rem.length}건 · A-ORD-01</span></div><div class="panel-b stack">
       <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>주문</th><th>상품</th><th>상태</th></tr></thead><tbody>
-        ${s.orders.map((o) => `<tr${ORDER_END.includes(o.st) || o.movedAway ? '' : ' class="is-hl"'}><td class="nw">${o.id}</td><td>${esc(o.item)}</td><td>${hqSt(o)}${s.claim && !s.claim.done && s.claim.id === o.id ? ' · 교환 클레임' : ''}</td></tr>`).join('')}</tbody></table></div>
+        ${s.orders.map((o) => `<tr${ORDER_END.includes(o.st) || o.movedAway ? '' : ' class="is-hl"'}><td class="nw">${o.id}</td><td>${itemCell(o)}</td><td>${hqSt(o)}${s.claim && !s.claim.done && s.claim.id === o.id ? ' · 교환 클레임' : ''}</td></tr>`).join('')}</tbody></table></div>
       ${cur === 'DONE' && !s.claim ? '<div class="cluster"><button class="btn" data-act="openClaim">교환 클레임 열기 · 체험</button><span class="xsmall faint">배송 완료된 주문에 고객이 교환을 신청했다고 가정해요</span></div>' : ''}
       ${!R ? '<p class="xsmall faint">본사 정지·계약 종료가 되면 이 주문들은 파트너가 마저 처리하고, [인쇄 가능] 전 맞춤 항목은 같은 사양의 다른 파트너 상품을 고객에게 제안해요(제작 파트너 변경).</p>' : ''}</div></div>`;
   }
-  /* 제작 파트너 변경(A-ORD-01 ①~⑤ · D33): 운영 제안 → 고객 [변경 동의]·[전액 환불] → 무응답 환불 */
-  function chgMoney(o, offer) { return GC.refund.partnerChange({ choice: 'agree', oldList: o.list, newList: offer.list, oldPaid: o.paid, paidTotal: o.paidTotal }); }
+  /* 제작 파트너 변경(A-ORD-01 ①~⑦ · D33 · D36~D40): 운영 제안 → 고객 [변경 동의]·[전액 환불] → 무응답 환불 · 정지가 풀리면 제안 거둠 */
+  /* 금액(D36): 상품 대금 + 판비 합계(할인 전)로 비교 · oldPaid = 상품 대금·판비 줄 결제 금액 합 · 붙은 구성품(D38)은 어느 쪽이든 전액 */
+  function chgMoney(o, offer, choice) {
+    return GC.refund.partnerChange({ choice: choice || 'agree', oldList: o.list, oldPlate: o.plate || 0, newList: offer ? offer.list : undefined, newPlate: offer ? offer.plate : undefined, oldPaid: o.paid, paidTotal: o.paidTotal, addonsPaid: addonsPaid(o) });
+  }
+  /* 새 파트너 정산 기준(D37): 판매가 = 새 상품 대금 + 새 판비 · 파트너 부담 할인 0 · 요율 = 새 파트너의 그 상품 요율 · 차이 = 플랫폼 부담 할인 */
+  function chgSettle(offer, m) {
+    const rate = offerRate(offer);
+    return { rate, ev: GC.settle.confirmEvent({ sale: m.settle.sale, partnerDisc: m.settle.partnerDisc, rate }) };
+  }
+  const baseTxt = (list, plate) => `<span class="xsmall faint">상품 ${won(list)} + 판비 ${won(plate)}</span>`;
   function chgDiff(o, offer) {
     const r = chgMoney(o, offer);
-    if (r.refund) return `<span class="nw">−${won(o.list - offer.list)}</span> · 고객에게 <b>${won(r.refund)}</b> 환불 <span class="xsmall faint">(할인 전 차이 × 결제 비율)</span>`;
-    if (r.hqAdjust) return `<span class="nw">+${won(r.hqAdjust)}</span> · 고객에게 더 안 받음 <span class="xsmall faint">(본사가 새 파트너에게 보전)</span>`;
-    return '<span class="faint">차액 없음</span>';
+    const head = `원래 <b class="nw">${won(r.oldBase)}</b> ${baseTxt(o.list, o.plate || 0)}<br>새 <b class="nw">${won(r.newBase)}</b> ${baseTxt(offer.list, offer.plate)}<br>`;
+    if (r.refund) return `${head}<span class="nw">−${won(r.oldBase - r.newBase)}</span> · 고객에게 <b>${won(r.refund)}</b> 환불 <span class="xsmall faint">(차이 × 결제 비율 ${won(o.paid)} ÷ ${won(r.oldBase)}, 원 단위 내림)</span>`;
+    if (r.newBase > r.oldBase) return `${head}<span class="nw">+${won(r.newBase - r.oldBase)}</span> · 고객에게 더 안 받음 <span class="xsmall faint">(차이는 새 파트너 정산의 플랫폼 부담 할인)</span>`;
+    return `${head}<span class="faint">합계 차액 없음</span>`;
+  }
+  function settleCell(offer, m, done) {
+    const { rate, ev } = chgSettle(offer, m);
+    return `${done ? '다시 저장함 · ' : '동의하면 · '}판매가 <b class="nw">${won(m.settle.sale)}</b> · 파트너 부담 할인 0원 · 요율 ${rate}%${offer.newPartner ? ' <span class="xsmall faint">(신규 입점 인하)</span>' : ''} · 플랫폼 부담 할인 <b class="nw">${won(m.settle.platformDisc)}</b>
+      <br><span class="xsmall faint">구매 확정 때 정산 예정 ${won(ev.amount)}(수수료 ${won(ev.fee)}) · 플랫폼 부담 할인은 본사가 보전 · 따로 조정 이벤트 없음</span>`;
+  }
+  function addonCell(o, c, proposing) {
+    const list = addonsOf(o); if (!list.length) return '';
+    const names = list.map((x) => `${esc(x.item)} ${won(x.paid)}`).join(', ');
+    let v;
+    if (!proposing && c && (c.result === 'agreed' || c.result === 'refunded')) v = `${names} · <b>함께 취소 · ${won(c.money.addonRefund)} 환불</b> <span class="xsmall faint">(공제 없음 · 새 파트너 구성품은 고객이 따로 주문)</span>`;
+    else if (!proposing && c && c.result === 'withdrawn') v = `${names} · 그대로 · 본 상품과 같은 송장으로 대성포장이 출고`;
+    else v = `${names} · 원래 판매자 상품이라 동의·환불·무응답 모두 <b>함께 취소 · 전액 환불</b> <span class="xsmall faint">(공제 없음)</span>`;
+    return `<dt>붙은 구성품</dt><dd>${v}</dd>`;
   }
   function chgPanel(s, ac) {
     const customs = s.orders.filter((o) => o.kind === 'custom');
     const shown = customs.filter((o) => o.chg || (RESTRICTED(ac) && !ORDER_END.includes(o.st)));
     if (!shown.length) return '';
     const days = P('order.partner_change_reply_days');
-    /* 패널 폭이 좁아(약 480px) 표 대신 같은 칸(주문 항목 · 지금 상태 · 제안 상품/판매자 · 차액 · 답변 기한 · 결과)을 가진 카드 목록 */
+    /* 패널 폭이 좁아(약 480px) 표 대신 같은 칸(주문 항목 · 지금 상태 · 제안 상품/판매자 · 차액 · 새 파트너 정산 · 붙은 구성품 · 답변 기한 · 결과)을 가진 카드 목록 */
     const rows = shown.map((o) => {
       const c = o.chg; const offers = OFFERS[o.id] || [];
       const stHtml = `<span class="cluster"><span class="st ${ORDER_END.includes(o.st) ? 'st-done' : 'st-now'}">${stLabel(o)}</span>${o.design ? `<span class="xsmall faint">디자인 요청 · ${GC.sm.stateName('DESIGN', o.design)}</span>` : ''}${chgPending(o) ? '<span class="tag tag-warn">제작 파트너 변경 제안 중</span>' : ''}</span>`;
       const head = `<div><b class="nw">${o.id}</b> <span class="small">${esc(o.item)}</span>${o.paidNote ? `<br><span class="xsmall faint">${esc(o.paidNote)}</span>` : ''}</div>`;
+      /* 거둔 제안은 다시 정지·종료되면 새로 제안할 수 있음(D40) */
+      const canPropose = RESTRICTED(ac) && PRE_PRINT.includes(o.st) && !o.movedAway && chgFresh(o);
       if (!c && !PRE_PRINT.includes(o.st)) {
         return `<div class="chg-item is-off">${head}<dl class="kv chg-kv"><dt>지금 상태</dt><dd>${stHtml}</dd><dt>결과</dt><dd>대상 아님 · [인쇄 가능]을 이미 눌러 옮기지 않아요. 대성포장이 마저 만들어 출고해요(A-PTN-02)</dd></dl></div>`;
       }
-      let offerCell; let diff; let due; let result;
-      if (!c) {
+      let offerCell; let diff; let settle = ''; let due; let result;
+      if (canPropose) {
         const pick = offers.find((x) => x.k === s.chgPick[o.id]) || offers[0];
         offerCell = offers.length > 1
-          ? `<div class="stack-sm">${offers.map((x) => `<label class="check small"><input type="radio" name="pick_${o.id}" data-change="chgPick" data-id="${o.id}" data-v="${x.k}" data-k="pick_${o.id}_${x.k}" ${x === pick ? 'checked' : ''}><span>${esc(x.seller)} · ${won(x.list)}</span></label>`).join('')}<span class="xsmall faint">같은 사양 · ${esc(pick.name)}</span></div>`
-          : `<b>${esc(pick.seller)}</b> · ${won(pick.list)}<br><span class="xsmall faint">같은 사양 · ${esc(pick.name)}</span>`;
+          ? `<div class="stack-sm">${offers.map((x) => `<label class="check small"><input type="radio" name="pick_${o.id}" data-change="chgPick" data-id="${o.id}" data-v="${x.k}" data-k="pick_${o.id}_${x.k}" ${x === pick ? 'checked' : ''}><span>${esc(x.seller)} · 상품 ${won(x.list)} + 판비 ${won(x.plate)}</span></label>`).join('')}<span class="xsmall faint">같은 사양 · ${esc(pick.name)}</span></div>`
+          : `<b>${esc(pick.seller)}</b> · 상품 ${won(pick.list)} + 판비 ${won(pick.plate)}<br><span class="xsmall faint">같은 사양 · ${esc(pick.name)}</span>`;
         diff = chgDiff(o, pick);
+        settle = settleCell(pick, chgMoney(o, pick));
         due = `제안 뒤 ${pv('order.partner_change_reply_days')}`;
-        result = `<button class="btn btn-sm btn-primary" data-act="chgPropose" data-id="${o.id}">고객에게 제안</button>`;
+        result = `${c ? `<span class="xsmall faint">지난 제안은 ${fmtDate(c.doneAt)} 정지 해제로 거뒀어요</span><br>` : ''}<button class="btn btn-sm btn-primary" data-act="chgPropose" data-id="${o.id}">고객에게 제안</button>`;
       } else {
-        offerCell = `<b>${esc(c.offer.seller)}</b> · ${won(c.offer.list)}<br><span class="xsmall faint">같은 사양 · ${esc(c.offer.name)}</span>`;
+        offerCell = `<b>${esc(c.offer.seller)}</b> · 상품 ${won(c.offer.list)} + 판비 ${won(c.offer.plate)}<br><span class="xsmall faint">같은 사양 · ${esc(c.offer.name)}</span>`;
         diff = chgDiff(o, c.offer);
         if (!c.result) {
+          settle = settleCell(c.offer, chgMoney(o, c.offer));
           due = `${slaShort(c.due, '기한')} <span class="xsmall faint">${c.remindAt ? `하루 전 다시 알림 보냄(${fmtDate(c.remindAt)})` : `하루 전(${fmtDate(new Date(c.due.getTime() - DAY), false)}) 다시 알림`}</span>`;
           result = `고객 답변 대기<div class="demo chg-demo"><span class="demo-h">체험 · 고객 답</span><button class="btn btn-sm" data-act="chgAgree" data-id="${o.id}">고객 동의</button><button class="btn btn-sm" data-act="chgRefund" data-id="${o.id}">고객 전액 환불</button></div>`;
+        } else if (c.result === 'withdrawn') {
+          due = `<span class="faint">기한 멈춤 · ${fmtDate(c.doneAt)} 정지 해제</span>`;
+          result = `<span class="st">제안 거둠</span> 고객이 답하기 전에 정지가 풀려 대성포장이 이어서 만들어요${o.st === 'DESIGN_CONFIRMED' ? ' · [인쇄 가능] 다시 열림' : ''} · 고객에게 알림`;
         } else {
+          if (c.result === 'agreed') settle = settleCell(c.offer, c.money, true);
           due = `<span class="faint">${fmtDate(c.doneAt)} ${c.by === 'expired' ? '기한 지남' : '고객 답변'}</span>`;
+          const addonTxt = c.money.addonRefund ? ` · 붙은 구성품 ${won(c.money.addonRefund)} 환불` : '';
           result = c.result === 'agreed'
-            ? `<span class="st st-done">변경 동의</span> ${esc(c.offer.seller)}로 바뀜 · ${c.money.refund ? `차액 ${won(c.money.refund)} 환불` : c.money.hqAdjust ? `본사 조정 ${won(c.money.hqAdjust)}` : '차액 없음'}`
-            : `<span class="st st-stop">전액 환불</span> ${won(c.money.refund)} · ${c.by === 'expired' ? '무응답' : '고객 선택'} · 이용권·쿠폰 복원`;
+            ? `<span class="st st-done">변경 동의</span> ${esc(c.offer.seller)}로 바뀜 · ${c.money.refund ? `차액 ${won(c.money.refund)} 환불` : '더 받지 않음'}${addonTxt}`
+            : `<span class="st st-stop">전액 환불</span> ${won(c.money.refund)}${addonTxt} · ${c.by === 'expired' ? '무응답' : '고객 선택'}${o.benefit ? ` · ${o.benefit} 복원` : ''}`;
         }
       }
-      return `<div class="chg-item${chgPending(o) ? ' is-wait' : ''}">${head}<dl class="kv chg-kv"><dt>지금 상태</dt><dd>${stHtml}</dd><dt>제안 상품·판매자</dt><dd>${offerCell}</dd><dt>차액</dt><dd>${diff}</dd><dt>답변 기한</dt><dd>${due}</dd><dt>결과</dt><dd>${result}</dd></dl></div>`;
+      return `<div class="chg-item${chgPending(o) ? ' is-wait' : ''}">${head}<dl class="kv chg-kv"><dt>지금 상태</dt><dd>${stHtml}</dd><dt>제안 상품·판매자</dt><dd>${offerCell}</dd><dt>차액 · 상품 + 판비</dt><dd>${diff}</dd>${settle ? `<dt>새 파트너 정산</dt><dd>${settle}</dd>` : ''}${addonCell(o, c, canPropose)}<dt>답변 기한</dt><dd>${due}</dd><dt>결과</dt><dd>${result}</dd></dl></div>`;
     }).join('');
     return `<div class="panel"><div class="panel-h"><h2>제작 파트너 변경</h2><span class="xsmall faint">A-ORD-01 · [인쇄 가능] 전 맞춤 항목</span></div><div class="panel-b stack">
-      <p class="small muted">대성포장이 인쇄 패키지를 받을 수 없어 [인쇄 가능] 전 맞춤 항목을 만들 수 없어요. 같은 사양의 다른 파트너 상품을 골라 고객에게 제안해요. 주문 항목 상태는 그대로이고 '제작 파트너 변경 제안 중' 표시만 붙어요. 같은 사양 상품이 없으면 일괄 취소·환불 도구로 전액 환불해요.</p>
+      <p class="small muted">${RESTRICTED(ac) ? '대성포장이 인쇄 패키지를 받을 수 없어 [인쇄 가능] 전 맞춤 항목을 만들 수 없어요. 같은 사양의 다른 파트너 상품을 골라 고객에게 제안해요.' : '정지가 풀려 고객이 아직 답하지 않은 제안은 거뒀어요. 이미 동의·환불된 건은 그대로예요.'} 주문 항목 상태는 그대로이고 '제작 파트너 변경 제안 중' 표시만 붙어요. 같은 사양 상품이 없으면 일괄 취소·환불 도구로 전액 환불해요.</p>
       <div class="chg-list" aria-label="제작 파트너 변경 대상">${rows}</div>
       <dl class="kv small"><dt>답변 기한</dt><dd>제안 뒤 ${pv('order.partner_change_reply_days')} · 하루 전 다시 알림 · 답이 없으면 그 알림 뒤 ${pv('notify.notice_min_hours')}이 지나야 전액 환불</dd>
         <dt>동의하면</dt><dd>상태는 그대로, 파트너·상품만 바꾸고 이력에 이전 파트너·상품을 남겨요. 확정된 디자인은 새 파트너에게 인쇄 패키지를 다시 전달하고 대성포장은 더 받을 수 없어요</dd>
-        <dt>금액</dt><dd>새 상품이 싸면 차액 = 할인 전 금액 차이 × 원래 결제 비율(원 단위 내림)을 환불, 비싸면 고객에게 더 받지 않고 본사가 '조정' 정산 이벤트로 새 파트너에게 보전해요. 판비가 새로 생겨도 고객에게 받지 않아요</dd>
+        <dt>금액</dt><dd>상품 대금 + 판비 합계(할인 전)로 비교해요. 원래 = 결제 때 상품 대금 + 판비(판비 면제 재주문은 0원), 새 = 같은 수량·같은 가격 종류 상품 대금 + 새 파트너 판비. 새 쪽이 낮으면 차이 × 원래 결제 비율(상품 대금·판비 줄 결제 금액 ÷ 원래 합계, 디자인비·추가 구성품 제외)을 원 단위 내림해 환불하고, 같거나 높으면 판비가 새로 생겨도 더 받지 않아요</dd>
+        <dt>새 파트너 정산</dt><dd>동의할 때 정산 기준을 다시 저장해요: 판매가 = 새 상품 대금 + 새 판비, 파트너 부담 할인 0, 요율 = 새 파트너의 그 상품 요율(동의 시점, 재주문 인하 없음). 고객이 낸 금액과의 차이는 플랫폼 부담 할인으로 구매 확정 때 보전해요. 바뀐 뒤 취소되면 판비 공제 상한은 원래 판비 줄 결제 금액이에요</dd>
+        <dt>붙은 구성품</dt><dd>원래 판매자 상품이라 동의·전액 환불·무응답 모두 공제 없이 결제 금액 그대로 함께 취소·환불해요. 새 파트너 구성품이 필요하면 고객이 따로 주문해요</dd>
         <dt>전액 환불</dt><dd>파트너 귀책이라 디자인 착수 뒤라도 디자인비·판비까지 공제 없이 돌려주고 이용권·쿠폰을 되살려요(C-PAY-02)</dd>
+        <dt>정지가 풀리면</dt><dd>고객이 아직 답하지 않은 제안은 거둬요. 표시를 내리고 무응답 환불 기한을 멈추며 대성포장이 이어서 만들어요(확정된 건은 [인쇄 가능]이 다시 열림). 이미 동의·환불된 건은 그대로, 계약 종료는 해당 없음</dd>
         <dt>원래 파트너 청구</dt><dd>입점 계약을 따라요 ${draftTag}</dd></dl>
       <div class="demo"><span class="demo-h">고객 화면</span><span class="xsmall faint">고객은 주문 상세의 '판매자 변경 확인 필요'에서 [변경 동의]·[전액 환불]을 눌러요. 이 페이지에서는 결과의 체험 버튼으로 대신 눌러요(${days}일 안 무응답은 시계로).</span><a class="btn btn-sm" href="order.html">주문 페이지 열기</a></div>
     </div></div>`;
@@ -1078,7 +1144,7 @@
       s.submittedAt = app.clock.now(); s.draftAt = null; s.hqTab = 'review';
       trail(`파트너 담당자 ${CO.contact.split(' ')[0]}`, '입점 신청 제출');
       app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', ['알림톡', '이메일'], `입점 신청 접수 · ${s.appNo}`);
-      app.notify(NO_CODE_INT, 'MD팀', ['관리자 알림센터'], `신규 입점 신청 · 대성포장(주) · ${s.custom ? '맞춤 인쇄' : '일반'}`);
+      app.notify('NOTI_INT_ONBOARD_NEW', '운영팀 · 담당 MD', CH_INT, `입점 신청 접수 · 대성포장(주) · ${s.custom ? '맞춤 인쇄' : '일반'} · MD 배정 대기`);
       if (s.custom) { s.sampleReqAt = app.clock.now(); app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', ['알림톡', '이메일'], `인쇄 샘플 발송 안내 · ${L('sample_wait_days')}일 안 도착`); }
       const flags = [s.nts === 'down' ? '사업자 상태' : '', s.manualAcct ? '정산 계좌' : ''].filter(Boolean);
       if (flags.length) app.log('rule', `심사 화면에 '수동 확인 필요' 표시: ${flags.join(', ')}`);
@@ -1177,7 +1243,7 @@
       s.orders = seedOrders(now, s.custom);
       app.log('user', '대표 계정 2단계 인증 등록(OTP 앱 · TOTP) · 접속 기기·IP 기록 시작');
       app.log('rule', `2단계 인증 완료 → 상품 등록·주문·정산 메뉴가 열렸어요 · ${P(IDLE_MIN)}분 동안 쓰지 않으면 자동 로그아웃`);
-      app.log('user', `체험용: 검수를 마친 상품에 들어온 주문 ${s.orders.length}건을 [주문]에 넣어 뒀어요${s.custom ? '(맞춤 3건: 디자인 중 · 디자인 확정 · 생산 중)' : ''}`);
+      app.log('user', `체험용: 검수를 마친 상품에 들어온 주문 ${s.orders.length}건을 [주문]에 넣어 뒀어요${s.custom ? '(맞춤 3건: 디자인 중 · 디자인 확정 · 생산 중 + 디자인 확정 건에 붙은 추가 구성품 1건)' : ''}`);
       refresh();
     },
     ptTab(b) { const s = S(); s.ptTab = b.dataset.t; s.shipOpen = null; refresh(); },
@@ -1204,6 +1270,7 @@
       const s = S(); const o = findOrder(b.dataset.id); const ac = app.state('acct');
       if (!GC.sm.can(omc(o), o.st, 'ship')) return;
       orderGo(o, 'ship', '송장 등록 · CJ대한통운 6012-3345-8871'); o.shippedAt = app.clock.now(); s.shipOpen = null;
+      liveAddons(o).forEach((x) => { if (GC.sm.can('ORDER', x.st, 'ship')) { orderGo(x, 'ship', `본 상품 ${o.id}과 같은 송장(붙은 추가 구성품)`); x.shippedAt = o.shippedAt; } });
       app.notify('NOTI_SHIPPED', '고객', ['알림톡', '푸시'], `${o.id} 배송 시작`);
       if (RESTRICTED(ac)) app.log('rule', `${GC.sm.stateName('PARTNER_ACCOUNT', ac)} 중에도 남은 주문 출고는 할 수 있어요`);
       refresh();
@@ -1213,16 +1280,18 @@
     chgPick(t) { S().chgPick[t.dataset.id] = t.dataset.v; refresh(); },
     chgPropose(b) {
       const s = S(); const o = findOrder(b.dataset.id);
-      if (!o || o.chg || !PRE_PRINT.includes(o.st) || !RESTRICTED(app.state('acct'))) return;
+      if (!o || !chgFresh(o) || o.movedAway || !PRE_PRINT.includes(o.st) || !RESTRICTED(app.state('acct'))) return;
       const offers = OFFERS[o.id] || []; const offer = offers.find((x) => x.k === s.chgPick[o.id]) || offers[0];
       if (!offer) return;
       const now = app.clock.now(); const due = addDays(now, P('order.partner_change_reply_days'));
-      o.chg = { at: now, due, offer, remindAt: null, result: null };
-      const m = chgMoney(o, offer);
-      app.log('rule', `제작 파트너 변경 제안 · ${o.id} → ${esc(offer.seller)} ${esc(offer.name)}(${won(offer.list)}) · 주문 항목 상태는 그대로(${stLabel(o)}) · '제작 파트너 변경 제안 중' 표시 · 답변 기한 ${fmtDate(due)}`);
-      app.log('rule', m.refund ? `동의하면 차액 ${won(m.refund)} 환불 예정 = (${won(o.list)} − ${won(offer.list)}) × 결제 비율 ${won(o.paid)}/${won(o.list)}, 원 단위 내림`
-        : m.hqAdjust ? `새 상품이 ${won(m.hqAdjust)} 비싸지만 고객에게 더 받지 않아요 → 동의하면 본사가 '조정' 정산 이벤트로 새 파트너에게 보전` : '차액 없음');
-      app.notify('NOTI_ITEM_PARTNER_CHANGE_PROPOSED', '고객', CH_CUST, `${o.id} 판매자 변경 확인 필요 · ${esc(offer.seller)} · ${o.st === 'DESIGN_CONFIRMED' ? '확정 디자인' : '진행 중인 디자인'} 그대로 · [변경 동의]·[전액 환불] · ${fmtDate(due)}까지 답이 없으면 전액 환불`);
+      const prev = o.chg && o.chg.result === 'withdrawn' ? o.chg : null;
+      o.chg = { at: now, due, offer, remindAt: null, result: null, prev };
+      const m = chgMoney(o, offer); const ad = liveAddons(o);
+      app.log('rule', `제작 파트너 변경 제안 · ${o.id} → ${esc(offer.seller)} ${esc(offer.name)}(상품 ${won(offer.list)} + 판비 ${won(offer.plate)}) · 주문 항목 상태는 그대로(${stLabel(o)}) · '제작 파트너 변경 제안 중' 표시 · 답변 기한 ${fmtDate(due)}`);
+      app.log('rule', m.refund ? `동의하면 차액 ${won(m.refund)} 환불 예정 = 상품 + 판비 합계 (${won(m.oldBase)} − ${won(m.newBase)}) × 결제 비율 ${won(o.paid)}/${won(m.oldBase)}, 원 단위 내림`
+        : m.newBase > m.oldBase ? `새 상품 + 판비가 ${won(m.newBase - m.oldBase)} 비싸지만 고객에게 더 받지 않아요 → 동의하면 새 파트너 정산 기준을 새 금액(${won(m.settle.sale)})으로 다시 저장하고 차이는 플랫폼 부담 할인` : '상품 + 판비 합계 차액 없음');
+      if (ad.length) app.log('rule', `붙은 추가 구성품(${ad.map((x) => `${x.id} ${esc(x.item)} · ${won(x.paid)}`).join(', ')})은 원래 판매자 상품이라 동의·전액 환불·무응답 모두 함께 취소·전액 환불(공제 없음)`);
+      app.notify('NOTI_ITEM_PARTNER_CHANGE_PROPOSED', '고객', CH_CUST, `${o.id} 판매자 변경 확인 필요 · ${esc(offer.seller)} · ${o.st === 'DESIGN_CONFIRMED' ? '확정 디자인' : '진행 중인 디자인'} 그대로 · ${m.refund ? `동의하면 차액 ${won(m.refund)} 환불` : '더 받지 않음'}${ad.length ? ` · 붙은 구성품 ${won(addonsPaid(o))}은 취소·환불` : ''} · [변경 동의]·[전액 환불] · ${fmtDate(due)}까지 답이 없으면 전액 환불`);
       refresh();
     },
     chgAgree(b) { const o = findOrder(b.dataset.id); if (o && chgPending(o)) { chgAgree(o); refresh(); } },
@@ -1269,14 +1338,14 @@
     pwReset() {
       const sec = S().sec; Object.assign(sec, { step: 'pw', fails: 0, pwSetAt: app.clock.now() });
       app.log('rule', `새 비밀번호 저장(${P(PW_LEN)}자 이상·3종 조합 통과) → 잠금 해제 · 비밀번호와 OTP로 다시 로그인해요`);
-      app.notify('코드 없음(C-NOTI-01에 비밀번호 변경 알림 없음)', `파트너 대표자 ${CO.ceo}`, CH_CEO, '계정 잠금 해제 · 비밀번호 변경');
+      app.notify('NOTI_PARTNER_PASSWORD_CHANGED', `파트너 대표자 ${CO.ceo}`, CH_CEO, '비밀번호 변경(계정 잠금 해제) · 본인이 바꾼 게 아니면 바로 연락');
       refresh();
     },
     async otpLost() {
       const s = S();
       await app.ext({ service: 'PASS 휴대폰 본인인증', what: '대표자 본인인증 · OTP 분실', lines: [`대표자 ${CO.ceo} · ${CO.ceoPhone}`, '인증 결과를 담당 MD에게 넘겨 입점 서류의 대표자·연락처와 대조해요', 'MD 확인이 끝나야 새 OTP를 등록할 수 있어요'] });
       Object.assign(s.sec, { step: 'otpLost', lostAt: app.clock.now() }); s.hqTab = 'manage';
-      app.notify(NO_CODE_INT, `담당 ${s.md ? s.md.name : 'MD'}`, ['관리자 알림센터'], 'OTP 다시 등록 요청 · 대표자 본인인증 완료 · 입점 서류 대조 필요');
+      app.notify('NOTI_INT_PARTNER_OTP_REQUEST', `담당 ${s.md ? s.md.name : 'MD'}`, CH_INT, 'OTP 다시 등록 요청 · 대표자 본인인증 완료 · 입점 서류 대조 필요');
       app.log('rule', 'OTP 분실 → 대표자 본인인증 완료 · 담당 MD가 입점 서류의 대표자·연락처와 맞는지 확인해야 다시 등록할 수 있어요');
       refresh();
     },
@@ -1303,12 +1372,28 @@
     async suspend() {
       const s = S(); if (!s.stopReason) return;
       if (!(await app.confirm({ title: '본사 정지할까요?', body: `<p>사유: <b>${esc(s.stopReason)}</b></p><p class="small">파트너에게 사유를 알리고 상품 노출을 바로 멈춰요. 정지 전에 들어온 진행 중 주문은 파트너가 마저 처리하고, 주문 엑셀·인쇄 패키지 다운로드는 막혀요.</p>`, ok: '정지하기', danger: true }))) return;
-      app.go('acct', 'suspend', { by: `본사 정지 · ${s.stopReason}` }); s.suspendReason = s.stopReason; s.shipOpen = null;
+      app.go('acct', 'suspend', { by: `본사 정지 · ${s.stopReason}` }); s.suspendReason = s.stopReason; s.shipOpen = null; s.reinstated = null;
       app.notify('NOTI_PARTNER_ACCOUNT_SUSPENDED', `파트너 대표자 ${CO.ceo}`, CH_CEO, `본사 정지 · 사유 ${s.stopReason} · 상품 노출 중단`);
       app.log('rule', '상품 노출 즉시 중단 · 진행 중 주문·클레임은 계속 처리 · 주문 엑셀·인쇄 패키지 다운로드 막음 · 고객 배송 정보는 건별로만');
       s.stopReason = null; checkMask(); refresh();
     },
-    unsuspend() { const s = S(); app.go('acct', 'unsuspend', { by: '본사가 정지 해제' }); s.suspendReason = null; checkMask(); app.log('rule', '정지 해제 → 파트너 센터 열람·다운로드가 원래대로 돌아왔어요'); refresh(); },
+    relReason(b) { S().relReason = b.dataset.v; refresh(); },
+    /* 정지 해제(A-PTN-02 · D40): 사유를 감사 로그에 · 대표자에게 NOTI_PARTNER_ACCOUNT_REINSTATED · 답 안 한 제작 파트너 변경 제안은 거둠 */
+    async unsuspend() {
+      const s = S(); if (app.state('acct') !== 'SUSPENDED') return;
+      const reason = s.relReason || REL_REASONS[0];
+      const pend = s.orders.filter(chgPending); const settled = s.orders.filter((o) => o.chg && ['agreed', 'refunded'].includes(o.chg.result));
+      if (!(await app.confirm({ title: '정지를 풀까요?', body: `<p>해제 사유: <b>${esc(reason)}</b></p><p class="small">상품 노출과 주문 엑셀·인쇄 패키지 다운로드가 원래대로 돌아오고, 사유는 감사 로그에 남기고 대표자에게 알려요.${pend.length ? ` 고객이 아직 답하지 않은 제작 파트너 변경 제안 ${pend.length}건(${pend.map((o) => o.id).join(', ')})은 거두고 대성포장이 이어서 만들어요.` : ''}${settled.length ? ` 이미 동의·환불된 ${settled.length}건은 그대로예요.` : ''}</p>`, ok: '정지 해제' }))) return;
+      const prevReason = s.suspendReason;
+      app.go('acct', 'unsuspend', { by: `본사 정지 해제 · ${reason}` }); s.suspendReason = null;
+      app.log('rule', `감사 로그(A-SYS-02): 정지 해제 · 사유 "${esc(reason)}" · 정지 사유였던 "${esc(prevReason || '-')}" · 처리자 ${s.md ? s.md.name : '운영팀'} · ${fmtDate(app.clock.now())}`);
+      app.notify('NOTI_PARTNER_ACCOUNT_REINSTATED', `파트너 대표자 ${CO.ceo}`, CH_CEO, `본사 정지 해제 · 사유 ${reason} · 상품 노출 재개 · 열람·다운로드 원래대로`);
+      app.log('rule', '정지 해제 → 파트너 센터 열람·다운로드가 원래대로 돌아왔어요');
+      pend.forEach((o) => chgWithdraw(o, reason));
+      if (settled.length) app.log('rule', `이미 고객이 동의했거나 환불된 건(${settled.map((o) => o.id).join(', ')})은 되돌리지 않아요`);
+      s.reinstated = { at: app.clock.now(), reason, withdrawn: pend.length };
+      s.relReason = REL_REASONS[0]; checkMask(); refresh();
+    },
     async terminate() {
       const s = S(); if (!s.stopReason) return;
       const final = 1240000; const hold = Math.floor((final * GC.Policy.get('settlement.final_holdback')) / 100);
@@ -1354,7 +1439,7 @@
       const st = app.state('app'); const ac = app.state('acct');
       if (!closed) { app.log('rule', '재조회 결과 계속사업자 · 바뀐 것 없음'); refresh(); return; }
       if (ac === 'ACTIVE' || ac === 'PAUSED') {
-        app.go('acct', 'biz_closed', { by: '정기 재조회 · 폐업' }); s.suspendReason = '사업자 폐업(국세청 재조회)';
+        app.go('acct', 'biz_closed', { by: '정기 재조회 · 폐업' }); s.suspendReason = '사업자 폐업(국세청 재조회)'; s.reinstated = null;
         app.notify('NOTI_PARTNER_ACCOUNT_SUSPENDED', `파트너 대표자 ${CO.ceo}`, CH_CEO, '사업자 폐업 확인(국세청 정기 조회) · 판매 정지');
       } else if (['REVIEWING', 'SAMPLE_CHECK', 'SUPPLEMENT'].includes(st)) {
         doReject('기타', '국세청 재조회 결과 폐업이라 자동으로 반려했어요', '시스템 · 휴·폐업 자동 반려');
@@ -1392,11 +1477,19 @@
     app.log('state', `디자인 요청 ${o.id}: ${GC.sm.stateName('DESIGN', o.design)} → <b>${GC.sm.stateName('DESIGN', to)}</b> · ${by}`);
     o.design = to;
   }
-  /* 고객 [변경 동의]: 주문 항목 상태 그대로 · 파트너·상품만 바꿈 · 확정 건은 새 파트너에게 패키지 다시 전달 */
+  /* 붙은 추가 구성품(D38): 동의·전액 환불·무응답 모두 같은 사유로 공제 없이 결제 금액 그대로 취소·환불 */
+  function cancelAddons(o) {
+    liveAddons(o).forEach((x) => {
+      orderGo(x, 'partner_change_cancel', `본 상품 ${o.id}의 제작 파트너 변경 · 원래 판매자 상품이라 함께 취소`);
+      x.cancelWhy = 'partner_change';
+      app.log('money', `붙은 추가 구성품 ${x.id} ${esc(x.item)} 환불 ${won(x.paid)} · 공제 없음 · 쿠폰 최소 주문 재계산 없음`);
+    });
+  }
+  /* 고객 [변경 동의]: 주문 항목 상태 그대로 · 파트너·상품만 바꿈 · 확정 건은 새 파트너에게 패키지 다시 전달 · 정산 기준 다시 저장(D37) */
   function chgAgree(o) {
-    const c = o.chg; const m = chgMoney(o, c.offer);
-    Object.assign(c, { result: 'agreed', by: 'customer', doneAt: app.clock.now(), money: m });
-    o.history = { partner: CO.name, item: o.item };
+    const c = o.chg; const m = chgMoney(o, c.offer); const st = chgSettle(c.offer, m);
+    Object.assign(c, { result: 'agreed', by: 'customer', doneAt: app.clock.now(), money: m, rate: st.rate });
+    o.history = { partner: CO.name, item: o.item, list: o.list, plate: o.plate };
     o.partner = c.offer.seller; o.movedAway = true;
     app.log('state', `주문 ${o.id}: ${stLabel(o)} 그대로 · 제작 파트너 ${CO.name} → ${esc(c.offer.seller)} · 상품 → ${esc(c.offer.name)} · 이력에 이전 파트너·상품 기록`);
     if (['APPROVED', 'HANDED_OFF', 'PREFLIGHT_REJECTED'].includes(o.design)) {
@@ -1404,21 +1497,35 @@
       app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', `새 파트너 ${esc(c.offer.seller)}`, ['알림톡', '이메일', '알림센터'], `${o.id} 인쇄 패키지 도착 · 받은 뒤 ${P('production.print_check_bd')}영업일 안에 [인쇄 가능]`);
       app.log('rule', `${CO.name}는 이 인쇄 패키지를 더 받을 수 없어요(다운로드 막힘 · 시도는 접근 기록) · 이미 받은 파일은 계약 종료 때 삭제 확인서로 정리`);
     } else app.log('rule', `디자인이 아직 확정 전(${GC.sm.stateName('DESIGN', o.design)})이라 디자인은 그대로 진행하고, 확정되면 인쇄 패키지는 ${esc(c.offer.seller)}에 가요`);
-    if (m.refund) app.log('money', `차액 부분 환불 ${won(m.refund)} = (할인 전 ${won(o.list)} − ${won(c.offer.list)}) × 결제 비율(${won(o.paid)} ÷ ${won(o.list)}), 원 단위 내림 · 원래 결제 수단으로`);
-    else if (m.hqAdjust) app.log('money', `새 상품이 ${won(m.hqAdjust)} 비싸지만 고객에게 더 받지 않아요 → 본사가 '조정' 정산 이벤트로 ${esc(c.offer.seller)}에 ${won(m.hqAdjust)} 보전 · 원래 파트너 청구는 입점 계약(법률 자문 전 초안)`);
-    app.notify('NOTI_ITEM_PARTNER_CHANGED', '고객', CH_CUST, `${o.id} 제작 판매자가 바뀌었어요 · ${esc(c.offer.seller)}${m.refund ? ` · 차액 ${won(m.refund)} 환불` : ''}`);
+    if (m.refund) app.log('money', `차액 부분 환불 ${won(m.refund)} = 상품 + 판비 합계(할인 전 ${won(m.oldBase)} − ${won(m.newBase)}) × 결제 비율(${won(o.paid)} ÷ ${won(m.oldBase)}), 원 단위 내림 · 원래 결제 수단으로`);
+    else app.log('money', `새 상품 + 판비(${won(m.newBase)})가 원래(${won(m.oldBase)})${m.newBase > m.oldBase ? `보다 ${won(m.newBase - m.oldBase)} 비싸지만` : '와 같아'} 고객에게 더 받지 않아요`);
+    app.log('money', `${esc(c.offer.seller)} 정산 기준 다시 저장 · 판매가 ${won(m.settle.sale)}(상품 ${won(c.offer.list)} + 판비 ${won(c.offer.plate)}) · 파트너 부담 할인 0원 · 요율 ${st.rate}%(새 파트너 그 상품 요율, 재주문 인하 없음) · 플랫폼 부담 할인 ${won(m.settle.platformDisc)} = ${won(m.settle.sale)} − 고객 결제 ${won(o.paid - m.refund)} · 구매 확정 때 정산 예정 ${won(st.ev.amount)} · 따로 조정 이벤트 없음 · 원래 파트너 청구는 입점 계약(법률 자문 전 초안)`);
+    app.log('rule', `바뀐 뒤 확정 후 취소가 되면 판비 공제 상한(고객이 낸 판비)은 원래 판비 줄 결제 금액 ${won(o.plate || 0)} 그대로`);
+    cancelAddons(o);
+    app.notify('NOTI_ITEM_PARTNER_CHANGED', '고객', CH_CUST, `${o.id} 제작 판매자가 바뀌었어요 · ${esc(c.offer.seller)}${m.refund ? ` · 차액 ${won(m.refund)} 환불` : ''}${m.addonRefund ? ` · 붙은 구성품 ${won(m.addonRefund)} 환불` : ''}`);
     checkMask();
   }
-  /* 고객 [전액 환불] 또는 기한 무응답(예고 뒤 24시간): 파트너 귀책 → 공제 없이 전액 · 이용권·쿠폰 복원 */
+  /* 고객 [전액 환불] 또는 기한 무응답(예고 뒤 24시간): 파트너 귀책 → 공제 없이 전액 · 이용권·쿠폰 복원 · 붙은 구성품도 함께 */
   function chgRefund(o, by) {
-    const c = o.chg; const m = GC.refund.partnerChange({ choice: 'refund', oldList: o.list, oldPaid: o.paid, paidTotal: o.paidTotal });
+    const c = o.chg; const m = chgMoney(o, null, 'refund');
     Object.assign(c, { result: 'refunded', by, doneAt: app.clock.now(), money: m });
     const why = by === 'expired' ? `답변 기한 지남 · 다시 알림 뒤 ${P('notify.notice_min_hours')}시간 지남` : '고객 [전액 환불]';
     orderGo(o, 'partner_change_refund', why);
     designGo(o, 'partner_change_refund', '제작 파트너 변경 전액 환불');
-    app.log('money', `전액 환불 ${won(m.refund)} (${esc(o.paidNote)}) · 공제 없음 · ${m.restoreBenefits ? '멤버십 무료 이용권·쿠폰 복원' : ''}`);
-    app.notify('NOTI_ITEM_PARTNER_CHANGE_REFUNDED', '고객', CH_CUST, `${o.id} 제작 판매자 변경 ${by === 'expired' ? '답변이 없어' : '대신'} 전액 환불 ${won(m.refund)} · 공제 없음(디자인비·판비 포함)`);
+    app.log('money', `전액 환불 ${won(m.refund)} (${esc(o.paidNote)}) · 공제 없음${m.restoreBenefits && o.benefit ? ` · ${o.benefit} 복원` : ''}`);
+    cancelAddons(o);
+    app.notify('NOTI_ITEM_PARTNER_CHANGE_REFUNDED', '고객', CH_CUST, `${o.id} 제작 판매자 변경 ${by === 'expired' ? '답변이 없어' : '대신'} 전액 환불 ${won(m.totalRefund)} · 공제 없음(디자인비·판비${m.addonRefund ? '·붙은 구성품' : ''} 포함)`);
     checkMask();
+  }
+  /* 정지가 풀려 고객이 아직 답하지 않은 제안을 거둠(A-ORD-01 ⑦ · D40): 상태 전이 없음 · 표시 내림 · 기한 멈춤 · 원래 파트너가 이어서 */
+  function chgWithdraw(o, reason) {
+    const c = o.chg;
+    Object.assign(c, { result: 'withdrawn', by: 'reinstated', doneAt: app.clock.now(), why: reason });
+    app.log('state', `주문 ${o.id}: ${stLabel(o)} 그대로 · 제작 파트너 변경 제안 거둠 · '판매자 변경 확인 필요' 표시 내림 · 무응답 환불 기한(${fmtDate(c.due)}) 멈춤 · 원래 파트너 ${CO.name}가 이어서 진행`);
+    if (o.st === 'DESIGN_CONFIRMED') app.log('rule', `${o.id}: 디자인이 확정된 건이라 [인쇄 패키지 받기]·[인쇄 가능]이 다시 열려요`);
+    const ad = liveAddons(o);
+    if (ad.length) app.log('rule', `붙은 추가 구성품 ${ad.map((x) => x.id).join(', ')}도 그대로 · 본 상품과 같은 송장으로 출고`);
+    app.notify('NOTI_ITEM_PARTNER_CHANGE_WITHDRAWN', '고객', CH_CUST, `${o.id} 판매자 변경 제안을 거뒀어요 · 원래 판매자가 이어서 만들어요 · 따로 하실 일은 없어요`);
   }
   /* 정지·계약 종료 뒤 남은 주문이 모두 배송 완료되면 고객 정보를 바로 가림(한 번만 기록) */
   function checkMask() {
@@ -1460,7 +1567,7 @@
     if (s.custom && s.sampleReqAt && !s.sampleAt && !s.sampleHold && ['REVIEWING', 'SAMPLE_CHECK'].includes(st) && now - s.sampleReqAt >= L('sample_wait_days') * DAY) {
       s.sampleHold = true;
       app.log('warn', `인쇄 샘플이 ${L('sample_wait_days')}일 안에 오지 않았어요 → 담당 MD 연락 · 도착할 때까지 심사 보류`);
-      app.notify(NO_CODE_INT, `담당 ${s.md ? s.md.name : 'MD'}`, ['관리자 알림센터'], '인쇄 샘플 미도착 · 파트너 연락 필요');
+      app.notify('NOTI_INT_ONBOARD_SAMPLE_LATE', `담당 ${s.md ? s.md.name : 'MD'}`, CH_INT, `인쇄 샘플 미도착(${L('sample_wait_days')}일) · 파트너 연락 필요`);
     }
     if (st === 'CONTRACT' && s.contractAt) {
       const days = Math.floor((now - s.contractAt) / DAY);
@@ -1471,7 +1578,7 @@
       if (!s.mdCall && days >= L('contract_sign_days')) {
         s.mdCall = true;
         app.log('warn', `서명 기한 ${L('contract_sign_days')}일 지남 · 리마인드 ${REMIND_DAYS.length}회 뒤 MD 연락 할 일 생성 · 상태는 계약 진행 유지`);
-        app.notify(NO_CODE_INT, `담당 ${s.md ? s.md.name : 'MD'}`, ['관리자 알림센터'], '계약 미서명 · 파트너 연락 필요');
+        app.notify('NOTI_INT_ONBOARD_SIGN_LATE', `담당 ${s.md ? s.md.name : 'MD'}`, CH_INT, `계약 미서명(리마인드 ${REMIND_DAYS.length}회 뒤) · 파트너 연락 필요`);
       }
     }
     if (st === 'REJECTED' && s.rejected && !s.rejected.opened && now >= s.rejected.reapplyAt) { s.rejected.opened = true; app.log('rule', '재신청 제한 기간이 끝났어요 · 이제 다시 신청할 수 있어요'); }

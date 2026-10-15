@@ -1,10 +1,10 @@
 [
  {"shot":"system-01-initial"},
- {"act":"pvEdit","attr":"data-k=\"design.free_threshold\""},
+ {"act":"pvEdit","attr":"data-k=\"design.fee\""},
  {"type":{"sel":"#pvNew","text":"60000000"},"after":700},
  {"act":"pvSubmit","shot":"system-02-range-error"},
  {"eval":"(()=>{const i=document.querySelector('#pvNew');i.value='';i.dispatchEvent(new Event('input',{bubbles:true}));return 'cleared'})()","after":300},
- {"type":{"sel":"#pvNew","text":"300000"},"after":700},
+ {"type":{"sel":"#pvNew","text":"29000"},"after":700},
  {"act":"pvReasonPreset","idx":0},
  {"act":"pvSubmit"},
  {"act":"pvApprove"},
@@ -15,7 +15,7 @@
  {"role":"system"},
  {"adv":"604800000"},
  {"role":"hq","shot":"system-05-applied"},
- {"eval":"JSON.stringify([GC.Policy.get('design.free_threshold'), localStorage.getItem('gc.policy.v1')])"},
+ {"eval":"JSON.stringify([GC.Policy.get('design.fee'), localStorage.getItem('gc.policy.v1')])"},
  {"act":"sec","attr":"data-s=\"권한\""},
  {"act":"role","attr":"data-r=\"정산·재무\""},
  {"act":"payApprove"},
@@ -61,5 +61,5 @@
  {"act":"sec","attr":"data-s=\"정책값\""},
  {"act":"pvRollback","shot":"system-14-rolledback"},
  {"act":"resetAll"},
- {"eval":"JSON.stringify([GC.Policy.get('design.free_threshold'), localStorage.getItem('gc.policy.v1')])","shot":"system-15-done"}
+ {"eval":"JSON.stringify([GC.Policy.get('design.fee'), localStorage.getItem('gc.policy.v1')])","shot":"system-15-done"}
 ]

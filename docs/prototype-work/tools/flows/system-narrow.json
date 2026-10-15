@@ -1,6 +1,6 @@
 [
- {"act":"pvEdit","attr":"data-k=\"design.free_threshold\""},
- {"type":{"sel":"#pvNew","text":"300000"},"after":700},
+ {"act":"pvEdit","attr":"data-k=\"design.fee\""},
+ {"type":{"sel":"#pvNew","text":"29000"},"after":700},
  {"act":"pvReasonPreset","idx":0,"shot":"system-narrow-01-edit","full":true},
  {"act":"pvSubmit"},
  {"act":"role","attr":"data-r=\"최고관리자\""},

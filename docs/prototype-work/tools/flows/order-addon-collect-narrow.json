@@ -1,0 +1,17 @@
+[
+ {"click":"#ord-scn [data-scn=\"addon\"]","after":400},
+ {"check":"cup"},{"act":"toCheckout"},{"check":"agree"},{"act":"pay","after":400},
+ {"role":"partner"},{"act":"accept"},
+ {"role":"customer"},
+ {"act":"openCancel","attr":"data-id=\"spoon\""},
+ {"act":"doCancel","after":400},
+ {"role":"partner"},{"act":"rejectCancel","after":400},
+ {"role":"customer"},{"act":"objectCancel"},
+ {"role":"hq","shot":"order-65-narrow-addon-mediation","full":true},
+ {"act":"mediateCancel","attr":"data-r=\"customer\"","after":400},
+ {"role":"system"},{"act":"track"},
+ {"role":"customer","shot":"order-66-narrow-addon-collecting","el":"#gc-device"},
+ {"role":"system"},{"act":"collected","after":400},
+ {"role":"customer","shot":"order-67-narrow-addon-collected","el":"#gc-device"},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device .oitem')).map(e=>e.querySelector('.nm').textContent.trim()+' ['+e.querySelector('.st').textContent+']').join(' / ')"}
+]
