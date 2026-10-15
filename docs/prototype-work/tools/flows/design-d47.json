@@ -1,0 +1,22 @@
+[
+ {"act":"toMethod"},{"act":"toRequest"},{"check":"rights"},{"check":"stage"},{"check":"own"},
+ {"act":"toCheckout"},{"check":"co_stage"},{"check":"co_plate"},{"act":"pay","after":500},
+ {"role":"design"},{"act":"assign"},{"act":"startWork"},{"act":"propose","after":500},
+ {"role":"customer"},{"act":"cs","attr":"data-to=\"proposal\""},{"act":"cs","attr":"data-to=\"approve\""},
+ {"check":"ap_typo"},{"check":"ap_contact"},{"check":"ap_color"},{"check":"ap_qty"},{"check":"ap_nocancel"},
+ {"act":"doApprove","after":600},
+ {"role":"design"},{"act":"handOff"},
+ {"role":"partner","shot":"d47-01-before-download"},
+ {"eval":"document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"},
+ {"eval":"(document.querySelector('#gc-device .print-due')||{}).innerText"},
+ {"adv":"86400000"},{"adv":"3600000"},
+ {"role":"partner","shot":"d47-02-overdue"},
+ {"eval":"[...document.querySelectorAll('#gc-log li')].map(l=>l.innerText.replace(/\\s+/g,' ')).filter(t=>/PRINT_CHECK|확인 기한/.test(t)).join(' | ')"},
+ {"act":"download"},{"act":"preflightReject"},
+ {"role":"design"},{"act":"reHandOff"},
+ {"role":"partner","shot":"d47-03-rehandoff"},
+ {"eval":"(document.querySelector('#gc-device .print-due')||{}).innerText"},
+ {"act":"download"},{"act":"printable"},
+ {"eval":"[...document.querySelectorAll('#gc-log li')].slice(0,6).map(l=>l.innerText.replace(/\\s+/g,' ')).join(' | ')"},
+ {"eval":"document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"}
+]

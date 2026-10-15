@@ -1,0 +1,90 @@
+[
+ {
+  "act": "role",
+  "attr": "data-r=\"최고관리자\""
+ },
+ {
+  "act": "sec",
+  "attr": "data-s=\"알림\""
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-device table.mx tbody tr')).filter(r=>/CHANGE_WITHDRAWN|BIZ_RESUMED|BIZ_VERIFY|INT_ROOM/.test(r.textContent)).map(r=>r.textContent.replace(/\\s+/g,' ').trim())"
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-device p.faint')).filter(p=>/○ 조건/.test(p.textContent)).map(p=>p.textContent.replace(/\\s+/g,' ').trim())"
+ },
+ {
+  "eval": "(()=>{const s=document.querySelector('#simEv');s.value='NOTI_INT_ROOM_MESSAGE';s.dispatchEvent(new Event('change',{bubbles:true}));return s.value})()",
+  "after": 400
+ },
+ {
+  "act": "simRun",
+  "shot": "system-n11-room-slack",
+  "full": true
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-device .panel')).find(p=>/발송 규칙 시뮬레이터/.test(p.textContent)).querySelector('table').textContent.replace(/\\s+/g,' ').trim()"
+ },
+ {
+  "eval": "(()=>{const s=document.querySelector('#simEv');s.value='NOTI_PARTNER_CHANGE_WITHDRAWN';s.dispatchEvent(new Event('change',{bubbles:true}));return s.value})()",
+  "after": 400
+ },
+ {
+  "act": "simRun"
+ },
+ {
+  "eval": "(()=>{const s=document.querySelector('#simEv');s.value='NOTI_INT_BIZ_VERIFY_LATE';s.dispatchEvent(new Event('change',{bubbles:true}));return s.value})()",
+  "after": 400
+ },
+ {
+  "act": "simRun"
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-log li')).slice(0,3).map(l=>l.textContent.replace(/\\s+/g,' ').trim())"
+ },
+ {
+  "act": "sec",
+  "attr": "data-s=\"정책값\""
+ },
+ {
+  "act": "grp",
+  "attr": "data-g=\"수수료·파트너\"",
+  "shot": "system-n12-policy-partner",
+  "full": true
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-device table.pol tbody tr')).filter(r=>/price_change_alert|onboard_/.test(r.textContent)).map(r=>r.textContent.replace(/\\s+/g,' ').trim())"
+ },
+ {
+  "act": "grp",
+  "attr": "data-g=\"회원·혜택·알림\""
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-device table.pol tbody tr')).filter(r=>/biz_manual_bd|biz_closed_grace/.test(r.textContent)).map(r=>r.textContent.replace(/\\s+/g,' ').trim())"
+ },
+ {
+  "act": "pvEdit",
+  "attr": "data-k=\"member.biz_manual_bd\"",
+  "shot": "system-n13-biz-manual-edit"
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-device .panel dl.kv dt')).map(d=>d.textContent+'='+d.nextElementSibling.textContent.replace(/\\s+/g,' ').trim())"
+ },
+ {
+  "act": "pvCancel"
+ },
+ {
+  "act": "role",
+  "attr": "data-r=\"운영·MD\""
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-device p.faint')).filter(p=>/키별 권한|보이지 않아요/.test(p.textContent)).map(p=>p.textContent.replace(/\\s+/g,' ').trim())"
+ },
+ {
+  "act": "grp",
+  "attr": "data-g=\"수수료·파트너\""
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-device table.pol tbody tr')).filter(r=>/price_change_alert|onboard_/.test(r.textContent)).map(r=>r.textContent.replace(/\\s+/g,' ').trim())"
+ }
+]

@@ -1,0 +1,12 @@
+[
+ {"click":"#ord-scn [data-scn=\"pc_mid\"]","after":400},
+ {"wait":100,"shot":"order-68-narrow-addon-paid","full":true},
+ {"eval":"(()=>{ const st=document.querySelector('#gc-strips .chip.is-now').title; if(st!=='PAID') throw new Error('구성품 칩 기대 PAID: '+st); return st; })()"},
+ {"act":"pcAddonSelf","after":400},
+ {"wait":100,"shot":"order-69-narrow-addon-paid-canceled","full":true},
+ {"eval":"(()=>{ const now=Array.from(document.querySelectorAll('#gc-strips .chip.is-now,#gc-strips .chip.is-branch-now')).map(c=>c.title); if(!now.includes('CANCELED')) throw new Error('구성품 칩 기대 CANCELED: '+now.join('|')); return now.join('|'); })()"},
+ {"act":"pcAgree","after":400},
+ {"eval":"(()=>{ const t=document.querySelector('#gc-turn .turn-done, #gc-turn .turn-what').textContent; if(!t.includes('환불 0원')) throw new Error('상품만 싼 제안 + 구성품 먼저 취소면 동의 환불 0원: '+t); return t; })()"},
+ {"role":"hq","shot":"order-70-narrow-addon-paid-hq","full":true},
+ {"role":"system"}
+]

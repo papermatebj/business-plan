@@ -1,0 +1,130 @@
+[
+ {
+  "act": "sns",
+  "attr": "data-via=\"kakao\""
+ },
+ {
+  "check": "all"
+ },
+ {
+  "act": "toIdentity"
+ },
+ {
+  "act": "pass",
+  "after": 300
+ },
+ {
+  "act": "toBiz"
+ },
+ {
+  "act": "bzSample",
+  "attr": "data-s=\"space\""
+ },
+ {
+  "act": "ntsCheck"
+ },
+ {
+  "act": "ntsCheck"
+ },
+ {
+  "act": "ntsCheck",
+  "after": 300
+ },
+ {
+  "act": "toManual"
+ },
+ {
+  "act": "industry",
+  "attr": "data-v=\"한식\""
+ },
+ {
+  "act": "addrSearch"
+ },
+ {
+  "act": "uploadCert"
+ },
+ {
+  "act": "manualSubmit",
+  "after": 300
+ },
+ {
+  "eval": "document.querySelector('#gc-turn').textContent.replace(/\\s+/g,' ').trim()"
+ },
+ {
+  "adv": "86400000"
+ },
+ {
+  "adv": "86400000"
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-log li')).filter(l=>/BIZ_VERIFY|처리 목표/.test(l.textContent)).map(l=>l.textContent.replace(/\\s+/g,' ').trim())"
+ },
+ {
+  "role": "system",
+  "shot": "member-l01-system-late"
+ },
+ {
+  "role": "hq",
+  "shot": "member-l02-hq-late",
+  "el": "#gc-device"
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-device .tbl tbody tr')).slice(0,2).map(r=>r.textContent.replace(/\\s+/g,' ').trim())"
+ },
+ {
+  "act": "hqApprove",
+  "after": 300
+ },
+ {
+  "role": "system"
+ },
+ {
+  "act": "ntsAns",
+  "attr": "data-v=\"closed\""
+ },
+ {
+  "act": "recheck",
+  "after": 300
+ },
+ {
+  "role": "customer"
+ },
+ {
+  "act": "cs",
+  "attr": "data-to=\"home\"",
+  "shot": "member-l03-grace-banner",
+  "el": "#gc-device"
+ },
+ {
+  "role": "hq"
+ },
+ {
+  "act": "hqTab",
+  "attr": "data-v=\"biz\"",
+  "shot": "member-l04-hq-check",
+  "el": "#gc-device"
+ },
+ {
+  "role": "system"
+ },
+ {
+  "act": "ntsAns",
+  "attr": "data-v=\"active\""
+ },
+ {
+  "act": "recheck",
+  "after": 300,
+  "shot": "member-l05-reverified"
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-log li')).slice(0,4).map(l=>l.textContent.replace(/\\s+/g,' ').trim())"
+ },
+ {
+  "eval": "document.querySelector('#gc-turn').textContent.replace(/\\s+/g,' ').trim()"
+ },
+ {
+  "role": "customer",
+  "shot": "member-l06-home-cleared",
+  "el": "#gc-device"
+ }
+]

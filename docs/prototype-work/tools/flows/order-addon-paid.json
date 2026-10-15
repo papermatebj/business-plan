@@ -1,0 +1,22 @@
+[
+ {"click":"#ord-scn [data-scn=\"pc_lo\"]","after":400},
+ {"wait":100,"shot":"order-65-addon-paid"},
+ {"eval":"(()=>{ const st=document.querySelector('#gc-strips .chip.is-now').title; const ad=document.querySelector('#gc-device .oitem.addon'); const t=ad.innerText.split(String.fromCharCode(10)).join(' '); if(st!=='PAID') throw new Error('구성품 칩 기대 PAID: '+st); if(!t.includes('결제 완료')||!t.includes('판매자가 수저집 인쇄를 확인할 때 함께 준비돼요')) throw new Error('구성품 줄 안내 없음: '+t); if(!ad.querySelector('[data-act=\"pcAddonSelf\"]')) throw new Error('구성품 [취소] 버튼 없음'); return [st,t]; })()"},
+ {"role":"system"},
+ {"eval":"(()=>{ const t=Array.from(document.querySelectorAll('#gc-device .tbl tbody tr')).map(e=>e.innerText.split(String.fromCharCode(10)).join(' ').split(String.fromCharCode(9)).join(' ')).join(' / '); if(!t.includes('parent_printable')) throw new Error('시스템 표에 발주 확인 줄 없음: '+t); return t; })()"},
+ {"role":"customer"},
+ {"act":"pcAddonSelf","after":400},
+ {"wait":100,"shot":"order-66-addon-paid-canceled"},
+ {"eval":"(()=>{ const now=Array.from(document.querySelectorAll('#gc-strips .chip.is-now,#gc-strips .chip.is-branch-now')).map(c=>c.title); const ad=document.querySelector('#gc-device .oitem.addon').innerText.split(String.fromCharCode(10)).join(' '); const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,6).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!now.includes('CANCELED')) throw new Error('구성품 칩 기대 CANCELED: '+now.join('|')); if(!ad.includes('6,000원')) throw new Error('구성품 환불 6,000원 아님: '+ad); if(document.querySelector('#gc-device [data-act=\"pcAddonSelf\"]')) throw new Error('취소 버튼이 남음'); return [now.join('|'), ad, log]; })()"},
+ {"eval":"[document.querySelector('#gc-turn .turn-what').textContent, document.querySelector('#gc-device .claimbox').innerText.split(String.fromCharCode(10)).join(' | ')]"},
+ {"role":"hq","shot":"order-67-addon-paid-hq"},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device .panel')).filter(p=>/^(제안 내용|금액)$/.test(p.querySelector('h2').textContent)).map(p=>p.innerText.split(String.fromCharCode(10)).join(' ').split(String.fromCharCode(9)).join(' ')).join(' // ')"},
+ {"role":"customer"},
+ {"act":"pcAgree","after":400},
+ {"eval":"(()=>{ const t=document.querySelector('#gc-turn .turn-done, #gc-turn .turn-what').textContent; if(!t.includes('환불 27,891원(차액 27,891원)')) throw new Error('동의 환불 기대 27,891원(차액만 · 남은 주문 재계산 몫 기준): '+t); return [t, Array.from(document.querySelectorAll('#gc-device .oitem')).map(e=>e.querySelector('.nm').textContent.trim()+' ['+e.querySelector('.st').textContent+']').join(' / ')]; })()"},
+ {"click":"#gc-reset","after":400},
+ {"act":"pcAddonSelf","after":400},
+ {"act":"pcRefund","after":400},
+ {"eval":"(()=>{ const t=document.querySelector('#gc-turn .turn-done, #gc-turn .turn-what').textContent; if(!t.includes('383,000원')) throw new Error('전액 환불 기대 383,000원(남은 잔액): '+t); const bal=Array.from(document.querySelectorAll('#gc-device .kv dt')).find(d=>d.textContent==='남은 결제 잔액'); const v=bal&&bal.nextElementSibling.textContent; if(v!=='0원') throw new Error('남은 잔액 0원 아님: '+v); return [t, v]; })()"},
+ {"role":"hq"}
+]

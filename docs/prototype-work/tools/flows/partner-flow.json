@@ -40,7 +40,7 @@
  {"act":"pause","after":400},
  {"act":"resume"},
  {"role":"hq"},
- {"act":"stopReason","attr":"data-v=\"클레임율 급증\""},
+ {"act":"stopReason","attr":"data-v=\"미수금 미납\""},
  {"act":"suspend","after":400},
  {"act":"unsuspend"},
  {"act":"stopReason","attr":"data-v=\"파트너 요청\""},

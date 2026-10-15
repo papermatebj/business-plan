@@ -1,0 +1,133 @@
+[
+{
+"act": "fKind",
+"attr": "data-v=\"design\""
+},
+{
+"eval": "(()=>{const t=document.querySelector('#gc-device').innerText;const r={noSelect:!document.querySelector('#gc-device #f_target'),fixed:t.includes('적용 대상\\n맞춤 디자인비'),minHint:t.includes('그 디자인 요청(묶음)의 맞춤 품목 금액과 비교')};if(!r.noSelect||!r.fixed||!r.minHint)throw new Error('D50/D51 양식 '+JSON.stringify(r));return r})()"
+},
+{
+"eval": "(()=>{const el=document.querySelector('#f_name'); el.value='맞춤 디자인비 50% 할인'; el.dispatchEvent(new Event('change',{bubbles:true})); return 'name';})()"
+},
+{
+"eval": "(()=>{const el=document.querySelector('#f_value'); el.value='50'; el.dispatchEvent(new Event('change',{bubbles:true})); return 'value 50';})()"
+},
+{
+"eval": "(()=>{const el=document.querySelector('#f_minOrder'); el.value='600000'; el.dispatchEvent(new Event('change',{bubbles:true})); return 'minOrder 600000';})()"
+},
+{
+"eval": "(()=>{const t=document.querySelector('#gc-device').innerText;if(!t.includes('디자인비가 이미 무료라 이 쿠폰은 쓰일 일이 없어요'))throw new Error('50만원 이상 경고 없음');return 'warn ok'})()"
+},
+{
+"eval": "(()=>{const el=document.querySelector('#f_minOrder'); el.value='300000'; el.dispatchEvent(new Event('change',{bubbles:true})); return 'minOrder 300000';})()",
+"shot": "benefit-dcmin-01-form"
+},
+{
+"act": "submitCoupon"
+},
+{
+"act": "acct",
+"attr": "data-v=\"seo\""
+},
+{
+"act": "approveCoupon"
+},
+{
+"eval": "(()=>{const kv=document.querySelector('#gc-device .kv').innerText;const r={min:kv.includes('맞춤 품목 300,000원 이상'),target:kv.includes('맞춤 디자인비 (고정 · 제외 대상 없음)')};if(!r.min||!r.target)throw new Error('관리자 상세 '+kv);return r})()",
+"shot": "benefit-dcmin-02-hq"
+},
+{
+"role": "customer"
+},
+{
+"act": "cs",
+"attr": "data-to=\"box\""
+},
+{
+"act": "download",
+"shot": "benefit-dcmin-03-box",
+"full": true
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .cp')].map(x=>x.querySelector('.nm').textContent+' | '+x.querySelector('.cond').textContent);const g=(n)=>c.find(x=>x.startsWith(n))||'';const r={newC:g('맞춤 디자인비 50% 할인').includes('맞춤 품목 300,000원 이상 · 대상 맞춤 디자인비'),w5:g('맞춤 디자인 10,000원 할인').includes('맞춤 품목 300,000원 이상'),cart:g('신규가입 5,000원').includes('50,000원 이상 주문')};if(!r.newC||!r.w5||!r.cart)throw new Error('쿠폰함 조건 '+JSON.stringify(c));return r})()"
+},
+{
+"act": "cs",
+"attr": "data-to=\"dfee\""
+},
+{
+"eval": "(()=>{const o=[...document.querySelectorAll('#gc-device [data-act=pickDc]')].map(x=>x.innerText.replace(/\\s+/g,' '));const b=document.querySelectorAll('#gc-device .opt.is-off').length;if(b||!o.some(x=>x.includes('맞춤 품목 300,000원 이상')))throw new Error('맞춤 1건 '+JSON.stringify(o));return {opts:o,blocked:b,total:document.querySelector('#gc-device .ladder .is-total .lamt').textContent}})()"
+},
+{
+"act": "dfMix",
+"attr": "data-v=\"mixed\"",
+"shot": "benefit-dcmin-04-mixed",
+"full": true
+},
+{
+"eval": "(()=>{const t=document.querySelector('#gc-device').innerText;const bl=[...document.querySelectorAll('#gc-device .opt.is-off')].map(x=>({id:x.dataset.id,short:x.dataset.short,off:x.getAttribute('aria-disabled'),why:x.querySelector('.why').textContent}));const ok=bl.length===2&&bl.every(x=>x.short==='60000'&&x.off==='true'&&x.why==='맞춤 품목 60,000원 더 담으면 디자인비 쿠폰을 쓸 수 있어요');const usable=[...document.querySelectorAll('#gc-device [data-act=pickDc]')].map(x=>x.dataset.id);const mix=document.querySelector('#gc-device .mixline').textContent;if(!ok||usable.includes('new')||usable.includes('w5')||!mix.includes('464,000원')||!mix.includes('240,000원'))throw new Error('맞춤+일반 '+JSON.stringify({bl,usable,mix}));return {blocked:bl,usable,mix,tag:document.querySelector('#gc-device .judge').parentElement.querySelector('.tag').textContent,total:document.querySelector('#gc-device .ladder .is-total .lamt').textContent}})()"
+},
+{
+"eval": "(()=>{const el=document.querySelector('#gc-device .opt.is-off');el.scrollIntoView({block:'center'});return 'scrolled'})()"
+},
+{
+"click": "#gc-device .opt.is-off[data-id=\"w5\"]",
+"after": 150,
+"shot": "benefit-dcmin-05-blocked-toast"
+},
+{
+"eval": "(()=>{const t=[...document.querySelectorAll('.toast')].map(x=>x.textContent).join(' ');if(!t.includes('맞춤 품목 60,000원 더 담으면'))throw new Error('토스트 '+t);return t})()"
+},
+{
+"act": "pickDc",
+"attr": "data-id=\"\""
+},
+{
+"eval": "(()=>{const L=[...document.querySelectorAll('#gc-device .ladder .lrow')].find(r=>/디자인비/.test(r.textContent)).innerText.replace(/\\s+/g,' ');const total=document.querySelector('#gc-device .ladder .is-total .lamt').textContent;if(!L.includes('39,000원')||total!=='498,000원')throw new Error('쓰지 않기 '+L+' '+total);return {design:L,total}})()"
+},
+{
+"act": "pickDc",
+"attr": "data-id=\"w2\""
+},
+{
+"act": "dfMix",
+"attr": "data-v=\"two\"",
+"shot": "benefit-dcmin-06-two",
+"full": true
+},
+{
+"eval": "(()=>{const rows=[...document.querySelectorAll('#gc-device .judge .jrow')].map(x=>x.innerText.replace(/\\s+/g,' '));const r={rows,used:document.querySelector('#gc-device .app-list').innerText.replace(/\\s+/g,' '),total:document.querySelector('#gc-device .ladder .is-total .lamt').textContent};if(!rows[1].includes('쿠폰 −58,000원')||!rows[0].includes('할인이 더 큰 요청 2에 썼어요')||r.total!=='614,000원')throw new Error('요청 2건 '+JSON.stringify(r));return r})()"
+},
+{
+"act": "pickDc",
+"attr": "data-id=\"new\"",
+"shot": "benefit-dcmin-07-two-new",
+"full": true
+},
+{
+"eval": "(()=>{const rows=[...document.querySelectorAll('#gc-device .judge .jrow')].map(x=>x.innerText.replace(/\\s+/g,' '));if(!rows[0].includes('맞춤 품목 40,000원 더 담으면 디자인비 쿠폰을 쓸 수 있어요')||!rows[1].includes('쿠폰 −29,000원'))throw new Error('요청 2건·50% '+JSON.stringify(rows));return {rows,design:[...document.querySelectorAll('#gc-device .ladder .lrow')].find(r=>/디자인비/.test(r.textContent)).innerText.replace(/\\s+/g,' '),cancel:document.querySelector('#gc-device .app-pad > .note:last-child').innerText.replace(/\\s+/g,' ')}})()"
+},
+{
+"eval": "(()=>{const sc=document.querySelector('#gc-device .phone-screen');const el=document.querySelector('#gc-device [aria-label=\"디자인비 쿠폰\"]');sc.scrollTop+=el.getBoundingClientRect().top-sc.getBoundingClientRect().top-40;return 'scrolled'})()",
+"shot": "benefit-dcmin-07b-two-picker",
+"after": 200
+},
+{
+"eval": "(()=>{const sc=document.querySelector('#gc-device .phone-screen');sc.scrollTop=sc.scrollHeight;return 'scrolled'})()",
+"shot": "benefit-dcmin-07c-two-ladder",
+"after": 200
+},
+{
+"act": "dfMix",
+"attr": "data-v=\"one\""
+},
+{
+"eval": "document.querySelector('#gc-turn .turn-what').textContent"
+},
+{
+"role": "hq"
+},
+{
+"eval": "[...document.querySelectorAll('#gc-device .tbl tr')].filter(r=>/본사 디자인비 쿠폰/.test(r.textContent)).map(r=>r.innerText.replace(/\\s+/g,' ')).join(' / ')"
+}
+]

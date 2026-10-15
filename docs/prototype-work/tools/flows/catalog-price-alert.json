@@ -1,0 +1,296 @@
+[
+ {
+  "act": "pmode",
+  "attr": "data-k=\"both\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"desc\""
+ },
+ {
+  "act": "cleanDesc"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"price\""
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#t2biz');i.value='';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "eval": "document.querySelector('#gc-device [data-act=\"bizMode\"]').scrollIntoView({block:'center'})",
+  "shot": "catalog-30-biz-empty"
+ },
+ {
+  "act": "bizMode",
+  "attr": "data-k=\"rate\"",
+  "keepDialog": true,
+  "after": 400,
+  "shot": "catalog-31-biz-switch"
+ },
+ {
+  "wait": 100
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#nbizRate');i.value='3';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "eval": "document.querySelector('#nbizRate').scrollIntoView({block:'center'})",
+  "shot": "catalog-32-biz-rate"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"ship\""
+ },
+ {
+  "act": "shipTpl",
+  "attr": "data-k=\"basic\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"custom\""
+ },
+ {
+  "act": "upTemplate",
+  "after": 400
+ },
+ {
+  "act": "bizMode",
+  "attr": "data-k=\"rate\"][data-c=\"1\"",
+  "after": 400
+ },
+ {
+  "eval": "document.querySelector('#cbizRate').scrollIntoView({block:'center'})",
+  "shot": "catalog-33-custom-biz"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"docs\""
+ },
+ {
+  "act": "upDoc",
+  "attr": "data-k=\"test\"",
+  "after": 400
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"submit\""
+ },
+ {
+  "act": "requestReview"
+ },
+ {
+  "role": "hq"
+ },
+ {
+  "check": "rv_cat"
+ },
+ {
+  "check": "rv_word"
+ },
+ {
+  "check": "rv_doc"
+ },
+ {
+  "check": "rv_img"
+ },
+ {
+  "check": "rv_tpl"
+ },
+ {
+  "check": "rv_mode"
+ },
+ {
+  "check": "rv_desc"
+ },
+ {
+  "act": "approve"
+ },
+ {
+  "role": "customer"
+ },
+ {
+  "act": "logoList"
+ },
+ {
+  "act": "openP",
+  "attr": "data-id=\"mine\""
+ },
+ {
+  "click": "#gc-aside [data-mem=\"member\"]"
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#cqtyIn');i.value='17000';i.dispatchEvent(new Event('change',{bubbles:true}));})()",
+  "after": 500
+ },
+ {
+  "eval": "document.querySelector('#cqtyIn').scrollIntoView({block:'start'})",
+  "shot": "catalog-34-dfee-member"
+ },
+ {
+  "click": "#gc-aside [data-mem=\"biz\"]",
+  "after": 400
+ },
+ {
+  "eval": "document.querySelector('#cqtyIn').scrollIntoView({block:'start'})",
+  "shot": "catalog-35-dfee-biz"
+ },
+ {
+  "click": "#gc-device .phone-top .back"
+ },
+ {
+  "act": "cs",
+  "attr": "data-to=\"search\""
+ },
+ {
+  "type": {
+   "sel": "#q",
+   "text": "화이트"
+  },
+  "after": 300
+ },
+ {
+  "act": "doSearch"
+ },
+ {
+  "act": "openP",
+  "attr": "data-id=\"white\""
+ },
+ {
+  "click": "#gc-aside [data-mem=\"guest\"]",
+  "after": 400,
+  "shot": "catalog-36-white-guest"
+ },
+ {
+  "click": "#gc-aside [data-mem=\"biz\"]",
+  "after": 400,
+  "shot": "catalog-37-white-biz"
+ },
+ {
+  "click": "#gc-device .phone-top .back"
+ },
+ {
+  "act": "cs",
+  "attr": "data-to=\"search\""
+ },
+ {
+  "act": "qClear"
+ },
+ {
+  "type": {
+   "sel": "#q",
+   "text": "물티슈"
+  },
+  "after": 300
+ },
+ {
+  "act": "doSearch"
+ },
+ {
+  "act": "openP",
+  "attr": "data-id=\"tissue\"",
+  "after": 400,
+  "shot": "catalog-38-tissue-biz"
+ },
+ {
+  "click": "#gc-aside [data-mem=\"member\"]",
+  "after": 400,
+  "shot": "catalog-39-tissue-member"
+ },
+ {
+  "click": "#gc-device .phone-top .back"
+ },
+ {
+  "act": "cs",
+  "attr": "data-to=\"search\""
+ },
+ {
+  "act": "qClear"
+ },
+ {
+  "type": {
+   "sel": "#q",
+   "text": "수저집"
+  },
+  "after": 300
+ },
+ {
+  "act": "doSearch"
+ },
+ {
+  "click": "#gc-aside [data-mem=\"biz\"]",
+  "after": 300
+ },
+ {
+  "act": "sort",
+  "attr": "data-k=\"price\"",
+  "after": 400,
+  "shot": "catalog-40-sort-biz"
+ },
+ {
+  "role": "partner"
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#qp2');i.value='26000';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 300
+ },
+ {
+  "act": "applyPrice",
+  "after": 400
+ },
+ {
+  "eval": "document.querySelector('#qp2').scrollIntoView({block:'center'})",
+  "shot": "catalog-41-live-price-rate"
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#qp0');i.value=String(Math.round(Number(i.value)*3));i.dispatchEvent(new Event('input',{bubbles:true}));return i.value})()",
+  "after": 300
+ },
+ {
+  "act": "applyPrice",
+  "keepDialog": true,
+  "after": 400,
+  "shot": "catalog-p01-alert-up"
+ },
+ {
+  "eval": "(document.querySelector('dialog[open]')||{}).textContent"
+ },
+ {
+  "wait": 100
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-device .panel')).find(p=>/가격 바로 수정/.test(p.textContent)).querySelectorAll('p.xsmall')[0].textContent"
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#qp1');i.value=String(Math.floor(Number(i.value)/2));i.dispatchEvent(new Event('input',{bubbles:true}));return i.value})()",
+  "after": 300
+ },
+ {
+  "click": "#gc-device [data-act=\"applyPrice\"]",
+  "keepDialog": true,
+  "after": 400
+ },
+ {
+  "eval": "(document.querySelector('dialog[open]')||{}).textContent",
+  "keepDialog": true
+ },
+ {
+  "eval": "(()=>{const d=document.querySelector('dialog[open]');const b=Array.from(d.querySelectorAll('button')).find(x=>/그대로 저장/.test(x.textContent));b.click();return b.textContent})()",
+  "after": 400
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-log li')).filter(l=>/오입력 경고/.test(l.textContent)).map(l=>l.textContent.replace(/\\s+/g,' ').trim())"
+ },
+ {
+  "role": "hq"
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-device .panel')).find(p=>/가격 모니터링/.test(p.textContent)).textContent.replace(/\\s+/g,' ').trim()"
+ },
+ {
+  "eval": "Array.from(document.querySelectorAll('#gc-device .panel')).find(p=>/가격 모니터링/.test(p.textContent)).scrollIntoView({block:'center'})",
+  "shot": "catalog-p02-monitor"
+ }
+]

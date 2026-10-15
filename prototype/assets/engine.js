@@ -29,6 +29,10 @@
     { key: 'commission.floor', def: 5, unit: '%', group: '수수료·파트너', label: '최종 요율 하한' },
     { key: 'partner.reapply_days', def: 30, unit: '일', group: '수수료·파트너', label: '입점 반려 후 재신청 제한' },
     { key: 'partner.supplement_days', def: 14, unit: '일', group: '수수료·파트너', label: '보완 요청 응답 기한' },
+    // 2026-10-16 S11 맞춤(A-PTN-01 · P-ONB-02 처리 목표)
+    { key: 'partner.onboard_review_bd', def: 3, unit: '영업일', group: '수수료·파트너', label: '입점 서류·MD 심사(REVIEWING) 처리 목표' },
+    { key: 'partner.onboard_sample_bd', def: 5, unit: '영업일', group: '수수료·파트너', label: '입점 샘플 확인 처리 목표(맞춤 인쇄 파트너만)' },
+    { key: 'partner.onboard_total_bd', def: 10, unit: '영업일', group: '수수료·파트너', label: '입점 접수부터 심사 결과(승인·반려)까지 전체 처리 목표' },
     { key: 'partner.non_circumvent_months', def: 12, unit: '개월', group: '수수료·파트너', label: '계약 종료 후 직거래 금지 기간', draft: true },
     { key: 'partner.circumvent_penalty_min', def: 500000, unit: '원', group: '수수료·파트너', label: '직거래 위약금 최소액(수수료율×3배)', draft: true },
     { key: 'product.detail_image_max', def: 60, unit: '장', group: '수수료·파트너', label: '상품 상세 설명 이미지 최대 장수' },
@@ -36,6 +40,7 @@
     // 2026-10-16 S10 맞춤(P-PRD-02 · A-PRD-01)
     { key: 'product.option_combo_max', def: 100, unit: '개', group: '수수료·파트너', label: '조합형 옵션(옵션명 최대 3개)의 조합 최대 개수' },
     { key: 'product.option_extra_range', def: '−50% / +200%', unit: '', text: true, group: '수수료·파트너', label: '옵션 조합 추가 금액 허용 범위(기본가 대비, 미끼 가격 방지)', note: '숫자는 GC.price.optionExtraRange()로 읽어요' },
+    { key: 'product.price_change_alert', def: '−50% / +200%', unit: '', text: true, group: '수수료·파트너', label: '가격 오입력 경고 기준(직전 가격 대비 — 절반 이하·3배 이상, 사업자가 변경 포함)', note: '숫자는 GC.price.priceChangeAlert()로 읽어요' },
     { key: 'product.review_bd', def: 1, unit: '영업일', group: '수수료·파트너', label: '본사 상품 검수 처리 목표(넘기면 검수 담당·팀장에게 알림)' },
     { key: 'product.review_priority_hours', def: 4, unit: '영업시간', group: '수수료·파트너', label: '프로·프리미엄 플랜 우선 검수 처리 목표', phase: '2차' },
     // 할인·쿠폰
@@ -74,7 +79,7 @@
     { key: 'design.no_response_hold_days', def: 14, unit: '일', group: '디자인·파일', label: '고객 무응답 보류' },
     { key: 'design.no_response_cancel_days', def: 30, unit: '일', group: '디자인·파일', label: '고객 무응답 자동 취소' },
     { key: 'production.plate_keep_months', def: 24, unit: '개월', group: '디자인·파일', label: '판 보관 최소 기간(파트너는 늘리기만)', draft: true },
-    { key: 'production.print_check_bd', def: 1, unit: '영업일', group: '디자인·파일', label: '파트너 [인쇄 가능]·[반려] 기한(패키지 받은 뒤)' },
+    { key: 'production.print_check_bd', def: 1, unit: '영업일', group: '디자인·파일', label: '파트너 [인쇄 가능]·[반려] 기한(패키지가 전달된 때부터 — 내려받은 때가 아님, 다시 전달하거나 변경 제안을 거두면 새로 셈)' },
     { key: 'file.scan_timeout_minutes', def: 10, unit: '분', group: '디자인·파일', label: '악성코드 검사 시간 초과(1회 재검사 뒤 격리)' },
     { key: 'file.max_size_chat', def: 100, unit: 'MB', group: '디자인·파일', label: '협의 룸·생산 협의 채널 첨부 한도' },
     { key: 'file.max_size_original', def: 500, unit: 'MB', group: '디자인·파일', label: '인쇄 원본·고객 자체 인쇄 파일·칼선 파일 한도' },
@@ -84,6 +89,8 @@
     { key: 'member.min_age', def: 19, unit: '세', group: '회원·혜택·알림', label: '가입 가능 나이(만)' },
     { key: 'member.rejoin_block_days', def: 30, unit: '일', group: '회원·혜택·알림', label: '탈퇴 후 재가입 제한' },
     { key: 'member.biz_accounts_max', def: 3, unit: '개', group: '회원·혜택·알림', label: '사업자번호당 인증 가능 계정' },
+    { key: 'member.biz_manual_bd', def: 1, unit: '영업일', group: '회원·혜택·알림', label: '사업자 인증 수동 검토 처리 목표(넘기면 운영팀 알림)' },
+    { key: 'member.biz_closed_grace_days', def: 30, unit: '일', group: '회원·혜택·알림', label: '폐업 확인 뒤 사업자 혜택 해제까지 유예' },
     { key: 'member.web_keep_login_days', def: 30, unit: '일', group: '회원·혜택·알림', label: '웹 "로그인 유지" 기간' },
     { key: 'member.app_keep_login_days', def: 90, unit: '일', group: '회원·혜택·알림', label: '앱 자동 로그인 최대(마지막 사용부터)' },
     { key: 'membership.price_monthly', def: 9900, unit: '원', group: '회원·혜택·알림', label: '멤버십 월간 요금', phase: '2차' },
@@ -298,10 +305,22 @@
     if (disc.type === 'rate') return Math.floor((plateFee * disc.value) / 100);
     return Math.min(plateFee, disc.value);
   }
-  /** 옵션 조합 추가 금액 허용 범위(P-PRD-02, 정책값 product.option_extra_range '−50% / +200%', 2026-10-16) → { down: -50, up: 200 } */
-  function optionExtraRange() {
-    const m = String(Policy.get('product.option_extra_range')).replace(/−/g, '-').match(/(-?\d+(?:\.\d+)?)\s*%\s*\/\s*\+?(-?\d+(?:\.\d+)?)\s*%/);
+  /** '−50% / +200%' 같은 변화율 정책값 → { down: -50, up: 200 }(부호 붙은 값 = 기준 대비 변화율, +200% = 3배) */
+  function pctRange(key) {
+    const m = String(Policy.get(key)).replace(/−/g, '-').match(/(-?\d+(?:\.\d+)?)\s*%\s*\/\s*\+?(-?\d+(?:\.\d+)?)\s*%/);
     return m ? { down: Number(m[1]), up: Number(m[2]) } : { down: -50, up: 200 };
+  }
+  /** 옵션 조합 추가 금액 허용 범위(P-PRD-02, 정책값 product.option_extra_range '−50% / +200%', 2026-10-16) → { down: -50, up: 200 } */
+  function optionExtraRange() { return pctRange('product.option_extra_range'); }
+  /** 가격 오입력 경고 기준(P-PRD-03, 정책값 product.price_change_alert, 2026-10-16 S11) → { down: -50, up: 200 } = 직전 가격의 절반 이하·3배 이상 */
+  function priceChangeAlert() { return pctRange('product.price_change_alert'); }
+  /** 가격을 바꿀 때 경고할지: 'down'(절반 이하) | 'up'(3배 이상) | null. 사업자가 할인율 방식은 바뀐 결과 단가로 넣음 */
+  function priceChangeCheck(prev, next) {
+    if (!(prev > 0) || !(next >= 0)) return null;
+    const r = priceChangeAlert();
+    if (next <= prev * (1 + r.down / 100)) return 'down';
+    if (next >= prev * (1 + r.up / 100)) return 'up';
+    return null;
   }
   /** 디자인비 쿠폰(2026-10-15 D21 · 2026-10-16 D41): 그 디자인 요청(묶음)의 디자인비에만. type 'free'(전액 = 정률 100%) | 'amount'(정액) | 'rate'(정률, 100%까지).
    *  max(최대 할인액)는 선택 — 없으면 디자인비까지. 묶음이면 calcOrder가 품목별 디자인비 비율로 나눠 designFees[].couponAlloc에 남김 */
@@ -323,7 +342,8 @@
    *   partnerCoupons?: { [partnerId]: { name, type, value, max?, minOrder?, itemIds?: [itemId] } },   // 2차. 대상 맞춤 상품의 판비에도 걸림
    *   designGroups?: [{ id, type:'CUSTOM'|'TEMPLATE'|'OWN_FILE'|'REORDER', voucher?: boolean, lockedFee?: number }],
    *   hqCoupon?: { name, type, value, max?, minOrder? },            // 본사 상품 할인 쿠폰(장바구니·상품 중 1장): 판비·추가 구성품 포함, 디자인비 제외, 안분
-   *   designCoupon?: { name, type:'free'|'amount'|'rate', value?, max?, minOrder?, groupId? },  // 본사 디자인비 쿠폰(1장): 그 디자인 요청 디자인비에만
+   *   designCoupon?: { name, type:'free'|'amount'|'rate', value?, max?, minOrder?, groupId? },  // 본사 디자인비 쿠폰(1장): 디자인 요청(묶음) 하나의 디자인비에만.
+   *                                                       //   minOrder는 그 묶음의 맞춤 품목 금액(③ basis)과 비교, 묶음이 여럿이면 할인이 가장 큰 곳(D51)
    *   shipping?: { [shipKey]: { name, type:'free'|'fixed'|'conditional'|'perQty', base, freeOver?, per?, regionExtra? } },
    *   shipCoupons?: { [shipKey]: { name, max, minOrder } },
    *   points?: number
@@ -389,11 +409,11 @@
           if (g.voucher) { fee = listFee - fee1; reason = 'voucher'; }
         }
       }
-      return { groupId: g.id, type: g.type, basis, listFee, fee, reason, shortfall, itemCount: count, itemIds: gl.map((l) => l.id), couponDisc: 0, couponAlloc: gl.map(() => 0) };
+      return { groupId: g.id, type: g.type, basis, listFee, fee, reason, shortfall, itemCount: count, itemIds: gl.map((l) => l.id), couponDisc: 0, couponAlloc: gl.map(() => 0), couponShort: 0 };
     });
     const designFeeTotal = designFees.reduce((a, d) => a + d.fee, 0);
 
-    // ④ 본사 쿠폰(자리마다 1장, D21). 최소 주문 기준 = 파트너 할인 후 상품 금액 합계(판비·추가 구성품 포함, 디자인비 제외)
+    // ④ 본사 쿠폰(자리마다 1장, D21). 상품 할인 쿠폰 최소 주문 = 파트너 할인 후 상품 금액 합계(판비·추가 구성품 포함, 디자인비 제외)
     const productBases = [...lines.map((l) => l.afterPartner), ...lines.map((l) => l.plateAfterPartner)];
     const productBasis = productBases.reduce((a, b) => a + b, 0);
     // ④-1 상품 할인 쿠폰(장바구니·상품 중 1장): 항목별 금액 비율로 안분(판비 줄도 따로 받음)
@@ -404,10 +424,17 @@
       lines.forEach((l, i) => { l.plateHqAlloc = alloc[lines.length + i]; l.hqAlloc = alloc[i] + l.plateHqAlloc; });
     }
     // ④-2 디자인비 쿠폰(1장): 50만원 무료·멤버십 이용권이 먼저이고 그때는 쓰지 않음(쿠폰함에 남김 — 이용권과 동시 사용 불가, D-REQ-04·U-BEN-01)
+    //   최소 주문 = 그 묶음의 맞춤 품목 금액(③ basis, 50만원 판정과 같은 금액 — 일반 상품으로 못 채움), 조건을 채운 묶음 가운데 할인이 가장 큰 곳(같으면 앞 묶음, 2026-10-16 D51)
     const dc = input.designCoupon || null;
     let designCouponDisc = 0; let designCouponGroup = null;
-    if (dc && (!dc.minOrder || productBasis >= dc.minOrder)) {
-      const target = designFees.find((d) => (dc.groupId ? d.groupId === dc.groupId : true) && d.fee > 0 && d.reason !== 'voucher');
+    if (dc) {
+      let target = null; let best = 0;
+      designFees.forEach((d) => {
+        if ((dc.groupId && d.groupId !== dc.groupId) || d.fee <= 0 || d.reason === 'voucher') return;
+        if (dc.minOrder && d.basis < dc.minOrder) { d.couponShort = dc.minOrder - d.basis; return; }
+        const amt = designCouponDiscount(dc, d.fee);
+        if (!target || amt > best) { target = d; best = amt; }
+      });
       if (target) {
         target.couponDisc = designCouponDiscount(dc, target.fee); designCouponDisc = target.couponDisc; designCouponGroup = target.groupId;
         // 묶음이면 품목별 디자인비(첫 품목 design.fee, 나머지 design.multi_item_fee) 비율로 안분 — 남는 원은 첫 품목(D41)
@@ -514,7 +541,11 @@
     const lockedGroups = (input.designGroups || [])
       .filter((g) => remainingItems.some((it) => it.designGroup === g.id))
       .map((g) => ({ ...g, lockedFee: original.designFees.find((d) => d.groupId === g.id).fee }));
-    const rest = { ...input, items: remainingItems, designGroups: lockedGroups, points: 0 };
+    // 디자인비 쿠폰도 다시 보지 않음(50만원 무료와 같음, 2026-10-16 D51) → 원래 쓴 묶음에 최소 주문 없이 고정. 그 묶음이 모두 취소됐으면 쓰지 않음
+    const dcGroup = original.totals.designCouponGroup;
+    const designCoupon = input.designCoupon && dcGroup && lockedGroups.some((g) => g.id === dcGroup)
+      ? { ...input.designCoupon, minOrder: 0, groupId: dcGroup } : null;
+    const rest = { ...input, items: remainingItems, designGroups: lockedGroups, designCoupon, points: 0 };
     const recalc = calcOrder(rest);
     const remainingTotal = recalc.totals.customerTotal;
     const refund = balance - remainingTotal - deduction;
@@ -683,8 +714,14 @@
     if (claimType && CLAIM_OPEN_LABEL[claimType] && state !== 'CLAIM_COMPLETED' && !CLAIM_REJECTED_STATES.includes(state) && !approvedWait) return CLAIM_OPEN_LABEL[claimType];
     return s ? s.customer || s.name : state;
   }
-  /** 진행 단계 안내(라벨 옆에 붙이는 말): 상태 이름(회수 중·검수 중·교환·재제작품 출고 등) */
-  function claimStep(machineId, state) {
+  /** 진행 단계 안내(라벨 옆에 붙이는 말): 상태 이름(회수 중·검수 중·교환·재제작품 출고 등). claimType을 주면 승인·출고를 유형 이름으로(교환 승인·재제작품 출고) */
+  const CLAIM_STEP_BY_TYPE = {
+    EXCHANGE: { RETURN_APPROVED: '교환 승인', EXCHANGE_SHIPPED: '교환품 출고' },
+    REMAKE: { RETURN_APPROVED: '재제작 승인', EXCHANGE_SHIPPED: '재제작품 출고' },
+  };
+  function claimStep(machineId, state, claimType = null) {
+    const byType = machineId === 'CLAIM_RETURN' && claimType && CLAIM_STEP_BY_TYPE[claimType];
+    if (byType && byType[state]) return byType[state];
     const s = machine(machineId).states[state];
     return s ? s.name : state;
   }
@@ -797,6 +834,7 @@
       { from: 'PAYMENT_PENDING', event: 'vbank_expire', to: 'CANCELED', actor: 'system', label: '입금 기한 3일 경과' },
       { from: 'PAYMENT_PENDING', event: 'cancel', to: 'CANCELED', actor: 'customer', label: '고객 취소' },
       { from: 'PAID', event: 'accept', to: 'ACCEPTED', actor: 'partner', label: '발주 확인' },
+      { from: 'PAID', event: 'parent_printable', to: 'ACCEPTED', actor: 'system', label: '추가 구성품(맞춤 항목에 붙은 것): 본 항목 [인쇄 가능] 때 함께 발주 확인 — 따로 [발주 확인] 없음(2026-10-16 D49)' },
       { from: 'PAID', event: 'cancel', to: 'CANCELED', actor: 'customer', label: '고객 취소(발주 확인 전, 즉시)' },
       { from: ['PAID', 'ACCEPTED'], event: 'stockout_cancel', to: 'CANCELED', actor: 'partner', label: '품절 취소(전액 환불)' },
       { from: 'ACCEPTED', event: 'ship', to: 'SHIPPED', actor: 'partner', label: '송장 등록' },
@@ -921,9 +959,10 @@
   /* 반품·교환·재제작 클레임 (C-STATE-02). claim_type RETURN·EXCHANGE·REMAKE가 같은 상태를 씀.
      이의 제기는 상태가 아니라 '이의 제기됨' 표시(상태 유지 → 본사 중재). 고객 라벨은 '판매자 거부'(2026-10-14) */
   define('CLAIM_RETURN', {
-    name: '반품·재제작 클레임',
+    name: '반품·교환·재제작 클레임',
     states: {
       RETURN_REQUESTED: { name: '반품 신청', customer: '반품 진행 중' },
+      EXCHANGE_REQUESTED: { name: '교환 신청', customer: '교환 진행 중' }, // 교환은 여기서 시작해 회수·검수(RETURN_*)를 같이 씀(2026-10-16 S11)
       RETURN_COLLECTING: { name: '회수 중', customer: '반품 진행 중' },
       RETURN_INSPECTING: { name: '검수 중', customer: '반품 진행 중' },
       RETURN_APPROVED: { name: '반품 승인', customer: '반품 승인' },
@@ -932,16 +971,16 @@
       EXCHANGE_SHIPPED: { name: '교환·재제작품 출고', customer: '다시 보내는 중' },
     },
     main: ['RETURN_REQUESTED', 'RETURN_COLLECTING', 'RETURN_INSPECTING', 'RETURN_APPROVED', 'CLAIM_COMPLETED'],
-    branch: ['RETURN_REJECTED', 'EXCHANGE_SHIPPED'],
+    branch: ['EXCHANGE_REQUESTED', 'RETURN_REJECTED', 'EXCHANGE_SHIPPED'],
     stop: ['RETURN_REJECTED'],
     transitions: [
-      { from: 'RETURN_REQUESTED', event: 'pickup', to: 'RETURN_COLLECTING', actor: 'partner', label: '회수 접수(2영업일 넘기면 플랫폼이 자동 접수)' },
+      { from: ['RETURN_REQUESTED', 'EXCHANGE_REQUESTED'], event: 'pickup', to: 'RETURN_COLLECTING', actor: 'partner', label: '회수 접수(2영업일 넘기면 플랫폼이 자동 접수 · 교환도 같은 기한)' },
       { from: 'RETURN_REQUESTED', event: 'photo_inspect', to: 'RETURN_INSPECTING', actor: 'partner', label: '재제작: 사진 증빙으로 회수 생략 → 확정본 대조 검수' },
-      { from: 'RETURN_REQUESTED', event: 'withdraw', to: 'CLAIM_COMPLETED', actor: 'system', label: '7일 안 미발송 → 자동 철회(고객 철회도 같음)', result: 'WITHDRAWN' },
+      { from: ['RETURN_REQUESTED', 'EXCHANGE_REQUESTED'], event: 'withdraw', to: 'CLAIM_COMPLETED', actor: 'system', label: '7일 안 미발송 → 자동 철회(고객 철회도 같음)', result: 'WITHDRAWN' },
       { from: 'RETURN_COLLECTING', event: 'collected', to: 'RETURN_INSPECTING', actor: 'system', label: '회수 완료' },
-      { from: 'RETURN_INSPECTING', event: 'approve', to: 'RETURN_APPROVED', actor: 'partner', label: '검수 통과(2영업일 넘기면 자동 승인 — 재제작은 환불이 아니라 재제작 승인)' },
+      { from: 'RETURN_INSPECTING', event: 'approve', to: 'RETURN_APPROVED', actor: 'partner', label: '검수 통과(2영업일 넘기면 자동 승인 — 교환은 교환 승인·출고 독촉, 재제작은 환불이 아니라 재제작 승인)' },
       { from: 'RETURN_INSPECTING', event: 'reject', to: 'RETURN_REJECTED', actor: 'partner', label: '검수 불가 · 거부(사유·사진 필수)' },
-      { from: 'RETURN_APPROVED', event: 'refund', to: 'CLAIM_COMPLETED', actor: 'system', label: '환불 완료(재제작은 고객이 환불을 고른 경우, 교환품 품절로 반품 전환 포함)', result: 'REFUNDED' },
+      { from: 'RETURN_APPROVED', event: 'refund', to: 'CLAIM_COMPLETED', actor: 'system', label: '환불 완료(재제작은 고객이 환불을 고른 경우, 교환품 출고 2영업일 초과·품절이면 고객 동의 뒤 반품 전환 — claim_type RETURN)', result: 'REFUNDED' },
       { from: 'RETURN_APPROVED', event: 'reship', to: 'EXCHANGE_SHIPPED', actor: 'partner', label: '교환품·재제작품 송장 등록' },
       { from: 'EXCHANGE_SHIPPED', event: 'delivered', to: 'CLAIM_COMPLETED', actor: 'system', label: '배송 완료(주문 항목 EXCHANGED)', result: 'EXCHANGED', resultByType: { REMAKE: 'REMADE' } },
       { from: 'RETURN_REJECTED', event: 'mediation_customer', to: 'RETURN_APPROVED', actor: 'hq', label: '이의 제기 → 본사 중재: 고객 주장 인정(최종)' },
@@ -1072,7 +1111,7 @@
 
   return {
     Policy, won, signedWon, num, floor10, fmtDate, fmtTime, DAY, HOUR, addBusinessDays, addBusinessHours, isBizDay, vatSplit,
-    price: { tierPrice, nextTier, applyInstantUnit, allocate, couponDiscount, calcOrder, bizTiers, pickTiers, bizOptionExtra, bizErrors, bizInversion, BIZ_INVERSION_MSG, listPrice, plateInstantDisc, designCouponDiscount, optionExtraRange },
+    price: { tierPrice, nextTier, applyInstantUnit, allocate, couponDiscount, calcOrder, bizTiers, pickTiers, bizOptionExtra, bizErrors, bizInversion, BIZ_INVERSION_MSG, listPrice, plateInstantDisc, designCouponDiscount, optionExtraRange, priceChangeAlert, priceChangeCheck },
     refund: { partialCancel, designCancel, designStage, partnerChange },
     order: { addonCascade },
     settle: { finalRate, commission, confirmEvent, payout, CHARGE_NAME },

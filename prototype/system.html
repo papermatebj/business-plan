@@ -67,7 +67,8 @@
     'product.option_combo_max': [10, 500, 0], 'product.review_bd': [1, 5, 0], 'product.review_priority_hours': [1, 24, 0] };
   const RANGE_UNIT = { '%': [0, 100, 1], '%p': [0, 10, 1], '원': [0, 10000000, 0], '원/월': [0, 1000000, 0], '일': [1, 365, 0], '영업일': [1, 30, 0], '영업시간': [1, 40, 0], '시간': [0, 168, 0], '회': [0, 10, 0], '개월': [1, 60, 0], '세': [14, 40, 0], '개': [1, 10, 0], '장/월': [0, 30, 0], '장': [1, 200, 0], '분': [1, 60, 0], '자': [8, 64, 0], 'MB': [1, 2000, 0] };
   /* 문자열 값(엔진 text: true)은 숫자 편집 칸 대신 보기만. 실제로 어디서 넣는지 안내 */
-  const TEXT_HOW = { 'calendar.holidays': '관리자 화면의 공휴일 달력에서 등록', 'calendar.business_hours': '요일·시간대로 입력(이 화면은 보기만)', 'notify.ad_send_hours': '카카오 정책을 확인한 뒤 입력', 'claim.tolerance': '수량 %·위치 mm 두 값 · 상품마다 더 엄격하게만 정해요(이 화면은 기본값 보기만)', 'product.option_extra_range': '내림 %·올림 % 두 값(기본가 대비) · 상품 등록 때 이 범위로 검증(이 화면은 보기만)' };
+  const TEXT_HOW = { 'calendar.holidays': '관리자 화면의 공휴일 달력에서 등록', 'calendar.business_hours': '요일·시간대로 입력(이 화면은 보기만)', 'notify.ad_send_hours': '카카오 정책을 확인한 뒤 입력', 'claim.tolerance': '수량 %·위치 mm 두 값 · 상품마다 더 엄격하게만 정해요(이 화면은 기본값 보기만)', 'product.option_extra_range': '내림 %·올림 % 두 값(기본가 대비) · 상품 등록 때 이 범위로 검증(이 화면은 보기만)',
+    'product.price_change_alert': '직전 가격 대비 변화율 두 값 — −50%는 절반 이하, +200%는 3배 이상이면 오입력 경고 · 사업자가 변경도 같은 기준(이 화면은 보기만)' };
   /* 영향이 큰 값(수수료·디자인비·환불 기준): 최고관리자 승인 + 공지. cost=올리면 불리, benefit=내리면 불리 */
   const HIGH = {};
   ['commission.default_rate', 'commission.custom_rate', 'commission.floor', 'design.fee', 'design.multi_item_fee', 'design.free_threshold', 'design.extra_revision_fee', 'design.source_file_fee', 'design.own_file_fix_fee', 'membership.price_monthly', 'membership.price_yearly', 'partner.circumvent_penalty_min'].forEach((k) => { HIGH[k] = 'cost'; });
@@ -89,6 +90,8 @@
     [/^product\./, '파트너 상품 등록 화면의 제한이 바뀌어요. 이미 등록한 상품은 다음 수정 때부터 따져요.'],
     [/^notify\./, '알림 발송 규칙이 바뀌어요. 이 화면 알림 탭의 시뮬레이터에 바로 반영돼요.'],
     [/^(promo|membership)\./, '할인·혜택 계산이 바뀌어요.'],
+    [/^member\.biz_manual_bd$/, '사업자 인증 수동 검토의 처리 목표가 바뀌어요. 넘기면 운영팀(사업자 인증 담당)에게 NOTI_INT_BIZ_VERIFY_LATE가 가요. 이미 대기 중인 건은 들어올 때 계산한 기한을 유지해요.'],
+    [/^partner\.onboard_/, '입점 심사 단계별 처리 목표와 파트너 센터 진행 화면의 예상 소요 기간이 바뀌어요. 이미 접수된 신청은 접수 때 값을 써요.'],
     [/^(member|partner)\./, '가입·입점 조건이 바뀌어요. 이미 접수된 신청은 접수 때 값을 써요.'],
   ];
   const PAGES = [[/^design\.|^production\./, 'design.html', '맞춤 디자인'], [/^commission\.|^settlement\./, 'settlement.html', '정산'], [/^(order|claim|payment)\./, 'order.html', '주문·결제'], [/^(promo|membership)\./, 'benefit.html', '쿠폰·멤버십'], [/^member\./, 'member.html', '회원·인증'], [/^partner\.|^security\./, 'partner.html', '파트너 입점'], [/^product\./, 'catalog.html', '상품·카탈로그'], [/^notify\.notice_min_hours$/, 'room.html', '협의 룸'], [/^notify\./, '#', '이 화면 알림 탭'], [/^file\.max_size_chat$/, 'room.html', '협의 룸'], [/^file\./, '#', '이 화면 파일 처리 탭']];
@@ -135,10 +138,14 @@
     { code: 'NOTI_FILE_SCAN_REJECTED', label: '올린 파일 검사 결과(악성코드 발견·검사 불가)', to: '고객', ch: ['●', '●', '●', '○', '●', '—'], tab: '디자인', target: 'u/2026/10/파일 키', msg: '올린 파일을 쓸 수 없어 다시 올려 주셔야 해요' },
     { code: 'NOTI_PARTNER_ORDER_NEW', label: '신규 주문', to: '파트너', ch: ['●', '●', '—', '○', '●', '—'], target: 'GC-20261012-0412', msg: '신규 주문이 들어왔어요' },
     { code: 'NOTI_PARTNER_PACKAGE_HANDED_OFF', label: '인쇄 파일 도착', to: '파트너', ch: ['●', '●', '—', '○', '●', '—'], target: 'DR-24118', msg: '인쇄 파일이 도착했어요' },
+    { code: 'NOTI_PARTNER_CHANGE_WITHDRAWN', label: '제작 파트너 변경 제안 거둠 · 이어서 제작', to: '파트너 주문 담당자', ch: ['●', '●', '—', '●', '●', '—'], target: 'GC-20261012-0412', msg: '제작 파트너 변경 제안을 거뒀어요 · 이어서 만들어 주세요([인쇄 가능] 확인 기한은 지금부터 새로 셈)' },
     { code: 'NOTI_PARTNER_PAYOUT_DONE', label: '지급 완료', to: '파트너', ch: ['○ 지급 완료·실패', '○', '—', '●', '●', '—'], target: 'ST-2026-W42', msg: '이번 주 정산금을 지급했어요' },
     { code: 'NOTI_INT_SLA_OVER', label: 'SLA 초과', to: '담당 디자이너 · 디자인 리드', ch: ['—', '—', '—', '—', '●', '●'], target: 'DR-24118', msg: '첫 시안 SLA를 넘겼어요' },
+    { code: 'NOTI_INT_ROOM_MESSAGE', label: '협의 룸 고객 메시지', to: '담당 디자이너', ch: ['—', '—', '—', '—', '●', '○ 10분 동안 안 읽으면 묶어 1회'], target: 'DR-24118', msg: '고객이 협의 룸에 메시지를 보냈어요' },
     { code: 'NOTI_INT_ONBOARD_NEW', label: '입점 신청 접수', to: '운영팀 · 담당 MD', ch: ['—', '—', '—', '—', '●', '●'], target: 'PA-0412', msg: '새 입점 신청이 들어왔어요' },
+    { code: 'NOTI_INT_PARTNER_BIZ_RESUMED', label: '정지 파트너 사업자 상태 정상(정기 조회)', to: '담당 MD', ch: ['—', '—', '—', '—', '●', '●'], target: '파트너 대성포장', msg: '휴·폐업으로 정지한 파트너가 계속사업자로 확인됐어요 · 다른 정지 사유를 본 뒤 [정지 해제]' },
     { code: 'NOTI_INT_BIZ_VERIFY_NEW', label: '사업자 인증 수동 검토 대기', to: '운영팀(사업자 인증 담당)', ch: ['—', '—', '—', '—', '●', '—'], target: 'BV-1088', msg: '사업자 인증 수동 검토 건이 들어왔어요' },
+    { code: 'NOTI_INT_BIZ_VERIFY_LATE', label: '사업자 인증 수동 검토 처리 목표 초과', to: '운영팀(사업자 인증 담당)', ch: ['—', '—', '—', '—', '●', '—'], target: 'BV-1088', msg: '사업자 인증 수동 검토가 처리 목표를 넘겼어요' },
     { code: 'NOTI_INT_PRODUCT_REVIEW_LATE', label: '상품 검수 기한 초과', to: '검수 담당 MD · 팀장', ch: ['—', '—', '—', '—', '●', '●'], target: 'PRD-30217', msg: '상품 검수가 처리 목표를 넘겼어요' },
     { code: 'NOTI_INT_PII_ACCESS_LOCKED', label: '개인정보 조회 몰림 계정 잠금', to: '최고관리자', ch: ['—', '—', '—', '●', '●', '●'], target: 'ADM-윤가람', msg: '개인정보 조회가 몰려 계정을 잠갔어요' },
     { code: 'NOTI_INT_ADMIN_ACCOUNT_LOCKED', label: '관리자 계정 잠금(비밀번호 연속 실패)', to: '잠긴 본인(이메일만) · 최고관리자', ch: ['—', '—', '—', '●', '●', '●'], target: 'ADM-강보라', msg: '비밀번호를 연속으로 틀려 관리자 계정을 잠갔어요' },
@@ -487,7 +494,7 @@
     return `${seg}${common}<div class="tbl-wrap"><table class="tbl small pol"><thead><tr><th>정책값</th><th class="num">지금 값</th><th></th></tr></thead><tbody>
       ${vis.map((p) => {
         if (p.text) {
-          return `<tr><td>${esc(p.label)}<span class="code">${esc(p.key)} · 문자열 값</span></td>
+          return `<tr><td>${esc(p.label)}<span class="code">${esc(p.key)} · 문자열 값 · 권한: ${esc(permLabel(p.key))}</span></td>
           <td class="tv">${pv(p.key)}<span class="code">${esc(TEXT_HOW[p.key] || '보기만')}${p.note ? ` · ${esc(p.note)}` : ''}</span></td>
           <td class="act"><span class="xsmall faint" title="문자열 값이라 숫자 편집 칸으로 바꾸지 않아요">보기만</span></td></tr>`;
         }
@@ -634,14 +641,15 @@
         let res = '보냄', ok = true;
         if (i === 0) {
           if (/앱 푸시 못 받을 때/.test(cell)) { ok = !pushOk; res = ok ? '보냄 (앱 푸시를 못 받아서)' : '안 보냄 (앱 푸시로 받음)'; }
-          else if (/10분/.test(cell)) { ok = false; res = '10분 묶음 대기 (안 읽으면 1회)'; }
+          else if (/10분/.test(cell)) { ok = false; res = `${GC.Policy.get('notify.room_digest_minutes')}분 묶음 대기 (안 읽으면 1회)`; }
           if (ok && sim.kakao) {
             ok = false;
             if (ev.ch[1] !== '—') { res = '실패 → 같은 내용을 SMS·LMS로 대체'; r.send.push('SMS'); r.sms = true; } else res = '실패 → 이메일·알림센터에 남김';
           }
         } else if (i === 2) {
           if (!pushOk) { ok = false; res = '안 보냄 (기기 알림 권한 꺼짐)'; } else if (cell.length > 1) res = `보냄 (${cell.slice(2)})`;
-        } else if ((i === 3 || i === 5) && cell.startsWith('○')) { ok = false; res = '조건부 · 이번엔 안 보냄'; }
+        } else if (i === 5 && /10분/.test(cell)) { ok = false; res = `${GC.Policy.get('notify.room_digest_minutes')}분 묶음 대기 (관리자 화면에서 안 읽으면 1회)`; }
+        else if ((i === 3 || i === 5) && cell.startsWith('○')) { ok = false; res = '조건부 · 이번엔 안 보냄'; }
         if (ok) r.send.push(i === 5 ? 'Slack' : CH6[i]);
         r.rows.push([CH6[i], res, ok]);
       });
@@ -695,7 +703,7 @@
       <div class="panel"><div class="panel-h"><h2>알림 이벤트 매트릭스 (${EVENTS.length}개 발췌)</h2><span class="xsmall faint">● 항상 · ○ 조건부 · — 안 보냄</span></div><div class="panel-b stack">
         <div class="tbl-wrap"><table class="tbl small mx"><thead><tr><th>이벤트 · 받는 사람</th>${['알림톡', 'SMS', '푸시', '메일', '센터', 'Slack'].map((h) => `<th class="sym">${h}</th>`).join('')}</tr></thead><tbody>
           ${EVENTS.map((e) => `<tr><td>${esc(e.label)} <span class="faint">· ${esc(e.to)}</span>${e.lazy ? ' <span class="tag">야간엔 08시</span>' : ''}<span class="code">${e.code.replace(/_/g, '_<wbr>')}</span></td>${e.ch.map((x) => `<td class="sym"${x.length > 1 ? ` title="${esc(x)}"` : ''}>${x.charAt(0)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
-        <p class="xsmall faint">○ 조건: 배송 완료 알림톡은 앱 푸시를 못 받을 때, 협의 룸 알림톡은 ${pv('notify.room_digest_minutes')} 동안 안 읽으면 묶어 1회, 앱 푸시는 앱 설치·권한이 있을 때, ‘마케팅 수신 동의자만’ 행의 앱 푸시·이메일은 고객이 마케팅 채널로 켰을 때. 사업자 인증 수동 검토의 Slack ○는 명세에 조건이 없어 이 시뮬레이터는 보내지 않아요(확인 필요). 관리자 계정 잠금은 잠긴 본인에게 이메일만, 최고관리자에게 이메일·알림센터·Slack으로 보내요. 표의 알림은 ‘마케팅 수신 동의자만’이라고 적은 행(예: NOTI_COUPON_EXPIRE_SOON)을 빼면 모두 정보성이라, 고객이 끄거나 채널을 고를 수 없고 표대로 보내요(알림톡 → 실패 시 문자). 고객이 고르는 건 마케팅 알림의 채널뿐이에요. 알림 문구에 고객 전화번호·주소를 넣지 않아요.</p></div></div>`;
+        <p class="xsmall faint">○ 조건: 배송 완료 알림톡은 앱 푸시를 못 받을 때, 협의 룸 알림톡은 ${pv('notify.room_digest_minutes')} 동안 안 읽으면 묶어 1회, 앱 푸시는 앱 설치·권한이 있을 때, ‘마케팅 수신 동의자만’ 행의 앱 푸시·이메일은 고객이 마케팅 채널로 켰을 때. 내부 Slack ○는 담당 디자이너의 협의 룸 알림(NOTI_INT_ROOM_MESSAGE) 하나로, 고객 룸·생산 협의 채널 알림과 같은 규칙이에요 — 관리자 화면에서 ${pv('notify.room_digest_minutes')} 동안 안 읽은 고객 메시지가 있으면 묶어 1회 보내요. 관리자 계정 잠금은 잠긴 본인에게 이메일만, 최고관리자에게 이메일·알림센터·Slack으로 보내요. 표의 알림은 ‘마케팅 수신 동의자만’이라고 적은 행(예: NOTI_COUPON_EXPIRE_SOON)을 빼면 모두 정보성이라, 고객이 끄거나 채널을 고를 수 없고 표대로 보내요(알림톡 → 실패 시 문자). 고객이 고르는 건 마케팅 알림의 채널뿐이에요. 알림 문구에 고객 전화번호·주소를 넣지 않아요.</p></div></div>`;
   }
 
   /* 감사 로그 */

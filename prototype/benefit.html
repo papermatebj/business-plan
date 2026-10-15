@@ -28,6 +28,13 @@
   .opt[aria-checked="true"]::before { border-color: var(--spot); background: radial-gradient(circle, var(--spot) 0 38%, transparent 42%); }
   .opt .num { white-space: nowrap; }
   .opt-list { display: grid; gap: 6px; }
+  /* 조건이 안 맞아 못 고르는 쿠폰(맞춤 품목 부족 등): 흐리게 + 이유 한 줄 */
+  .opt.is-off { cursor: not-allowed; background: var(--sheet-2); border-style: dashed; }
+  .opt.is-off > span:first-of-type b, .opt.is-off .num { color: var(--ink-3); }
+  .opt.is-off::before { border-style: dashed; }
+  .opt .why { display: block; margin-top: 2px; color: var(--warn); font-weight: 600; }
+  .seg-sm button { padding: 6px 10px; font-size: 12.5px; }
+  .mixline { border-top: 1px dashed var(--rule-strong); padding-top: 8px; margin-top: 2px; }
   .save-big { font-size: 22px; font-weight: 700; color: var(--spot); font-variant-numeric: tabular-nums; }
   .benefits { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; }
   .judge { display: grid; gap: 6px; }
@@ -126,6 +133,11 @@
   const ISSUE = { auto: '자동 지급', download: '다운로드', code: '코드', direct: '직접 지급' };
   const MEMBERS = { all: '전체', personal: '개인', biz: '사업자', new: '신규', member: '멤버십', grade: '등급' };
   const TARGET = { all: '전체 상품 (PB 제외)', category: '카테고리: 일회용품', partner: '파트너: 대성포장', product: '상품 지정' };
+  /* 디자인비 쿠폰은 적용 대상 칸을 쓰지 않고 '맞춤 디자인비'로 고정 · 제외 대상도 없음(2026-10-16 D50) */
+  const DC_TARGET = '맞춤 디자인비';
+  const targetText = (d) => (d.kind === 'design' ? `${DC_TARGET} (고정 · 제외 대상 없음)` : TARGET[d.target]);
+  /* 최소 주문 표기(D51): 디자인비 쿠폰 = 그 디자인 요청(묶음)의 맞춤 품목 금액 '맞춤 품목 N원 이상', 그 밖의 쿠폰 = 'N원 이상 주문' */
+  const minText = (x) => (x.kind === 'design' ? `맞춤 품목 ${won(x.minOrder)} 이상` : `${won(x.minOrder)} 이상 주문`);
   const TEAM = { yoon: { name: '윤마케', role: '마케터', lead: false }, seo: { name: '서팀장', role: '마케터', lead: true } };
   const OTHER = [
     ['HC-2609-01', '신규가입 5,000원', '장바구니', '자동 지급(가입)', 'ACTIVE', '412 / 1,380'],
@@ -139,7 +151,7 @@
     ['공동 프로모션 쿠폰', '2차', '비율(예 50:50)', '파트너 쿠폰 자리 공유 · 본사 상품 할인 쿠폰과 함께 못 씀(디자인비 쿠폰과는 함께 씀)', '파트너 분담분만 뺌'],
     ['맞춤 디자인비 면제', 'MVP', '본사 100%', '요청당 1개(50만원 → 멤버십 이용권 순)', '해당 없음'],
     ['본사 상품 할인 쿠폰(장바구니·상품)', 'MVP', '본사 100%', '주문당 1장(장바구니·상품 중 하나) · 판비·추가 구성품 포함, 디자인비 제외', '빼지 않음'],
-    ['본사 디자인비 쿠폰(정액·정률 · 첫 디자인 무료 = 정률 100%)', 'MVP', '본사 100%', '주문당 1장 · 디자인비에만(묶음은 품목별 디자인비 비율로 안분) · 50만원 무료·멤버십 이용권으로 이미 무료면 쿠폰함에 남김 · 첫 시안 뒤 취소 때 쿠폰 몫은 공제 안 함', '해당 없음(본사 매출)'],
+    ['본사 디자인비 쿠폰(정액·정률 · 첫 디자인 무료 = 정률 100%)', 'MVP', '본사 100%', '주문당 1장 · 디자인비에만(묶음은 품목별 디자인비 비율로 안분) · 최소 주문은 그 디자인 요청(묶음)의 맞춤 품목 금액, 요청이 여럿이면 할인이 가장 큰 요청 1곳 · 50만원 무료·멤버십 이용권으로 이미 무료면 쿠폰함에 남김 · 첫 시안 뒤 취소 때 쿠폰 몫은 공제 안 함', '해당 없음(본사 매출)'],
     ['본사·멤버십 배송비 쿠폰', 'MVP·2차', '본사 100%', '배송 묶음(같은 판매자·출고지·출고 유형)당 1장 · 파트너 배송비 쿠폰과 둘 중 하나', '해당 없음'],
     ['파트너 배송비 쿠폰', '2차', '파트너 100%', '배송 묶음당 1장', '배송비 정산에서 뺌'],
     ['포인트 사용', '2차', '본사 100%', '1,000P 이상 · 10P 단위', '빼지 않음'],
@@ -192,13 +204,14 @@
       wallet: [
         w('w1', { name: '신규가입 5,000원', kind: 'cart', value: 5000, minOrder: 50000, until: D(10, 31), how: '가입 자동 지급' }),
         w('w2', { name: '첫 디자인 무료', kind: 'design', type: 'rate', value: 100, until: D(12, 31), how: '가입 자동 지급' }),
-        w('w5', { name: '맞춤 디자인 10,000원 할인', kind: 'design', type: 'amount', value: 10000, minOrder: 100000, until: D(12, 31), how: '직접 지급 · 시안 지연 보상' }),
+        // 최소 주문은 맞춤 품목 금액(D51) — 50만원 이상이면 디자인비가 무료라 그보다 낮게
+        w('w5', { name: '맞춤 디자인 10,000원 할인', kind: 'design', type: 'amount', value: 10000, minOrder: 300000, until: D(12, 31), how: '다운로드 · 맞춤 인쇄 기획전' }),
         w('w3', { name: '추석 기획전 3,000원', kind: 'cart', value: 3000, minOrder: 30000, until: D(10, 10), how: '다운로드', status: 'expired', note: '기간 만료' }),
         w('w4', { name: '사업자 인증 축하 2,000원', kind: 'cart', value: 2000, minOrder: 20000, until: D(10, 20), how: '사업자 인증 자동 지급', status: 'used', note: '9/28 주문에 사용' }),
       ],
       boxTab: 'avail', code: '', codeFails: 0, lockUntil: null, codeMsg: '', codeOk: false,
       pickHq: undefined, pickShip: undefined, pickDc: undefined, orders: [],
-      df: { amount: '495', voucher: false },
+      df: { amount: '495', voucher: false, mix: 'one' },
       mem: { plan: 'monthly', card: false, checks: {}, start: null, lastPayAt: null, next: null, payK: 0, grantK: 1, failMode: false, failedAt: null, retried: {}, used: false, saved: 0, everFailed: false, noticed: false, refund: null, seq: 0 },
       sim: { days: 70, used: false, growth: 30 },
     });
@@ -231,27 +244,51 @@
     return { r: runOrder(hq, ship), hq, ship, hqC, shC, bHq, bSh, dcs, hidden: av.filter((x) => !shown.has(x.id) && x.kind !== 'design').length, memPaused: app.state('mem') === 'PAY_FAILED' };
   }
   const settleOf = (r) => GC.settle.confirmEvent({ sale: r.totals.gross, partnerDisc: r.totals.instantDisc + r.totals.partnerCouponDisc, rate: P('commission.default_rate'), shipping: r.totals.shipping });
+  /* 맞춤 주문서 체험 구성(실제 화면에는 없는 조절판, D51):
+     one = 맞춤 인쇄 수저집 1건(명세 C-PRICE-01 판정 예) · mixed = 맞춤 품목은 기준 아래인데 일반 상품이 섞여 주문 전체는 넘는 장면
+     · two = 디자인 요청(묶음) 2건 — 디자인비 쿠폰 1장은 조건을 채운 묶음 가운데 할인이 가장 큰 곳(같으면 앞 묶음) */
+  const DF_MIX = { one: '맞춤 1건', mixed: '맞춤 + 일반 상품', two: '요청 2건' };
+  function dfBase(df) {
+    const C = (id, name, price, group, o = {}) => ({ id, name, partnerId: 'DS', shipKey: 'DSC', qty: 1, tiers: [{ min: 1, price }], designGroup: group, ...o });
+    const shipping = { DSC: { name: '대성포장 맞춤 제작', type: 'free', base: 0 }, DS: SHIP.DS };
+    if (df.mix === 'mixed') return { shipping, items: [C('c', '맞춤 인쇄 컵홀더', 240000, 'D1'), { id: 'n', name: '무형광 냅킨', partnerId: 'DS', shipKey: 'DS', qty: 8, tiers: ITEMS[1].tiers }], designGroups: [{ id: 'D1', type: 'CUSTOM', voucher: df.voucher }] };
+    // 멤버십 이용권은 한 달 1장이라 앞 요청에만
+    if (df.mix === 'two') return { shipping, items: [C('c', '맞춤 인쇄 수저집', 260000, 'D1'), C('c2', '맞춤 인쇄 컵홀더', 220000, 'D2'), C('c3', '맞춤 인쇄 냅킨', 100000, 'D2')], designGroups: [{ id: 'D1', type: 'CUSTOM', voucher: df.voucher }, { id: 'D2', type: 'CUSTOM' }] };
+    return { shipping, items: [C('c', '맞춤 인쇄 수저집', 550000, 'D1', { instant: df.amount === '495' ? { type: 'rate', value: 10 } : null })], designGroups: [{ id: 'D1', type: 'CUSTOM', voucher: df.voucher }] };
+  }
+  // 디자인비 쿠폰을 쓸 수 있는 묶음: 디자인비가 남아 있고 이용권을 쓰지 않은 묶음(50만원 무료·이용권이 먼저)
+  const dcOpen = (d) => d.fee > 0 && d.reason !== 'voucher';
   function dfeeCalc() {
-    const s = S(); const instant = s.df.amount === '495';
-    const base = {
-      items: [{ id: 'c', name: '맞춤 인쇄 수저집', partnerId: 'DS', shipKey: 'DS', qty: 1, tiers: [{ min: 1, price: 550000 }], instant: instant ? { type: 'rate', value: 10 } : null, designGroup: 'D1' }],
-      designGroups: [{ id: 'D1', type: 'CUSTOM', voucher: s.df.voucher }], shipping: { DS: { name: '대성포장 맞춤 제작', type: 'free', base: 0 } },
-    };
+    const s = S(); const base = dfBase(s.df);
     const pre = GC.price.calcOrder(base);
     // 자리마다 1장(D21): 상품 할인 쿠폰(장바구니·상품)은 가장 큰 할인 1장, 디자인비 쿠폰은 자기 자리에서 가장 큰 할인 1장(고객이 바꿀 수 있음)
     const opts = s.wallet.filter((x) => x.status === 'avail' && (x.kind === 'cart' || x.kind === 'product'))
       .map((x) => ({ x, d: GC.price.calcOrder({ ...base, hqCoupon: engHq(x) }).totals.hqDisc })).filter((o) => o.d > 0);
     const b = best(opts); const hqCoupon = b ? engHq(b.x) : null;
     const dcs = s.wallet.filter((x) => x.kind === 'design' && x.status === 'avail');
-    const dOpts = dcs.map((x) => ({ x, d: GC.price.calcOrder({ ...base, hqCoupon, designCoupon: engDc(x) }).totals.designCoupon })).filter((o) => o.d > 0);
+    // 쿠폰마다 엔진으로 돌려 할인·적용 묶음·맞춤 품목 부족 금액(designFees[].couponShort, D51)을 받음
+    const dAll = dcs.map((x) => {
+      const t = GC.price.calcOrder({ ...base, hqCoupon, designCoupon: engDc(x) });
+      const shorts = t.designFees.filter(dcOpen).map((d) => d.couponShort).filter((v) => v > 0);
+      return { x, d: t.totals.designCoupon, group: t.totals.designCouponGroup, short: shorts.length ? Math.min(...shorts) : 0 };
+    });
+    const dOpts = dAll.filter((o) => o.d > 0);
+    const blocked = dAll.filter((o) => !o.d && o.short > 0);
     const bD = best(dOpts);
-    const dc = s.pickDc === undefined ? (bD ? bD.x : null) : ((dOpts.find((o) => o.x.id === s.pickDc) || {}).x || null);
+    // 고른 쿠폰이 조건에서 벗어나면(체험 구성을 바꿈) 가장 큰 할인으로 다시 고름 · '쓰지 않기'는 그대로
+    let dc = null;
+    if (s.pickDc !== '') { const p = s.pickDc && dOpts.find((o) => o.x.id === s.pickDc); dc = p ? p.x : bD ? bD.x : null; }
     const r = GC.price.calcOrder({ ...base, hqCoupon, designCoupon: dc ? engDc(dc) : null });
-    const fd = r.designFees[0]; const disc = r.totals.designCoupon;
-    const thr = pre.designFees[0].reason === 'threshold'; const vou = pre.designFees[0].reason === 'voucher';
-    // 첫 시안 뒤 취소 공제(C-PAY-02, D41): 낸 디자인비만(쿠폰으로 깎인 몫은 본사 부담) · 50만원 무료·멤버십 이용권으로 무료면 39,000원
-    const cp = GC.refund.designCancel({ type: 'CUSTOM', stage: 'AFTER_PROPOSAL', itemsAmount: r.totals.pay - (fd.fee - disc), paidDesignFee: fd.fee - disc, freeCustom: thr || vou });
-    return { pre, dcs, dOpts, bD, dc, r, fd, disc, thr, vou, cp, usedDesign: disc > 0, full: disc > 0 && disc >= fd.fee, pick: b ? { x: b.x } : null };
+    const fds = r.designFees; const multi = fds.length > 1;
+    const fd = fds.find((d) => d.groupId === r.totals.designCouponGroup) || fds[0]; const disc = r.totals.designCoupon;
+    const thr = !multi && pre.designFees[0].reason === 'threshold'; const vou = !multi && pre.designFees[0].reason === 'voucher';
+    const open = pre.designFees.some(dcOpen);
+    // 첫 시안 뒤 취소 공제(C-PAY-02, D41): 요청(묶음)마다 낸 디자인비만(쿠폰으로 깎인 몫은 본사 부담) · 50만원 무료·멤버십 이용권으로 무료면 39,000원
+    const cps = fds.map((d) => GC.refund.designCancel({ type: 'CUSTOM', stage: 'AFTER_PROPOSAL', itemsAmount: d.basis, paidDesignFee: d.fee - d.couponDisc, freeCustom: d.fee === 0 && (d.reason === 'threshold' || d.reason === 'voucher') }));
+    const cp = cps[fds.indexOf(fd)];
+    // 주문 전체 상품 금액(파트너 할인 후·본사 쿠폰 전, 판비 포함) — 상품 할인 쿠폰 최소 주문 기준. 디자인비 쿠폰은 이것이 아니라 묶음의 맞춤 품목 금액
+    const orderBasis = r.lines.reduce((a, l) => a + l.afterPartner + l.plateAfterPartner, 0);
+    return { pre, dcs, dAll, dOpts, blocked, bD, dc, r, fds, multi, fd, disc, thr, vou, open, cp, cps, orderBasis, usedDesign: disc > 0, full: disc > 0 && disc >= fd.fee, pick: b ? { x: b.x } : null };
   }
   function avgDisc(fm) {
     if (fm.kind === 'design') return GC.price.designCouponDiscount({ type: fm.type, value: fm.value || 0, max: fm.max }, P('design.fee'));
@@ -394,10 +431,10 @@
   function guide() {
     const s = S(); const c = app.state('coupon'); const m = app.state('mem'); const M = s.mem;
     const R = {
-      coupon: [{ k: '승인', v: '팀장 플래그 · 요청자와 다른 계정' }, { k: '예산 상한', v: '필수 · 닿으면 자동 중지' }, { k: '정률 쿠폰 최대 할인액', v: '필수' }, { k: '디자인비 쿠폰 최대 할인액', v: '선택' }, { k: '사용 횟수', v: '1인 1회(본인인증 기준)' }],
-      box: [{ k: '코드 오입력', v: `${pc(PC.codeFailMax + '회', '쿠폰 코드 오입력 한도')} → ${pc(PC.codeLockMin + '분', '오입력 잠금 시간')} 잠금` }, { k: '신규가입 쿠폰', v: '본인인증(CI) 기준 1회' }, { k: '한 주문에 쓰는 장수', v: '상품 할인 1 · 디자인비 1 · 배송비 묶음당 1' }, { k: '만료 안내(NOTI_COUPON_EXPIRE_SOON)', v: `${pc(PC.expireNoticeDays + '일 전', '쿠폰 만료 안내 시점')} · 마케팅 동의자만` }],
-      dfee: [{ k: '디자인비 판정 순서', v: '50만원 → 이용권 → 쿠폰' }, { k: '상품 할인 쿠폰(장바구니·상품)', v: '1장 · 디자인비에 안 걸림' }, { k: '디자인비 쿠폰 1장(디자인비에만)', v: '정액·정률 100%까지' }, { k: '맞춤 디자인비', policy: 'design.fee' }, { k: '첫 시안 뒤 취소 공제(쿠폰 몫은 본사 부담)', v: '낸 디자인비만' }, { k: '50만원·멤버십 무료면 공제', policy: 'design.fee' }],
-      checkout: [{ k: '상품 할인 쿠폰(장바구니·상품 중)', v: '주문당 1장 · 가장 큰 할인 자동' }, { k: '디자인비 쿠폰', v: '주문당 1장 · 디자인비에만' }, { k: '배송비 쿠폰 · 묶음 = 같은 판매자·출고지·출고 유형', v: '묶음당 1장' }, { k: '수수료 기준가', v: '본사 쿠폰 전 금액' }, { k: '판매 수수료', policy: 'commission.default_rate' }],
+      coupon: [{ k: '승인', v: '팀장 플래그 · 요청자와 다른 계정' }, { k: '예산 상한', v: '필수 · 닿으면 자동 중지' }, { k: '정률 쿠폰 최대 할인액', v: '필수' }, { k: '디자인비 쿠폰 최대 할인액', v: '선택' }, { k: '디자인비 쿠폰 적용 대상', v: '맞춤 디자인비 고정' }, { k: '디자인비 쿠폰 최소 주문', v: '묶음의 맞춤 품목' }, { k: '사용 횟수', v: '1인 1회(본인인증 기준)' }],
+      box: [{ k: '코드 오입력', v: `${pc(PC.codeFailMax + '회', '쿠폰 코드 오입력 한도')} → ${pc(PC.codeLockMin + '분', '오입력 잠금 시간')} 잠금` }, { k: '신규가입 쿠폰', v: '본인인증(CI) 기준 1회' }, { k: '한 주문에 쓰는 장수(배송비는 묶음당 1장)', v: '상품 할인 1 · 디자인비 1' }, { k: '만료 안내(NOTI_COUPON_EXPIRE_SOON)', v: `${pc(PC.expireNoticeDays + '일 전', '쿠폰 만료 안내 시점')} · 마케팅 동의자만` }],
+      dfee: [{ k: '디자인비 판정 순서', v: '50만원 → 이용권 → 쿠폰' }, { k: '상품 할인 쿠폰(장바구니·상품)', v: '1장 · 디자인비에 안 걸림' }, { k: '디자인비 쿠폰 1장(디자인비에만)', v: '정액·정률 100%까지' }, { k: '디자인비 쿠폰 최소 주문(일반 상품 제외)', v: '묶음의 맞춤 품목' }, { k: '디자인 요청이 여럿이면(같으면 앞 요청)', v: '할인 큰 1곳' }, { k: '부분 취소로 기준 아래', v: '할인 유지' }, { k: '맞춤 디자인비', policy: 'design.fee' }, { k: '첫 시안 뒤 취소 공제(쿠폰 몫은 본사 부담)', v: '낸 디자인비만' }, { k: '50만원·멤버십 무료면 공제', policy: 'design.fee' }],
+      checkout: [{ k: '상품 할인 쿠폰(장바구니·상품 중)', v: '주문당 1장 · 가장 큰 할인 자동' }, { k: '디자인비 쿠폰 · 최소 주문은 맞춤 품목', v: '주문당 1장 · 디자인비에만' }, { k: '배송비 쿠폰 · 묶음 = 같은 판매자·출고지·출고 유형', v: '묶음당 1장' }, { k: '수수료 기준가', v: '본사 쿠폰 전 금액' }, { k: '판매 수수료', policy: 'commission.default_rate' }],
       mem: [{ k: '월간 요금', policy: 'membership.price_monthly' }, { k: '연간 요금', policy: 'membership.price_yearly' }, { k: '무료배송 쿠폰(매달)', policy: 'membership.free_ship_coupons' }, { k: '추가 적립 월 한도', policy: 'membership.extra_point_cap' }, { k: '청약철회', v: pc(PC.withdrawDays + '일 · 혜택 미사용', '청약철회 기간') }],
       fail: [{ k: '재시도', v: pc(`D+${PC.retry.join(' · D+')}`, '결제 실패 재시도 일정') }, { k: '자동 해지', v: pc(`D+${PC.autoCancelDay}`, '결제 실패 자동 해지 시점') }, { k: '실패 중 혜택', v: '정지 · 결제되면 바로 복구' }],
       cancel: [{ k: '7일 안·미사용', v: '전액 환불' }, { k: '월간', v: '다음 결제일부터 갱신 안 함' }, { k: '연간 중도 해지', v: `${GC.num(P('membership.price_yearly'))} − ${GC.num(P('membership.price_monthly'))} × 올림(개월)` }, { k: '쓴 혜택 금액', v: '따로 빼지 않음' }],
@@ -408,7 +445,7 @@
       if (c === 'PENDING') return app.turn('hq', '팀장 플래그가 있는 서팀장 계정으로 바꿔 [승인·게시]를 누르세요', { hint: `요청한 ${esc(s.req.byName)} 계정 그대로 [승인·게시]를 누르면 서버가 막아요. [반려]하면 작성 중으로 돌아가요.`, rules: [{ k: '승인 권한', v: '팀장 플래그(돈이 나가는 승인)' }, { k: '요청자 = 승인자', v: '서버가 거부' }, { k: '예상 비용', v: s.req.cost != null ? won(s.req.cost) : '예산 상한까지' }] });
       if (locked()) return app.turn('customer', `쿠폰 코드를 ${PC.codeFailMax}번 틀려 ${fmtTime(s.lockUntil)}까지 입력이 막혔어요. 위쪽 [+1시간]을 누르면 풀려요`, { rules: R.box });
       const got = s.wallet.some((x) => x.id === 'new');
-      if (s.cs === 'dfee') return app.turn('customer', '맞춤 주문서에서 디자인비 판정 순서와, 상품 할인 쿠폰·디자인비 쿠폰이 한 주문에 함께 쓰이는지 확인하세요', { hint: '디자인비 쿠폰을 "맞춤 디자인 10,000원 할인"(정액)으로 바꾸면 디자인비 줄에 할인 전·쿠폰 할인·낼 금액이 함께 보이고, 첫 시안 뒤 취소 공제가 낸 디자인비만으로 바뀌어요. 위쪽 조절판에서 할인 없음(550,000원)을 고르면 50만원 무료라 디자인비 쿠폰을 쓰지 않고 쿠폰함에 남겨요.', rules: R.dfee });
+      if (s.cs === 'dfee') return app.turn('customer', '맞춤 주문서에서 디자인비 판정 순서와, 상품 할인 쿠폰·디자인비 쿠폰이 한 주문에 함께 쓰이는지 확인하세요', { hint: '디자인비 쿠폰을 "맞춤 디자인 10,000원 할인"(정액)으로 바꾸면 디자인비 줄에 할인 전·쿠폰 할인·낼 금액이 함께 보이고, 첫 시안 뒤 취소 공제가 낸 디자인비만으로 바뀌어요. 위쪽 조절판에서 할인 없음(550,000원)을 고르면 50만원 무료라 디자인비 쿠폰을 쓰지 않고 쿠폰함에 남겨요. [맞춤 + 일반 상품]은 주문 전체가 46만원이어도 맞춤 품목이 24만원이라 "맞춤 품목 30만원 이상" 쿠폰을 못 쓰고, [요청 2건]은 디자인비 쿠폰이 할인이 큰 요청에 걸려요.', rules: R.dfee });
       if (!got && c === 'ACTIVE' && s.coupon.issue === 'download') return app.turn('customer', '마이 > 쿠폰함의 "받을 수 있는 쿠폰"에서 새 쿠폰을 받으세요', { hint: `쿠폰 코드 칸에 GAGE3000을 넣으면 배송비 쿠폰을 받아요. 없는 코드를 ${PC.codeFailMax}번 넣으면 ${PC.codeLockMin}분 동안 입력이 막혀요.`, rules: R.box });
       if (s.cs === 'checkout') return app.turn('customer', '자동으로 고른 쿠폰과 금액 순서를 확인하고 결제하세요. 다른 쿠폰을 눌러 바꿀 수도 있어요', { hint: '상품 할인 쿠폰 1만원은 수저집 6,000원·냅킨 4,000원으로 나눠 기록해요(안분). 이 주문은 맞춤 디자인비가 없어 디자인비 쿠폰은 쿠폰함에 남아요.', rules: R.checkout });
       return app.turn('customer', got ? '쿠폰함을 확인했으면 [주문서에서 쿠폰 쓰기]로 가세요' : '새 쿠폰 발행이 멈춰 받을 수 없어요. 가진 쿠폰으로 주문서를 확인하세요', { hint: '첫 디자인 무료 쿠폰의 [어떤 주문에 쓰이는지 보기]에서 디자인비 판정 순서(50만원 → 멤버십 이용권 → 디자인비 쿠폰)와 신규가입 쿠폰을 함께 쓰는 맞춤 주문을 볼 수 있어요.', rules: R.box });
@@ -439,9 +476,10 @@
     else if (x.kind === 'ship') amt = `${won(x.max)}<small>배송비</small>`;
     else if (x.type === 'rate') amt = `${x.value}%<small>최대 ${won(x.max)}</small>`;
     else amt = `${won(x.value)}<small>${KIND[x.kind]}</small>`;
-    const cond = x.kind === 'design' ? `맞춤 디자인비(${pv('design.fee')})에만${x.minOrder ? ` · ${won(x.minOrder)} 이상 주문` : ''} · 장바구니·상품 쿠폰과 함께 써요 · 50만원 무료·멤버십 이용권이 먼저예요`
+    // 디자인비 쿠폰(D50·D51): 조건 '맞춤 품목 N원 이상'(그 디자인 요청 묶음의 맞춤 품목 금액) · 대상 '맞춤 디자인비'
+    const cond = x.kind === 'design' ? `${x.minOrder ? minText(x) : '최소 주문 없음'} · 대상 맞춤 디자인비(${pv('design.fee')})에만 · 장바구니·상품 쿠폰과 함께 써요 · 50만원 무료·멤버십 이용권이 먼저예요`
       : x.kind === 'voucher' ? `맞춤 디자인비 ${pv('design.fee')} → 0원 · 50만원 무료가 아닐 때만`
-      : [x.minOrder ? `${won(x.minOrder)} 이상` : '최소 주문 없음', x.kind === 'ship' ? '배송 묶음(같은 판매자·출고지·출고 유형) 1개에 1장' : (x.target || '전체 상품')].join(' · ');
+      : [x.minOrder ? minText(x) : '최소 주문 없음', x.kind === 'ship' ? '배송 묶음(같은 판매자·출고지·출고 유형) 1개에 1장' : (x.target || '전체 상품')].join(' · ');
     const paused = x.src === 'mem' && x.status === 'avail' && !memBenefits();
     const tags = `${x.src === 'mem' ? '<span class="tag tag-phase">멤버십</span>' : ''}${paused ? '<span class="tag tag-stop">정지</span>' : ''}${x.isNew && x.status === 'avail' ? '<span class="tag tag-spot">새 쿠폰</span>' : ''}`;
     return `<div class="cp${x.status !== 'avail' || paused ? ' is-off' : ''}"><div class="amt">${amt}</div><div class="bd">
@@ -452,7 +490,7 @@
   }
   function asWallet(def) {
     const t = app.clock.now(); const u = new Date(t.getFullYear(), t.getMonth(), t.getDate() + def.days, 23, 59).getTime();
-    return { id: 'new', src: 'hq', status: 'avail', name: def.name, kind: def.kind, type: def.type, value: def.value, max: def.max, minOrder: def.minOrder || 0, until: u, how: '쿠폰존 다운로드', target: TARGET[def.target] };
+    return { id: 'new', src: 'hq', status: 'avail', name: def.name, kind: def.kind, type: def.type, value: def.value, max: def.max, minOrder: def.minOrder || 0, until: u, how: '쿠폰존 다운로드', target: def.kind === 'design' ? DC_TARGET : TARGET[def.target] };
   }
   function ladderHtml(r, over = {}) {
     const PAYER = { partner: '파트너 부담', hq: '본사 부담', customer: '본사 매출' };
@@ -471,6 +509,8 @@
   const PARENT = { box: 'my', checkout: 'my', paid: 'my', dfee: 'box', mem: 'my', memjoin: 'mem', memhome: 'my', memcancel: 'memhome' };
   // 폰 머리의 뒤로 버튼(공통 틀은 모양만 그림) — 이 페이지에서 동작을 붙임
   document.addEventListener('click', (e) => { if (!e.target.closest('#gc-device .phone-top .back')) return; S().cs = PARENT[S().cs] || 'my'; refresh(); });
+  // 조건이 안 맞아 못 고르는 디자인비 쿠폰(aria-disabled라 공통 data-act가 막음)을 누르면 이유만 알려 줌(D51)
+  document.addEventListener('click', (e) => { const o = e.target.closest('#gc-device .opt.is-off[data-short]'); if (o) app.toast(`맞춤 품목 ${won(Number(o.dataset.short))} 더 담으면 이 쿠폰을 쓸 수 있어요. 일반 상품 금액은 들어가지 않아요`); });
   VIEWS.customer = (f) => {
     const s = S(); const m = app.state('mem');
     if (s.cs === 'paid' && !s.orders.length) s.cs = 'my';
@@ -526,7 +566,7 @@
   function checkout(f, s) {
     f.title('주문서'); f.tab('다시 사기'); f.back();
     const k = checkoutCalc(); const r = k.r;
-    const row = (act, o, cur, b) => `<div class="opt" role="radio" tabindex="0" aria-checked="${!!cur && cur.id === o.x.id}" data-act="${act}" data-id="${o.x.id}"><span><b>${esc(o.x.name)}</b>${o.x.src === 'mem' ? ' <span class="tag tag-phase">멤버십</span>' : ''}<br><span class="xsmall faint">${o.x.minOrder ? `${won(o.x.minOrder)} 이상 · ` : ''}${fmtDate(o.x.until, false)}까지${b && b.x.id === o.x.id ? ' · 가장 큰 할인' : ''}</span></span><span class="num strong">−${won(o.d)}</span></div>`;
+    const row = (act, o, cur, b) => `<div class="opt" role="radio" tabindex="0" aria-checked="${!!cur && cur.id === o.x.id}" data-act="${act}" data-id="${o.x.id}"><span><b>${esc(o.x.name)}</b>${o.x.src === 'mem' ? ' <span class="tag tag-phase">멤버십</span>' : ''}<br><span class="xsmall faint">${o.x.minOrder ? `${minText(o.x)} · ` : ''}${fmtDate(o.x.until, false)}까지${b && b.x.id === o.x.id ? ' · 가장 큰 할인' : ''}</span></span><span class="num strong">−${won(o.d)}</span></div>`;
     const none = (act, cur) => `<div class="opt" role="radio" tabindex="0" aria-checked="${!cur}" data-act="${act}" data-id=""><span>쓰지 않기</span><span></span></div>`;
     const notBest = (cur, b) => (b && cur && cur.id !== b.x.id ? `<p class="xsmall" style="color:var(--warn)">"${esc(b.x.name)}"을 쓰면 ${won(b.d - (k.hqC.concat(k.shC).find((o) => o.x.id === cur.id) || { d: 0 }).d)} 더 할인돼요.</p>` : '');
     f.body.innerHTML = `
@@ -537,7 +577,7 @@
         <span class="small strong">상품 할인 쿠폰 · 장바구니·상품 중 1장</span>
         <div class="opt-list" role="radiogroup" aria-label="상품 할인 쿠폰">${k.hqC.map((o) => row('pickHq', o, k.hq, k.bHq)).join('') || '<p class="xsmall faint">쓸 수 있는 상품 할인 쿠폰이 없어요.</p>'}${k.hqC.length ? none('pickHq', k.hq) : ''}</div>${notBest(k.hq, k.bHq)}
         <span class="small strong">디자인비 쿠폰 · 1장</span>
-        <p class="xsmall faint">${k.dcs.length ? `이 주문에는 맞춤 디자인비가 없어 디자인비 쿠폰 ${k.dcs.length}장(${k.dcs.map((x) => `"${esc(x.name)}"`).join(' · ')})은 쓰지 않고 쿠폰함에 남겨요. 맞춤 주문에서는 상품 할인 쿠폰과 함께 써요.` : '가진 디자인비 쿠폰이 없어요.'}</p>
+        <p class="xsmall faint">${k.dcs.length ? `이 주문에는 맞춤 디자인비가 없어 디자인비 쿠폰 ${k.dcs.length}장(${k.dcs.map((x) => `"${esc(x.name)}"`).join(' · ')})은 쓰지 않고 쿠폰함에 남겨요. 맞춤 주문에서는 상품 할인 쿠폰과 함께 써요.${k.dcs.some((x) => x.minOrder) ? ' 디자인비 쿠폰의 최소 주문(맞춤 품목 N원 이상)은 맞춤 품목 금액으로만 채워져 일반 상품은 들어가지 않아요.' : ''}` : '가진 디자인비 쿠폰이 없어요.'}</p>
         ${k.dcs.length ? '<button class="btn btn-sm" data-act="cs" data-to="dfee">함께 쓰는 맞춤 주문 보기</button>' : ''}
         <span class="small strong">배송비 쿠폰 · 배송 묶음당 1장</span>
         <div class="opt-list" role="radiogroup" aria-label="배송비 쿠폰">${k.shC.map((o) => row('pickShip', o, k.ship, k.bSh)).join('') || '<p class="xsmall faint">쓸 수 있는 배송비 쿠폰이 없어요.</p>'}${k.shC.length ? none('pickShip', k.ship) : ''}</div>
@@ -561,47 +601,84 @@
   function dfee(f, s) {
     f.title('맞춤 주문서 · 디자인비'); f.tab('디자인'); f.back();
     const j = dfeeCalc(); const pre = j.pre.designFees[0];
-    const { thr, vou, fd, disc, cp } = j; const paidFee = fd.fee - disc; const part = j.usedDesign && !j.full;
-    const label = thr ? '무료(50만원 이상)' : vou ? '무료(멤버십)' : j.full ? `무료(${esc(j.dc.name)} 쿠폰)` : part ? `${won(paidFee)} · 쿠폰 일부 할인` : won(pre.fee);
+    const { thr, vou, fd, disc, cp, multi } = j; const paidFee = fd.fee - disc; const part = j.usedDesign && !j.full;
+    const reqNo = (gid) => j.fds.findIndex((d) => d.groupId === gid) + 1;
+    const feeSum = j.fds.reduce((a, d) => a + d.fee, 0);
+    const label = multi ? `${won(feeSum - disc)}${disc ? ' · 쿠폰 적용' : ''}`
+      : thr ? '무료(50만원 이상)' : vou ? '무료(멤버십)' : j.full ? `무료(${esc(j.dc.name)} 쿠폰)` : part ? `${won(paidFee)} · 쿠폰 일부 할인` : won(pre.fee);
     const hqTxt = j.pick ? `상품 할인 쿠폰 "${esc(j.pick.x.name)}"(−${won(j.r.totals.hqDisc)})` : '';
     const row = (n, title, cls, txt, tail) => `<div class="jrow ${cls}"><span class="lno">${n}</span><span><b>${title}</b><br><span class="xsmall">${txt}</span></span><span class="xsmall strong">${tail}</span></div>`;
+    const blockTxt = (o) => `맞춤 품목 ${won(o.short)} 더 담으면 디자인비 쿠폰을 쓸 수 있어요`;
+    const b0 = j.blocked[0];
     const r3 = thr || vou ? row(3, '디자인비 쿠폰', 'skip', j.dcs.length ? '앞 단계에서 이미 무료라 쓰지 않고 쿠폰함에 남겨요(이용권과 동시에 못 써요)' : '가진 디자인비 쿠폰이 없어요', '안 씀')
       : j.usedDesign ? row(3, '디자인비 쿠폰', 'on', `"${esc(j.dc.name)}"(${dcFull(j.dc) ? '정률 100%' : dcDesc(j.dc)})로 ${won(fd.fee)} → ${won(paidFee)} · 디자인비 쿠폰 자리(1장)라 ${hqTxt || '상품 할인 쿠폰'}과 함께 써요`, '적용')
+      : !j.dOpts.length && b0 ? row(3, '디자인비 쿠폰', 'skip', `"${esc(b0.x.name)}"은 ${minText(b0.x)}일 때 써요 · ${blockTxt(b0)}`, '안 씀')
       : row(3, '디자인비 쿠폰', 'skip', j.dcs.length ? '쓰지 않기를 골라 디자인비를 내요' : '가진 디자인비 쿠폰이 없어 디자인비를 내요', '안 씀');
-    // 디자인비 쿠폰 고르기(주문서 시트와 같은 모양): 가장 큰 할인을 자동으로 고르고 바꿀 수 있음
-    const dRow = (o) => `<div class="opt" role="radio" tabindex="0" aria-checked="${!!j.dc && j.dc.id === o.x.id}" data-act="pickDc" data-id="${o.x.id}"><span><b>${esc(o.x.name)}</b><br><span class="xsmall faint">${dcDesc(o.x)}${o.x.minOrder ? ` · ${won(o.x.minOrder)} 이상` : ''} · ${fmtDate(o.x.until, false)}까지${j.bD && j.bD.x.id === o.x.id ? ' · 가장 큰 할인' : ''}</span></span><span class="num strong">−${won(o.d)}</span></div>`;
-    const picker = !thr && !vou && j.dOpts.length ? `<div class="app-card"><div class="split"><b class="small">디자인비 쿠폰 · 1장</b><span class="xsmall faint">가장 큰 할인 자동</span></div>
-      <div class="opt-list" role="radiogroup" aria-label="디자인비 쿠폰">${j.dOpts.map(dRow).join('')}<div class="opt" role="radio" tabindex="0" aria-checked="${!j.dc}" data-act="pickDc" data-id=""><span>쓰지 않기</span><span></span></div></div>
-      <p class="xsmall faint">정액·정률 모두 있어요(정률은 100%까지 · '첫 디자인 무료' = 정률 100%). 할인은 디자인비를 넘지 않고, 같은 콘셉트로 묶은 요청이면 품목별 디자인비 비율로 나눠 기록해요.</p></div>` : '';
+    // 일반 상품이 섞인 장면(D51): 주문 전체는 넘어도 디자인비 판정·디자인비 쿠폰 최소 주문은 맞춤 품목 금액만
+    const mixLine = s.df.mix === 'mixed' ? `<p class="xsmall mixline">주문 전체 상품 금액은 <b>${won(j.orderBasis)}</b>이지만 맞춤 품목은 <b>${won(pre.basis)}</b>이에요. 50만원 무료와 디자인비 쿠폰의 최소 주문은 맞춤 품목 금액으로만 봐요(일반 상품·판비·추가 구성품 제외).</p>` : '';
+    // 디자인 요청이 여럿이면 요청(묶음)마다 판정하고, 디자인비 쿠폰 1장은 조건을 채운 요청 가운데 할인이 가장 큰 곳(같으면 앞 요청)
+    const gName = (d) => d.itemIds.map((id) => j.r.lines.find((l) => l.id === id).name.replace('맞춤 인쇄 ', '')).join('·');
+    const pot = (d) => (j.dc && dcOpen(d) && !d.couponShort ? GC.price.designCouponDiscount(engDc(j.dc), d.fee) : 0);
+    const gRow = (d, i) => {
+      const on = d.couponDisc > 0; const others = j.fds.filter((x) => x !== d && pot(x) > 0);
+      const fee = d.reason === 'threshold' ? '무료(50만원 이상)' : d.reason === 'voucher' && !d.fee ? '무료(멤버십 이용권)'
+        : `${won(d.fee)}${d.itemCount > 1 ? `(첫 품목 ${won(P('design.fee'))} + 추가 ${d.itemCount - 1}개 × ${won(P('design.multi_item_fee'))})` : ''}`;
+      const why = on ? (others.some((x) => pot(x) === d.couponDisc) ? '할인이 같아 앞 요청에 써요' : others.length ? '할인이 가장 커서 여기에 써요' : '조건을 채운 요청이 여기뿐이에요')
+        : d.couponShort ? blockTxt({ short: d.couponShort })
+        : pot(d) > 0 ? `여기 쓰면 −${won(pot(d))} · ${pot(d) === disc ? '할인이 같아 앞 요청에 썼어요' : `할인이 더 큰 요청 ${reqNo(j.r.totals.designCouponGroup)}에 썼어요`}` : '';
+      return `<div class="jrow ${on ? 'on' : 'skip'}"><span class="lno">${i + 1}</span><span><b>요청 ${i + 1} · ${esc(gName(d))}</b><br><span class="xsmall">맞춤 품목 ${won(d.basis)} · 디자인비 ${fee}${why ? `<br>${why}` : ''}</span></span><span class="xsmall strong">${on ? `쿠폰 −${won(d.couponDisc)}` : '쿠폰 안 씀'}</span></div>`;
+    };
+    const judge = multi
+      ? `<div class="app-card"><div class="split"><b>디자인비 판정 · 요청마다</b><span class="tag tag-spot">${label}</span></div>
+          <div class="judge">${j.fds.map(gRow).join('')}</div>
+          <p class="xsmall faint">50만원 무료·멤버십 이용권은 요청(묶음)마다 따로 판정해요. 디자인비 쿠폰은 주문당 1장이라 조건을 채운 요청 가운데 할인이 가장 큰 요청 1곳에 자동으로 써요(할인이 같으면 앞 요청).</p></div>`
+      : `<div class="app-card"><div class="split"><b>디자인비 판정 순서</b><span class="tag tag-spot">${label}</span></div>
+          <div class="judge">
+            ${row(1, '50만원 이상이면 무료', thr ? 'on' : 'skip', `맞춤 품목 ${won(pre.basis)}(파트너 할인 후·본사 쿠폰 전) ${thr ? '≥' : '<'} ${pv('design.free_threshold')}${thr ? '' : ` · ${won(pre.shortfall)} 모자라요`}`, thr ? '무료' : '아니요')}
+            ${row(2, '멤버십 무료 이용권', thr ? 'na' : vou ? 'on' : 'skip', thr ? '앞에서 무료라 이용권을 쓰지 않아요' : vou ? `이번 달 이용권 1장으로 ${won(P('design.fee'))} → 0원` : '이용권이 없어요', thr ? '안 씀' : vou ? '무료' : '없음')}
+            ${r3}
+          </div>
+          ${mixLine}
+          <p class="xsmall faint">본사 쿠폰은 판정 뒤에 적용해서 50만원 판정 결과를 바꾸지 않아요.</p></div>`;
+    // 디자인비 쿠폰 고르기(주문서 시트와 같은 모양): 가장 큰 할인을 자동으로 고르고 바꿀 수 있음 · 조건이 안 맞는 쿠폰은 이유와 함께 흐리게
+    const dRow = (o) => `<div class="opt" role="radio" tabindex="0" aria-checked="${!!j.dc && j.dc.id === o.x.id}" data-act="pickDc" data-id="${o.x.id}"><span><b>${esc(o.x.name)}</b><br><span class="xsmall faint">${dcDesc(o.x)}${o.x.minOrder ? ` · ${minText(o.x)}` : ''} · ${fmtDate(o.x.until, false)}까지${j.bD && j.bD.x.id === o.x.id ? ' · 가장 큰 할인' : ''}${multi ? ` · 요청 ${reqNo(o.group)}에` : ''}</span></span><span class="num strong">−${won(o.d)}</span></div>`;
+    const bRow = (o) => `<div class="opt is-off" role="radio" tabindex="0" aria-checked="false" aria-disabled="true" data-id="${o.x.id}" data-short="${o.short}"><span><b>${esc(o.x.name)}</b><br><span class="xsmall faint">${dcDesc(o.x)} · ${minText(o.x)} · ${fmtDate(o.x.until, false)}까지</span><span class="xsmall why">${blockTxt(o)}</span></span><span class="num xsmall">사용 불가</span></div>`;
+    const picker = j.open && (j.dOpts.length || j.blocked.length) ? `<div class="app-card"><div class="split"><b class="small">디자인비 쿠폰 · 1장</b><span class="xsmall faint">가장 큰 할인 자동</span></div>
+      <div class="opt-list" role="radiogroup" aria-label="디자인비 쿠폰">${j.dOpts.map(dRow).join('')}<div class="opt" role="radio" tabindex="0" aria-checked="${!j.dc}" data-act="pickDc" data-id=""><span>쓰지 않기</span><span></span></div>${j.blocked.map(bRow).join('')}</div>
+      <p class="xsmall faint">정액·정률 모두 있어요(정률은 100%까지 · '첫 디자인 무료' = 정률 100%). 할인은 디자인비를 넘지 않고, 같은 콘셉트로 묶은 요청이면 품목별 디자인비 비율로 나눠 기록해요.</p>
+      <p class="xsmall faint">최소 주문은 그 디자인 요청(묶음)의 맞춤 품목 금액으로 봐요(50만원 무료 판정과 같은 금액 · 일반 상품·판비·추가 구성품 제외). 결제 뒤 일부를 취소해 기준 아래가 되어도 디자인비 할인을 다시 받지 않아요.</p></div>` : '';
     const alloc = j.usedDesign && fd.couponAlloc.length > 1 ? ` · 품목별 ${fd.couponAlloc.map((a) => won(a)).join(' / ')}` : '';
-    const designLine = thr || vou ? `디자인비 줄 표시: ${label}`
+    const gFee = (d, i) => `요청 ${i + 1}: ${d.reason === 'threshold' ? '무료(50만원 이상)' : d.reason === 'voucher' && !d.fee ? '무료(멤버십)' : won(d.fee)}`;
+    const designLine = multi ? `${j.fds.map(gFee).join(' · ')}${disc ? ` · 디자인비 쿠폰 −${won(disc)}(요청 ${reqNo(fd.groupId)}${alloc})` : ''} · 낼 금액 ${won(feeSum - disc)}`
+      : thr || vou ? `디자인비 줄 표시: ${label}`
       : j.full ? `디자인비 줄 표시: ${label} · ${won(fd.fee)}에서 쿠폰으로 −${won(disc)}${alloc}`
       : part ? `할인 전 ${won(fd.fee)} · 디자인비 쿠폰 −${won(disc)} · 낼 금액 ${won(paidFee)}${alloc}` : null;
     const freeBy = thr ? '50만원 이상' : '멤버십 이용권';
-    const cancelNote = thr || vou
+    const freeAny = j.fds.some((d) => !d.fee && (d.reason === 'threshold' || d.reason === 'voucher'));
+    const cancelNote = multi
+      ? `<div class="note${freeAny ? ' note-warn' : ''} small"><b>첫 시안 뒤 취소하면 요청마다 공제 · ${j.cps.map((c, i) => `요청 ${i + 1}: ${won(c.deduction)}`).join(' · ')}</b><br>낸 디자인비만 공제하고 쿠폰으로 깎인 몫은 본사가 부담해요.${freeAny ? ` 멤버십 이용권으로 무료가 된 요청은 ${pv('design.fee')}을 공제해서 결제 버튼 위에 동의 체크가 붙어요.` : ''} 쿠폰은 첫 시안 전에 취소하면 돌려드려요.</div>`
+      : thr || vou
       ? `<div class="note note-warn small"><b>첫 시안 뒤 취소하면 공제 ${won(cp.deduction)}</b><br>${freeBy}으로 무료가 된 맞춤 디자인도 첫 시안을 받은 뒤 취소하면 디자인비 ${pv('design.fee')}을 공제해요. 그래서 결제 버튼 바로 위에 이 공제에 동의하는 체크가 따로 붙어요.${vou ? ' 이용권은 첫 시안 전에 취소하면 돌려드려요.' : ''}</div>`
       : j.usedDesign
         ? `<div class="note small"><b>첫 시안 뒤 취소하면 공제 ${won(cp.deduction)}</b><br>${j.full ? '쿠폰으로 디자인비가 무료라 공제할 낸 디자인비가 없어요.' : `낸 디자인비 ${won(paidFee)}만 공제해요.`} 쿠폰으로 깎인 ${won(disc)}은 공제하지 않고 본사가 부담해요. 쿠폰은 첫 시안 전에 취소하면 돌려드리고, 그 뒤 취소면 돌려드리지 않아요. 공제가 낸 금액뿐이라 따로 동의 체크를 붙이지 않아요.</div>`
         : `<div class="note small"><b>첫 시안 뒤 취소하면 공제 ${won(cp.deduction)}</b><br>낸 디자인비를 공제해요. 첫 시안을 받기 전에 취소하면 전액 환불해요.</div>`;
+    const short = (l) => l.name.replace('맞춤 인쇄 ', '');
+    const cfg = multi ? j.fds.map((d, i) => `요청 ${i + 1}: ${d.itemIds.map((id) => { const l = j.r.lines.find((x) => x.id === id); return `${short(l)} ${won(l.gross)}`; }).join(' + ')}`).join(' · ')
+      : j.r.lines.map((l) => `${l.designGroup ? '' : '일반 상품 '}${l.name}${l.qty > 1 ? ` ${l.qty}박스` : ''} ${won(l.gross)}`).join(' + ');
     f.body.innerHTML = `
       <div class="app-pad">
-        <div class="note note-ext small"><b>체험 조건</b> · 실제 화면에는 없는 조절판이에요. 맞춤 인쇄 수저집 550,000원 한 건
+        <div class="note note-ext small"><b>체험 조건</b> · 실제 화면에는 없는 조절판이에요. ${cfg}
           <div class="stack-sm" style="margin-top:8px">
-            <div class="seg">${[['495', '즉시 할인 10%'], ['550', '할인 없음']].map(([k, n]) => `<button data-act="dfAmt" data-v="${k}" aria-pressed="${s.df.amount === k}">${n}</button>`).join('')}</div>
+            <div class="seg seg-sm" role="group" aria-label="주문 구성">${Object.entries(DF_MIX).map(([k, n]) => `<button data-act="dfMix" data-v="${k}" aria-pressed="${s.df.mix === k}">${n}</button>`).join('')}</div>
+            ${s.df.mix === 'one' ? `<div class="seg">${[['495', '즉시 할인 10%'], ['550', '할인 없음']].map(([k, n]) => `<button data-act="dfAmt" data-v="${k}" aria-pressed="${s.df.amount === k}">${n}</button>`).join('')}</div>` : ''}
             <div class="seg">${[['off', '멤버십 이용권 없음'], ['on', '이용권 있음 (2차)']].map(([k, n]) => `<button data-act="dfVoucher" data-v="${k}" aria-pressed="${(s.df.voucher ? 'on' : 'off') === k}">${n}</button>`).join('')}</div>
           </div></div>
-        <div class="app-card"><div class="split"><b>디자인비 판정 순서</b><span class="tag tag-spot">${label}</span></div>
-          <div class="judge">
-            ${row(1, '50만원 이상이면 무료', thr ? 'on' : 'skip', `판정 금액 ${won(pre.basis)}(파트너 할인 후·본사 쿠폰 전) ${thr ? '≥' : '<'} ${pv('design.free_threshold')}${thr ? '' : ` · ${won(pre.shortfall)} 모자라요`}`, thr ? '무료' : '아니요')}
-            ${row(2, '멤버십 무료 이용권', thr ? 'na' : vou ? 'on' : 'skip', thr ? '앞에서 무료라 이용권을 쓰지 않아요' : vou ? `이번 달 이용권 1장으로 ${won(P('design.fee'))} → 0원` : '이용권이 없어요', thr ? '안 씀' : vou ? '무료' : '없음')}
-            ${r3}
-          </div>
-          <p class="xsmall faint">본사 쿠폰은 판정 뒤에 적용해서 50만원 판정 결과를 바꾸지 않아요.</p></div>
+        ${judge}
         ${picker}
         <div class="app-card"><div class="split"><b class="small">이 주문에 쓴 쿠폰 · 자리마다 1장</b><span class="tag">함께 적용</span></div>
           <div class="app-list">
-            <div class="li"><span>상품 할인 쿠폰<br><span class="xsmall faint">장바구니·상품 중 가장 큰 할인 1장</span></span><span class="small strong">${j.pick ? `${esc(j.pick.x.name)} −${won(j.r.totals.hqDisc)}` : '쓸 쿠폰 없음'}</span></div>
-            <div class="li"><span>디자인비 쿠폰<br><span class="xsmall faint">디자인비에만 · 디자인비 줄에서 바로 빼요</span></span><span class="small strong">${j.usedDesign ? `${esc(j.dc.name)} −${won(disc)}` : j.dcs.length ? '안 씀 · 쿠폰함에 남김' : '없음'}</span></div>
+            <div class="li"><span>상품 할인 쿠폰<br><span class="xsmall faint">장바구니·상품 중 가장 큰 할인 1장 · 주문 전체 상품 금액 기준</span></span><span class="small strong">${j.pick ? `${esc(j.pick.x.name)} −${won(j.r.totals.hqDisc)}` : '쓸 쿠폰 없음'}</span></div>
+            <div class="li"><span>디자인비 쿠폰<br><span class="xsmall faint">디자인비에만 · 디자인비 줄에서 바로 빼요</span></span><span class="small strong">${j.usedDesign ? `${esc(j.dc.name)} −${won(disc)}${multi ? ` · 요청 ${reqNo(fd.groupId)}` : ''}` : j.dcs.length ? '안 씀 · 쿠폰함에 남김' : '없음'}</span></div>
             <div class="li"><span>배송비 쿠폰<br><span class="xsmall faint">배송 묶음당 1장</span></span><span class="small strong">무료배송이라 안 씀</span></div>
           </div></div>
         <div class="app-card"><b class="small">결제 금액</b>${ladderHtml(j.r, { design: designLine, hq: j.pick ? `${esc(j.pick.x.name)} · 디자인비에는 안 걸림` : '쓴 쿠폰 없음' })}</div>
@@ -736,8 +813,12 @@
         ${isDc ? `<div class="note small" style="grid-column:1/-1">맞춤 디자인비(${pv('design.fee')}, 추가 품목 ${pv('design.multi_item_fee')})에만 걸려요. 할인은 디자인비를 넘지 않고, 같은 콘셉트로 묶은 요청이면 품목별 디자인비 비율로 나눠 기록해요. 자리가 따로라 장바구니·상품 쿠폰과 함께 써요. 50만원 무료·멤버십 이용권이 먼저라 그때는 쓰지 않고 쿠폰함에 남겨요.</div>` : ''}
         ${isDisc || isDc ? num('value', fm.type === 'rate' ? '할인율' : '할인 금액', fm.type === 'rate' ? '%' : '원', isDc ? (fm.type === 'rate' ? '1~100% · 100%면 디자인비 전액 무료' : '디자인비보다 크면 디자인비까지만 할인') : '') : ''}
         ${fm.type === 'rate' && (isDisc || isDc) || fm.kind === 'ship' ? num('max', fm.kind === 'ship' ? '장당 최대 할인' : isDc ? '최대 할인액 (선택)' : '최대 할인액 (정률이면 필수)', '원', isDc ? '비우면 디자인비까지 할인' : '') : ''}
-        ${num('minOrder', '최소 주문 금액 (선택)', '원', isDc ? '파트너 할인 후 상품 금액 기준 · 디자인비 제외' : '파트너 할인 후 상품 금액 기준')}
-        <div class="field"><label for="f_target">적용 대상</label><select class="select" id="f_target" data-change="fSel" data-f="target">${Object.entries(TARGET).map(([k, n]) => `<option value="${k}" ${fm.target === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+        ${num('minOrder', isDc ? '최소 주문 금액 (선택) · 맞춤 품목 기준' : '최소 주문 금액 (선택)', '원', isDc
+          ? (fm.minOrder && fm.minOrder >= P('design.free_threshold') ? `<span style="color:var(--warn)">맞춤 품목 ${won(P('design.free_threshold'))} 이상이면 디자인비가 이미 무료라 이 쿠폰은 쓰일 일이 없어요. 기준보다 낮게 정해 주세요</span>`
+            : '주문 전체가 아니라 그 디자인 요청(묶음)의 맞춤 품목 금액과 비교 · 50만원 무료 판정과 같은 금액(파트너 할인 후·본사 쿠폰 전, 판비·추가 구성품·배송비 제외) · 고객에게는 "맞춤 품목 N원 이상"')
+          : '파트너 할인 후 상품 금액 기준 · 고객에게는 "N원 이상 주문"')}
+        ${isDc ? `<div class="field"><span class="lbl">적용 대상</span><div class="cluster"><b class="small">${DC_TARGET}</b><span class="tag">고정</span></div><span class="hint">디자인비 쿠폰은 적용 대상·제외 대상을 고르지 않아요(디자인은 본사 디자이너, 디자인비는 본사 매출). 대상 회원은 아래에서 골라요</span></div>`
+          : `<div class="field"><label for="f_target">적용 대상</label><select class="select" id="f_target" data-change="fSel" data-f="target">${Object.entries(TARGET).map(([k, n]) => `<option value="${k}" ${fm.target === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>`}
         <div class="field"><span class="lbl">발행 방식</span>${seg('fIssue', fm.issue, ISSUE)}</div>
         ${num('qty', '발행 수량 (비우면 무제한) · 1인 1회', '장')}
         ${num('days', '유효기간 · 발급 후', '일')}
@@ -756,7 +837,7 @@
   function couponSummary(d) {
     const c = app.state('coupon');
     return `<div class="panel"><div class="panel-h"><h2>HC-2610-07 · ${esc(d.name)}</h2><span class="st ${stCls(c)}">${GC.sm.stateName('BENEFIT_COUPON', c)}</span></div><div class="panel-b">
-      <dl class="kv small"><dt>종류·할인</dt><dd>${discText(d)}</dd><dt>최소 주문</dt><dd>${d.minOrder ? won(d.minOrder) : '없음'}</dd><dt>대상</dt><dd>${TARGET[d.target]}</dd><dt>대상 회원</dt><dd>${memText(d)}</dd>
+      <dl class="kv small"><dt>종류·할인</dt><dd>${discText(d)}</dd><dt>최소 주문</dt><dd>${d.minOrder ? (d.kind === 'design' ? `맞춤 품목 ${won(d.minOrder)} 이상 · 디자인 요청(묶음)마다 · 요청이 여럿이면 할인이 가장 큰 요청 1곳` : `${won(d.minOrder)} 이상 주문`) : '없음'}</dd><dt>대상</dt><dd>${targetText(d)}</dd><dt>대상 회원</dt><dd>${memText(d)}</dd>
         <dt>발행</dt><dd>${ISSUE[d.issue]} · ${d.qty ? GC.num(d.qty) + '장' : '무제한'} · 1인 1회(본인인증 값 기준)</dd><dt>유효기간</dt><dd>발급 후 ${d.days}일</dd><dt>예산 상한</dt><dd>${won(d.budget)}</dd><dt>비용 부담</dt><dd>본사 100% · 파트너 정산에서 빼지 않음</dd></dl></div></div>`;
   }
   function approvalPanel(s) {
@@ -1015,6 +1096,13 @@
       refresh();
     },
     dfAmt(b) { S().df.amount = b.dataset.v; refresh(); },
+    // 체험 구성을 바꾸면 담긴 상품이 바뀐 것과 같아 디자인비 쿠폰을 다시 자동으로 고름
+    dfMix(b) {
+      const s = S(); s.df.mix = b.dataset.v; s.pickDc = undefined;
+      if (s.df.mix === 'mixed') app.log('rule', '디자인비 쿠폰 최소 주문은 그 디자인 요청(묶음)의 맞춤 품목 금액과 비교해요. 일반 상품은 들어가지 않아요(D51)');
+      if (s.df.mix === 'two') app.log('rule', '디자인비 쿠폰 1장은 조건을 채운 요청 가운데 할인이 가장 큰 요청에 써요(같으면 앞 요청, D51)');
+      refresh();
+    },
     dfVoucher(b) { S().df.voucher = b.dataset.v === 'on'; refresh(); },
     memPlan(b) { S().mem.plan = b.dataset.v; refresh(); },
     async memCard() {

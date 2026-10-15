@@ -173,10 +173,9 @@
 
   /* ── 엔진에 없는 정책값: 페이지 상수(관리자 설정값, 임시 기본값) ──
      엔진 키로 옮긴 것(2026-10-16 S10 맞춤 ⑪·⑬): 검수 처리 목표 product.review_bd · 우선 검수 product.review_priority_hours(2차) ·
-     옵션 조합 최대 product.option_combo_max · 옵션 추가 금액 범위 product.option_extra_range(숫자는 GC.price.optionExtraRange()) */
+     옵션 조합 최대 product.option_combo_max · 옵션 추가 금액 범위 product.option_extra_range(숫자는 GC.price.optionExtraRange()) ·
+     (2026-10-16 S11 맞춤 ⑧) 가격 오입력 경고 product.price_change_alert(판단은 GC.price.priceChangeCheck, 숫자는 priceChangeAlert()) */
   const PC = {
-    price_alert_down: { v: 50, unit: '%', label: '오입력 경고 인하율(product.price_change_alert −50%)' },
-    price_alert_up: { v: 200, unit: '%', label: '오입력 경고 인상률(product.price_change_alert +200% = 직전의 3배로 해석)' },
     doc_valid_months: { v: 12, unit: '개월', label: '시험성적서 유효기간(발급 후, P-PRD-06, 키 없음)' },
     doc_notice_days: { v: 30, unit: '일', label: '서류 만료 사전 알림(P-PRD-06)' },
     ship_days_max: { v: 2, unit: '영업일', label: '일반 상품 출고 소요일 최대(P-PRD-04)' },
@@ -198,6 +197,13 @@
   }
   /** 옵션 추가 금액 범위 표시(점선 · product.option_extra_range): '−50%~+200%' */
   const pvExtra = () => { const r = GC.price.optionExtraRange(); return pv('product.option_extra_range', `−${num(-r.down)}%~+${num(r.up)}%`); };
+  /** 가격 오입력 경고 기준(P-PRD-03 · product.price_change_alert '−50% / +200%') → 말로: 직전 가격의 '절반' 이하 · '3배' 이상 */
+  function alertWords() {
+    const r = GC.price.priceChangeAlert(); const lo = 1 + r.down / 100; const hi = 1 + r.up / 100;
+    return { lo: lo === 0.5 ? '절반' : `${num(lo * 100)}%`, hi: Number.isInteger(hi) ? `${hi}배` : `${num(hi * 100)}%`, down: r.down, up: r.up };
+  }
+  /** 오입력 경고 기준 표시(점선): '직전 가격의 절반 이하·3배 이상' */
+  const pvAlert = () => { const w = alertWords(); return pv('product.price_change_alert', `직전 가격의 ${w.lo} 이하·${w.hi} 이상`); };
 
   /* ── 페이지 상태 머신: 인증 서류 ── */
   GC.sm.define('CATALOG_DOC', {
@@ -707,7 +713,7 @@
         const rules = {
           basic: [{ k: '상품명', v: '50자 · 최상급 표현·다른 브랜드명 금지' }, { k: '판매 방식 변경', v: '재검수' }],
           desc: [{ k: '필수', v: '글 50자 이상 또는 이미지 1장 이상' }, { k: '이미지', v: `장당 ${pv('file.max_size_image')} · 상품당 ${pv('product.detail_image_max')}` }, { k: '긴 이미지', v: `세로 ${pvc('detail_slice_px')}마다 잘라 저장` }, { k: '링크·다른 사이트 이미지', v: '서버가 지움' }, { k: '연락처·QR·판매 조건', v: '보완 요청 사유' }],
-          price: [{ k: '구간', v: '최대 5개 · 역전 불가' }, { k: '카테고리 일반 요율', policy: 'commission.default_rate' }, { k: '신규 입점 인하(3개월)', policy: 'commission.new_partner_discount' }, { k: '오입력 경고', v: `${pvc('price_alert_down')} 인하 · ${pvc('price_alert_up')} 인상` }],
+          price: [{ k: '구간', v: '최대 5개 · 역전 불가' }, { k: '카테고리 일반 요율', policy: 'commission.default_rate' }, { k: '신규 입점 인하(3개월)', policy: 'commission.new_partner_discount' }, { k: '오입력 경고', v: `${pvAlert()} · 사업자가도 같은 기준` }],
           opt: [{ k: '옵션명', v: `최대 ${OPT_MAX_NAMES}개(3단 조합)` }, { k: '조합', v: `최대 ${pv('product.option_combo_max')}` }, { k: '옵션 추가 금액', v: `기본가의 ${pvExtra()}` }, { k: '추가 구성품', v: `상품당 최대 ${pv('product.addon_max')} · 정해진 가격 하나` }, { k: '추가 구성품 할인', v: '파트너 할인 안 걸림' }],
           ship: [{ k: '일반 상품 출고 소요일', v: `최대 ${pvc('ship_days_max')}` }, { k: '묶음 배송 단위', v: '파트너+출고지+출고 유형' }],
           custom: [{ k: '맞춤 요율', policy: 'commission.custom_rate' }, { k: '판 보관 최소 기간(초안)', v: `${pv('production.plate_keep_months')} · 파트너는 늘리기만` }, { k: '제작 리드타임', v: '[인쇄 가능] 확인일부터 영업일' }, { k: '허용 오차', v: `${pv('claim.tolerance')} · 더 엄격하게만` }, { k: '템플릿·칼선 파일', v: `AI·PDF·SVG · 최대 ${pv('file.max_size_original')} · 없으면 저장 불가` }],
@@ -1161,8 +1167,8 @@
       <div class="panel"><div class="panel-h"><h2>가격 바로 수정</h2><span class="xsmall faint">가격·재고·배송비는 검수 없이 바로 반영 · 사후 모니터링</span></div><div class="panel-b stack-sm">
         <table class="tbl small tier-tbl"><thead><tr><th>구간</th><th class="num">지금</th><th>새 단가</th></tr></thead><tbody>
           ${L.tiers.map((t, i) => `<tr><td class="nw">${t.min}박스부터</td><td class="num">${won(t.price)}</td><td><input class="input" id="qp${i}" data-input="qp" data-i="${i}" value="${s.qp[i] != null ? s.qp[i] : t.price}" inputmode="numeric"></td></tr>`).join('')}</tbody></table>
-        <p class="xsmall faint">직전 가격보다 ${pvc('price_alert_down')} 이상 내리거나 ${pvc('price_alert_up')} 이상 올리면 오입력 경고를 띄우고 본사 모니터링 대상이 돼요. 기간 할인은 가격 대신 즉시 할인으로 걸어요.</p>
-        ${L.bizMode === 'rate' ? `<p class="xsmall faint">사업자가는 할인율 ${L.bizRate}% 방식이라 새 단가에 맞춰 함께 바뀌어요.</p>` : L.bizMode === 'amount' ? '<p class="xsmall faint">사업자가(숫자 방식)는 일반가보다 낮아야 해요. 일반가를 사업자가 아래로 내리면 저장되지 않아요. 사업자가를 바꿀 때도 같은 오입력 경고가 떠요.</p>' : ''}
+        <p class="xsmall faint">새 단가가 ${pvAlert()}이면 오입력 경고를 띄우고 본사 모니터링 대상이 돼요. 기간 할인은 가격 대신 즉시 할인으로 걸어요.</p>
+        ${L.bizMode === 'rate' ? `<p class="xsmall faint">사업자가는 할인율 ${L.bizRate}% 방식이라 새 단가에 맞춰 함께 바뀌어요. 오입력 경고도 바뀐 사업자 단가로 같은 기준을 따져요.</p>` : L.bizMode === 'amount' ? '<p class="xsmall faint">사업자가(숫자 방식)는 일반가보다 낮아야 해요. 일반가를 사업자가 아래로 내리면 저장되지 않아요. 사업자가를 바꿀 때도 직전 사업자가와 비교해 같은 기준으로 오입력 경고가 떠요.</p>' : ''}
         <div><button class="btn btn-primary" data-act="applyPrice">바로 반영</button></div></div></div>` : '';
     const promo = st === 'APPROVED' || st === 'PAUSED' ? promoPanel(s, L) : '';
     const d = s.docs.test; const dst = app.state('doc');
@@ -1239,8 +1245,8 @@
     }
     if (editReview) detail = descReviewHtml(s) + detail;
     const reps = s.reports.length ? `<div class="panel"><div class="panel-h"><h2>고객 신고</h2><span class="xsmall faint">A-PRD-01 모니터링 · 상세 설명 [이 상품 신고하기]</span></div><div class="panel-b"><table class="tbl small"><thead><tr><th>시각</th><th>상품</th><th>사유</th><th>처리</th></tr></thead><tbody>${s.reports.map((x) => `<tr><td class="nw">${fmtDate(x.at)}</td><td>${esc(x.name)} · 상세 설명 v${x.ver}</td><td>${esc(x.reason)}</td><td>${x.reason.startsWith('저작권') ? '확인 뒤 노출 중지 · 파트너 소명 받기' : '운영팀 확인 대기'}</td></tr>`).join('')}</tbody></table></div></div>` : '';
-    const mon = `<div class="panel"><div class="panel-h"><h2>가격 모니터링</h2><span class="xsmall faint">오입력 경고 · ${pvc('price_alert_down')} 인하 / ${pvc('price_alert_up')} 인상</span></div><div class="panel-b">
-      ${s.monitor.length ? `<table class="tbl small"><thead><tr><th>시각</th><th>구간</th><th class="num">직전 → 입력</th><th>결과</th></tr></thead><tbody>${s.monitor.map((x) => `<tr><td>${fmtDate(x.at)}</td><td class="nw">${x.tier}구간</td><td class="num">${won(x.prev)} → ${won(x.now)} (${x.kind === 'down' ? '−' : '+'}${x.pct}%)</td><td>${x.result}</td></tr>`).join('')}</tbody></table>` : '<p class="small muted">경고가 난 가격 변경이 없어요.</p>'}</div></div>`;
+    const mon = `<div class="panel"><div class="panel-h"><h2>가격 모니터링</h2><span class="xsmall faint">오입력 경고 · ${pvAlert()}</span></div><div class="panel-b">
+      ${s.monitor.length ? `<table class="tbl small"><thead><tr><th>시각</th><th>구간</th><th class="num">직전 → 입력</th><th>결과</th></tr></thead><tbody>${s.monitor.map((x) => `<tr><td>${fmtDate(x.at)}</td><td class="nw">${x.tier}구간${x.which === '사업자가' ? ' 사업자가' : ''}</td><td class="num">${won(x.prev)} → ${won(x.now)} (${x.kind === 'down' ? '−' : '+'}${x.pct}%)</td><td>${x.result}</td></tr>`).join('')}</tbody></table>` : '<p class="small muted">경고가 난 가격 변경이 없어요.</p>'}</div></div>`;
     const jobs = autoJobs();
     const jb = `<div class="panel"><div class="panel-h"><h2>자동 처리</h2><span class="xsmall faint">시계 +1일·+7일로 확인</span></div><div class="panel-b">
       ${jobs.length ? `<table class="tbl small"><tbody>${jobs.map((j) => `<tr><td>${j[0]}</td><td>${j[1]}</td></tr>`).join('')}</tbody></table>` : '<p class="small muted">지금 기다리는 자동 작업이 없어요.</p>'}</div></div>`;
@@ -1846,13 +1852,16 @@
     async applyPrice() {
       const s = S(); const L = s.live; const next = L.tiers.map((t, i) => ({ ...t, price: s.qp[i] != null ? s.qp[i] : t.price }));
       if (next.every((t, i) => t.price === L.tiers[i].price)) { app.toast('바뀐 가격이 없어요'); return; }
-      const down = pc('price_alert_down') / 100, up = pc('price_alert_up') / 100;
-      const al = next.map((t, i) => { const prev = L.tiers[i].price; const r = t.price / prev; return r <= 1 - down ? { i, prev, now: t.price, kind: 'down', pct: Math.round((1 - r) * 100) } : r >= 1 + up ? { i, prev, now: t.price, kind: 'up', pct: Math.round((r - 1) * 100) } : null; }).filter(Boolean);
+      /* 오입력 경고(P-PRD-03 · product.price_change_alert): 구간마다 직전 단가와 비교(엔진 GC.price.priceChangeCheck — 절반 이하 'down' · 3배 이상 'up').
+         사업자가 할인율 방식은 바뀐 결과 사업자 단가로도 판단(같은 구간에 일반가 경고가 이미 있으면 한 번만) */
+      const chk = (which, prevT, nextT) => (prevT && nextT ? nextT.map((t, i) => { const prev = prevT[i].price; const kind = GC.price.priceChangeCheck(prev, t.price); return kind ? { i, which, prev, now: t.price, kind, pct: Math.round(Math.abs(t.price / prev - 1) * 100) } : null; }).filter(Boolean) : []);
+      const al = chk('일반가', L.tiers, next);
+      if (L.bizMode === 'rate') chk('사업자가', GC.price.bizTiers(L.tiers, bizOf(L)), GC.price.bizTiers(next, bizOf({ ...L, tiers: next }))).forEach((b) => { if (!al.some((x) => x.i === b.i)) al.push(b); });
       if (al.length) {
-        const a = al[0];
-        const back = await app.confirm({ title: '가격을 잘못 넣지 않았나요?', body: `<p>${a.i + 1}구간 단가가 직전 ${won(a.prev)}에서 <b>${won(a.now)}</b>으로 ${a.pct}% ${a.kind === 'down' ? '내려가요' : '올라가요'}.</p><p class="small">0을 빠뜨리거나 더 넣은 건 아닌지 확인해 주세요. 그대로 저장하면 본사 모니터링 대상이 돼요.</p>`, ok: '다시 입력하기', cancel: '그대로 저장' });
-        s.monitor.unshift({ at: app.clock.now(), tier: a.i + 1, prev: a.prev, now: a.now, kind: a.kind, pct: a.pct, result: back ? '파트너가 다시 입력' : '그대로 저장 · 모니터링' });
-        app.log('warn', `가격 오입력 경고: ${a.i + 1}구간 ${won(a.prev)} → ${won(a.now)} (${a.kind === 'down' ? '−' : '+'}${a.pct}%) · ${back ? '파트너가 다시 입력하기로 함' : '그대로 저장 → 본사 모니터링 대상'}`);
+        const a = al[0]; const w = alertWords(); const biz = a.which === '사업자가';
+        const back = await app.confirm({ title: '가격을 잘못 넣지 않았나요?', body: `<p>${a.i + 1}구간 ${biz ? '사업자 ' : ''}단가가 직전 ${won(a.prev)}에서 <b>${won(a.now)}</b>으로 ${a.pct}% ${a.kind === 'down' ? '내려가요' : '올라가요'}.</p><p class="small">직전 가격의 ${a.kind === 'down' ? `${w.lo} 이하로 내려가면` : `${w.hi} 이상으로 올라가면`} 오입력 경고를 띄워요(${pv('product.price_change_alert')}). 0을 빠뜨리거나 더 넣은 건 아닌지 확인해 주세요. 그대로 저장하면 본사 모니터링 대상이 돼요.</p>${biz ? `<p class="xsmall faint">사업자가는 할인율 ${L.bizRate}% 방식이라 바뀐 사업자 단가로 따졌어요.</p>` : ''}`, ok: '다시 입력하기', cancel: '그대로 저장' });
+        s.monitor.unshift({ at: app.clock.now(), tier: a.i + 1, which: a.which, prev: a.prev, now: a.now, kind: a.kind, pct: a.pct, result: back ? '파트너가 다시 입력' : '그대로 저장 · 모니터링' });
+        app.log('warn', `가격 오입력 경고(직전 가격의 ${w.lo} 이하·${w.hi} 이상): ${a.i + 1}구간 ${a.which} ${won(a.prev)} → ${won(a.now)} (${a.kind === 'down' ? '−' : '+'}${a.pct}%) · ${back ? '파트너가 다시 입력하기로 함' : '그대로 저장 → 본사 모니터링 대상'}`);
         if (back) { s.qp = L.tiers.map((t) => t.price); refresh(); return; }
       }
       const te = tierErrors(next, L.moq).concat(GC.price.bizErrors(next, bizOf({ ...L, tiers: next })));

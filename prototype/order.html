@@ -163,30 +163,36 @@
     design: '오늘밥상 로고 v3 · 10/09 확정',
   };
   const pcCand = () => PC.cands[{ pc_lo: 'lo', pc_mid: 'mid', pc_hi: 'hi' }[scenario] || 'lo'];
-  /** 결제 스냅샷: 맞춤 10박스(박스당 32,000원 · 즉시 할인 5%) + 판비 50,000원 + 추가 구성품 이쑤시개 2봉 + 디자인비 39,000원 − 본사 상품 할인 쿠폰(장바구니 10%, 최대 1만원) */
-  function pcInput() {
+  /** 결제 스냅샷: 맞춤 10박스(박스당 32,000원 · 즉시 할인 5%) + 판비 50,000원 + 추가 구성품 이쑤시개 2봉 + 디자인비 39,000원 − 본사 상품 할인 쿠폰(장바구니 10%, 최대 1만원)
+   *  noAddon = 고객이 붙은 구성품을 먼저 취소한 뒤 남은 주문(C-PAY-02 재계산) */
+  function pcInput(noAddon = false) {
     return {
       items: [
         { id: 'cspoon', name: PC.prod, partnerId: PC.old.pid, shipKey: 'C-맞춤', qty: PC.qty, unit: '박스(1,000매)', tiers: [{ min: 10, price: PC.old.price }], instant: PC.instant, plateFee: PC.old.plate, designGroup: 'g1' },
         { id: PC.addon.id, name: PC.addon.name, partnerId: PC.old.pid, shipKey: 'C-맞춤', qty: PC.addon.qty, unit: PC.addon.u, tiers: [{ min: 1, price: PC.addon.price }], addonOf: 'cspoon' },
-      ],
+      ].filter((it) => !(noAddon && it.addonOf)),
       designGroups: [{ id: 'g1', type: 'CUSTOM' }], hqCoupon: HQ_COUPONS[0], shipping: { 'C-맞춤': { name: PC.old.name, type: 'free', base: 0 } },
     };
   }
+  /** 붙은 구성품을 고객이 먼저 취소했는지(D49: 본 맞춤 항목 [인쇄 가능] 전이라 결제 완료 → 바로 취소) */
+  const pcAdGone = () => !!(S().pc && S().pc.addonSelf);
   /** 고객이 낸 몫(상품·판비·디자인비·붙은 구성품)과 두 갈래 금액(GC.refund.partnerChange, D36~D38)
-   *  oldPaid = 상품 대금 줄 + 판비 줄 결제 금액(결제 비율의 분자, 디자인비·구성품 제외) · 새 파트너 정산(D37) = 판매가 새 합계 · 파트너 부담 할인 0 · 새 파트너 요율 */
+   *  oldPaid = 상품 대금 줄 + 판비 줄 결제 금액(결제 비율의 분자, 디자인비·구성품 제외) · 새 파트너 정산(D37) = 판매가 새 합계 · 파트너 부담 할인 0 · 새 파트너 요율
+   *  구성품을 먼저 취소했으면 남은 주문을 결제 스냅샷으로 다시 계산한 몫으로 봄(남은 결제 잔액과 같음) · addonPaid0 = 결제 때 구성품 몫(표시용) */
   function pcMoney() {
-    const r = GC.price.calcOrder(pcInput()); const l = r.lines[0]; const a = r.lines.find((x) => x.addonOf); const c = pcCand();
+    const gone = pcAdGone(); const r0 = GC.price.calcOrder(pcInput()); const a0 = r0.lines.find((x) => x.addonOf);
+    const r = gone ? GC.price.calcOrder(pcInput(true)) : r0; const l = r.lines[0]; const a = r.lines.find((x) => x.addonOf); const c = pcCand();
     const prodPaid = l.afterPartner - (l.hqAlloc - l.plateHqAlloc);
     const oldPaid = prodPaid + l.platePaid;
-    const addonPaid = a.afterPartner - a.hqAlloc;
+    const addonPaid = a ? a.afterPartner - a.hqAlloc : 0;
+    const addonPaid0 = a0.afterPartner - a0.hqAlloc;
     const design = r.totals.designFee - r.totals.designCoupon;
     const itemPaid = oldPaid + design;
     const newList = c.price * PC.qty; const newPlate = c.plate;
     const arg = { oldList: l.gross, oldPlate: l.plateFee, newList, newPlate, oldPaid, paidTotal: itemPaid, addonsPaid: addonPaid };
     const agree = GC.refund.partnerChange({ choice: 'agree', ...arg });
     const rate = GC.settle.finalRate({ base: P('commission.custom_rate') }).rate; // 새 파트너의 그 상품 요율(동의 시점 · 판을 새로 만드니 재주문 인하 없음)
-    return { r, l, a, list: l.gross, plate: l.plateFee, prodPaid, platePaid: l.platePaid, oldPaid, addonPaid, design, itemPaid, total: r.totals.pay, newList, newPlate, rate,
+    return { r, r0, l, a, gone, list: l.gross, plate: l.plateFee, prodPaid, platePaid: l.platePaid, oldPaid, addonPaid, addonPaid0, design, itemPaid, total: r.totals.pay, newList, newPlate, rate,
       lower: agree.newBase < agree.oldBase, agree, full: GC.refund.partnerChange({ choice: 'refund', ...arg }),
       ev: GC.settle.confirmEvent({ sale: agree.settle.sale, partnerDisc: 0, rate }) };
   }
@@ -212,7 +218,8 @@
     strips: [
       { id: 'order', machine: 'ORDER', label: '주문 항목 · 대표 상태', note: '항목마다 따로 움직이고, 여기엔 가장 앞 단계 항목을 보여줘요 · C-STATE-01' },
       { id: 'cancel', machine: 'CLAIM_CANCEL', label: '취소 클레임', note: 'claim_type CANCEL · C-STATE-02', hidden: true },
-      { id: 'claim', machine: 'CLAIM_RETURN', label: '반품 클레임', note: 'claim_type RETURN · C-STATE-02', hidden: true },
+      /* 엔진 기계는 반품·교환·재제작 공용(교환 신청·교환·재제작품 출고). 이 페이지는 반품(claim_type RETURN)만 다뤄 곁가지는 판매자 거부만 */
+      { id: 'claim', machine: 'CLAIM_RETURN', label: '반품 클레임', note: 'claim_type RETURN · 교환·재제작도 같은 상태 기계를 써요(이 예시엔 없음) · C-STATE-02', hidden: true, branch: ['RETURN_REJECTED'] },
       { id: 'citem', machine: 'ORDER_CUSTOM', label: '주문 항목(맞춤)', note: '판매자 변경에 동의하면 상태 그대로 파트너·상품만 바뀜 · C-STATE-01', hidden: true },
       { id: 'design', machine: 'DESIGN', label: '디자인 요청', note: '동의하면 새 파트너에게 인쇄 패키지 다시 전달 · C-STATE-03', hidden: true },
     ],
@@ -247,15 +254,17 @@
     Object.assign(app.S, {
       order: { at: PC.at, paidAt: PC.at, method: 'card', proof: 'tax', snap: pcInput(), calc: m.r, paid: { pg: m.total, points: 0 }, refunded: { pg: 0, points: 0 }, refunds: [], ship: {}, restored: {}, bears: {}, origQty: {} },
       recs: [], fired: {}, cs: 'detail',
-      pc: { status: 'wait', at: t0, due, remindAt: new Date(due.getTime() - DAY), noticedAt: null, how: null, doneAt: null, addonSt: 'ACCEPTED',
+      /* 붙은 구성품은 본 맞춤 항목 [인쇄 가능] 전이라 결제 완료(PAID) — [인쇄 가능] 때 시스템이 함께 발주 확인(parent_printable, D49) */
+      pc: { status: 'wait', at: t0, due, remindAt: new Date(due.getTime() - DAY), noticedAt: null, how: null, doneAt: null, addonSt: 'PAID', addonSelf: null,
         hist: [{ at: PC.old.whyAt, who: '운영', what: `${PC.old.name} 계약 종료 처리 · [인쇄 가능] 전 맞춤 항목 1건 확인(파트너 관리)` }, { at: t0, who: '운영', what: `같은 사양의 ${c.name} 상품을 제안 · 붙은 구성품 ${PC.addon.short} 취소·환불 함께 안내 · 고객 알림` }] },
     });
-    /* 주문 항목 칩은 이 장면에서 붙은 추가 구성품(ORDER)을 보여줌: 맞춤 항목과 같은 송장으로 나갈 예정이라 출고 전 */
-    Object.assign(app.strips.order, { label: `추가 구성품 · ${PC.addon.short}`, note: '붙은 맞춤 항목의 판매자가 바뀌거나 환불되면 함께 취소(partner_change_cancel) · C-STATE-01 · A-ORD-01 ⑥' });
+    /* 주문 항목 칩은 이 장면에서 붙은 추가 구성품(ORDER)을 보여줌: 본 맞춤 항목 [인쇄 가능] 전이라 결제 완료(발주 확인 전) · 맞춤 항목과 같은 송장으로 나갈 예정 */
+    Object.assign(app.strips.order, { label: `추가 구성품 · ${PC.addon.short}`, note: '본 맞춤 항목 [인쇄 가능] 때 시스템이 함께 발주 확인(parent_printable) · 그 전엔 고객이 바로 취소 · 판매자가 바뀌거나 환불되면 함께 취소(partner_change_cancel) · C-STATE-01 · A-ORD-01 ⑥' });
     app.strips.order.main = MAIN_CARD.slice();
     app.strips.citem.hidden = false; app.strips.design.hidden = false;
-    app.setState('order', 'ACCEPTED', { log: false }); app.setState('citem', 'DESIGN_CONFIRMED', { log: false }); app.setState('design', 'HANDED_OFF', { log: false });
+    app.setState('order', 'PAID', { log: false }); app.setState('citem', 'DESIGN_CONFIRMED', { log: false }); app.setState('design', 'HANDED_OFF', { log: false });
     app.log('rule', `파트너 관리(partner.html)에서 ${PC.old.name}를 계약 종료 처리하면서, 본사가 [인쇄 가능] 전 맞춤 항목을 같은 사양의 ${esc(c.name)} 상품으로 옮기자고 제안한 상태로 시작해요. 맞춤 항목에 붙은 ${esc(eun(`${PC.addon.name} ${PC.addon.qty}${PC.addon.u}`))} ${PC.old.name} 상품이라 어느 쪽을 골라도 취소·환불돼요`);
+    app.log('rule', `붙은 ${esc(eun(PC.addon.short))} 따로 [발주 확인]이 없고 본 맞춤 항목 [인쇄 가능] 때 시스템이 함께 발주 확인해요(parent_printable · 리마인드·약속 출고일도 본 항목을 따름). 지금은 그 전이라 결제 완료 상태 — 고객이 바로 취소할 수 있어요(D49)`);
     app.notify('NOTI_ITEM_PARTNER_CHANGE_PROPOSED', '고객', ['알림톡', '푸시', '이메일'], `제작 판매자 변경 제안 · ${fmtDate(due)}까지 [변경 동의] 또는 [전액 환불]`);
     guide();
   }
@@ -515,12 +524,14 @@
     if (s.ret && s.ret.objection && rs === 'RETURN_REJECTED') return app.turn('hq', '고객 이의를 판정하세요. 결과는 최종이고 재심이 없어요', { rules: [{ k: '판정 목표 기한', v: lv('mediationBd') }, { k: '판정자', v: 'CS 담당과 다른 사람' }, { k: '근거', v: '클레임 이력 · 양측 사진' }] });
     if (s.creq && s.creq.objection && cst === 'CANCEL_REJECTED') return app.turn('hq', '고객이 취소 거부에 이의를 제기했어요. 취소 요청 시각과 출고 기록을 비교해 판정하세요. 결과는 최종이고 재심이 없어요', { hint: '[고객 주장 인정]은 이미 나간 상품을 판매자 비용으로 회수한 뒤 환불하는 갈래, [파트너 거부 유지]는 거부가 확정되고 받은 상품은 일반 반품으로만 돌려보내는 갈래예요.', rules: [{ k: '판정 목표 기한', v: lv('mediationBd') }, { k: '판정자', v: 'CS 담당과 다른 사람' }, { k: '근거', v: '취소 요청 시각 · 송장 등록·집하 기록' }, { k: '자동 구매 확정', v: '중재 중에는 멈춤' }] });
     if (has('PAYMENT_PENDING')) return app.turn('system', `고객 입금을 기다려요. [입금 확인 웹훅 받기]를 누르거나 시간을 보내 입금 기한(${fmtDate(o.vbDue)})을 넘겨 보세요`, { hint: '+1일을 세 번 누르면 기한이 지나 PG 계좌 마감을 확인한 뒤 자동 취소돼요. 고객은 입금 전 [주문 취소]도 할 수 있어요.', rules: [{ k: '입금 기한', policy: 'payment.vbank_due_days' }, { k: '기한 하루 전', v: '입금 안내 알림' }, { k: '늦은 입금', v: '주문을 되살리지 않고 자동 환불' }] });
+    /* D52: 본 상품 남은 수량 전부의 취소 클레임이 열리면 붙은 구성품도 그때부터 그 클레임 대상 */
+    const ck = creqKids(); const kidScope = ck.length ? [{ k: '붙은 추가 구성품', v: `같은 클레임 대상 · 따로 클레임·구매 확정·정산 없음 · ${esc(kidsText(ck))}` }] : [];
     if (s.creq && cst === 'CANCEL_REQUESTED') {
       const rec = recById(s.creq.recId); setPv(rec.pid);
-      return app.turn('partner', `${PARTNERS[rec.pid].name}: 고객 취소 요청이 왔어요. [취소 승인]하거나, 이미 보냈으면 송장을 넣고 거부하세요`, { hint: `처리하지 않고 +1일을 누르면 영업일 1일이 지나 자동 승인·환불돼요(송장이 있는 건은 자동 승인 안 함). 거부하면 고객이 거부 통지 뒤 ${P('claim.objection_days')}일 안에 이의를 제기할 수 있고 본사가 중재해요.`, rules: [{ k: '처리 기한', policy: 'claim.cancel_auto_approve_bd' }, { k: '자동 승인 시각', v: fmtDate(s.creq.due) }, { k: '거부할 때', v: '송장 필수 · 반품 안내' }, { k: '거부 뒤 고객 이의', policy: 'claim.objection_days' }] });
+      return app.turn('partner', `${PARTNERS[rec.pid].name}: 고객 취소 요청이 왔어요. [취소 승인]하거나, 이미 보냈으면 송장을 넣고 거부하세요`, { hint: `처리하지 않고 +1일을 누르면 영업일 1일이 지나 자동 승인·환불돼요(송장이 있는 건은 자동 승인 안 함). 거부하면 고객이 거부 통지 뒤 ${P('claim.objection_days')}일 안에 이의를 제기할 수 있고 본사가 중재해요.`, rules: [{ k: '처리 기한', policy: 'claim.cancel_auto_approve_bd' }, { k: '자동 승인 시각', v: fmtDate(s.creq.due) }, { k: '거부할 때', v: '송장 필수 · 반품 안내' }, { k: '거부 뒤 고객 이의', policy: 'claim.objection_days' }, ...kidScope] });
     }
     if (s.creq && cst === 'CANCEL_REJECTED' && !s.creq.objection) {
-      return app.turn('customer', '판매자가 이미 보냈다며 취소를 거부했어요. 동의하지 않으면 주문 상세에서 [이의 제기]를 누르세요', { hint: `동의하면 상품을 받은 뒤 반품을 신청하면 돼요. +1일을 눌러 이의 기한(${fmtDate(s.creq.objDue)})이 지나면 버튼이 사라지고 거부가 확정돼요. 시스템 탭에서 배송 완료를 먼저 확인해도 돼요.`, rules: [{ k: '이의 제기 기한', policy: 'claim.objection_days' }, { k: '마감', v: fmtDate(s.creq.objDue) }, { k: '중재 결과', v: '최종 · 재심 없음' }, { k: '클레임이 열린 항목', v: '자동 구매 확정에서 제외' }] });
+      return app.turn('customer', '판매자가 이미 보냈다며 취소를 거부했어요. 동의하지 않으면 주문 상세에서 [이의 제기]를 누르세요', { hint: `동의하면 상품을 받은 뒤 반품을 신청하면 돼요. +1일을 눌러 이의 기한(${fmtDate(s.creq.objDue)})이 지나면 버튼이 사라지고 거부가 확정돼요${ck.length ? '(붙은 구성품도 그때 원래 흐름으로 돌아와요)' : ''}. 시스템 탭에서 배송 완료를 먼저 확인해도 돼요.`, rules: [{ k: '이의 제기 기한', policy: 'claim.objection_days' }, { k: '마감', v: fmtDate(s.creq.objDue) }, { k: '중재 결과', v: '최종 · 재심 없음' }, { k: '클레임이 열린 항목', v: '자동 구매 확정에서 제외' }, ...kidScope] });
     }
     if (s.creq && s.creq.done === 'won') {
       const wonRule = { k: '중재 결과', v: '고객 주장 인정(최종)' };
@@ -745,7 +756,7 @@
    *  요청 단계(라벨과 같은 말)·거부·완료에는 붙이지 않고, 취소 인정 건은 회수 진행을 덧붙임 */
   function claimStep(m, st) {
     if (['CLAIM_COMPLETED', 'CANCEL_REJECTED', 'RETURN_REJECTED', 'CANCEL_REQUESTED'].includes(st)) return '';
-    const step = GC.claim.step(m, st); const c = S().creq;
+    const step = GC.claim.step(m, st, m === 'CLAIM_RETURN' ? 'RETURN' : 'CANCEL'); const c = S().creq;
     if (m === 'CLAIM_CANCEL' && st === 'CANCEL_APPROVED' && c && c.done === 'won') return `${step} · ${c.collect === 'collecting' ? '회수 중' : '배송 완료 뒤 회수'}`;
     return step;
   }
@@ -809,8 +820,9 @@
       return `<div class="claimbox">${head('st-warn', cLabel)}<p class="small">본사 중재로 취소가 인정됐어요(최종). ${step} 회수가 확인되면 ${won(w.x.refund)}을 환불해요.</p>${kidP}</div>`;
     }
     if (c.done === 'refunded') return `<div class="claimbox">${head('st-done', cLabel)}<p class="small">본사 중재로 취소가 인정됐어요(최종). 상품을 회수하고 ${won(c.refund)}을 환불했어요${c.kidsTxt ? `(붙은 ${esc(c.kidsTxt)} 포함)` : ''}.</p></div>`;
-    if (c.done === 'kept') return `<div class="claimbox">${head('st-stop', cLabel)}${shipLine}<p class="small">본사 중재로 취소 거부가 확정됐어요(최종). 받은 상품은 반품 기한 안에 반품을 신청할 수 있어요.</p></div>`;
-    if (c.done === 'expired') return `<div class="claimbox">${head('st-stop', cLabel)}<p class="small">이의 기한이 지나 취소 거부가 확정됐어요. 받은 상품은 반품 기한 안에 반품을 신청할 수 있어요.</p></div>`;
+    const backLine = c.kidsBack ? `<p class="xsmall">붙은 추가 구성품 ${esc(c.kidsBack)}도 취소 요청에서 풀려 원래대로 구매 확정·반품할 수 있어요.</p>` : '';
+    if (c.done === 'kept') return `<div class="claimbox">${head('st-stop', cLabel)}${shipLine}<p class="small">본사 중재로 취소 거부가 확정됐어요(최종). 받은 상품은 반품 기한 안에 반품을 신청할 수 있어요.</p>${backLine}</div>`;
+    if (c.done === 'expired') return `<div class="claimbox">${head('st-stop', cLabel)}<p class="small">이의 기한이 지나 취소 거부가 확정됐어요. 받은 상품은 반품 기한 안에 반품을 신청할 수 있어요.</p>${backLine}</div>`;
     return '';
   }
   function itemHtml(rec) {
@@ -825,7 +837,9 @@
     }
     const money = CLOSED.includes(st) ? (rec.refunded != null ? `환불 ${won(rec.refunded)}${rec.viaCancel ? ' · 취소 인정 건(회수 뒤 환불)' : ''}${rec.refundIncl ? ` · ${esc(rec.refundIncl)}` : ''}` : rec.refundNote || '결제 전 취소 · 환불할 금액 없음') : `결제 ${won(paidShare(rec.base, rec.qty))}`;
     const add = isAddon(rec.base); const cl = custLabel(rec);
-    const withParent = add && inCreq(rec) ? `<span class="xsmall">${esc(PROD[p.addonOf].short)} 취소 요청에 함께 들어 있어요(같은 송장) · 따로 구매 확정·반품하지 않아요</span>` : '';
+    /* D52: 본 상품 남은 수량 전부의 취소 클레임이 열린 동안 붙은 구성품도 그 클레임 대상 — 따로 클레임·구매 확정 없음, 결과를 따라감 */
+    const ps = add ? PROD[p.addonOf].short : '';
+    const withParent = add && inCreq(rec) ? `<span class="xsmall">${S().creq.done === 'won' ? `${esc(wa(ps))} 함께 회수·환불돼요(같은 상자) · 따로 반품하지 않아요` : `${esc(ps)} 취소 요청에 함께 들어 있어요(같은 송장) · 결과가 나올 때까지 따로 취소·반품·구매 확정하지 않고, 거부가 확정되면 원래대로 돌아와요`}</span>` : '';
     return `<div class="oitem${add ? ' addon' : ''}"><div class="split"><span class="nm">${add ? '<span class="tag tag-sm">추가 구성품</span> ' : ''}${esc(p.name)} · ${rec.qty}${UW(rec.base)}</span><span class="stk"><span class="st ${stCls(rec)}">${esc(cl.t)}</span>${stepHtml(cl.step)}</span></div>
       <span class="xsmall faint">${money}${st === 'DELIVERED' && rec.deliveredAt ? ` · ${fmtDate(rec.deliveredAt, false)} 받음` : ''} · <button class="linkish" data-act="snapView" data-id="${rec.id}">주문할 때의 상품 정보 보기</button></span>${withParent}
       ${s.ret && s.ret.recId === rec.id ? retBox(rec) : ''}${s.creq && s.creq.recId === rec.id ? creqBox() : ''}
@@ -1383,9 +1397,10 @@
         app.log('rule', `이미 나간 상품이라 클레임 유형은 취소 그대로 두고, 플랫폼이 판매자 비용으로 회수한 뒤 판매자 검수 없이 환불해요(환불 금액은 취소 요청 때 안내한 스냅샷 재계산). 주문 항목은 배송 완료 → 반품 완료(cancel_objection_return)로 닫혀요(D23)${wk.length ? ` · 같은 송장으로 간 붙은 ${esc(kidsText(wk))}도 같은 취소 클레임으로 함께 회수·환불(parent_collected, 회수는 한 번, D39)` : ''}`);
         if (rec.st === 'DELIVERED') startCancelCollect();
       } else {
-        if (!goClaim('cancel', 'mediation_partner', '본사 중재 · 판매자 거부 유지(최종)', c, [rec])) return;
-        c.done = 'kept';
-        app.log('rule', '거부 확정 → 클레임이 닫혀 이 항목도 자동 구매 확정 대상으로 돌아가요. 받은 상품은 일반 반품 절차(U-MY-03)로만 돌려보낼 수 있어요');
+        const wk = creqKids();
+        if (!goClaim('cancel', 'mediation_partner', '본사 중재 · 판매자 거부 유지(최종)', c, [rec, ...wk])) return;
+        c.done = 'kept'; c.kidsBack = kidsText(wk);
+        app.log('rule', `거부 확정 → 클레임이 닫혀 이 항목${wk.length ? `과 붙은 ${esc(c.kidsBack)}` : ''}도 자동 구매 확정 대상으로 돌아가요(원래 흐름, D52). 받은 상품은 일반 반품 절차(U-MY-03)로만 돌려보낼 수 있어요`);
       }
       mediationNotify(rec.pid); refresh();
     },
@@ -1484,7 +1499,8 @@
     const label = pc.status === 'wait' ? '판매자 변경 확인 필요' : GC.sm.machine('ORDER_CUSTOM').states[st].customer;
     const cls = pc.status === 'wait' ? 'st-warn' : pc.status === 'refunded' ? 'st-stop' : 'st-now';
     const timeline = stepsHtml(['요청', '시안', '확정', '인쇄 확인', '제작', '출고'], 3, pc.status === 'refunded' ? 3 : -1);
-    const adName = `${ad.name} ${ad.qty}${ad.u}`;
+    const adName = `${ad.name} ${ad.qty}${ad.u}`; const self = pc.addonSelf;
+    const inclTxt = self ? '디자인비·판비 포함' : '디자인비·판비·구성품 포함';
     let card = '';
     if (pc.status === 'wait') {
       card = `<div class="claimbox"><div class="split"><b>제작 판매자 변경 제안</b><span class="st st-warn">${fmtDate(pc.due)}까지</span></div>
@@ -1493,24 +1509,28 @@
           <dt>상품 대금</dt><dd>박스당 ${won(PC.old.price)} → ${won(c.price)} (${PC.qty}박스 ${won(m.list)} → ${won(m.newList)})</dd>
           <dt>판비</dt><dd>${won(m.plate)} → ${won(m.newPlate)}</dd>
           <dt>금액 비교</dt><dd>상품 + 판비 합계로 비교해요 · ${pcSumTxt(m)}<br>${lo ? `동의하면 차액 ${won(m.agree.oldBase - m.agree.newBase)} 중 할인받아 낸 비율만큼 <b>${won(m.agree.refund)}</b>을 돌려드려요` : '합계가 더 높지만 추가로 내지 않아요. 판비가 새로 생기거나 늘어도 더 받지 않아요'}</dd>
-          <dt>붙은 구성품</dt><dd>${esc(eun(adName))} 원래 판매자 상품이라 취소·환불돼요(낸 ${won(m.addonPaid)} 그대로 · 동의해도 같아요). 새 판매자 구성품이 필요하면 따로 주문해 주세요</dd></dl>
-        <p class="xsmall">${fmtDate(pc.due)}까지 답이 없으면 낸 금액 ${won(m.full.totalRefund)}(디자인비·판비·구성품 포함)을 모두 돌려드려요. 기한 하루 전에 한 번 더 알려 드려요.</p>
+          <dt>붙은 구성품</dt><dd>${self ? `${esc(adName)} 이미 취소했어요(${won(self.refund)} 환불)` : `${esc(eun(adName))} 원래 판매자 상품이라 취소·환불돼요(낸 ${won(m.addonPaid)} 그대로 · 동의해도 같아요). 새 판매자 구성품이 필요하면 따로 주문해 주세요`}</dd></dl>
+        <p class="xsmall">${fmtDate(pc.due)}까지 답이 없으면 낸 금액 ${won(m.full.totalRefund)}(${inclTxt})을 모두 돌려드려요. 기한 하루 전에 한 번 더 알려 드려요.</p>
         <div class="pc-acts"><button class="btn btn-sm" data-act="pcRefund">전액 환불</button><button class="btn btn-sm btn-primary" data-act="pcAgree">변경 동의</button></div></div>`;
     } else if (pc.status === 'agreed') {
       card = `<div class="claimbox"><div class="split"><b>제작 판매자가 바뀌었어요</b><span class="st st-done">변경 동의</span></div>
         <p class="small">${esc(iga(c.name))} 확정 디자인 그대로 인쇄해요. 인쇄 파일은 새 판매자에게 다시 보냈어요.</p>
         <dl class="kv xsmall"><dt>이전 판매자</dt><dd>${PC.old.name} · ${esc(PC.prod)} (주문 기록에 남아요)</dd><dt>동의한 때</dt><dd>${fmtDate(pc.doneAt)}</dd>
           <dt>금액 비교</dt><dd>상품 + 판비 합계 ${pcSumTxt(m)} · ${lo ? `차액 ${won(m.agree.refund)} 환불` : '추가로 낸 금액 없음'}</dd>
-          <dt>붙은 구성품</dt><dd>${esc(adName)} 취소 · ${won(m.addonPaid)} 환불</dd>
-          <dt>환불</dt><dd>${won(m.agree.totalRefund)} · 카드사 반영까지 3~5영업일</dd></dl></div>`;
+          <dt>붙은 구성품</dt><dd>${self ? `${esc(adName)} 먼저 취소 · ${won(self.refund)} 환불함` : `${esc(adName)} 취소 · ${won(m.addonPaid)} 환불`}</dd>
+          <dt>환불</dt><dd>${m.agree.totalRefund ? `${won(m.agree.totalRefund)} · 카드사 반영까지 3~5영업일` : '없음 · 더 내지도 않아요'}</dd></dl></div>`;
     } else {
       card = `<div class="claimbox"><div class="split"><b>판매자 변경 대신 전액 환불했어요</b><span class="st st-stop">전액 환불</span></div>
-        <p class="small">${pc.how === 'auto' ? `${fmtDate(pc.due)}까지 답이 없어` : '고르신 대로'} 낸 금액 ${won(m.full.totalRefund)}을 모두 돌려드렸어요(디자인비·판비·붙은 구성품 포함, 공제 없음). 쓴 쿠폰은 유효기간이 남았으면 쿠폰함으로 돌아가요.</p></div>`;
+        <p class="small">${pc.how === 'auto' ? `${fmtDate(pc.due)}까지 답이 없어` : '고르신 대로'} 낸 금액 ${won(m.full.totalRefund)}을 모두 돌려드렸어요(${self ? '디자인비·판비 포함 · 붙은 구성품은 먼저 취소함' : '디자인비·판비·붙은 구성품 포함'}, 공제 없음). 쓴 쿠폰은 유효기간이 남았으면 쿠폰함으로 돌아가요.</p></div>`;
     }
-    /* 붙은 추가 구성품 줄(D38): 원래 판매자 상품 · 맞춤 항목과 같은 송장 예정 → 동의·환불·무응답 모두 함께 취소 */
+    /* 붙은 추가 구성품 줄(D38 · D49): 원래 판매자 상품 · 본 맞춤 항목 [인쇄 가능] 전이라 결제 완료 → 고객이 바로 취소 가능.
+       [인쇄 가능] 때 시스템이 함께 발주 확인하고 맞춤 항목과 같은 송장으로 나감 · 판매자 변경 동의·환불·무응답이면 함께 취소 */
     const adOff = pc.addonSt === 'CANCELED';
+    const adNote = adOff ? (self ? `직접 취소(판매자 확인 전이라 바로) · 환불 ${won(self.refund)}` : `${PC.old.name} 상품이라 제작 판매자 변경으로 함께 취소 · 환불 ${won(m.addonPaid)}(공제 없음)`)
+      : `결제 ${won(m.addonPaid)} · ${PC.old.name} 상품 · 판매자가 수저집 인쇄를 확인할 때 함께 준비돼요(같은 송장). 그 전에는 바로 취소할 수 있어요`;
+    const adBtn = !adOff && pc.addonSt === 'PAID' && pc.status === 'wait' ? '<div class="cluster"><button class="btn btn-sm" data-act="pcAddonSelf">취소</button></div>' : '';
     const addonItem = `<div class="oitem addon"><div class="split"><span class="nm"><span class="tag tag-sm">추가 구성품</span> ${esc(adName)}</span><span class="st ${adOff ? 'st-stop' : 'st-now'}">${esc(GC.sm.machine('ORDER').states[pc.addonSt].customer)}</span></div>
-      <span class="xsmall faint">${adOff ? `${PC.old.name} 상품이라 제작 판매자 변경으로 함께 취소 · 환불 ${won(m.addonPaid)}(공제 없음)` : `결제 ${won(m.addonPaid)} · ${PC.old.name} 상품 · 수저집과 같은 송장으로 나갈 예정`}</span></div>`;
+      <span class="xsmall faint">${adNote}</span>${adBtn}</div>`;
     const b = bal();
     f.body.innerHTML = `
       <div class="app-pad" style="padding-bottom:4px"><div class="split"><b>${PC.no}</b><span class="xsmall faint">${fmtDate(PC.at)} 주문</span></div></div>
@@ -1520,7 +1540,7 @@
           <span class="xsmall faint">${esc(PC.spec)} · 디자인 ${esc(PC.design)}</span>
           ${card}</div>${addonItem}</div></div>
       <div class="app-sec"><h4>결제 정보</h4>
-        ${ladderHtml(m.r, true, { design: `맞춤 디자인비 · 판매자 사정으로 전액 환불하면 함께 돌려받아요` })}
+        ${ladderHtml(o.calc, true, { design: `맞춤 디자인비 · 판매자 사정으로 전액 환불하면 함께 돌려받아요` })}
         <dl class="kv small"><dt>결제</dt><dd>카드 ${won(o.paid.pg)}</dd>
           ${o.refunds.map((x) => `<dt>환불 ${fmtDate(x.at, false)}</dt><dd>${won(x.total)} · 카드<br><span class="xsmall faint">${esc(x.label)}</span></dd>`).join('')}
           ${o.refunds.length ? `<dt>남은 결제 잔액</dt><dd>${won(b.pg + b.points)}</dd>` : ''}</dl></div>`;
@@ -1540,8 +1560,9 @@
     f.nav('주문'); f.url(`admin.sikup.co.kr/orders/${PC.no}`);
     const stTxt = { wait: '고객 답변 대기', agreed: '변경 동의', refunded: pc.how === 'auto' ? '전액 환불 · 기한 무응답' : '전액 환불 · 고객 선택' }[pc.status];
     const stCl = { wait: 'st-warn', agreed: 'st-done', refunded: 'st-stop' }[pc.status];
-    const NH = P('notify.notice_min_hours');
-    const addonTxt = `붙은 구성품 ${won(m.addonPaid)} 그대로`;
+    const NH = P('notify.notice_min_hours'); const self = pc.addonSelf;
+    const addonTxt = self ? `붙은 구성품은 고객이 먼저 취소(${won(self.refund)} 환불함)` : `붙은 구성품 ${won(m.addonPaid)} 그대로`;
+    const adNow = self ? `고객이 ${fmtDate(self.at)} 직접 취소 · 환불 ${won(self.refund)}(C-PAY-02 재계산)` : pc.addonSt === 'PAID' ? '결제 완료 · 본 항목 [인쇄 가능] 때 함께 발주 확인(D49)' : esc(stName(pc.addonSt));
     const agreeRow = lo
       ? `차액 ${won(m.agree.refund)} = (원래 합계 ${won(m.agree.oldBase)} − 새 합계 ${won(m.agree.newBase)}) × 결제 비율(상품·판비 줄 결제 ${won(m.oldPaid)} ÷ ${won(m.agree.oldBase)}), 원 단위 내림 + ${addonTxt}`
       : `새 합계 ${won(m.agree.newBase)} ≥ 원래 합계 ${won(m.agree.oldBase)} → 고객에게 더 받지 않음(차액 0원) + ${addonTxt}`;
@@ -1556,9 +1577,9 @@
           <tr><td>${PC.qty}박스(할인 전)</td><td class="num">${won(m.list)}</td><td class="num">${won(m.newList)}</td></tr>
           <tr><td>판비</td><td class="num">${won(m.plate)}</td><td class="num">${won(m.newPlate)}</td></tr>
           <tr class="is-sum"><td>상품 + 판비 합계</td><td class="num">${won(m.agree.oldBase)}</td><td class="num">${won(m.agree.newBase)}</td></tr>
-          <tr><td>붙은 구성품</td><td>${esc(ad.name)} ${ad.qty}${ad.u} · 결제 ${won(m.addonPaid)}</td><td>넘기지 않음 · 취소·환불</td></tr>
+          <tr><td>붙은 구성품</td><td>${esc(ad.name)} ${ad.qty}${ad.u} · 결제 ${won(m.addonPaid0)}<br><span class="xsmall faint">${adNow}</span></td><td>${self ? '이미 취소됨' : '넘기지 않음 · 취소·환불'}</td></tr>
           <tr><td>디자인</td><td colspan="2">${esc(PC.design)} 그대로 · 동의하면 새 파트너에게 패키지 다시 전달</td></tr></tbody></table></div>
-          <p class="xsmall faint">상품 + 판비 합계(할인 전)로 비교해요. 같거나 높으면 고객에게 더 받지 않아요(판비가 새로 생기거나 늘어도). 붙은 구성품은 원래 파트너 상품이라 동의·환불·무응답 모두 공제 없이 취소·환불해요.</p></div></div>
+          <p class="xsmall faint">상품 + 판비 합계(할인 전)로 비교해요. 같거나 높으면 고객에게 더 받지 않아요(판비가 새로 생기거나 늘어도). 붙은 구성품은 원래 파트너 상품이라 동의·환불·무응답 모두 공제 없이 취소·환불해요. 맞춤 항목에 붙은 구성품은 따로 [발주 확인]이 없고 본 항목 [인쇄 가능] 때 함께 발주 확인돼, 그 전에는 고객이 바로 취소할 수 있어요(D49).</p></div></div>
         <div class="panel"><div class="panel-h"><h2>답변·기한</h2><span class="st ${stCl}">${stTxt}</span></div><div class="panel-b">
           <dl class="kv small"><dt>제안</dt><dd>${fmtDate(pc.at)} · 고객 알림(알림톡·푸시·이메일)</dd>
             <dt>답변 기한</dt><dd>제안 + ${pv('order.partner_change_reply_days')} → ${fmtDate(pc.due)}</dd>
@@ -1568,10 +1589,10 @@
           <p class="xsmall faint">예고 없이 돈을 움직이지 않아요. 다시 알림이 늦게 나갔으면 그 뒤 ${NH}시간을 기다려요(디자인 보류·자동 취소와 같은 규칙).</p></div></div>
       </div>
       <div class="panel"><div class="panel-h"><h2>금액</h2><span class="xsmall faint">C-PAY-02 예외 · 결제 때 스냅샷</span></div><div class="panel-b stack-sm">
-        <p class="small">원래 결제 ${won(m.total)} = 상품 ${won(m.prodPaid)} + 판비 ${won(m.platePaid)} + 디자인비 ${won(m.design)} + 붙은 구성품 ${won(m.addonPaid)} <span class="faint">(본사 상품 할인 쿠폰 ${won(m.r.totals.hqDisc)} 안분 반영)</span></p><div class="tbl-wrap"><table class="tbl small"><thead><tr><th>갈래</th><th>계산</th><th class="num">고객 환불</th></tr></thead><tbody>
+        <p class="small">${self ? `원래 결제 ${won(m.r0.totals.pay)} − 붙은 구성품 취소 환불 ${won(self.refund)} = 남은 결제 ${won(m.total)} = 상품 ${won(m.prodPaid)} + 판비 ${won(m.platePaid)} + 디자인비 ${won(m.design)} <span class="faint">(구성품을 뺀 남은 주문으로 다시 계산 · 본사 상품 할인 쿠폰 ${won(m.r.totals.hqDisc)} 안분 반영)</span>` : `원래 결제 ${won(m.total)} = 상품 ${won(m.prodPaid)} + 판비 ${won(m.platePaid)} + 디자인비 ${won(m.design)} + 붙은 구성품 ${won(m.addonPaid)} <span class="faint">(본사 상품 할인 쿠폰 ${won(m.r.totals.hqDisc)} 안분 반영)</span>`}</p><div class="tbl-wrap"><table class="tbl small"><thead><tr><th>갈래</th><th>계산</th><th class="num">고객 환불</th></tr></thead><tbody>
         <tr class="${pc.status === 'agreed' ? 'is-pick' : ''}"><td>변경 동의</td><td class="why">${agreeRow}</td><td class="num">${won(m.agree.totalRefund)}</td></tr>
         <tr class="${pc.status === 'refunded' ? 'is-pick' : ''}"><td>전액 환불 · 무응답</td><td class="why">파트너 귀책이라 공제 없이 그 항목에 낸 금액 전부 ${won(m.itemPaid)}(디자인비·판비 포함) + ${addonTxt} · 본사 상품 할인 쿠폰 되살림</td><td class="num">${won(m.full.totalRefund)}</td></tr></tbody></table></div>
-        <p class="xsmall faint">${PC.old.name}는 구매 확정 전이라 정산 이벤트가 없어요. 붙은 구성품은 쿠폰 최소 주문을 다시 계산하지 않고 결제 금액 그대로 돌려줘요.</p></div></div>
+        <p class="xsmall faint">${PC.old.name}는 구매 확정 전이라 정산 이벤트가 없어요. ${self ? '붙은 구성품은 고객이 먼저 취소해 일반 부분 취소처럼 남은 주문을 다시 계산해 환불했어요(C-PAY-02). 이 제안의 금액은 그 뒤 남은 결제 몫으로 셈해요.' : '붙은 구성품은 쿠폰 최소 주문을 다시 계산하지 않고 결제 금액 그대로 돌려줘요.'}</p></div></div>
       <div class="panel"><div class="panel-h"><h2>새 파트너 정산 기준</h2><span class="xsmall faint">${pc.status === 'agreed' ? `${fmtDate(pc.doneAt)} 동의 때 다시 저장함` : '고객이 동의하면 이렇게 다시 저장'} · C-STL-01</span></div><div class="panel-b stack-sm"><div class="tbl-wrap"><table class="tbl small"><tbody>${pcSettleRows(m)}</tbody></table></div>
         <p class="xsmall faint">원래 결제 스냅샷이 아니라 새 상품 금액으로 정산 기준을 다시 저장하고, 고객이 낸 금액과의 차이는 모두 플랫폼 부담 할인으로 구매 확정 이벤트에서 보전해요. 원래 파트너에게 이 비용을 받을지는 입점 계약을 따라요 <span class="tag tag-phase">법률 자문 전 초안</span>. 바뀐 뒤 확정 후 취소가 되면 판비 공제 상한(고객이 낸 판비)은 원래 판비 줄 결제 금액 ${won(m.platePaid)} 그대로예요.</p></div></div>
       <div class="panel"><div class="panel-h"><h2>처리 이력</h2><span class="xsmall faint">누가 · 언제 · 무엇을(감사 로그)</span></div><div class="panel-b"><div class="tbl-wrap"><table class="tbl small medlog"><thead><tr><th>시각</th><th>누가</th><th>내용</th></tr></thead><tbody>
@@ -1608,6 +1629,8 @@
       ['판매자 변경 · 하루 전 다시 알림', `답변 기한(${fmtDate(pc.due)}) − 1일 · 고객에게 제안 알림 한 번 더`, pc.noticedAt ? `<span class="sla sla-over">${fmtDate(pc.noticedAt)} 보냄</span>` : at(pc.remindAt)],
       ['판매자 변경 · 무응답 전액 환불', `기한 지남 + 다시 알림 뒤 ${NH}시간 · 전액 환불 알림`, pc.noticedAt ? at(pcDueAt(pc)) : `<span class="sla sla-warn">다시 알림 뒤</span>`],
     ] : [];
+    /* D49: 맞춤 항목에 붙은 구성품은 발주 확인 리마인드·운영팀 알림 배치에 들지 않음(본 항목을 따름) */
+    if (pc.addonSt === 'PAID') rows.push([`붙은 구성품 발주 확인 · ${esc(PC.addon.short)}`, '본 맞춤 항목 [인쇄 가능] 때 시스템이 함께(parent_printable) · 따로 [발주 확인]·리마인드·운영팀 알림 없음 · 약속 출고일도 본 항목을 따름', '<span class="sla sla-warn">본 항목 따라</span>']);
     f.body.innerHTML = `<h3>배치·외부 연동</h3>
       <p class="small muted">사람이 누르지 않아도 시간이 되면 돌아가는 일이에요. 위쪽 +1일·+7일로 시간을 보내면 자동으로 실행돼요.</p>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th>작업</th><th>기준</th><th>실행 시각</th></tr></thead><tbody>
@@ -1615,16 +1638,19 @@
       <div class="note note-ext small">외부 연동: 토스페이먼츠(부분 취소·전액 취소) · 솔라피(알림톡) · FCM(푸시) · AWS SES(이메일). 프로토타입에서는 안내 창으로 대신해요.</div>`;
   }
   function pcGuide() {
-    const s = S(); const pc = s.pc; const c = pcCand(); const m = pcMoney(); const lo = m.lower; const t = app.clock.now(); const ad = PC.addon;
+    const s = S(); const pc = s.pc; const c = pcCand(); const m = pcMoney(); const lo = m.lower; const t = app.clock.now(); const ad = PC.addon; const self = pc.addonSelf;
     const rules = [{ k: '답변 기한', policy: 'order.partner_change_reply_days' }, { k: '마감', v: fmtDate(pc.due) }, { k: '하루 전 다시 알림', v: pc.noticedAt ? `${fmtDate(pc.noticedAt)} 보냄` : fmtDate(pc.remindAt) }, { k: '무응답 환불(예고 뒤)', policy: 'notify.notice_min_hours' },
-      { k: '금액 비교', v: `상품 + 판비 합계 ${pcSumTxt(m)}` }, { k: '차액', v: lo ? `낸 비율만큼 ${won(m.agree.refund)} 환불` : '0원 · 더 받지 않음' },
-      { k: '붙은 구성품', v: `${ad.short} 취소 · ${won(m.addonPaid)} 그대로 환불` }, { k: '전액 환불', v: '디자인비·판비·구성품 포함 · 공제 없음' }];
+      { k: '상품 + 판비 합계', v: pcSumTxt(m) }, { k: '차액', v: lo ? `낸 비율만큼 ${won(m.agree.refund)} 환불` : '0원 · 더 받지 않음' },
+      { k: `붙은 ${ad.short}`, v: self ? `먼저 취소 · ${won(self.refund)} 환불함` : `취소 · ${won(m.addonPaid)} 그대로 환불` },
+      { k: '구성품 발주 확인', v: '본 항목 [인쇄 가능] 때(D49)' },
+      { k: '전액 환불', v: `${self ? '디자인비·판비' : '디자인비·판비·구성품'} · 공제 없음` }];
+    const adPart = self ? '' : ` + 붙은 구성품 ${won(m.addonPaid)}`;
     if (pc.status === 'wait') {
       if (t >= pc.due) return app.turn('system', `답변 기한이 지났어요. 다시 알림을 ${fmtDate(pc.noticedAt)}에 보내서 ${fmtDate(pcDueAt(pc))}부터 전액 환불해요. +1일을 누르세요`, { rules, hint: '시계를 한 번에 넘겨 다시 알림이 기한 뒤에 나간 셈이에요. 예고 없이 돈을 움직이지 않으므로, 알림 뒤 24시간을 기다린 다음 환불해요.' });
-      return app.turn('customer', '주문 상세의 판매자 변경 제안을 보고 [변경 동의] 또는 [전액 환불]을 누르세요', { rules, hint: `답하지 않고 +1일을 여섯 번 누르면 기한 하루 전 다시 알림이 가고, 한 번 더 누르면 무응답 전액 환불돼요. +7일로 한 번에 넘기면 알림이 늦게 나간 셈이라 그 뒤 24시간을 더 기다려요. 본사 화면에서 상품 + 판비 합계 비교와 새 판매자 정산 기준을 볼 수 있어요.` });
+      return app.turn('customer', '주문 상세의 판매자 변경 제안을 보고 [변경 동의] 또는 [전액 환불]을 누르세요', { rules, hint: `답하지 않고 +1일을 여섯 번 누르면 기한 하루 전 다시 알림이 가고, 한 번 더 누르면 무응답 전액 환불돼요. +7일로 한 번에 넘기면 알림이 늦게 나간 셈이라 그 뒤 24시간을 더 기다려요. ${self ? '붙은 이쑤시개는 먼저 취소했어요.' : '붙은 이쑤시개는 본 항목 [인쇄 가능] 전이라 결제 완료 상태예요. 이쑤시개 줄의 [취소]를 누르면 요청 없이 바로 취소돼요.'} 본사 화면에서 상품 + 판비 합계 비교와 새 판매자 정산 기준을 볼 수 있어요.` });
     }
-    if (pc.status === 'agreed') return app.done(`제작 판매자가 ${esc(ro(c.name))} 바뀌었어요. 주문 항목은 디자인 확정 그대로이고 인쇄 파일을 새 판매자에게 다시 보냈어요. 환불 ${won(m.agree.totalRefund)}(${lo ? `차액 ${won(m.agree.refund)}` : '차액 0원 · 더 받지 않음'} + 붙은 구성품 ${won(m.addonPaid)}) · 새 판매자 정산 판매가 ${won(m.agree.settle.sale)}(고객이 낸 금액과의 차이 ${won(m.agree.settle.platformDisc)}은 플랫폼 부담 할인)`, { next: '새 판매자의 [인쇄 가능]부터는 디자인 흐름(design.html)과 같아요. 위 시작 장면에서 다른 가격의 제안을 고르거나, [처음부터] 누른 뒤 답하지 않고 시간을 보내 무응답 환불을 해 보세요.' });
-    return app.done(`${pc.how === 'auto' ? '기한까지 답이 없어' : '고객이 골라'} 전액 ${won(m.full.totalRefund)}을 환불했어요(디자인비·판비·붙은 구성품 포함, 공제 없음, 쿠폰 되살림). 주문 항목·디자인 요청·붙은 구성품은 취소로 닫혔어요.`, { next: '[처음부터]로 [변경 동의]를 눌러 보거나, 위 시작 장면에서 상품만 싼 제안이나 더 비싼 제안을 골라 보세요.' });
+    if (pc.status === 'agreed') return app.done(`제작 판매자가 ${esc(ro(c.name))} 바뀌었어요. 주문 항목은 디자인 확정 그대로이고 인쇄 파일을 새 판매자에게 다시 보냈어요. 환불 ${won(m.agree.totalRefund)}(${lo ? `차액 ${won(m.agree.refund)}` : '차액 0원 · 더 받지 않음'}${adPart}) · 새 판매자 정산 판매가 ${won(m.agree.settle.sale)}(고객이 낸 금액과의 차이 ${won(m.agree.settle.platformDisc)}은 플랫폼 부담 할인)`, { next: '새 판매자의 [인쇄 가능]부터는 디자인 흐름(design.html)과 같아요. 위 시작 장면에서 다른 가격의 제안을 고르거나, [처음부터] 누른 뒤 답하지 않고 시간을 보내 무응답 환불을 해 보세요.' });
+    return app.done(`${pc.how === 'auto' ? '기한까지 답이 없어' : '고객이 골라'} 전액 ${won(m.full.totalRefund)}을 환불했어요(${self ? '디자인비·판비 포함 · 붙은 구성품은 먼저 취소함' : '디자인비·판비·붙은 구성품 포함'}, 공제 없음, 쿠폰 되살림). 주문 항목·디자인 요청·붙은 구성품은 취소로 닫혔어요.`, { next: '[처음부터]로 [변경 동의]를 눌러 보거나, 위 시작 장면에서 상품만 싼 제안이나 더 비싼 제안을 골라 보세요.' });
   }
   /** 붙은 추가 구성품 함께 취소(D38 · A-ORD-01 ⑥): ORDER partner_change_cancel(출고 전) — 환불은 부르는 쪽이 한 번에 */
   function pcAddonCancel(by) {
@@ -1633,25 +1659,31 @@
     pc.addonSt = 'CANCELED';
   }
   async function pcRefundCore(how) {
-    const s = S(); const pc = s.pc; const m = pcMoney(); const x = m.full; const c = pcCand(); const ad = PC.addon;
+    const s = S(); const pc = s.pc; const m = pcMoney(); const x = m.full; const c = pcCand(); const ad = PC.addon; const self = pc.addonSelf;
     const by = how === 'auto' ? `답변 기한 ${P('order.partner_change_reply_days')}일 무응답 · 다시 알림 뒤 ${P('notify.notice_min_hours')}시간 지남` : '고객 [전액 환불]';
     app.go('citem', 'partner_change_refund', { by });
     app.go('design', 'partner_change_refund', { by });
     pcAddonCancel(`붙은 맞춤 항목 전액 환불(${how === 'auto' ? '무응답' : '고객 선택'}) · 같은 사유로 함께 취소`);
     const pay = { refund: x.totalRefund, pointRefund: 0, pgRefund: x.totalRefund };
-    const label = `제작 판매자 변경 대신 전액 환불(${how === 'auto' ? '무응답' : '고객 선택'}) · 디자인비·판비·붙은 구성품 포함`;
+    const label = `제작 판매자 변경 대신 전액 환불(${how === 'auto' ? '무응답' : '고객 선택'}) · ${self ? '디자인비·판비 포함' : '디자인비·판비·붙은 구성품 포함'}`;
     if (how === 'auto') refundApply(pay, label, true, false);
-    else await payRefund(pay, label, ['파트너 귀책이라 공제 없음(디자인 착수 뒤라도 디자인비 포함)', `붙은 구성품 ${ad.short} ${won(m.addonPaid)}도 결제 금액 그대로(쿠폰 최소 주문 다시 계산 안 함)`], false);
+    else await payRefund(pay, label, ['파트너 귀책이라 공제 없음(디자인 착수 뒤라도 디자인비 포함)', self ? `붙은 구성품 ${ad.short}은 먼저 취소해 ${won(self.refund)} 환불함 · 남은 결제 잔액 전부` : `붙은 구성품 ${ad.short} ${won(m.addonPaid)}도 결제 금액 그대로(쿠폰 최소 주문 다시 계산 안 함)`], false);
     app.log('rule', `쿠폰 되돌림: 본사 상품 할인 쿠폰 ${esc(HQ_COUPONS[0].name)} — 유효기간이 남았으면 쿠폰함으로 · ${PC.old.name}는 구매 확정 전이라 정산 이벤트 없음`);
-    app.notify('NOTI_ITEM_PARTNER_CHANGE_REFUNDED', '고객', ['알림톡', '푸시', '이메일'], `전액 환불 ${won(x.totalRefund)}(붙은 구성품 포함)${how === 'auto' ? ' · 답변 기한 지남' : ''}`);
+    app.notify('NOTI_ITEM_PARTNER_CHANGE_REFUNDED', '고객', ['알림톡', '푸시', '이메일'], `전액 환불 ${won(x.totalRefund)}${self ? '' : '(붙은 구성품 포함)'}${how === 'auto' ? ' · 답변 기한 지남' : ''}`);
     Object.assign(pc, { status: 'refunded', how, doneAt: app.clock.now() });
-    pc.hist.push({ at: pc.doneAt, who: how === 'auto' ? '시스템' : '고객', what: `전액 환불 ${won(x.totalRefund)}(붙은 ${esc(ad.short)} ${won(m.addonPaid)} 포함 · 함께 취소) · ${esc(c.name)} 제안 닫힘` });
+    pc.hist.push({ at: pc.doneAt, who: how === 'auto' ? '시스템' : '고객', what: `전액 환불 ${won(x.totalRefund)}${self ? '' : `(붙은 ${esc(ad.short)} ${won(m.addonPaid)} 포함 · 함께 취소)`} · ${esc(c.name)} 제안 닫힘` });
+  }
+  /** 붙은 구성품만 고객이 먼저 취소(D49): 본 맞춤 항목 [인쇄 가능] 전이라 PAID → 요청 없이 바로 취소(ORDER cancel).
+   *  환불은 일반 부분 취소와 같이 결제 스냅샷으로 남은 주문을 다시 계산(C-PAY-02) */
+  function pcAddonSelfCalc() {
+    const o = S().order; const rest = pcInput(true); const adItem = pcInput().items.find((it) => it.addonOf);
+    return GC.refund.partialCancel({ input: { ...rest, items: [...rest.items, { ...adItem, id: '__cancel_' + adItem.id }] }, paid: o.paid, refunded: o.refunded, cancelIds: ['__cancel_' + adItem.id], mode: 'before_ship' });
   }
   app.actions({
     async pcAgree() {
       const s = S(); const pc = s.pc; if (pc.status !== 'wait') return;
-      const c = pcCand(); const m = pcMoney(); const lo = m.lower; const ad = PC.addon; const st = m.agree.settle;
-      if (!(await app.confirm({ title: `${ro(c.name)} 바꿔 만들까요?`, body: `<p>확정 디자인 그대로 ${esc(iga(c.name))} 인쇄해요. 사양·수량은 같아요.</p><p class="small">상품 + 판비 합계 ${pcSumTxt(m)}${lo ? ` · 차액 ${won(m.agree.refund)}을 카드로 돌려드려요.` : ' · 더 높지만 추가로 내지 않아요.'} 붙은 ${esc(eun(ad.name))} 원래 판매자 상품이라 취소하고 ${won(m.addonPaid)}을 돌려드려요.</p>`, ok: '변경 동의', cancel: '닫기' }))) return;
+      const c = pcCand(); const m = pcMoney(); const lo = m.lower; const ad = PC.addon; const st = m.agree.settle; const self = pc.addonSelf;
+      if (!(await app.confirm({ title: `${ro(c.name)} 바꿔 만들까요?`, body: `<p>확정 디자인 그대로 ${esc(iga(c.name))} 인쇄해요. 사양·수량은 같아요.</p><p class="small">상품 + 판비 합계 ${pcSumTxt(m)}${lo ? ` · 차액 ${won(m.agree.refund)}을 카드로 돌려드려요.` : ' · 더 높지만 추가로 내지 않아요.'}${self ? '' : ` 붙은 ${esc(eun(ad.name))} 원래 판매자 상품이라 취소하고 ${won(m.addonPaid)}을 돌려드려요.`}</p>`, ok: '변경 동의', cancel: '닫기' }))) return;
       app.clock.pass(3 * HOUR);
       app.log('user', `고객 [변경 동의] · ${PC.old.name} → ${esc(c.name)}`);
       app.log('state', `주문 항목(맞춤): <b>${esc(GC.sm.stateName('ORDER_CUSTOM', app.state('citem')))}</b> 그대로 · 파트너 ${PC.old.name} → ${esc(c.name)}, 상품 → ${esc(c.name)} ${esc(PC.prod)} <span class="faint">(이력에 이전 파트너·상품 남김)</span>`);
@@ -1660,14 +1692,15 @@
       app.log('state', `디자인 요청: ${esc(GC.sm.stateName('DESIGN', prev))} → <b>파트너 전달</b> <span class="faint">(확정 디자인 그대로 ${esc(c.name)}에게 인쇄 패키지 다시 전달 · ${PC.old.name}는 더 못 받음)</span>`);
       app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', c.name, ['알림톡', '이메일'], `인쇄 파일 도착 · ${PC.no} · 판매자 변경으로 넘어온 맞춤 주문`);
       pcAddonCancel('제작 파트너 변경 동의 · 붙은 구성품은 원래 판매자 상품이라 새 판매자로 넘기지 않음');
-      app.log('rule', `붙은 추가 구성품 ${esc(eun(`${ad.name} ${ad.qty}${ad.u}`))} ${PC.old.name} 상품이라 같은 사유로 취소하고 결제 금액 ${won(m.addonPaid)} 그대로 환불해요(공제 없음 · 쿠폰 최소 주문 다시 계산 안 함). 새 판매자 구성품은 고객이 따로 주문해요`);
-      await payRefund({ refund: m.agree.totalRefund, pointRefund: 0, pgRefund: m.agree.totalRefund }, `제작 판매자 변경(${PC.old.name} → ${c.name}) · ${lo ? `차액 ${won(m.agree.refund)} + ` : ''}붙은 구성품 ${won(m.addonPaid)}`, [
+      if (!self) app.log('rule', `붙은 추가 구성품 ${esc(eun(`${ad.name} ${ad.qty}${ad.u}`))} ${PC.old.name} 상품이라 같은 사유로 취소하고 결제 금액 ${won(m.addonPaid)} 그대로 환불해요(공제 없음 · 쿠폰 최소 주문 다시 계산 안 함). 새 판매자 구성품은 고객이 따로 주문해요`);
+      const adPart = self ? '' : `붙은 구성품 ${won(m.addonPaid)}`;
+      await payRefund({ refund: m.agree.totalRefund, pointRefund: 0, pgRefund: m.agree.totalRefund }, `제작 판매자 변경(${PC.old.name} → ${c.name}) · ${[lo ? `차액 ${won(m.agree.refund)}` : '', adPart].filter(Boolean).join(' + ') || '차액 0원'}`, [
         lo ? `차액 = (원래 합계 ${won(m.agree.oldBase)} − 새 합계 ${won(m.agree.newBase)}) × 결제 비율 ${won(m.oldPaid)}/${won(m.agree.oldBase)}, 원 단위 내림` : `새 합계 ${iga(won(m.agree.newBase))} 원래 합계 ${won(m.agree.oldBase)}보다 높아 차액은 0원(더 받지 않음)`,
-        `붙은 구성품 ${ad.short} ${won(m.addonPaid)}은 결제 금액 그대로`], false);
+        self ? `붙은 구성품 ${ad.short}은 먼저 취소해 ${won(self.refund)} 환불함` : `붙은 구성품 ${ad.short} ${won(m.addonPaid)}은 결제 금액 그대로`], false);
       app.log('money', `정산 기준 다시 저장(${esc(c.name)}): 판매가 ${won(st.sale)} = 새 상품 대금 ${won(m.newList)} + 새 판비 ${won(m.newPlate)} · 파트너 부담 할인 0원 · 요율 ${m.rate}%(동의 시점) · 고객이 낸 금액과의 차이 ${won(st.platformDisc)} = 플랫폼 부담 할인(구매 확정 때 보전)`);
-      app.notify('NOTI_ITEM_PARTNER_CHANGED', '고객', ['알림톡', '푸시', '이메일'], `제작 판매자가 ${esc(ro(c.name))} 바뀌었어요 · 환불 ${won(m.agree.totalRefund)}(${lo ? '차액·' : ''}붙은 구성품)`);
+      app.notify('NOTI_ITEM_PARTNER_CHANGED', '고객', ['알림톡', '푸시', '이메일'], `제작 판매자가 ${esc(ro(c.name))} 바뀌었어요 · ${m.agree.totalRefund ? `환불 ${won(m.agree.totalRefund)}(${[lo ? '차액' : '', self ? '' : '붙은 구성품'].filter(Boolean).join('·')})` : '추가 결제·환불 없음'}`);
       Object.assign(pc, { status: 'agreed', doneAt: app.clock.now() });
-      pc.hist.push({ at: pc.doneAt, who: '고객', what: `변경 동의 · ${PC.old.name} → ${esc(c.name)} · 환불 ${won(m.agree.totalRefund)}(차액 ${won(m.agree.refund)} + 붙은 구성품 ${won(m.addonPaid)})` });
+      pc.hist.push({ at: pc.doneAt, who: '고객', what: `변경 동의 · ${PC.old.name} → ${esc(c.name)} · 환불 ${won(m.agree.totalRefund)}(차액 ${won(m.agree.refund)}${self ? '' : ` + 붙은 구성품 ${won(m.addonPaid)}`})` });
       pc.hist.push({ at: pc.doneAt, who: '시스템', what: `정산 기준 다시 저장 · 판매가 ${won(st.sale)} · 파트너 부담 할인 0 · 요율 ${m.rate}% · 플랫폼 부담 할인 ${won(st.platformDisc)}` });
       pc.hist.push({ at: pc.doneAt, who: '디자인팀', what: `확정 디자인 패키지를 ${esc(c.name)}에 다시 전달(DESIGN partner_changed)` });
       refresh();
@@ -1675,10 +1708,29 @@
     async pcRefund() {
       const s = S(); const pc = s.pc; if (pc.status !== 'wait') return;
       const m = pcMoney();
-      if (!(await app.confirm({ title: '전액 환불받을까요?', body: `<p>이 주문은 취소되고 낸 금액 ${won(m.full.totalRefund)}을 모두 돌려드려요.</p><p class="small">상품 ${won(m.prodPaid)} + 판비 ${won(m.platePaid)} + 디자인비 ${won(m.design)} + 붙은 구성품 ${won(m.addonPaid)}. 판매자 사정이라 공제하지 않아요. 쓴 쿠폰은 유효기간이 남았으면 쿠폰함으로 돌아가요.</p>`, ok: '전액 환불', cancel: '닫기', danger: true }))) return;
+      if (!(await app.confirm({ title: '전액 환불받을까요?', body: `<p>이 주문은 취소되고 낸 금액 ${won(m.full.totalRefund)}을 모두 돌려드려요.</p><p class="small">상품 ${won(m.prodPaid)} + 판비 ${won(m.platePaid)} + 디자인비 ${won(m.design)}${pc.addonSelf ? '' : ` + 붙은 구성품 ${won(m.addonPaid)}`}. 판매자 사정이라 공제하지 않아요. 쓴 쿠폰은 유효기간이 남았으면 쿠폰함으로 돌아가요.</p>`, ok: '전액 환불', cancel: '닫기', danger: true }))) return;
       app.clock.pass(3 * HOUR);
       app.log('user', '고객 [전액 환불]');
       await pcRefundCore('customer');
+      refresh();
+    },
+    /* 붙은 구성품만 먼저 취소(D49): 본 맞춤 항목 [인쇄 가능] 전이라 결제 완료 → 일반 상품 PAID 취소와 같이 바로 취소 */
+    async pcAddonSelf() {
+      const s = S(); const pc = s.pc; if (pc.status !== 'wait' || pc.addonSt !== 'PAID') return;
+      const ad = PC.addon; const x = pcAddonSelfCalc(); if (x.blocked) return;
+      const adName = `${ad.name} ${ad.qty}${ad.u}`;
+      if (!(await app.confirm({ title: `${eul(adName)} 취소할까요?`, body: `<p>환불 ${won(x.refund)} (카드 ${won(x.pgRefund)})</p><p class="small">판매자가 수저집 인쇄를 확인하기 전이라 요청 없이 바로 취소돼요. 결제 때 조건으로 남은 주문을 다시 계산한 금액이에요. 수저집 판매자 변경 제안은 그대로 남아 있어요.</p>`, ok: '취소하기', cancel: '그대로 두기', danger: true }))) return;
+      app.clock.pass(20 * 60000);
+      app.log('user', `고객 붙은 구성품 [취소] · ${esc(adName)}`);
+      showStrip('cancel', ['CANCEL_APPROVED', 'CLAIM_COMPLETED']);
+      app.setState('cancel', 'CANCEL_APPROVED', { by: '발주 확인 전이라 바로 승인' });
+      app.go('order', 'cancel', { by: '고객 취소(발주 확인 전, 즉시) · 본 맞춤 항목 [인쇄 가능] 전이라 결제 완료 상태(D49)' });
+      pc.addonSt = 'CANCELED';
+      app.log('rule', `남은 주문(수저집 + 판비 + 디자인비)을 결제 스냅샷으로 다시 계산하면 ${won(x.remainingTotal)} · 환불 = 결제 잔액 ${won(x.balance)} − ${won(x.remainingTotal)} = ${won(x.refund)}${x.refund > pcMoney().addonPaid ? ` (본사 상품 할인 쿠폰이 최대 ${won(HQ_COUPONS[0].max)}이라 남은 주문에도 그대로 걸려, 구성품에 안분됐던 몫까지 돌아와요)` : ''}`);
+      await payRefund(x, `붙은 구성품 ${ad.short} ${ad.qty}${ad.u} 취소(발주 확인 전)`, ['본 맞춤 항목 [인쇄 가능] 전이라 구성품은 결제 완료 상태 · 요청 없이 바로 취소(D49)']);
+      pc.addonSelf = { at: app.clock.now(), refund: x.refund };
+      goClaim('cancel', 'refund', '환불 완료', null, []);
+      pc.hist.push({ at: pc.addonSelf.at, who: '고객', what: `붙은 구성품 ${esc(ad.short)} 직접 취소(결제 완료라 바로) · 환불 ${won(x.refund)} · 판매자 변경 제안은 수저집만 남음` });
       refresh();
     },
   });
@@ -1718,8 +1770,9 @@
     /* 이의 기한(GC.claim.canObject = 거부 통지 + claim.objection_days)이 지나고 이의가 없으면 거부 확정. 이의가 있으면 중재를 기다림 */
     const expired = (type, state, rejAt) => !GC.claim.canObject({ claimType: type, state, rejectedAt: rejAt, now: t });
     if (s.creq && app.state('cancel') === 'CANCEL_REJECTED' && !s.creq.objection && expired('CANCEL', 'CANCEL_REJECTED', s.creq.rejAt)) {
-      goClaim('cancel', 'no_objection', `${P('claim.objection_days')}일 동안 이의 없음`, s.creq, [recById(s.creq.recId)]); s.creq.done = 'expired';
-      app.log('rule', '이의 기한이 지나 [이의 제기] 버튼을 숨겨요. 클레임이 닫혀 이 항목도 자동 구매 확정 대상으로 돌아가요');
+      const wk = creqKids();
+      goClaim('cancel', 'no_objection', `${P('claim.objection_days')}일 동안 이의 없음`, s.creq, [recById(s.creq.recId), ...wk]); s.creq.done = 'expired'; s.creq.kidsBack = kidsText(wk);
+      app.log('rule', `이의 기한이 지나 [이의 제기] 버튼을 숨겨요. 클레임이 닫혀 이 항목${wk.length ? `과 붙은 ${esc(s.creq.kidsBack)}` : ''}도 자동 구매 확정 대상으로 돌아가요(원래 흐름, D52)`);
     }
     if (retOpen()) {
       const r = s.ret; const st = app.state('claim');

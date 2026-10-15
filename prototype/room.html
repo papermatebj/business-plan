@@ -91,6 +91,12 @@
     design: { code: 'NOTI_INT_FILE_SCAN_REJECTED', to: '올린 디자이너', ch: ['관리자 알림센터'] },
     partner: { code: 'NOTI_PARTNER_FILE_SCAN_REJECTED', to: '파트너(올린 사람)', ch: ['알림센터', '이메일(화면을 떠났을 때)'] },
   };
+  /* 안 읽은 메시지 묶음 알림(C-NOTI-01 · notify.room_digest_minutes): 고객·파트너는 알림톡, 담당 디자이너는 내부 Slack(관리자 화면에서 안 읽은 고객 메시지, 2026-10-16 맞춤) */
+  const DIGEST = {
+    customer: { code: 'NOTI_ROOM_MESSAGE', to: '고객', ch: '알림톡', who: '고객이', what: '메시지' },
+    partner: { code: 'NOTI_PARTNER_CHANNEL_MESSAGE', to: '파트너', ch: '알림톡', who: '파트너가', what: '메시지' },
+    design: { code: 'NOTI_INT_ROOM_MESSAGE', to: '담당 디자이너', ch: 'Slack', who: '디자이너가 관리자 화면에서', what: '고객 메시지' },
+  };
   const cpv = (text, label) => `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(label)} — 엔진 정책값 목록에 아직 없어 이 페이지 상수로 둠">${text}</span>`;
 
   /* ── 협의 룸 생애 상태 (D-ROOM-01 · D-ROOM-07) ── */
@@ -168,7 +174,7 @@
     domain: 'room',
     title: '협의 룸·연락처 가림',
     lede: '고객과 파트너는 직접 연결되지 않습니다. 고객은 디자인팀과 협의 룸에서, 디자인팀은 파트너와 생산 협의 채널에서 따로 이야기하고, 팀 안의 메모는 디자인팀만 봐요. 대화에 쓴 연락처와 외부 링크는 자동으로 가려지고 원문은 운영자만 사유를 남기고 열어 볼 수 있어요.',
-    meta: '근거: 기능 명세서 D-ROOM-01~07 · D-STU-06 · D-PRD-03 · C-NOTI-01·02 · C-FILE-01 · A-SYS-02 · 기획서 06장 소통 채널 3종 · 디자인 요청서 S-15',
+    meta: '근거: 기능 명세서 D-ROOM-01~07 · D-STU-06 · D-PRD-03 · C-NOTI-01·02 · C-FILE-01 · A-SYS-02 · 기획서 06장 소통 채널 3종 · 디자인 요청서 S-15 · 2026-10-16 S11 맞춤 ④(디자이너 Slack 묶음)',
     actors: [
       { id: 'customer', title: '협의 룸', tab: '디자인' },
       { id: 'design', nav: ['협의 룸', '생산 협의', '내부 메모'], navOn: '협의 룸', url: 'admin.sikup.co.kr/studio/rooms/DR-24118' },
@@ -192,7 +198,7 @@
       cs: 'chat', dnav: 'room', hqnav: 'vault', attachOpen: false,
       msgs: [], seq: 0, proofs: [], vault: [], audit: [], memos: [],
       draft: { customer: '', design: '', dprd: '', partner: '' }, memoText: '', memoScope: 'customer',
-      unread: { customer: { since: null, n: 0 }, partner: { since: null, n: 0 } },
+      unread: { customer: { since: null, n: 0 }, partner: { since: null, n: 0 }, design: { since: null, n: 0 } },
       viol: { customer: 0, design: 0, partner: 0 }, f: {},
       designer: null, freeLeft: GC.Policy.get('design.free_revisions_custom'), revisions: 0,
       sla: null, waitSince: null, fired: {}, doneAt: null, canceled: false,
@@ -281,15 +287,32 @@
     if (!u.since) {
       u.since = app.clock.now(); u.n = 0;
       if (t === 'customer') app.notify('NOTI_ROOM_MESSAGE', '고객', ['푸시'], '협의 룸 새 메시지 · 앱 밖에 있을 때');
-      else app.notify('NOTI_PARTNER_CHANNEL_MESSAGE', '파트너', ['알림센터'], '생산 협의 채널 새 메시지');
+      else if (t === 'partner') app.notify('NOTI_PARTNER_CHANNEL_MESSAGE', '파트너', ['알림센터'], '생산 협의 채널 새 메시지');
     }
     u.n += 1;
+  }
+  /* 담당 디자이너에게 고객 메시지 알림: 관리자 알림센터는 늘(●), Slack은 관리자 화면에서 10분 동안 안 읽으면 묶어 1회(○, C-NOTI-01 2026-10-16 맞춤) */
+  function notifyDesigner(what) {
+    app.notify('NOTI_INT_ROOM_MESSAGE', '담당 디자이너', ['관리자 알림'], `${what} <span class="faint">(Slack은 ${GC.Policy.get('notify.room_digest_minutes')}분 동안 안 읽으면 묶어 1회)</span>`);
+    markUnread('design');
+  }
+  /* 묶음 알림 발송: 안 읽은 첫 메시지부터 10분이 된 시각에 1건 */
+  function sendDigest(t) {
+    const u = S().unread[t]; const g = DIGEST[t]; const dm = GC.Policy.get('notify.room_digest_minutes');
+    app.notify(g.code, g.to, [g.ch], `${dm}분 동안 안 읽은 ${g.what} ${u.n}개를 1건으로 묶어 보냄 <span class="faint">(${fmtTime(new Date(u.since.getTime() + dm * MIN))} 발송)</span>`);
+    u.since = null; u.n = 0;
   }
   function markRead(viewer, ch) {
     const s = S(); const now = app.clock.now(); let n = 0;
     s.msgs.forEach((m) => { if (m.ch === ch && m.kind !== 'sys' && m.from !== viewer && m.from !== 'system' && !m.readAt && canSee(m, viewer)) { m.readAt = now; n += 1; } });
-    const u = s.unread[viewer];
-    if (u && u.since && n) { app.log('rule', `${viewer === 'customer' ? '고객이' : '파트너가'} ${GC.Policy.get('notify.room_digest_minutes')}분 안에 읽어서 알림톡은 보내지 않았어요`); u.since = null; u.n = 0; }
+    // 디자이너 Slack 묶음은 고객 협의 룸 메시지만(생산 협의 채널을 읽은 것으로는 풀지 않음)
+    const u = viewer === 'design' && ch !== 'room' ? null : s.unread[viewer];
+    if (u && u.since && n) {
+      const dm = GC.Policy.get('notify.room_digest_minutes'); const g = DIGEST[viewer];
+      // 작업 시간만 흘러(시계 버튼 없이) 10분이 지났으면 그 시각에 묶음 알림이 이미 나간 것으로 기록
+      if (now - u.since >= dm * MIN) sendDigest(viewer);
+      else { app.log('rule', `${g.who} ${dm}분 안에 읽어서 ${g.ch}은 보내지 않았어요`); u.since = null; u.n = 0; }
+    }
   }
   function openPrd() {
     const s = S(); if (s.prdOpen) return;
@@ -485,6 +508,7 @@
     const R = {
       mask: [{ k: '대화·핀·추가 설명', v: '연락처·외부 링크 가림' }, { k: '문구 변경 칸', v: '가리지 않음' }, { k: '메신저·오픈채팅 링크', v: '어느 칸에서도 막음' }],
       digest: { k: '안 읽으면 알림톡 묶음', policy: 'notify.room_digest_minutes' },
+      slack: { k: '디자이너가 안 읽으면 Slack 묶음', policy: 'notify.room_digest_minutes' },
       viol: { k: '반복 위반 운영 알림', v: cpv(`디자이너 ${RP.violDesign}회 · 고객 ${RP.violCustomer}회`, '반복 위반 기준') },
       recall: { k: '전송 취소', v: cpv(`${RP.recallMin}분 안`, '전송 취소 가능 시간') + ' · 원문 보관' },
       hours: { k: '운영시간(밖이면 자동 응답)', v: cpv('평일 09~18시', '운영시간') },
@@ -521,13 +545,13 @@
     if (np === 1) {
       if (!f.dmsg1) return app.turn('design', '자주 쓰는 답변 [시안 설명]을 넣거나 직접 써서 고객에게 메시지를 보내세요', { rules: [R.digest, R.recall] });
       if (!f.cq) return app.turn('customer', '디자이너 메시지를 읽고 답하세요. 예시 [인스타 계정 질문]을 눌러 보내 보세요', { hint: `고객이 ${GC.Policy.get('notify.room_digest_minutes')}분 동안 안 읽으면 알림톡 1건으로 묶어 보내요. 고객 화면을 열기 전에 +1시간을 눌러 보세요. 화면을 열면 디자이너 쪽에 ‘읽음’이 떠요.`, rules: [R.digest, R.wait, R.notice] });
-      if (!f.dans) return app.turn('design', '고객 질문에 답하세요. 인쇄할 계정은 수정 요청의 ‘문구 변경’ 칸으로 안내해요', { rules: [R.digest, R.hours] });
+      if (!f.dans) return app.turn('design', '고객 질문에 답하세요. 인쇄할 계정은 수정 요청의 ‘문구 변경’ 칸으로 안내해요', { hint: `고객 메시지는 관리자 알림센터에 바로 뜨고, 관리자 화면에서 ${GC.Policy.get('notify.room_digest_minutes')}분 동안 안 읽으면 담당 디자이너 Slack으로 1건 묶어 보내요(C-NOTI-01).`, rules: [R.digest, R.slack, R.hours] });
       if (!f.cmask) return app.turn('customer', '대화로 연락처를 보내 보세요. 예시 [전화번호 보내기]나 직접 “제 번호 010-1234-5678로 연락 주세요”', { hint: '보낸 지 5분 안에는 [전송 취소]도 할 수 있어요. 원문은 분쟁에 대비해 내부에 남아요. [사이즈 40-240]은 숫자여도 가리지 않아요.', rules: R.mask.concat([R.viol, R.recall]) });
       if (!f.hqreveal) return app.turn('hq', '가린 원문 보관함에서 열람 사유를 고른 뒤 원문을 열어 보세요', { rules: [{ k: '열람', v: '운영자만 · 사유 필수' }, { k: '기록', v: '감사 로그(고칠 수 없음)' }, { k: '조사 기록에 붙인 원문', v: '5년 보관(초안)' }] });
       return app.turn('customer', '시안 카드의 [수정 요청]을 열어 ‘문구 변경’ 칸에 인스타 계정을 적고, 참고 링크를 넣어 보내세요', { hint: '참고 링크에 open.kakao.com 링크를 넣으면 막혀요. instagram.com과 일반 참고 링크는 그대로 전달돼요.', rules: [{ k: '문구 변경 칸', v: '가리지 않음(인쇄 문구 전용)' }, { k: '참고 링크', v: '최대 5개 · 메신저 링크 막음' }, { k: '남은 무료 수정', v: `${s.freeLeft}회` }, { k: '넘으면 회당', policy: 'design.extra_revision_fee' }] });
     }
     if (!f.ctext) return app.turn('customer', `시안 v${np} 도착. 대화에 “확정할게요”라고 써 보세요(예시 [확정할게요]). 대화로는 확정되지 않아요`, { rules: [{ k: '공식 결정', v: '[수정 요청]·[확정] 버튼만' }, R.wait, R.notice] });
-    if (!f.dguide) return app.turn('design', '고객이 대화로 확정하겠다고 했어요. 자주 쓰는 답변 [확정 버튼 안내]로 버튼을 안내하세요', { rules: [{ k: '공식 결정', v: '버튼만 · 디자이너가 안내' }] });
+    if (!f.dguide) return app.turn('design', '고객이 대화로 확정하겠다고 했어요. 자주 쓰는 답변 [확정 버튼 안내]로 버튼을 안내하세요', { rules: [{ k: '공식 결정', v: '버튼만 · 디자이너가 안내' }, R.slack] });
     return app.turn('customer', `시안 v${np} 카드의 [이 시안으로 확정]을 누르세요`, { rules: [{ k: '확정하면', v: '인쇄 파일이 파트너로' }, R.reinq] });
   }
 
@@ -713,8 +737,8 @@
   VIEWS.system = (f) => {
     const s = S(); const st = app.state('room'); const now = app.clock.now();
     const dm = GC.Policy.get('notify.room_digest_minutes');
-    const dg = (u, who) => [`알림 묶음 · ${who}`, u.since ? `안 읽은 메시지 ${u.n}개 · ${fmtTime(u.since)}부터` : '안 읽은 메시지 없음', u.since ? `<span class="sla sla-warn">${fmtTime(new Date(u.since.getTime() + dm * MIN))}에 알림톡 1건</span>` : '<span class="faint">대기 없음</span>'];
-    const rows = [dg(s.unread.customer, '고객'), dg(s.unread.partner, '파트너'),
+    const dg = (t, who) => { const u = s.unread[t]; const g = DIGEST[t]; return [`알림 묶음 · ${who}`, `${u.since ? `안 읽은 ${g.what} ${u.n}개 · ${fmtTime(u.since)}부터` : `안 읽은 ${g.what} 없음`}${t === 'design' ? '<br><span class="xsmall faint">관리자 알림센터는 메시지마다 · Slack만 묶음</span>' : ''}`, u.since ? `<span class="sla sla-warn" style="white-space:nowrap">${fmtTime(new Date(u.since.getTime() + dm * MIN))}에 ${g.ch} 1건</span>` : '<span class="faint">대기 없음</span>']; };
+    const rows = [dg('customer', '고객'), dg('partner', '파트너'), dg('design', '담당 디자이너'),
       ['운영시간', `평일 09~18시 · 지금 ${fmtDate(now)}`, bizOpen(now) ? '<span class="st st-now">운영 중</span>' : `<span class="st st-warn">운영시간 밖</span> <span class="xsmall faint">다음 ${fmtDate(nextOpen(now))}</span>`]];
     if (s.waitSince && ['WAIT_CUSTOMER', 'ON_HOLD'].includes(st)) {
       const days = Math.floor((now - s.waitSince) / GC.DAY);
@@ -766,7 +790,7 @@
       app.clock.pass(MIN);
       if (app.state('room') === 'BEFORE_ASSIGN') s.f.upload0 = true;
       addFile('customer', 'room', fx);
-      if (s.designer && fx.outcome === 'ok') app.notify('NOTI_INT_ROOM_MESSAGE', '담당 디자이너', ['관리자 알림'], '고객 파일 도착(검사 통과 뒤 보임)');
+      if (s.designer && fx.outcome === 'ok') notifyDesigner('고객 파일 도착(검사 통과 뒤 보임)');
       refresh();
     },
     sendC() {
@@ -777,7 +801,7 @@
       app.clock.pass(MIN);
       const msg = sendText('customer', 'room', text, { reinquiry: st === 'DONE' });
       s.draft.customer = '';
-      app.notify('NOTI_INT_ROOM_MESSAGE', '담당 디자이너', ['관리자 알림'], msg.reinquiry ? '재문의 도착' : '고객 메시지 도착');
+      notifyDesigner(msg.reinquiry ? '재문의 도착' : '고객 메시지 도착');
       const confirmWord = /확정/.test(text) && s.proofs.length && ['WAIT_CUSTOMER', 'OPEN'].includes(st);
       if (msg.hits.length) s.f.cmask = true;
       else if (msg.reinquiry) s.f.reinq = true;
@@ -896,7 +920,7 @@
       s.sla = { kind: '수정본', due: GC.addBusinessDays(app.clock.now(), GC.Policy.get('design.sla.revision_days')) };
       s.waitSince = null; s.fired = {};
       app.log('rule', `문구 변경 칸은 가리지 않고 그대로 전달: ${esc(STORE.phone)} → ${esc(r.to)}`);
-      app.notify('NOTI_INT_ROOM_MESSAGE', '담당 디자이너', ['관리자 알림'], '수정 요청 도착');
+      notifyDesigner('수정 요청 도착');
       s.f.revise = true; s.cs = 'chat'; s.rev = freshRev(); refresh();
     },
     async approve() {
@@ -966,13 +990,7 @@
   app.onAdvance((prev, now) => {
     const s = S(); if (!s.msgs) return;
     const dm = GC.Policy.get('notify.room_digest_minutes');
-    [['customer', 'NOTI_ROOM_MESSAGE', '고객'], ['partner', 'NOTI_PARTNER_CHANNEL_MESSAGE', '파트너']].forEach(([t, code, to]) => {
-      const u = s.unread[t];
-      if (u.since && now - u.since >= dm * MIN) {
-        app.notify(code, to, ['알림톡'], `${dm}분 동안 안 읽은 메시지 ${u.n}개를 1건으로 묶어 보냄 <span class="faint">(${fmtTime(new Date(u.since.getTime() + dm * MIN))} 발송)</span>`);
-        u.since = null; u.n = 0;
-      }
-    });
+    ['customer', 'partner', 'design'].forEach((t) => { const u = s.unread[t]; if (u.since && now - u.since >= dm * MIN) sendDigest(t); });
     const st = app.state('room');
     if (s.waitSince && ['WAIT_CUSTOMER', 'ON_HOLD'].includes(st)) {
       const days = Math.floor((now - s.waitSince) / GC.DAY);

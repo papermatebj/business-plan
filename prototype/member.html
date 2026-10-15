@@ -67,11 +67,10 @@
   const esc = UI.esc, pv = UI.pv;
   const MIN = 60000;
 
-  /* ── 엔진에 아직 없는 정책값: 이 페이지 상수(임시 기본값) ── */
+  /* ── 엔진에 아직 없는 정책값: 이 페이지 상수(임시 기본값) ──
+     엔진 키로 옮긴 것(2026-10-16 S11 맞춤 ⑩): 서류 심사 처리 목표 member.biz_manual_bd · 폐업 확인 뒤 혜택 해제 유예 member.biz_closed_grace_days → GC.Policy.get · UI.pv */
   const LP = {
     'member.biz_verify_fail_max': { v: 3, unit: '회', label: '국세청 진위 불일치 → 서류 심사 요청 가능 횟수' },
-    'member.biz_manual_bd': { v: 1, unit: '영업일', label: '사업자 서류 심사 처리 목표' },
-    'member.biz_closed_grace_days': { v: 30, unit: '일', label: '폐업 확인 후 사업자 혜택 해제까지 유예' },
     'member.biz_recheck_day': { v: 1, unit: '일', label: '사업자 상태 월 재조회 날짜(매월 n일 03:00)' },
     'member.email_code_minutes': { v: 5, unit: '분', label: '이메일 인증번호 유효 시간' },
     'member.email_code_fail_max': { v: 5, unit: '회', label: '이메일 인증번호 오입력 한도' },
@@ -79,6 +78,9 @@
     'member.identity_daily_max': { v: 5, unit: '회', label: '같은 사람 본인인증 하루 한도' },
   };
   const lp = (k) => LP[k].v;
+  /* 엔진 정책값 읽기: 서류 심사 처리 목표(영업일) · 폐업 확인 뒤 혜택 해제까지 유예(일) */
+  const bizManualBd = () => GC.Policy.get('member.biz_manual_bd');
+  const graceDays = () => GC.Policy.get('member.biz_closed_grace_days');
   function lpv(k, text) {
     const m = LP[k];
     return `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(m.label)} (${k}) · 엔진에 아직 없어 이 페이지 상수로 둠">${text != null ? text : `${m.v}${m.unit}`}</span>`;
@@ -306,22 +308,23 @@
         if (s.revoked) return app.turn('customer', '사업자 혜택이 해제돼 홈 가격이 일반가로 돌아왔어요. [마이]에서 [회원 탈퇴]로 탈퇴 갈래를 이어 가세요', { rules: [{ k: '탈퇴 불가', v: '진행 중 주문·클레임 등' }, { k: '재가입 제한', policy: 'member.rejoin_block_days' }] });
         return app.turn('customer', '[사업자 인증하기]를 누르세요. 사업자가와 세금계산서가 열려요', { rules: [{ k: '건너뛰기', v: '가능(마이에서 나중에)' }, { k: '사업자번호당 인증 계정', policy: 'member.biz_accounts_max' }] });
       case 'BIZ_VERIFY':
-        if (s.cs === 'bizManual') return app.turn('customer', '사업자등록증을 올리고 사업자 정보를 채워 [서류 심사 요청]을 누르세요', { rules: [{ k: '처리 목표', v: lpv('member.biz_manual_bd') }, { k: '등록증', v: '이미지·PDF 10MB' }] });
+        if (s.cs === 'bizManual') return app.turn('customer', '사업자등록증을 올리고 사업자 정보를 채워 [서류 심사 요청]을 누르세요', { rules: [{ k: '처리 목표', policy: 'member.biz_manual_bd' }, { k: '등록증', v: '이미지·PDF 10MB' }] });
         if (s.cs === 'bizDetail') return app.turn('customer', '업종을 고르고 [주소 검색]으로 사업장 주소를 넣은 뒤 [사업자 회원으로 전환]을 누르세요', { rules: [{ k: '업종', v: '공통 코드 10개 중 하나' }, { k: '입력한 정보', v: '세금계산서 기본값' }, { k: '등록증 업로드', v: '선택' }] });
-        if (s.biz.fails >= max) return app.turn('customer', `국세청 정보와 ${max}번 맞지 않았어요. [서류 심사 요청하기]로 사업자등록증을 올리세요`, { rules: [{ k: '진위 불일치', v: `${lpv('member.biz_verify_fail_max')} → 서류 심사` }, { k: '처리 목표', v: lpv('member.biz_manual_bd') }] });
+        if (s.biz.fails >= max) return app.turn('customer', `국세청 정보와 ${max}번 맞지 않았어요. [서류 심사 요청하기]로 사업자등록증을 올리세요`, { rules: [{ k: '진위 불일치', v: `${lpv('member.biz_verify_fail_max')} → 서류 심사` }, { k: '처리 목표', policy: 'member.biz_manual_bd' }] });
         return app.turn('customer', '사업자등록번호·대표자명·개업일자를 넣고 [국세청에서 확인하기]를 누르세요', { hint: '체험용 예시로 띄어쓰기 불일치·폐업·계정 수 초과·검증번호 오류 갈래도 볼 수 있어요.', rules: [{ k: '형식 검사', v: '검증번호 계산' }, { k: '진위 불일치', v: `${lpv('member.biz_verify_fail_max')} → 서류 심사` }, { k: '휴업·폐업', v: '인증 불가' }, { k: '사업자번호당 계정', policy: 'member.biz_accounts_max' }] });
-      case 'BIZ_MANUAL': return app.turn('hq', '사업자 인증 대기열에서 제출한 등록증과 국세청 조회 결과를 비교해 [승인]하거나 사유 코드를 골라 [반려]하세요', { rules: [{ k: '처리 목표', v: lpv('member.biz_manual_bd') }, { k: '반려 사유 코드', v: '5종 + 직접 입력' }, { k: '결과 안내', v: '알림톡' }] });
+      case 'BIZ_MANUAL': return app.turn('hq', '사업자 인증 대기열에서 제출한 등록증과 국세청 조회 결과를 비교해 [승인]하거나 사유 코드를 골라 [반려]하세요', { rules: [{ k: '처리 목표', policy: 'member.biz_manual_bd' }, { k: '반려 사유 코드', v: '5종 + 직접 입력' }, { k: '결과 안내', v: '알림톡' }] });
       case 'BIZ_DENIED': {
         const d = s.denied || {};
         const what = d.code === 'LIMIT' ? '4번째 계정이라 인증이 막혔어요. 상담하거나 [다른 번호로 다시 인증]을 누르세요' : d.code === 'CLOSED' ? '휴업·폐업 사업자라 인증할 수 없어요. [다른 번호로 다시 인증]을 눌러 보세요' : '서류 심사에서 반려됐어요. 사유를 확인하고 [다시 신청하기]를 누르세요';
         return app.turn('customer', what, { rules: [{ k: '사업자번호당 계정', policy: 'member.biz_accounts_max' }, { k: '직원 계정', v: '3차' }] });
       }
       case 'BIZ_MEMBER':
-        if (a === 'BIZ_CHECK') return app.turn('system', `국세청에서 폐업으로 확인돼 사업자 혜택을 유예 중이에요. +7일로 ${fmtDate(s.grace.until, false)} 뒤까지 시간을 보내세요`, { hint: '고객 홈 위쪽에 안내가 떠요. 다시 개업했다면 [다시 인증하기]로 풀 수 있어요.', rules: [{ k: '해제까지 유예', v: lpv('member.biz_closed_grace_days') }, { k: '세금계산서', v: '지금부터 발행 막음' }, { k: '진행 중 주문', v: '영향 없음' }] });
+        if (a === 'BIZ_CHECK') return app.turn('system', `국세청에서 폐업으로 확인돼 사업자 혜택을 유예 중이에요. +7일로 ${fmtDate(s.grace.until, false)} 뒤까지 시간을 보내세요`, { hint: '고객 홈 위쪽에 안내가 떠요. 다음 월 재조회에서 계속사업자로 나오면 ‘확인 필요’가 자동으로 풀려요(배치·외부 연동에서 "계속사업자로 응답" → [재조회 지금 실행]). 고객이 [다시 인증하기]로 먼저 풀 수도 있어요.', rules: [{ k: '해제까지 유예', policy: 'member.biz_closed_grace_days' }, { k: '세금계산서', v: '지금부터 발행 막음' }, { k: '진행 중 주문', v: '영향 없음' }] });
         if (s.cs === 'bizDone') return app.turn('customer', '같은 상품 카드의 가격이 일반가에서 사업자가(공급가 함께)로 바뀐 걸 확인하고 [홈에서 보기]를 누르세요', { rules: [{ k: '사업자가', v: 'VAT 포함 + 공급가' }, { k: '배지', v: '사업자' }, { k: '인증 전 결제한 주문', v: '차액 환급 없음' }] });
         if (!s.order) return app.turn('customer', '홈에서 [사업자가로 1박스 바로 구매]를 눌러 주문을 하나 만들어 두세요', { hint: '구매 확정 전에 마이 > 회원 탈퇴로 가 보면 탈퇴가 막혀요.', rules: [{ k: '증빙 기본값', v: '세금계산서(사업자 정보)' }] });
         if (!s.hqDone) return app.turn('hq', '회원 조회에서 [상세]를 열고, 사유를 골라 개인정보 가림(마스킹)을 풀어 보세요', { rules: [{ k: '목록·상세', v: '기본으로 가림' }, { k: '가림 해제', v: '권한자 · 사유 필수' }, { k: '접근 기록 보관', v: '1년 이상' }] });
-        return app.turn('system', `국세청 응답을 "폐업으로 응답"으로 고르고 [재조회 지금 실행]을 누르세요. 그냥 두면 ${fmtDate(s.nextRecheck)}에 자동으로 돌아요`, { rules: [{ k: '재조회 주기', v: lpv('member.biz_recheck_day', '매월 1일 03:00') }, { k: '폐업 확인 후 유예', v: lpv('member.biz_closed_grace_days') }, { k: '휴면 회원', v: '건너뜀' }] });
+        if (s.rechecks[0] && /자동 해제/.test(s.rechecks[0].res)) return app.turn('system', `계속사업자로 다시 확인돼 ‘확인 필요’가 자동으로 풀렸어요. 혜택 해제 갈래를 보려면 다시 "폐업으로 응답"을 고르고 [재조회 지금 실행]을 누르세요`, { rules: [{ k: '다시 정상 확인', v: '확인 필요 자동 해제 · 혜택 그대로' }, { k: '폐업 확인 후 유예', policy: 'member.biz_closed_grace_days' }, { k: '유예 끝난 뒤', v: '고객이 다시 인증 신청' }] });
+        return app.turn('system', `국세청 응답을 "폐업으로 응답"으로 고르고 [재조회 지금 실행]을 누르세요. 그냥 두면 ${fmtDate(s.nextRecheck)}에 자동으로 돌아요`, { rules: [{ k: '재조회 주기', v: lpv('member.biz_recheck_day', '매월 1일 03:00') }, { k: '폐업 확인 후 유예', policy: 'member.biz_closed_grace_days' }, { k: '휴면 회원', v: '건너뜀' }] });
     }
     app.turn('customer', '고객 화면을 확인하세요');
   }
@@ -517,7 +520,7 @@
         <div class="steps-mini"><span class="on">1 번호 확인</span><span>2 사업자 정보</span></div>
         <p class="small muted">사업자등록번호로 국세청에 진위와 상태를 확인해요. 인증하면 사업자가와 세금계산서가 열려요.</p>
         ${b.fails ? `<div class="note note-warn small">입력한 정보가 국세청 등록 정보와 달라요 (${b.fails}/${max}회). 대표자명 띄어쓰기와 개업일자를 사업자등록증과 똑같이 넣어 주세요.</div>` : ''}
-        ${b.fails >= max ? `<div class="app-card"><b class="small">사업자등록증으로 서류 심사를 받을 수 있어요</b><span class="xsmall muted">운영팀이 ${lpv('member.biz_manual_bd')} 안에 확인해 알림톡으로 알려 드려요.</span><button class="btn btn-sm btn-primary" data-act="toManual">서류 심사 요청하기</button></div>` : ''}
+        ${b.fails >= max ? `<div class="app-card"><b class="small">사업자등록증으로 서류 심사를 받을 수 있어요</b><span class="xsmall muted">운영팀이 ${pv('member.biz_manual_bd')} 안에 확인해 알림톡으로 알려 드려요.</span><button class="btn btn-sm btn-primary" data-act="toManual">서류 심사 요청하기</button></div>` : ''}
         <div class="field"><label for="bzNo">사업자등록번호</label><input class="input num${st.err ? ' is-err' : ''}" id="bzNo" inputmode="numeric" data-input="bzNo" value="${fmtBizNo(b.no)}" placeholder="000-00-00000" autocomplete="off"><span id="bzNoHint" class="${st.err ? 'err' : 'hint'}">${st.msg}</span></div>
         <div class="field"><label for="bzRep">대표자명</label><input class="input" id="bzRep" data-input="bzRep" value="${esc(b.rep)}" maxlength="30" placeholder="사업자등록증과 똑같이"></div>
         <div class="field"><label for="bzOpen">개업일자</label><input class="input num" id="bzOpen" inputmode="numeric" maxlength="8" data-input="bzOpen" value="${esc(b.open)}" placeholder="YYYYMMDD"><span class="hint" id="bzOpenHint">${openHint(b.open)}</span></div>
@@ -555,7 +558,7 @@
     f.title('서류 심사 요청'); f.tab('마이'); f.back();
     f.body.innerHTML = `
       <div class="app-pad">
-        <div class="note note-warn small">국세청 진위 확인이 ${lp('member.biz_verify_fail_max')}번 맞지 않아 사업자등록증으로 확인할게요. 운영팀이 ${lpv('member.biz_manual_bd')} 안에 결과를 알려 드려요.</div>
+        <div class="note note-warn small">국세청 진위 확인이 ${lp('member.biz_verify_fail_max')}번 맞지 않아 사업자등록증으로 확인할게요. 운영팀이 ${pv('member.biz_manual_bd')} 안에 결과를 알려 드려요.</div>
         <dl class="kv small"><dt>사업자등록번호</dt><dd>${fmtBizNo(s.biz.no)}</dd><dt>대표자명(입력)</dt><dd>${esc(s.biz.rep)}</dd><dt>개업일자(입력)</dt><dd>${esc(s.biz.open)}</dd></dl>
         ${bizFields(s, true)}
       </div>`;
@@ -592,9 +595,9 @@
     f.title('식업'); f.tab('홈');
     const a = app.state('acct'); const j = app.state('join'); const bz = isBiz();
     const ban = [];
-    if (a === 'BIZ_CHECK') ban.push(`<div class="warn-banner"><b>사업자 상태를 확인해 주세요</b><br><span class="small">국세청에서 폐업으로 확인됐어요. ${fmtDate(s.grace.until, false)}까지 다시 확인되지 않으면 사업자가와 세금계산서가 해제돼요. 세금계산서는 지금부터 발행할 수 없어 현금영수증·카드 전표로 드려요.</span>
+    if (a === 'BIZ_CHECK') ban.push(`<div class="warn-banner"><b>사업자 상태를 확인해 주세요</b><br><span class="small">국세청에서 폐업으로 확인됐어요. ${fmtDate(s.grace.until, false)}까지 다시 확인되지 않으면 사업자가와 세금계산서가 해제돼요. 세금계산서는 지금부터 발행할 수 없어 현금영수증·카드 전표로 드려요. 다음 정기 조회(매월 1일)에서 계속사업자로 확인되면 이 안내는 자동으로 사라지고 사업자가는 그대로예요.</span>
       <div class="cluster" style="margin-top:8px"><button class="btn btn-sm btn-ext" data-act="reverify">다시 인증하기</button><button class="btn btn-sm btn-ext" data-act="consult">상담하기</button></div></div>`);
-    if (s.revoked && a === 'ACTIVE') ban.push(`<div class="note note-warn small">폐업 확인 뒤 ${lp('member.biz_closed_grace_days')}일이 지나 사업자 혜택이 해제됐어요. 지금은 일반가로 보여요. 다시 개업했다면 새 사업자등록번호로 인증해 주세요.</div>`);
+    if (s.revoked && a === 'ACTIVE') ban.push(`<div class="note note-warn small">폐업 확인 뒤 ${graceDays()}일이 지나 사업자 혜택이 해제됐어요. 지금은 일반가로 보여요. 계속사업자로 확인되거나 다시 개업했다면 아래 [사업자 인증하기]로 다시 신청해 주세요.</div>`);
     if (j === 'BIZ_MANUAL') ban.push(`<div class="note note-spot small">사업자 서류를 심사하고 있어요. ${fmtDate(s.manual.due)}까지 알림톡으로 결과를 알려 드려요.</div>`);
     if (j === 'BIZ_DENIED') ban.push(`<div class="note note-stop small">사업자 인증을 하지 못했어요. <button class="linkish" data-act="cs" data-to="bizDenied">자세히 보기</button></div>`);
     if (j === 'JOINED') ban.push('<div class="app-card"><b class="small">사업자 인증하고 사업자가 보기</b><span class="xsmall muted">사업자 전용가와 세금계산서가 열려요</span><button class="btn btn-sm btn-primary" data-act="toBiz">사업자 인증하기</button></div>');
@@ -698,9 +701,9 @@
   }
   function hqBiz(s) {
     const q = [];
-    if (s.manual) q.push(`<tr class="${s.manual.decided ? '' : 'is-hl'}"><td class="nw"><b>BV-3312</b><br><span class="xsmall faint">${maskName(s.person.name)}</span></td><td class="num">${fmtBizNo(s.manual.no)}</td><td>진위 불일치 ${lp('member.biz_verify_fail_max')}회 · 등록증 제출</td><td class="xsmall nw">${fmtDate(s.manual.due)}</td><td>${s.manual.decided ? (s.manual.decided === 'ok' ? '<span class="st st-done">승인</span>' : '<span class="st st-stop">반려</span>') : '<span class="st st-warn">대기</span>'}</td></tr>`);
+    if (s.manual) q.push(`<tr class="${s.manual.decided ? '' : 'is-hl'}"><td class="nw"><b>BV-3312</b><br><span class="xsmall faint">${maskName(s.person.name)}</span></td><td class="num">${fmtBizNo(s.manual.no)}</td><td>진위 불일치 ${lp('member.biz_verify_fail_max')}회 · 등록증 제출</td><td class="xsmall nw">${fmtDate(s.manual.due)}</td><td>${s.manual.decided ? (s.manual.decided === 'ok' ? '<span class="st st-done">승인</span>' : '<span class="st st-stop">반려</span>') : app.clock.now() > s.manual.due ? '<span class="st st-stop">목표 초과</span>' : '<span class="st st-warn">대기</span>'}</td></tr>`);
     const fakeAt = new Date(2026, 9, 12, 8, 40);
-    q.push(`<tr><td class="nw"><b>BV-3307</b><br><span class="xsmall faint">김*연</span></td><td class="num">220-81-24681</td><td>등록증만 제출</td><td class="xsmall nw">${fmtDate(GC.addBusinessDays(fakeAt, lp('member.biz_manual_bd')))}</td><td><span class="st st-warn">대기</span></td></tr>`);
+    q.push(`<tr><td class="nw"><b>BV-3307</b><br><span class="xsmall faint">김*연</span></td><td class="num">220-81-24681</td><td>등록증만 제출</td><td class="xsmall nw">${fmtDate(GC.addBusinessDays(fakeAt, bizManualBd()))}</td><td><span class="st st-warn">대기</span></td></tr>`);
     let detail = '';
     if (s.manual && !s.manual.decided) {
       const r = NTS[s.manual.no]; const repOk = r && r.rep === s.manual.rep.trim(); const openOk2 = r && r.open === s.manual.open;
@@ -723,12 +726,13 @@
     const accounts = `<table class="tbl small"><thead><tr><th>사업자등록번호</th><th class="num">인증 계정</th><th>비고</th></tr></thead><tbody>
       <tr><td class="num">214-86-35723</td><td class="num">${mine}/${GC.Policy.get('member.biz_accounts_max')}</td><td class="xsmall">오늘밥상</td></tr>
       <tr><td class="num">105-87-33108</td><td class="num">3/${GC.Policy.get('member.biz_accounts_max')}</td><td class="xsmall">4번째 신청 차단 ${s.limitBlocked}건 · 직원 계정은 3차</td></tr></tbody></table>`;
-    const check = app.state('acct') === 'BIZ_CHECK' ? `<tr><td>${s.member.no}</td><td>${esc(s.bizInfo.name)}</td><td>폐업 확인 ${fmtDate(s.grace.at, false)}</td><td>${fmtDate(s.grace.until, false)} 혜택 해제</td></tr>` : '<tr><td colspan="4" class="faint">확인 필요 회원이 없어요.</td></tr>';
+    const check = app.state('acct') === 'BIZ_CHECK' ? `<tr><td class="nw">${s.member.no}</td><td class="nw">${esc(s.bizInfo.name)}</td><td>폐업 확인 ${fmtDate(s.grace.at, false)}</td><td>다음 조회에서 계속사업자면 자동으로 지움 · 아니면 ${fmtDate(s.grace.until, false)} 혜택 해제</td></tr>` : '<tr><td colspan="4" class="faint">확인 필요 회원이 없어요.</td></tr>';
     return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>접수 · 회원</th><th>사업자번호</th><th>수동 심사 사유</th><th>처리 목표</th><th>상태</th></tr></thead><tbody>${q.join('')}</tbody></table></div>
-      <p class="xsmall faint">수동 심사 대상: 진위 불일치 · 등록증만 제출 · 국세청 API 장애 중 접수. 처리 목표 ${lpv('member.biz_manual_bd')}.</p>
+      <p class="xsmall faint">수동 심사 대상: 진위 불일치 · 등록증만 제출 · 국세청 API 장애 중 접수. 처리 목표 ${pv('member.biz_manual_bd')}.</p>
       ${detail}
       <div class="panel"><div class="panel-h"><h2>사업자번호별 인증 계정</h2><span class="xsmall faint">최대 ${pv('member.biz_accounts_max')}</span></div><div class="panel-b tbl-wrap">${accounts}</div></div>
-      <div class="panel"><div class="panel-h"><h2>월 재조회 · 확인 필요</h2></div><div class="panel-b tbl-wrap"><table class="tbl small"><thead><tr><th>회원</th><th>상호</th><th>결과</th><th>조치</th></tr></thead><tbody>${check}</tbody></table></div></div>`;
+      <div class="panel"><div class="panel-h"><h2>월 재조회 · 확인 필요</h2></div><div class="panel-b tbl-wrap"><table class="tbl small"><thead><tr><th>회원</th><th>상호</th><th>결과</th><th>조치</th></tr></thead><tbody>${check}</tbody></table>
+        <p class="xsmall faint">휴업·폐업이 확인된 뒤 다음 정기 조회에서 다시 계속사업자로 나오면 ‘확인 필요’를 자동으로 지워요. 유예 중이던 사업자 혜택은 끊기지 않고 그대로예요. 유예(${pv('member.biz_closed_grace_days')})가 끝나 혜택이 풀린 뒤라면 고객이 사업자 인증을 다시 신청해요.</p></div></div>`;
   }
 
   /* ── 시스템 화면 ── */
@@ -738,7 +742,7 @@
     const rows = [['사업자 상태 월 재조회', `매월 ${lpv('member.biz_recheck_day', '1일 03:00')} · 다음 ${fmtDate(s.nextRecheck)} · 사업자 회원 전체(휴면 제외)`, target ? '<span class="sla sla-ok">대상에 오늘밥상 포함</span>' : '<span class="xsmall faint">우리 회원은 대상 아님</span>']];
     if (s.grace) { const left = Math.ceil((s.grace.until - now) / GC.DAY); rows.push(['폐업 유예 감시', `확인 ${fmtDate(s.grace.at, false)} → 해제 ${fmtDate(s.grace.until, false)}`, `<span class="sla ${left <= 7 ? 'sla-warn' : 'sla-ok'}">${left}일 남음</span>`]); }
     if (s.withdrawn) rows.push(['재가입 제한 해시', `탈퇴 ${fmtDate(s.withdrawn.at, false)} → 해제 ${fmtDate(s.withdrawn.until, false)}`, s.withdrawn.expired ? '<span class="sla sla-ok">파기됨</span>' : `<span class="sla sla-warn">${Math.ceil((s.withdrawn.until - now) / GC.DAY)}일 남음</span>`]);
-    if (s.manual && !s.manual.decided) rows.push(['서류 심사 처리 목표', `${fmtDate(s.manual.due)}까지`, now > s.manual.due ? '<span class="sla sla-over">초과 → 운영팀 알림</span>' : '<span class="sla sla-ok">여유</span>']);
+    if (s.manual && !s.manual.decided) rows.push(['서류 심사 처리 목표', `${fmtDate(s.manual.due)}까지`, now > s.manual.due ? '<span class="sla sla-over">초과 → 운영팀 알림(NOTI_INT_BIZ_VERIFY_LATE)</span>' : '<span class="sla sla-ok">여유</span>']);
     if (s.order && s.order.status !== 'CONFIRMED') rows.push(['자동 구매 확정', s.order.deliveredAt ? `배송 완료 + ${GC.Policy.get('order.auto_confirm_days')}일` : '배송 완료 대기(다음 날)', `<span class="sla sla-ok">${orderLabel(s.order.status)}</span>`]);
     if (s.email.sentAt && !s.email.verified) { const left = s.email.sentAt.getTime() + lp('member.email_code_minutes') * MIN - now.getTime(); rows.push(['이메일 인증번호', `${lpv('member.email_code_minutes')} 유효`, left > 0 ? `<span class="sla sla-ok">${mmss(left)} 남음</span>` : '<span class="sla sla-over">만료</span>']); }
     f.body.innerHTML = `
@@ -757,17 +761,23 @@
   function runRecheck(by) {
     const s = S(); const a = app.state('acct'); const now = app.clock.now();
     s.nextRecheck = firstOfNextMonth(now);
-    if (!['BIZ', 'BIZ_CHECK'].includes(a)) { s.rechecks.unshift({ at: now, by, res: '우리 시나리오 회원은 대상 아님' }); app.log('rule', `사업자 상태 재조회(${by}): 이 시나리오의 회원은 사업자 회원이 아니라 건너뜀`); return; }
+    if (!['BIZ', 'BIZ_CHECK'].includes(a)) {
+      /* 유예가 끝나 혜택이 풀린 회원은 개인 회원이라 정기 조회 대상이 아님 → 계속사업자여도 자동으로 되살리지 않고 고객이 다시 인증 신청(2026-10-16 D48) */
+      s.rechecks.unshift({ at: now, by, res: s.revoked ? '혜택이 해제된 개인 회원 · 대상 아님(고객이 다시 인증 신청)' : '우리 시나리오 회원은 대상 아님' });
+      app.log('rule', s.revoked ? `사업자 상태 재조회(${by}): 유예가 끝나 혜택이 풀린 회원은 대상이 아니에요. 계속사업자여도 자동으로 되살리지 않고 고객이 사업자 인증을 다시 신청해요` : `사업자 상태 재조회(${by}): 이 시나리오의 회원은 사업자 회원이 아니라 건너뜀`);
+      return;
+    }
     const closed = s.ntsAnswer === 'closed';
     if (closed && a === 'BIZ') {
       goAcct('closure_detected', `${by} · 국세청 응답 폐업`);
-      s.grace = { at: now, until: new Date(now.getTime() + lp('member.biz_closed_grace_days') * GC.DAY) };
+      s.grace = { at: now, until: new Date(now.getTime() + graceDays() * GC.DAY) };
       app.log('rule', `사업자 혜택은 ${fmtDate(s.grace.until, false)}까지 유지 · 세금계산서 발행은 지금부터 막고 현금영수증·카드 전표로 안내 · 진행 중 주문은 영향 없음`);
       app.notify('NOTI_BIZ_STATUS_CHECK', '고객', ['알림톡', '이메일', '알림센터'], `국세청에서 폐업으로 확인 · ${fmtDate(s.grace.until, false)} 사업자 혜택 해제 예정`);
       s.rechecks.unshift({ at: now, by, res: '오늘밥상 폐업 → 확인 필요' });
     } else if (!closed && a === 'BIZ_CHECK') {
       goAcct('reverified', `${by} · 계속사업자로 다시 확인`); s.grace = null;
-      s.rechecks.unshift({ at: now, by, res: '오늘밥상 계속사업자 → 혜택 유지' });
+      app.log('rule', '‘확인 필요’ 표시를 자동으로 지움(2026-10-16 D48) · 유예 중이던 사업자가는 끊긴 적 없이 그대로 · 세금계산서 발행 다시 가능');
+      s.rechecks.unshift({ at: now, by, res: '오늘밥상 계속사업자 → 확인 필요 자동 해제 · 혜택 유지' });
     } else {
       s.rechecks.unshift({ at: now, by, res: closed ? '오늘밥상 여전히 폐업 · 유예 중' : '오늘밥상 계속사업자 · 변동 없음' });
       app.log('rule', `사업자 상태 재조회(${by}): ${closed ? '여전히 폐업 · 유예 계속' : '변동 없음'}`);
@@ -910,7 +920,7 @@
     },
     manualSubmit() {
       const s = S(); const now = app.clock.now();
-      s.manual = { no: s.biz.no, rep: s.biz.rep, open: s.biz.open, at: now, due: GC.addBusinessDays(now, lp('member.biz_manual_bd')), decided: null, warned: false };
+      s.manual = { no: s.biz.no, rep: s.biz.rep, open: s.biz.open, at: now, due: GC.addBusinessDays(now, bizManualBd()), decided: null, warned: false };
       s.rejCode = null; s.rejNote = '';
       goJoin('manual_request', `진위 불일치 ${s.biz.fails}회 · 등록증 제출`);
       app.notify('NOTI_INT_BIZ_VERIFY_NEW', '운영팀(사업자 인증 담당)', ['관리자 알림센터'], `사업자 인증 수동 검토 대기 · 사업자 서류 심사 대기열에 1건 추가 · 처리 목표 ${fmtDate(s.manual.due, false)}`);
@@ -1006,7 +1016,7 @@
     ntsAns(b) { S().ntsAnswer = b.dataset.v; app.log('user', `체험용 국세청 응답: ${b.dataset.v === 'closed' ? '폐업' : '계속사업자'}`); refresh(); },
     async recheck() {
       const s = S();
-      await app.ext({ service: '국세청 사업자등록정보 API', what: '사업자 회원 상태 일괄 재조회', lines: ['사업자 회원 전체(휴면 회원 제외)를 100건씩 상태조회', '휴업·폐업이면 "확인 필요"로 표시하고 고객에게 안내', `폐업이면 ${lp('member.biz_closed_grace_days')}일 유예 뒤 사업자 혜택 해제`], result: s.ntsAnswer === 'closed' ? '오늘밥상을 폐업으로 응답한 것으로 처리해요' : '오늘밥상을 계속사업자로 응답한 것으로 처리해요' });
+      await app.ext({ service: '국세청 사업자등록정보 API', what: '사업자 회원 상태 일괄 재조회', lines: ['사업자 회원 전체(휴면 회원 제외)를 100건씩 상태조회', '휴업·폐업이면 "확인 필요"로 표시하고 고객에게 안내', `폐업이면 ${graceDays()}일 유예 뒤 사업자 혜택 해제`], result: s.ntsAnswer === 'closed' ? '오늘밥상을 폐업으로 응답한 것으로 처리해요' : '오늘밥상을 계속사업자로 응답한 것으로 처리해요' });
       runRecheck('관리자가 지금 실행');
       refresh();
     },
@@ -1037,7 +1047,7 @@
       runRecheck('매월 1일 자동 배치');
     }
     if (s.grace && now >= s.grace.until && app.state('acct') === 'BIZ_CHECK') {
-      goAcct('grace_over', `폐업 확인 후 ${lp('member.biz_closed_grace_days')}일 지남`);
+      goAcct('grace_over', `폐업 확인 후 ${graceDays()}일 지남`);
       if (app.state('join') === 'BIZ_MEMBER') goJoin('benefit_off');
       s.grace = null; s.revoked = true;
       app.log('rule', '사업자 혜택 해제: 사업자가·세금계산서 끔 · 회원 유형 개인 · 진행 중 주문은 결제 때 가격 그대로');
@@ -1057,7 +1067,11 @@
     const o = s.order;
     if (o && o.status === 'SHIPPED' && now - o.at >= GC.DAY) { o.status = 'DELIVERED'; o.deliveredAt = new Date(o.at.getTime() + GC.DAY); app.log('state', '주문: 배송 완료(택배 조회)'); }
     if (o && o.status === 'DELIVERED' && now - o.deliveredAt >= GC.Policy.get('order.auto_confirm_days') * GC.DAY) { o.status = 'CONFIRMED'; app.log('state', `주문: 자동 구매 확정(배송 완료 + ${GC.Policy.get('order.auto_confirm_days')}일)`); }
-    if (s.manual && !s.manual.decided && !s.manual.warned && now > s.manual.due) { s.manual.warned = true; app.log('warn', `서류 심사 처리 목표(${fmtDate(s.manual.due)})를 넘겼어요 → 운영팀 알림`); }
+    if (s.manual && !s.manual.decided && !s.manual.warned && now > s.manual.due) {
+      s.manual.warned = true;
+      app.log('warn', `서류 심사 처리 목표(${fmtDate(s.manual.due)} · 영업일 ${bizManualBd()}일)를 넘겼어요 → 운영팀 알림`);
+      app.notify('NOTI_INT_BIZ_VERIFY_LATE', '운영팀(사업자 인증 담당)', ['관리자 알림센터'], `사업자 인증 수동 검토 처리 목표 초과 · BV-3312 · 목표 ${fmtDate(s.manual.due)} · 대기열에서 바로 처리해 주세요`);
+    }
     guide();
   });
 })();

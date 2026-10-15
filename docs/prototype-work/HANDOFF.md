@@ -12,6 +12,8 @@
 
 **2026-10-16 S10(결정 D36~D45 반영, 재게시 끝)**: 엔진에 `partnerChange` 판비·정산 기준·붙은 구성품(`settle`·`addonRefund`, `hqAdjust` 없앰), `addonCascade` 남은 수량(`partialParents`), ORDER `parent_collected`·`partner_change_cancel`, 디자인비 쿠폰 묶음 안분(`couponAlloc`)·이용권과 같이 안 씀, `claim.label(…, claimType)` 유형별 진행 중 라벨·`claim.step`, `Policy.permRow(key)`(정책값 키별 권한 행), `price.optionExtraRange()`, 새 키 4개, 묶음 이름을 명세 영역 이름으로('주문·클레임·CS'·'디자인·파일'·'회원·혜택·알림'). 검사 41개. 페이지 9개 + index 고침, 흐름 82 → 92개(hub 제외 91 PASS). 결과는 `docs/revision-work/prototype-impact.md` ‘S10 결과’. 같은 URL 재게시(버전 8) — 이번엔 Artifact `read`의 `paths`로 게시본 13개를 받아 직전 커밋 `prototype/`과 해시(줄바꿈 무시, index는 게시 뼈대를 뺀 뒤)로 같음을 확인하고, 페이지를 `read`(path 없이) 한 번 한 뒤 publish하니 막히지 않음. **흐름 일괄 실행은 3개씩**(`xargs -P 3`) — 서브에이전트들이 동시에 서버를 쓰면 ERR_CONNECTION_REFUSED가 날 수 있어, 실패하면 그 흐름만 다시 돌려 봄. 다음은 S11(`prototype-impact.md` 맨 아래 ‘S11 입력’).
 
+**2026-10-16 S11(결정 D46~D52 반영, 재게시 끝)**: 엔진에 디자인비 쿠폰 최소 주문 = 묶음의 맞춤 품목 금액·할인 큰 묶음(`designFees[].couponShort`), `partialCancel`이 디자인비 쿠폰을 원래 묶음에 최소 주문 없이 고정, ORDER `parent_printable`(맞춤 항목에 붙은 구성품은 본 항목 [인쇄 가능] 때 발주 확인), CLAIM_RETURN `EXCHANGE_REQUESTED`·`claim.step(…, claimType)`, `price.priceChangeAlert()`·`priceChangeCheck()`, 새 키 6개(입점 처리 목표 3·사업자 수동 검토·폐업 유예·가격 경고). 검사 43개. 공통 CSS `.rules .rule-row` 이름 칸 최소 5em. 페이지 9개 + index 고침, 흐름 92 → 104개(hub 제외 103 PASS). 결과는 `docs/revision-work/prototype-impact.md` ‘S11 결과’. 같은 URL 재게시(버전 9) — S10과 같은 방법(게시본 13개 해시 비교 → 페이지 `read` 한 번 → publish). **주의**: 서브에이전트가 메인 스크래치 폴더에 같은 이름의 스크립트를 덮어쓸 수 있으니, 메인 도구 파일 이름은 겹치지 않게(예: `main_*.py`). 페이지 에이전트는 흐름을 2개씩 돌림. 다음은 S12(`prototype-impact.md` 맨 아래 ‘S12 입력’).
+
 ---
 아래는 일시 중지 시점(2026-10-13 새벽)의 원래 인수인계 기록입니다.
 

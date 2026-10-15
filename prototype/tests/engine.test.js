@@ -644,3 +644,54 @@ test('TC-41 S10 결정(2026-10-16) — 디자인비 쿠폰 정액·정률·안�
     ['관리자 계정 · 권한 · 정책값', '관리자 계정 · 권한 · 정책값', '수수료율 변경', '디자인 옵션 가격', '쿠폰 · 캠페인 · 멤버십 · 광고 운영']);
   assert.deepEqual([R('design.free_threshold'), R('membership.price_monthly')], ['디자인 옵션 가격', '쿠폰 · 캠페인 · 멤버십 · 광고 운영']); // A-REV-04 화면 값 · 권한 표 행 이름대로
 });
+
+test('TC-42 S11 결정(2026-10-16) — 디자인비 쿠폰 최소 주문은 묶음의 맞춤 품목 금액·할인 큰 묶음(D51), 구성품 [인쇄 가능] 때 발주 확인(D49), 교환 신청(C-STATE-02), 가격 경고·새 키', () => {
+  const NORMAL = { id: 'n', name: '업소용 물티슈', partnerId: 'B', shipKey: 'B-맞춤', qty: 1, tiers: [{ min: 1, price: 300000 }] };
+  const order = (items, designGroups, designCoupon) => GC.price.calcOrder({ items, designGroups, shipping: FREE_SHIP, designCoupon });
+  const coupon = { name: '맞춤 품목 20만원 이상 디자인비 1만원', type: 'amount', value: 10000, minOrder: 200000 };
+  // 일반 상품을 함께 담아도 맞춤 품목 금액(150,000)이 기준 아래면 못 씀 — 부족 금액을 남김
+  const short = order([CUSTOM_ITEM({ tiers: [{ min: 1, price: 150000 }] }), NORMAL], [{ id: 'D1', type: 'CUSTOM' }], coupon);
+  assert.deepEqual([short.totals.designCoupon, short.designFees[0].couponShort], [0, 50000]);
+  // 묶음 둘: 조건을 채운 묶음 가운데 할인이 가장 큰 곳(정률이면 디자인비가 큰 묶음)
+  const two = order([
+    CUSTOM_ITEM({ tiers: [{ min: 1, price: 250000 }] }),
+    CUSTOM_ITEM({ id: 'c2', name: '인쇄 컵홀더', designGroup: 'D2', tiers: [{ min: 1, price: 220000 }], plateFee: 0 }),
+    CUSTOM_ITEM({ id: 'c3', name: '인쇄 냅킨', designGroup: 'D2', tiers: [{ min: 1, price: 100000 }], plateFee: 0 }),
+  ], [{ id: 'D1', type: 'CUSTOM' }, { id: 'D2', type: 'CUSTOM' }], { ...coupon, type: 'rate', value: 50 });
+  assert.deepEqual([two.totals.designCouponGroup, two.totals.designCoupon], ['D2', 29000]); // D1 39,000의 50% < D2 58,000의 50%
+  // 같은 할인이면 앞 묶음
+  const tie = order([CUSTOM_ITEM({ tiers: [{ min: 1, price: 250000 }] }), CUSTOM_ITEM({ id: 'c2', designGroup: 'D2', tiers: [{ min: 1, price: 220000 }], plateFee: 0 })],
+    [{ id: 'D1', type: 'CUSTOM' }, { id: 'D2', type: 'CUSTOM' }], coupon);
+  assert.equal(tie.totals.designCouponGroup, 'D1');
+  // 맞춤 항목에 붙은 구성품: 본 항목 [인쇄 가능] 때 시스템이 함께 발주 확인
+  assert.equal(GC.sm.next('ORDER', 'PAID', 'parent_printable'), 'ACCEPTED');
+  // 교환 신청 → 회수·검수 → 교환 승인 → 교환품 출고 → 완료, 7일 미발송은 자동 철회
+  const step = (s, e) => GC.sm.next('CLAIM_RETURN', s, e);
+  let s = 'EXCHANGE_REQUESTED';
+  for (const e of ['pickup', 'collected', 'approve', 'reship', 'delivered']) s = step(s, e);
+  assert.equal(s, 'CLAIM_COMPLETED');
+  assert.equal(step('EXCHANGE_REQUESTED', 'withdraw'), 'CLAIM_COMPLETED');
+  assert.equal(GC.sm.can('CLAIM_RETURN', 'EXCHANGE_REQUESTED', 'photo_inspect'), false); // 사진 증빙 회수 생략은 재제작만
+  assert.equal(GC.claim.label('CLAIM_RETURN', 'EXCHANGE_REQUESTED', null, 'EXCHANGE'), '교환 진행 중');
+  assert.deepEqual([GC.claim.step('CLAIM_RETURN', 'RETURN_APPROVED', 'EXCHANGE'), GC.claim.step('CLAIM_RETURN', 'EXCHANGE_SHIPPED', 'REMAKE'), GC.claim.step('CLAIM_RETURN', 'RETURN_APPROVED')],
+    ['교환 승인', '재제작품 출고', '반품 승인']);
+  // 가격 오입력 경고: 절반 이하·3배 이상(+200%)
+  assert.deepEqual(GC.price.priceChangeAlert(), { down: -50, up: 200 });
+  assert.deepEqual([GC.price.priceChangeCheck(10000, 5000), GC.price.priceChangeCheck(10000, 5100), GC.price.priceChangeCheck(10000, 29900), GC.price.priceChangeCheck(10000, 30000)], ['down', null, null, 'up']);
+  // 새 정책값 키
+  const g = (k) => GC.Policy.get(k);
+  assert.deepEqual([g('partner.onboard_review_bd'), g('partner.onboard_sample_bd'), g('partner.onboard_total_bd'), g('member.biz_manual_bd'), g('member.biz_closed_grace_days')], [3, 5, 10, 1, 30]);
+});
+
+test('TC-43 부분 취소 때 디자인비 쿠폰은 다시 보지 않음(D51 · U-MY-02) — 남은 맞춤 품목이 최소 주문 아래여도 할인 유지', () => {
+  const input = {
+    items: [CUSTOM_ITEM({ tiers: [{ min: 1, price: 200000 }], plateFee: 0 }), CUSTOM_ITEM({ id: 'c2', name: '인쇄 컵홀더', tiers: [{ min: 1, price: 150000 }], plateFee: 0 })],
+    designGroups: [{ id: 'D1', type: 'CUSTOM' }], shipping: FREE_SHIP,
+    designCoupon: { name: '맞춤 품목 30만원 이상 디자인비 1만원', type: 'amount', value: 10000, minOrder: 300000 },
+  };
+  const o = GC.price.calcOrder(input);
+  assert.deepEqual([o.totals.designFee, o.totals.designCoupon, o.totals.customerTotal], [58000, 10000, 398000]);
+  const r = GC.refund.partialCancel({ input, paid: { pg: o.totals.pay, points: 0 }, cancelIds: ['c2'] });
+  assert.equal(r.refund, 150000); // 쿠폰 할인 10,000원을 거둬 가지 않음
+  assert.equal(r.recalc.totals.designCoupon, 10000);
+});

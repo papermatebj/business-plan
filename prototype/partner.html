@@ -38,6 +38,7 @@
   @media (max-width: 720px) { .rp-grid { grid-template-columns: minmax(0, 1fr); } }
   .locked { opacity: .55; }
   .desk-main .seg { justify-self: start; max-width: 100%; }
+  .desk-main .seg button:disabled { color: var(--ink-3); background: var(--sheet-2); cursor: not-allowed; }
   .desk-main .tbl .btn { white-space: nowrap; }
   .desk-main .tbl-wrap > .tbl { min-width: 440px; }
   .q-tbl td:first-child { min-width: 170px; }
@@ -74,9 +75,6 @@
 
   /* ── 엔진에 아직 없는 정책값: 페이지 상수(관리자 설정값으로 바뀔 값) ── */
   const LOCAL = {
-    doc_review_bd: { v: 3, unit: '영업일', label: '서류·MD 심사 처리 목표(P-ONB-02 · A-PTN-01)' },
-    sample_bd: { v: 5, unit: '영업일', label: '샘플 확인 처리 목표(P-ONB-02)' },
-    total_bd: { v: 10, unit: '영업일', label: '전체 심사 처리 목표(A-PTN-01)' },
     draft_keep_days: { v: 30, unit: '일', label: '임시 저장 신청서 보관(P-ONB-01)' },
     sample_wait_days: { v: 14, unit: '일', label: '인쇄 샘플 미도착 → MD 연락·보류(P-ONB-02)' },
     contract_sign_days: { v: 14, unit: '일', label: '전자 계약 서명 기한(P-ONB-03)' },
@@ -95,10 +93,16 @@
   /* 로그인 보안은 관리자와 같은 정책값(공통 · 보안, C-SEC-01 · P-ONB-04) */
   const P = (k) => GC.Policy.get(k);
   const PW_LEN = 'security.password_min_length', FAIL_LOCK = 'security.login_fail_lock', IDLE_MIN = 'security.idle_logout_minutes';
+  /* 입점 처리 목표(A-PTN-01 · P-ONB-02, 2026-10-16 엔진 키로 옮김) · [인쇄 가능] 확인 기한(D-PRD-02 · P-ORD-06) */
+  const OB_REVIEW = 'partner.onboard_review_bd', OB_SAMPLE = 'partner.onboard_sample_bd', OB_TOTAL = 'partner.onboard_total_bd';
+  const PRINT_BD = 'production.print_check_bd';
   /* 알림: 보안·계정 알림은 담당자가 아니라 대표자에게(C-NOTI-01 · D32) · 내부 알림(입점 신청·샘플 미도착·계약 미서명·OTP 다시 등록 요청)은 관리자 알림센터 + Slack(C-NOTI-01, 2026-10-16) */
   const CH_CEO = ['알림톡', 'SMS 대체', '이메일', '알림센터'];
   const CH_CUST = ['알림톡', 'SMS 대체', '앱 푸시', '이메일', '알림센터'];
   const CH_INT = ['관리자 알림센터', 'Slack'];
+  /* 파트너 주문 담당자: 제안 거둠·이어서 제작(NOTI_PARTNER_CHANGE_WITHDRAWN) · [인쇄 가능] 확인 기한 리마인드(NOTI_PARTNER_PRINT_CHECK_DUE) — C-NOTI-01 표 */
+  const CH_PT_WD = ['알림톡', 'SMS 대체', '이메일', '알림센터'];
+  const CH_PT_DUE = ['알림톡', 'SMS 대체', '알림센터'];
   function lpv(k, text) {
     const m = LOCAL[k];
     return `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(m.label)} — 엔진에 아직 없는 값이라 이 페이지 상수로 둠">${text != null ? text : GC.num(m.v) + m.unit}</span>`;
@@ -114,6 +118,7 @@
 
   /* ── 시나리오 데이터: 맞춤 인쇄 파트너 "대성포장" ── */
   const CO = { name: '대성포장(주)', ceo: '정민호', ceoPhone: '010-****-3317', bizNo: '123-45-67890', addr: '서울 중구 을지로 ○○', ecom: '2026-서울중구-0000', ship: '김포 공장', contact: '김지훈 영업팀장', phone: '010-****-5821', mail: 'jh.kim@daesungpack.co.kr' };
+  const PT_ORDER = `파트너 주문 담당자(${CO.contact.split(' ')[0]})`;
   const CATS = [
     { k: 'sleeve', name: '수저집·종이 포장', kind: 'food' },
     { k: 'pack', name: '포장 용기·봉투', kind: 'food' },
@@ -131,8 +136,22 @@
     { k: 'ecom', memo: '신고증 상호와 사업자등록증 상호가 달라요' },
   ];
   const REASONS = { '서류 미비': '필수 서류가 빠졌거나 내용이 맞지 않아요', '품목 부적합': '취급 품목이 외식업 소모품 범위와 맞지 않아요', '품질 미달': '인쇄 샘플의 색 재현·재단 품질이 기준에 못 미쳐요', '기타': '내부 기준에 따라 이번에는 입점이 어려워요' };
-  const STOP_REASONS = ['서류 유효기간 만료', '직거래 위반', '클레임율 급증', '파트너 요청'];
-  const REL_REASONS = ['정지 사유 해소', '파트너 소명 인정', '사업자 상태 정상 확인', '본사 오처리 정정']; // 정지 해제 사유(D40 · 감사 로그) — 명세에 목록이 없어 임시
+  /* 정지·계약 종료 사유(A-PTN-02, 2026-10-16 맞춤): sys = 시스템이 정지(수동 선택 없음) · phase = 2차 · termOnly = 계약 종료 사유에만.
+     서류 유효기간 만료는 계정 정지가 아니라 해당 품목 판매 중지라 여기 없음 */
+  const BIZ_REASON = '사업자 휴업·폐업';
+  const STOP_REASONS = [
+    { v: '직거래 위반' },
+    { v: '미수금 미납' },
+    { v: BIZ_REASON, sys: true },
+    { v: '페널티 판매 중지', phase: true },
+    { v: '기타' },
+    { v: '파트너 요청', termOnly: true },
+  ];
+  const stopMeta = (v) => STOP_REASONS.find((r) => r.v === v) || {};
+  /* 정지 해제 사유(A-PTN-02, 2026-10-16 맞춤 · 감사 로그 · 대표자에게 알림) */
+  const REL_REASONS = ['정지 사유 해소', '파트너 소명 인정', '사업자 상태 정상 확인', '본사 오처리 정정', '기타'];
+  const REL_LABEL = { '정지 사유 해소': '정지 사유 해소(미수금 납부 등)' };
+  const BIZ_OK = '사업자 상태 정상 확인';
   const INV_AMTS = { a: { v: 1200000, label: '확인된 직거래 120만원' }, b: { v: 8000000, label: '확인된 직거래 800만원' }, c: { v: 3600000, label: '금액 확인 불가 · 직전 12개월 플랫폼 거래액' } };
   const STEPS = ['담당자 인증', '사업자 확인', '회사·판매 정보', '서류', '정산 계좌', '확인·제출'];
 
@@ -177,14 +196,20 @@
   const addonsOf = (o) => S().orders.filter((x) => x.kind === 'addon' && x.parent === o.id);
   const liveAddons = (o) => addonsOf(o).filter((x) => ADDON_LIVE.includes(x.st));
   const addonsPaid = (o) => liveAddons(o).reduce((a, x) => a + x.paid, 0);
+  /* [인쇄 가능] 확인 기한(D47): 인쇄 패키지가 전달된 때(디자인 HANDED_OFF · o.handedAt)부터 production.print_check_bd — 내려받은 때가 아님.
+     정지가 풀려 변경 제안을 거두면 그때를 다시 전달한 때로 보고 새로 셈(D46) */
+  const printDue = (o) => (o.handedAt ? GC.addBusinessDays(o.handedAt, P(PRINT_BD)) : null);
+  const printWaiting = (o) => o.kind === 'custom' && o.st === 'DESIGN_CONFIRMED' && o.design === 'HANDED_OFF' && !!o.handedAt && !o.movedAway;
   /* 체험용 주문: 2단계 인증 뒤 검수를 마친 상품에 들어온 주문이라고 가정 (P-ORD-01). 맞춤 주문은 맞춤 인쇄 파트너만 */
   function seedOrders(now, custom) {
     const t = now.getTime();
     return [
       { id: 'GC-2610-1041', kind: 'normal', item: '크라프트 수저집 40×240mm · 10박스', st: 'ACCEPTED', who: { name: '홍길동', phone: '010-2345-1234', addr: '서울 강남구 테헤란로 123 1층 오늘밥상' } },
       /* list·plate = 할인 전 상품 대금·판비, paid = 상품 대금·판비 줄 결제 금액 합(D36 결제 비율의 분자), paidTotal = 그 항목에 낸 전부(디자인비 포함) */
-      custom && { id: 'GC-2610-1038', kind: 'custom', item: '로고 수저집 40×240mm 5,000매 · 별색 1도', st: 'DESIGN_CONFIRMED', design: 'HANDED_OFF', list: 150000, plate: 30000, paid: 172500, paidTotal: 172500, benefit: '멤버십 무료 이용권', paidNote: '상품 142,500원(파트너 즉시 할인 5%) + 판비 30,000원 · 디자인비 0원(멤버십 무료 이용권)', who: { name: '김서연', phone: '010-3381-5521', addr: '서울 마포구 ○○로 45 카페 소금' } },
-      custom && { id: 'GC-2610-1038-A1', kind: 'addon', parent: 'GC-2610-1038', item: '종이 이쑤시개 1박스', st: 'ACCEPTED', paid: 12000, who: { name: '김서연', phone: '010-3381-5521', addr: '서울 마포구 ○○로 45 카페 소금' } },
+      /* handedAt = 본사가 인쇄 패키지를 전달한 때(D47 기한 시작점) */
+      custom && { id: 'GC-2610-1038', kind: 'custom', item: '로고 수저집 40×240mm 5,000매 · 별색 1도', st: 'DESIGN_CONFIRMED', design: 'HANDED_OFF', handedAt: new Date(t - 2 * HOUR), list: 150000, plate: 30000, paid: 172500, paidTotal: 172500, benefit: '멤버십 무료 이용권', paidNote: '상품 142,500원(파트너 즉시 할인 5%) + 판비 30,000원 · 디자인비 0원(멤버십 무료 이용권)', who: { name: '김서연', phone: '010-3381-5521', addr: '서울 마포구 ○○로 45 카페 소금' } },
+      /* 맞춤 항목에 붙은 추가 구성품(D49): 본 항목 [인쇄 가능] 전이라 결제 완료 · 따로 [발주 확인] 없음 */
+      custom && { id: 'GC-2610-1038-A1', kind: 'addon', parent: 'GC-2610-1038', item: '종이 이쑤시개 1박스', st: 'PAID', paid: 12000, who: { name: '김서연', phone: '010-3381-5521', addr: '서울 마포구 ○○로 45 카페 소금' } },
       custom && { id: 'GC-2610-1045', kind: 'custom', item: '로고 컵홀더 2,000개 · 1도', st: 'DESIGNING', design: 'PROPOSED', list: 96000, plate: 20000, paid: 116000, paidTotal: 155000, paidNote: '상품 96,000원 + 판비 20,000원 + 디자인비 39,000원', who: { name: '최유진', phone: '010-4471-2209', addr: '서울 송파구 ○○로 77 베이커리 온' } },
       custom && { id: 'GC-2610-1029', kind: 'custom', item: '로고 수저집 40×240mm 3,000매 · 1도', st: 'IN_PRODUCTION', design: 'IN_PRODUCTION', who: { name: '정하늘', phone: '010-6624-1180', addr: '경기 고양시 ○○로 31 국밥집 한솥' } },
       { id: 'GC-2610-1033', kind: 'normal', item: '종이 포장 용기 750ml · 4박스', st: 'SHIPPED', shippedAt: new Date(t - 6 * HOUR), who: { name: '박민수', phone: '010-9012-9083', addr: '경기 성남시 분당구 ○○로 8 분식나라' } },
@@ -213,7 +238,7 @@
     domain: 'partner',
     title: '파트너 입점·계약',
     lede: '제조사·인쇄소가 입점을 신청하면 MD가 서류와 품질을 심사하고, 맞춤 인쇄 파트너는 인쇄 샘플까지 확인합니다. 승인 뒤 전자 계약에서 직거래 금지·판 소유권·디자인 저작권 조항에 하나씩 동의해야 계정이 열려요.',
-    meta: '근거: 기능 명세서 P-ONB-01~05 · A-PTN-01·02(계정 상태별 열람) · A-ORD-01(제작 파트너 변경) · C-STATE-01·03 · P-ORD-01 · C-SEC-01 · C-NOTI-01 · A-SYS-03 정책값 · 기획서 07장 B·J(입점 계약 보호 조항 초안)',
+    meta: '근거: 기능 명세서 P-ONB-01~05 · A-PTN-01·02(계정 상태별 열람) · A-ORD-01(제작 파트너 변경) · C-STATE-01·03 · P-ORD-01·06([인쇄 가능] 확인 기한) · C-SEC-01 · C-NOTI-01 · A-SYS-03 정책값 · 기획서 07장 B·J(입점 계약 보호 조항 초안)',
     actors: [
       { id: 'partner', nav: ['입점 신청'], url: 'partner.sikup.co.kr/apply', place: '파트너 센터 · 대성포장 담당자' },
       { id: 'hq', name: '본사 MD·운영', nav: ['입점 심사', '파트너 관리', '수수료율'], url: 'admin.sikup.co.kr/partners', place: '통합 관리자 · MD·운영팀' },
@@ -240,7 +265,7 @@
       contractAt: null, reminded: 0, mdCall: false, clauses: {}, prior: false, signer: 'ceo', proxyDoc: false,
       activeAt: null, mfa: false, newEnded: false, hqTab: 'review', trail: [],
       rp: { kind: 'custom', reorder: 0, plan: 'BASIC', when: 'now', exc: 0, promo: 0 },
-      stopReason: null, suspendReason: null, relReason: REL_REASONS[0], reinstated: null, term: null, inv: null, invAmt: 'a', invEv: false,
+      stopReason: null, suspendReason: null, suspendKind: null, bizResumed: null, relReason: REL_REASONS[0], reinstated: null, term: null, inv: null, invAmt: 'a', invEv: false,
       ptTab: 'info', orders: [], shipOpen: null, pkg: {}, claim: null, maskedLogged: false, chgPick: {},
       sec: { out: false, why: null, step: 'pw', fails: 0, lastAt: null, otpAt: null, pwSetAt: null, lostAt: null, devices: [] },
     });
@@ -349,6 +374,8 @@
       const waiting = targets.filter(chgPending);
       const chgRules = [{ k: '답변 기한', policy: 'order.partner_change_reply_days' }, { k: '무응답', v: `하루 전 다시 알림 → 예고 뒤 ${pv('notify.notice_min_hours')} 지나 전액 환불` }, { k: '차액', v: '상품 + 판비 합계로 비교 · 싸면 환불 · 비싸도 더 안 받음' }, { k: '붙은 구성품', v: '함께 취소 · 전액 환불' }, { k: '비용', v: '파트너 귀책(디자인비까지 환불)' }];
       if (ac === 'SUSPENDED') chgRules.push({ k: '정지가 풀리면', v: '답 안 한 제안은 거둠' });
+      /* D48: 휴업·폐업으로 정지된 파트너가 재조회에서 다시 계속사업자 → 자동 해제 없이 담당 MD가 확인 뒤 [정지 해제] */
+      if (ac === 'SUSPENDED' && s.bizResumed) return turn('hq', `국세청 재조회에서 대성포장이 다시 계속사업자로 확인됐어요. 자동으로 풀지 않아요. 담당 MD가 미수금·서류 같은 다른 정지 사유가 없는지 확인한 뒤 [파트너 관리]에서 [정지 해제]를 누르세요`, { rules: [{ k: '자동 해제', v: '안 함 · MD에게 알림만' }, { k: '확인', v: '미수금·서류·직거래 조사' }, { k: '해제 사유(기본)', v: BIZ_OK }, { k: '해제하면', v: '대표자 알림 · 제안 거둠' }], hint: '다른 정지 사유가 있으면 해제 사유를 바꾸거나 그 사유가 풀릴 때까지 정지를 유지해요.' });
       if (fresh.length) return turn('hq', `[인쇄 가능] 전 맞춤 항목 ${fresh.length}건은 대성포장이 인쇄 패키지를 받을 수 없어 만들 수 없어요. [파트너 관리]의 '제작 파트너 변경'에서 같은 사양 상품을 고르고 [고객에게 제안]을 누르세요`, { rules: chgRules, hint: '이미 [인쇄 가능]을 누른 생산 중 항목은 옮기지 않고 대성포장이 마저 만들어 출고해요.' });
       if (toShip.length) return turn('partner', `${nm} 중이에요. 남은 주문 ${toShip.length}건은 [주문]에서 [송장 등록]으로 마저 출고하세요. 엑셀·인쇄 패키지는 받을 수 없어요`, { rules, hint: `고객 배송 정보는 목록에서 가려지고 [배송 정보 보기]로 한 건씩만 열려요.${toShip.some((o) => o.kind === 'custom') ? ' 생산 중인 맞춤 항목은 [인쇄 가능] 뒤라 다른 파트너로 옮기지 않아요.' : ''}` });
       if (waiting.length) return turn('hq', `고객 답변을 기다려요(제작 파트너 변경 제안 ${waiting.length}건). 고객 화면은 주문 페이지에 있어요. 여기서는 결과 칸의 [고객 동의]·[고객 전액 환불]로 대신 눌러 보거나 +1일로 기한을 보내세요`, { rules: chgRules, hint: `+1일을 6번 누르면 기한 하루 전 다시 알림, 7번째에 무응답 전액 환불이 일어나요.${ac === 'SUSPENDED' ? ' 그 전에 [정지 해제]를 누르면 답하지 않은 제안은 거두고 대성포장이 이어서 만들어요.' : ''}` });
@@ -363,13 +390,23 @@
       if (s.term && s.term.released) return done(`계약 종료 정산이 끝났어요. 유보했던 ${won(s.term.hold)}까지 지급했어요.`, { next: '직거래 금지는 종료 뒤에도 정해진 기간 동안 이어져요. [처음부터]로 다른 갈래를 볼 수 있어요.' });
       return done(`계약이 종료됐어요. 최종 정산액의 ${GC.Policy.get('settlement.final_holdback')}%를 ${L('holdback_days')}일 유보해요.`, { next: `${s.orders.length ? '남은 주문은 모두 배송 완료돼 고객 정보를 가렸어요. ' : ''}+7일을 여러 번 눌러 유보 기간을 보내면 남은 유보금이 지급돼요.` });
     }
-    if (ac === 'SUSPENDED') return turn('hq', `본사 정지 중이에요.${s.orders.length ? ' 남은 주문이 모두 배송 완료돼 고객 정보를 가렸어요.' : ''} 사유가 풀리면 [정지 해제]를, 계속 문제면 [계약 종료]를 누르세요`, { rules: [{ k: '정지 사유', v: esc(s.suspendReason || '-') }, { k: '상품 노출', v: '즉시 중단' }, { k: '정지 해제하면', v: '열람 원래대로 · 답 안 한 변경 제안 거둠' }, { k: '해제 사유', v: '감사 로그 · 대표자에게 알림' }], hint: s.orders.length && !s.claim ? '[파트너 관리]의 [교환 클레임 열기 · 체험]으로 그 건만 다시 보이는 예외를 볼 수 있어요.' : null });
+    if (ac === 'SUSPENDED') {
+      const biz = s.suspendKind === 'biz';
+      return turn('hq', biz ? `사업자 휴업·폐업으로 시스템이 정지했어요.${s.orders.length ? ' 남은 주문이 모두 배송 완료돼 고객 정보를 가렸어요.' : ''} 국세청 정기 조회(월 1회)에서 다시 계속사업자로 나오면 담당 MD에게 알려요. 파트너가 사업을 다시 시작했다고 연락하면 [파트너 관리]의 [국세청 바로 다시 조회]를 누르세요`
+        : `본사 정지 중이에요.${s.orders.length ? ' 남은 주문이 모두 배송 완료돼 고객 정보를 가렸어요.' : ''} 사유가 풀리면 [정지 해제]를, 계속 문제면 [계약 종료]를 누르세요`, {
+        rules: [{ k: '정지 사유', v: biz ? '휴업·폐업(시스템)' : esc(s.suspendReason || '-') }, { k: '상품 노출', v: '즉시 중단' }, biz ? { k: '다시 계속사업자면', v: 'MD 확인 뒤 해제' } : { k: '정지 해제하면', v: '열람 원래대로 · 답 안 한 변경 제안 거둠' }, { k: '해제 사유', v: '감사 로그 · 대표자에게 알림' }],
+        hint: biz ? '시스템 화면의 [재조회 · 계속사업자 결과]는 월 1회 정기 조회를 대신 눌러 보는 버튼이에요.' : s.orders.length && !s.claim ? '[파트너 관리]의 [교환 클레임 열기 · 체험]으로 그 건만 다시 보이는 예외를 볼 수 있어요.' : null,
+      });
+    }
     if (ac === 'PAUSED') return turn('partner', '휴점 중이에요. 상품 노출은 멈췄고 진행 중 주문·클레임은 계속 처리해요. [재개]를 누르면 다시 팔아요', { rules: [{ k: '휴점·재개', v: '파트너가 직접' }, { k: '엑셀·인쇄 패키지', v: '받을 수 있음' }] });
     if (ac === 'ACTIVE') {
       if (!s.mfa) return turn('partner', '대표 계정의 2단계 인증을 등록하세요. 등록하면 상품 등록·주문·정산 메뉴가 열려요', { rules: [{ k: '대표 계정', v: '1개(부계정은 2차)' }, { k: '2단계 인증', v: 'OTP 앱(TOTP) 필수' }, secRules[0], secRules[3]] });
       /* 정지가 풀려 거둔 제안(D40): 확정된 건은 [인쇄 가능]이 다시 열려 대성포장이 이어서 만듦 */
       const back = s.orders.filter((o) => chgWithdrawn(o) && o.st === 'DESIGN_CONFIRMED');
-      if (back.length) return turn('partner', `정지가 풀려 ${back.map((o) => o.id).join(', ')}의 제작 파트너 변경 제안을 거뒀어요. [주문]에서 [인쇄 패키지 받기]를 누르고 [인쇄 가능]을 눌러 이어서 만드세요`, { rules: [{ k: '거둔 제안', v: '표시 내림 · 무응답 환불 기한 멈춤' }, { k: '붙은 구성품', v: '그대로 · 같은 송장' }, { k: '[인쇄 가능] 기한', policy: 'production.print_check_bd' }, { k: '이미 동의·환불된 건', v: '그대로' }] });
+      if (back.length) {
+        const b0 = back[0]; const due = printDue(b0);
+        return turn('partner', `정지가 풀려 ${back.map((o) => o.id).join(', ')}의 제작 파트너 변경 제안을 거뒀어요. [주문]에서 [인쇄 패키지 받기]를 누르고 확인 기한 안에 [인쇄 가능]을 눌러 이어서 만드세요`, { rules: [{ k: '거둔 제안', v: '표시 내림 · 기한 멈춤' }, { k: '인쇄 확인 기한', v: due ? fmtDate(due) : pv(PRINT_BD) }, { k: '기한 시작(다시 전달)', v: `거둔 때 · ${pv(PRINT_BD)}` }, { k: '붙은 구성품', v: '함께 발주 확인' }, { k: '동의·환불된 건', v: '그대로' }], hint: '+1일로 기한을 넘기면 파트너 리마인드와 운영팀 지연 알림이 가요(지연은 기록만, 평가 반영은 2차).' });
+      }
       return done('입점이 끝났어요. 대성포장 계정이 판매 가능 상태이고 상품 등록·주문·정산 메뉴가 열렸어요.', { next: `본사 화면의 [수수료율]에서 적용 요율을 미리 보고, [파트너 관리]에서 직거래 위약금 예시·본사 정지·계약 종료를 눌러 보세요.${s.custom ? ' 정지·종료하면 [인쇄 가능] 전 맞춤 항목의 제작 파트너 변경(제안 → 고객 동의·전액 환불)을 볼 수 있어요.' : ''} 파트너 화면에서는 [주문]의 엑셀·인쇄 패키지 받기, [휴점], 로그인 보안의 [로그아웃]을 눌러 볼 수 있어요.` });
     }
     switch (st) {
@@ -384,10 +421,10 @@
         const m = map[s.step] || map[2];
         return app.turn('partner', m[0], { rules: m[1], hint: m[2] });
       }
-      case 'SUBMITTED': return app.turn('hq', '입점 심사 큐에서 담당 MD를 배정하고 심사를 시작하세요', { rules: [{ k: '서류·MD 심사 목표', v: lpv('doc_review_bd') }, { k: '전체 심사 목표', v: lpv('total_bd') }] });
+      case 'SUBMITTED': return app.turn('hq', '입점 심사 큐에서 담당 MD를 배정하고 심사를 시작하세요', { rules: [{ k: '서류·MD 심사 목표', policy: OB_REVIEW }, { k: '전체 심사 목표', policy: OB_TOTAL }] });
       case 'REVIEWING': return app.turn('hq', s.custom ? '서류 체크리스트와 MD 평가를 확인하고 [샘플 확인으로 넘기기]를 누르세요' : '서류 체크리스트와 MD 평가를 확인하고 [심사 승인]을 누르세요', { hint: '보완 요청·반려도 이 화면에서 할 수 있어요. 보완 요청을 보낸 뒤 시간을 보내 보면 14일 미응답 자동 반려가 일어나요.', rules: [{ k: '평가 점수', v: '내부 기록 · 비공개' }, { k: '보완 응답 기한', policy: 'partner.supplement_days' }, reapply] });
       case 'SUPPLEMENT': return app.turn('partner', '보완 요청 받은 항목만 열렸어요. 다시 올리고 [보완 자료 제출]을 누르세요', { hint: '응답하지 않고 +7일을 두 번 누르면 기한이 지나 자동으로 반려돼요.', rules: [{ k: '응답 기한', v: s.sup ? fmtDate(s.sup.due) : '-' }, { k: '보완 응답 기한', policy: 'partner.supplement_days' }] });
-      case 'SAMPLE_CHECK': return app.turn('hq', s.sampleAt ? '샘플 평가 항목을 확인하고 [심사 승인]을 누르세요' : '인쇄 샘플이 도착하면 [샘플 수령 기록]을 누르세요', { rules: [{ k: '샘플 확인 목표', v: lpv('sample_bd') }, { k: '샘플 미도착', v: `${lpv('sample_wait_days')} → MD 연락·보류` }] });
+      case 'SAMPLE_CHECK': return app.turn('hq', s.sampleAt ? '샘플 평가 항목을 확인하고 [심사 승인]을 누르세요' : '인쇄 샘플이 도착하면 [샘플 수령 기록]을 누르세요', { rules: [{ k: '샘플 확인 목표', policy: OB_SAMPLE }, { k: '샘플 미도착', v: `${lpv('sample_wait_days')} → MD 연락·보류` }] });
       case 'APPROVED': return app.turn('hq', '자동으로 채워진 계약 조건을 확인하고 [전자 계약 발송]을 누르세요', { rules: [{ k: '맞춤 요율', policy: 'commission.custom_rate' }, { k: '신규 입점 인하', policy: 'commission.new_partner_discount' }] });
       case 'CONTRACT': return app.turn('partner', '계약 조건을 확인하고 필수 조항 5개에 하나씩 동의한 뒤 [전자 서명하기]를 누르세요', { hint: '서명하지 않고 +7일을 누르면 3·7·11일째 리마인드, 14일째 MD 연락이 일어나요. 상태는 계약 진행 그대로예요.', rules: [{ k: '서명 기한', v: lpv('contract_sign_days') }, { k: '직거래 금지 기간(종료 후)', policy: 'partner.non_circumvent_months' }, { k: '직거래 위약금 최소', policy: 'partner.circumvent_penalty_min' }] });
       case 'REJECTED': return app.turn('partner', '반려 사유를 확인하세요. 재신청 가능일부터 [다시 신청]할 수 있어요', { hint: '가능일 전에 [다시 신청]을 누르면 서버가 막아요. +7일로 시간을 보내 보세요.', rules: [reapply, { k: '재신청 가능일', v: s.rejected ? fmtDate(s.rejected.reapplyAt, false) : '-' }] });
@@ -416,6 +453,14 @@
   }
   const slaSpan = (due, label) => { const d = due - app.clock.now(); const cls = d < 0 ? 'sla-over' : d < DAY ? 'sla-warn' : 'sla-ok'; return `<span class="sla ${cls}">${label ? label + ' ' : ''}${d < 0 ? '기한 지남' : fmtDate(due)}</span>`; };
   const slaShort = (due, label) => { const d = due - app.clock.now(); const cls = d < 0 ? 'sla-over' : d < DAY ? 'sla-warn' : 'sla-ok'; return `<span class="sla ${cls}" style="white-space:nowrap">${label} ${d < 0 ? '지남' : fmtDate(due, false)}</span>`; };
+  /* 맞춤 큐의 [인쇄 가능] 확인 기한(D47: 전달된 때부터 · D46: 제안을 거둔 때 새로 셈) */
+  function printDueHtml(o) {
+    const due = printDue(o);
+    if (!due) return `<span class="xsmall faint">인쇄 패키지가 전달된 때부터 ${pv(PRINT_BD)} 안에 [인쇄 가능]을 누르면 생산이 시작돼요</span>`;
+    const from = chgWithdrawn(o) ? '변경 제안을 거둔 때(다시 전달한 때로 봄)' : '인쇄 패키지가 전달된 때';
+    return `<span class="cluster">${slaShort(due, '확인 기한')}${o.printLate ? '<span class="tag tag-warn">지연 기록</span>' : ''}</span>
+      <span class="xsmall faint">${from} ${fmtDate(o.handedAt)}부터 ${pv(PRINT_BD)} 안에 [인쇄 가능]을 누르면 생산이 시작돼요. 내려받기를 미뤄도 기한은 그대로예요</span>`;
+  }
   const dLeft = (due) => { const d = due - app.clock.now(); const cls = d < 0 ? 'sla-over' : d < 3 * DAY ? 'sla-warn' : 'sla-ok'; return `<span class="sla ${cls}">${d < 0 ? '지남' : `D-${Math.ceil(d / DAY)}`}</span>`; };
 
   /* ── 파트너 센터 ── */
@@ -435,8 +480,8 @@
       <div class="stack-sm"><h3>식업 파트너 입점</h3>
         <p class="small muted">외식업 사장님에게 소모품을 파는 제조사·유통사를 받아요. 맞춤 인쇄가 가능하면 본사 디자인팀이 확정한 인쇄 파일로 로고 인쇄 주문도 받을 수 있어요.</p></div>
       <div class="grid2">
-        <div class="panel"><div class="panel-h"><h2>입점 절차</h2><span class="xsmall faint">목표 ${lpv('total_bd')}</span></div><div class="panel-b">
-          <ol class="timeline"><li><span>서류 제출 · 국세청·계좌 자동 확인</span></li><li><span>MD 심사 <span class="xsmall faint">${lpv('doc_review_bd')}</span></span></li><li><span>인쇄 샘플 확인 <span class="xsmall faint">맞춤 인쇄만 · ${lpv('sample_bd')}</span></span></li><li><span>전자 계약</span></li><li><span>2단계 인증 뒤 상품 등록·검수</span></li></ol></div></div>
+        <div class="panel"><div class="panel-h"><h2>입점 절차</h2><span class="xsmall faint">목표 ${pv(OB_TOTAL)}</span></div><div class="panel-b">
+          <ol class="timeline"><li><span>서류 제출 · 국세청·계좌 자동 확인</span></li><li><span>MD 심사 <span class="xsmall faint">${pv(OB_REVIEW)}</span></span></li><li><span>인쇄 샘플 확인 <span class="xsmall faint">맞춤 인쇄만 · ${pv(OB_SAMPLE)}</span></span></li><li><span>전자 계약</span></li><li><span>2단계 인증 뒤 상품 등록·검수</span></li></ol></div></div>
         <div class="panel"><div class="panel-h"><h2>준비할 서류</h2></div><div class="panel-b">
           <dl class="kv small"><dt>모두</dt><dd>사업자등록증 · 통신판매업 신고증 · 통장 사본</dd><dt>컵·용기·포장재</dt><dd>식품용 기구 시험성적서</dd><dt>냅킨·물티슈</dt><dd>위생용품 신고증</dd><dt>맞춤 인쇄</dt><dd>인쇄 샘플(우편)</dd></dl></div></div>
       </div>
@@ -527,7 +572,7 @@
         <button class="btn btn-primary" data-act="${s.step === 6 ? 'submit' : 'nextStep'}" ${stepOk(s, s.step) ? '' : 'disabled'}>${nextLabel}</button></div>`;
   }
   function statusTimeline(s, st) {
-    const stages = [['SUBMITTED', '접수', ''], ['REVIEWING', 'MD 심사', `목표 ${lpv('doc_review_bd')}`], ['SAMPLE_CHECK', '샘플 확인', `맞춤 인쇄만 · 목표 ${lpv('sample_bd')}`], ['APPROVED', '심사 승인', ''], ['CONTRACT', '전자 계약', ''], ['ACTIVE', '계정 생성', '']].filter((x) => s.custom || x[0] !== 'SAMPLE_CHECK');
+    const stages = [['SUBMITTED', '접수', ''], ['REVIEWING', 'MD 심사', `목표 ${pv(OB_REVIEW)}`], ['SAMPLE_CHECK', '샘플 확인', `맞춤 인쇄만 · 목표 ${pv(OB_SAMPLE)}`], ['APPROVED', '심사 승인', ''], ['CONTRACT', '전자 계약', ''], ['ACTIVE', '계정 생성', '']].filter((x) => s.custom || x[0] !== 'SAMPLE_CHECK');
     const cur = st === 'SUPPLEMENT' ? 'REVIEWING' : st === 'REJECTED' ? (s.rejectedFrom === 'SUPPLEMENT' ? 'REVIEWING' : s.rejectedFrom || 'REVIEWING') : st;
     const idx = stages.findIndex((x) => x[0] === cur);
     return `<ol class="timeline">${stages.map((x, i) => `<li class="${i < idx ? 'done' : i === idx && st !== 'REJECTED' ? 'now' : ''}"><span>${x[1]}${i === idx && st === 'SUPPLEMENT' ? ' · 보완 요청' : ''}${i === idx && st === 'REJECTED' ? ' · 반려' : ''}${x[2] ? ` <span class="xsmall faint">${x[2]}</span>` : ''}</span></li>`).join('')}</ol>`;
@@ -564,7 +609,7 @@
         <div class="panel"><div class="panel-h"><h2>진행 단계</h2></div><div class="panel-b">${statusTimeline(s, st)}</div></div>
         <div class="panel"><div class="panel-h"><h2>신청 정보</h2></div><div class="panel-b stack">
           <dl class="kv small"><dt>신청번호</dt><dd>${s.appNo}</dd><dt>제출</dt><dd>${s.submittedAt ? fmtDate(s.submittedAt) : '-'}</dd><dt>담당 MD</dt><dd>${s.md ? s.md.name : '배정 전'}</dd>
-            <dt>완료 목표</dt><dd>${s.submittedAt ? fmtDate(GC.addBusinessDays(s.submittedAt, L('total_bd')), false) : '-'} (${lpv('total_bd')})</dd></dl>
+            <dt>완료 목표</dt><dd>${s.submittedAt ? fmtDate(GC.addBusinessDays(s.submittedAt, P(OB_TOTAL)), false) : '-'} (${pv(OB_TOTAL)})</dd></dl>
           ${st === 'APPROVED' ? '<div class="note note-spot small">심사를 통과했어요. 곧 전자 계약서가 도착해요.</div>' : ''}
           <p class="xsmall faint">심사 점수는 공개하지 않아요. 결과와 사유만 알림톡·이메일로 알려 드려요.</p></div></div>
       </div>${sampleGuide}`;
@@ -579,7 +624,7 @@
     { k: 'privacy', title: '고객 개인정보 처리 위탁', agree: '고객 개인정보를 주문 처리에만 쓰는 데 동의해요',
       body: () => `주문 처리에 필요한 고객 배송 정보만 받아요. 배송 완료 후 ${lpv('ship_info_days')} 동안만 볼 수 있고(클레임이 열려 있으면 끝날 때까지), 다른 목적으로 쓰거나 고객에게 따로 연락하지 않아요.` },
     { k: 'quality', title: '맞춤 제작 품질 기준', agree: '맞춤 제작 품질 기준에 동의해요',
-      body: () => `확정 스냅샷(사양·색상·문구)대로 만들어요. 허용 오차는 결제 시점의 상품 설정값(기본 ${pv('claim.tolerance')})까지이고, 오인쇄·불량은 파트너 비용으로 다시 만들어요. 인쇄 패키지를 받은 뒤 ${pv('production.print_check_bd')} 안에 [인쇄 가능]을 누르고, 누른 때부터 생산 책임이 시작돼요.` },
+      body: () => `확정 스냅샷(사양·색상·문구)대로 만들어요. 허용 오차는 결제 시점의 상품 설정값(기본 ${pv('claim.tolerance')})까지이고, 오인쇄·불량은 파트너 비용으로 다시 만들어요. 인쇄 패키지가 전달된 때부터 ${pv(PRINT_BD)} 안에 [인쇄 가능]을 누르고(내려받은 때가 아니라 전달된 때부터 세요), 누른 때부터 생산 책임이 시작돼요.` },
   ];
   function partnerContract(f, s) {
     f.nav('계약'); f.url('partner.sikup.co.kr/contract');
@@ -660,7 +705,7 @@
         <p class="small">협의 채널 연락처 공유 시도 기록과 고객 신고로 조사가 열렸어요. 기한 안에 소명 자료를 내 주세요. ${draftTag}</p>
         ${s.inv.replied ? '<span class="st st-done">소명 자료 제출함 · 운영팀 판단 대기</span>' : '<div><button class="btn btn-primary btn-ext" data-act="invReply">소명 자료 제출</button></div>'}</div></div>`
       : s.inv && s.inv.decided ? `<div class="note note-stop small">직거래 조사 결과: 위반 · 위약금 ${won(s.inv.penalty)}을 이번 주 정산에서 빼요. 결과 통지 뒤 이의 신청은 1회 할 수 있어요.</div>` : '';
-    const banner = ac === 'SUSPENDED' ? `<div class="note note-stop small">본사가 판매를 멈췄어요 · 사유: ${esc(s.suspendReason || '')}. 상품 노출은 멈췄고, 정지 전에 들어온 진행 중 주문·클레임은 [주문]에서 계속 처리해요. 주문 엑셀·인쇄 패키지는 받을 수 없어요. 담당 MD에게 문의해 주세요.</div>`
+    const banner = ac === 'SUSPENDED' ? `<div class="note note-stop small">${s.suspendKind === 'biz' ? '국세청 정기 조회에서 사업자 휴업·폐업이 확인돼 판매를 멈췄어요' : `본사가 판매를 멈췄어요 · 사유: ${esc(s.suspendReason || '')}`}. 상품 노출은 멈췄고, 정지 전에 들어온 진행 중 주문·클레임은 [주문]에서 계속 처리해요. 주문 엑셀·인쇄 패키지는 받을 수 없어요. ${s.suspendKind === 'biz' ? (s.bizResumed ? '다시 계속사업자로 확인돼 담당 MD가 다른 정지 사유가 없는지 확인하고 있어요.' : '사업을 다시 시작했다면 담당 MD에게 연락해 주세요. 월 1회 조회를 기다리지 않고 바로 다시 조회해요.') : '담당 MD에게 문의해 주세요.'}</div>`
       : ac === 'ACTIVE' && s.reinstated ? `<div class="note note-spot small">본사 정지가 풀렸어요(${fmtDate(s.reinstated.at)} · 사유: ${esc(s.reinstated.reason)}). 상품 노출과 주문 엑셀·인쇄 패키지 받기가 원래대로 돌아왔어요.${s.reinstated.withdrawn ? ` 고객이 아직 답하지 않은 제작 파트너 변경 제안 ${s.reinstated.withdrawn}건은 거둬져 대성포장이 이어서 만들어요.` : ''}</div>`
       : ac === 'TERMINATED' ? `<div class="note note-stop small">계약이 종료됐어요(${esc(s.term ? s.term.reason : '')}). 로그인과 남은 주문 처리·정산 화면은 계속 열려 있고, 주문 엑셀·인쇄 패키지는 받을 수 없어요.</div>` : '';
     const ctl = ac === 'ACTIVE' ? '<button class="btn" data-act="pause">휴점</button>' : ac === 'PAUSED' ? '<button class="btn btn-primary" data-act="resume">재개</button>'
@@ -708,13 +753,14 @@
       let act = '';
       if (parent) {
         if (o.st === 'CANCELED' && o.cancelWhy === 'partner_change') act = `<span class="xsmall faint">본 상품의 제작 파트너 변경으로 함께 취소·전액 환불됐어요(공제 없음)</span>`;
-        else if (ADDON_LIVE.includes(o.st)) act = `<span class="xsmall faint">${chgPending(parent) ? '본 상품이 제작 파트너 변경 제안 중이에요. 고객이 동의하든 환불을 고르든 답이 없든 함께 취소·전액 환불돼요' : '본 상품과 같은 송장으로 함께 출고해요'}</span>`;
+        else if (ADDON_LIVE.includes(o.st)) act = `<span class="xsmall faint">${chgPending(parent) ? '본 상품이 제작 파트너 변경 제안 중이에요. 고객이 동의하든 환불을 고르든 답이 없든 함께 취소·전액 환불돼요'
+          : o.st === 'PAID' ? '따로 [발주 확인]이 없어요. 본 항목 [인쇄 가능] 때 함께 발주 확인되고, 그 전에는 고객이 바로 취소할 수 있어요' : '본 항목 [인쇄 가능] 때 함께 발주 확인됐어요. 본 상품과 같은 송장으로 함께 출고해요'}</span>`;
         else if (o.st === 'SHIPPED') act = '<span class="xsmall faint">본 상품과 같은 송장 · 다음 날 배송 완료</span>';
       } else if (o.movedAway) act = '<div class="cluster"><button class="btn btn-sm" disabled>인쇄 패키지 받기</button></div><span class="xsmall faint">고객이 제작 파트너 변경에 동의해 이 항목은 이제 다른 파트너가 만들어요. 인쇄 패키지는 더 받을 수 없어요(서버가 막음).</span>';
       else if (o.st === 'ACCEPTED' || o.st === 'IN_PRODUCTION') act = `<div><button class="btn btn-sm btn-primary" data-act="ship" data-id="${o.id}">송장 등록</button></div>${R && o.kind === 'custom' ? '<span class="xsmall faint">[인쇄 가능] 뒤라 다른 파트너로 옮기지 않아요. 마저 만들어 출고해요.</span>' : ''}`;
       else if (o.st === 'DESIGNING') act = `<span class="xsmall faint">${R ? '정지·종료 중이라 운영팀이 고객에게 다른 파트너 상품을 제안해요' : '고객이 디자인을 확정하면 인쇄 패키지가 와요'}</span>`;
-      else if (o.st === 'DESIGN_CONFIRMED') act = R || chgPending(o) ? `<div class="cluster"><button class="btn btn-sm" disabled>인쇄 패키지 받기</button><button class="btn btn-sm" disabled>인쇄 가능</button></div><span class="xsmall stop-txt">${R ? '정지·종료 뒤에는 새 생산을 시작할 수 없어요' : '제작 파트너 변경 제안 중이라 생산을 시작할 수 없어요'}</span>`
-        : `<span class="xsmall faint">인쇄 패키지를 받은 뒤 ${pv('production.print_check_bd')} 안에 [인쇄 가능]을 누르면 생산이 시작돼요</span><div class="cluster">${s.pkg[o.id] ? '<span class="st st-done">패키지 받음</span>' : `<button class="btn btn-sm btn-ext" data-act="pkg" data-id="${o.id}">인쇄 패키지 받기</button>`}<button class="btn btn-sm btn-primary" data-act="printable" data-id="${o.id}" ${s.pkg[o.id] ? '' : 'disabled'}>인쇄 가능</button></div>`;
+      else if (o.st === 'DESIGN_CONFIRMED') act = R || chgPending(o) ? `<div class="cluster"><button class="btn btn-sm" disabled>인쇄 패키지 받기</button><button class="btn btn-sm" disabled>인쇄 가능</button></div><span class="xsmall stop-txt">${R ? '정지·종료 뒤에는 새 생산을 시작할 수 없어요' : '제작 파트너 변경 제안 중이라 생산을 시작할 수 없어요'}</span>${ac === 'SUSPENDED' && o.handedAt ? '<span class="xsmall faint">정지 중에는 [인쇄 가능] 확인 기한 알림을 보내지 않아요</span>' : ''}`
+        : `${printDueHtml(o)}<div class="cluster">${s.pkg[o.id] ? '<span class="st st-done">패키지 받음</span>' : `<button class="btn btn-sm btn-ext" data-act="pkg" data-id="${o.id}">인쇄 패키지 받기</button>`}<button class="btn btn-sm btn-primary" data-act="printable" data-id="${o.id}" ${s.pkg[o.id] ? '' : 'disabled'}>인쇄 가능</button></div>`;
       else if (o.st === 'SHIPPED') act = '<span class="xsmall faint">택배 조회 중 · 다음 날 배송 완료</span>';
       else if (isClaim) act = s.claim.stage === 'OPEN' ? '<div><button class="btn btn-sm btn-primary" data-act="claimShip">교환품 송장 등록</button></div>' : '<span class="xsmall faint">교환품 배송 중</span>';
       else if (o.chg && o.chg.result === 'refunded') act = `<span class="xsmall faint">제작 파트너 변경 제안에 ${o.chg.by === 'expired' ? '답이 없어' : '고객이 전액 환불을 골라'} 취소됐어요(파트너 귀책)</span>`;
@@ -805,7 +851,7 @@
     const st = app.state('app');
     const mine = st && st !== 'DRAFT';
     const dueCell = () => (s.submittedAt && ['SUBMITTED', 'REVIEWING', 'SAMPLE_CHECK', 'SUPPLEMENT'].includes(st)
-      ? `${slaShort(GC.addBusinessDays(s.submittedAt, L('doc_review_bd')), '서류')}<br>${slaShort(GC.addBusinessDays(s.submittedAt, L('total_bd')), '전체')}` : '<span class="xsmall faint">-</span>');
+      ? `${slaShort(GC.addBusinessDays(s.submittedAt, P(OB_REVIEW)), '서류')}<br>${slaShort(GC.addBusinessDays(s.submittedAt, P(OB_TOTAL)), '전체')}` : '<span class="xsmall faint">-</span>');
     const others = [['PA-2610-0027', '한빛위생', '냅킨·물티슈 · 맞춤 불가', 'SUPPLEMENT', '박정우 MD'], ['PA-2610-0029', '그린컵코리아', '컵·빨대 · 맞춤 인쇄', 'SAMPLE_CHECK', '이수진 MD']];
     const queue = `<div class="tbl-wrap"><table class="tbl q-tbl"><thead><tr><th>신청</th><th>상태</th><th>담당 MD</th><th>처리 목표</th></tr></thead><tbody>
       ${mine ? `<tr class="is-hl"><td><b>대성포장(주)</b>${s.nts === 'down' || s.manualAcct ? ' <span class="tag tag-warn">수동 확인 필요</span>' : ''}<br><span class="xsmall faint">${s.appNo} · ${CATS.filter((c) => s.cats[c.k]).map((c) => c.name.split('·')[0]).join('·')} · ${s.custom ? '맞춤 인쇄' : '맞춤 불가'}</span></td><td><span class="st ${st === 'REJECTED' ? 'st-stop' : 'st-now'}">${GC.sm.stateName('PARTNER_APP', st)}</span></td><td>${s.md ? s.md.name : '-'}</td><td class="small">${dueCell()}</td></tr>` : ''}
@@ -867,13 +913,24 @@
       <tr><td>한결주방상사</td><td>입점 판매</td><td><span class="st">판매 가능</span></td><td>베이직</td><td>박정우 MD</td><td><span class="tag tag-phase">2차</span></td></tr>
       <tr><td>오성인쇄</td><td>입점 판매</td><td><span class="st st-warn">파트너 휴점</span></td><td>베이직</td><td>이수진 MD</td><td><span class="tag tag-phase">2차</span></td></tr></tbody></table></div>`;
     if (!ac) return `<h3>파트너 관리</h3>${list}<div class="note small">대성포장은 아직 계약 전이에요. 전자 서명을 마치면 파트너 계정이 생겨 여기서 관리해요.</div>`;
-    const reasonOk = !!s.stopReason; const pendN = s.orders.filter(chgPending).length;
+    const reasonOk = !!s.stopReason; const termOnly = !!stopMeta(s.stopReason).termOnly; const pendN = s.orders.filter(chgPending).length;
+    /* 정지·종료 사유(A-PTN-02 맞춤): 시스템 사유·2차 사유는 목록에 보이되 고를 수 없음 */
+    const reasonSeg = `<div class="seg" role="group">${STOP_REASONS.map((r) => `<button data-act="stopReason" data-k="reason" data-v="${r.v}" aria-pressed="${s.stopReason === r.v}"${r.sys || r.phase ? ' disabled' : ''}${r.sys ? ' title="국세청 정기 조회로 시스템이 정지해요 · 수동으로 고르지 않아요"' : r.phase ? ' title="A-PTN-03 페널티 · 2차"' : ''}>${r.v}${r.sys ? ' · 시스템' : r.phase ? ' · 2차' : r.termOnly ? ' · 종료만' : ''}</button>`).join('')}</div>`;
+    const biz = ac === 'SUSPENDED' && s.suspendKind === 'biz';
+    const chkRow = (k, ok, txt) => `<tr><td>${k}</td><td><span class="st ${ok ? 'st-done' : 'st-warn'}">${txt}</span></td></tr>`;
+    const bizBox = biz ? `<div class="stack-sm"><b class="small">사업자 상태 · 국세청</b>
+        ${s.bizResumed ? `<div class="note note-spot small">${fmtDate(s.bizResumed.at)} ${esc(s.bizResumed.by)} 결과 <b>계속사업자</b>예요. 시스템은 자동으로 풀지 않고 담당 MD에게 알렸어요. 다른 정지 사유가 없는지 확인한 뒤 [정지 해제]를 누르세요.</div>
+          <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>다른 정지 사유</th><th>확인</th></tr></thead><tbody>${chkRow('미수금(본사 청구 잔액)', true, '없음')}${chkRow('서류 유효기간', true, '모두 유효')}${chkRow('열린 직거래 조사', !(s.inv && !s.inv.decided), s.inv && !s.inv.decided ? '있음' : '없음')}</tbody></table></div>`
+          : '<p class="small">휴업·폐업으로 시스템이 정지했어요. 정기 조회(월 1회)에서 다시 계속사업자로 나오면 담당 MD에게 알려요. 파트너가 사업을 다시 시작했다고 연락하면 기다리지 않고 바로 다시 조회해요.</p>'}
+        <div class="demo"><span class="demo-h">국세청 바로 다시 조회 · 체험 결과</span><button class="btn btn-sm btn-ext" data-act="ntsRe" data-v="ok" data-by="md">계속사업자</button><button class="btn btn-sm btn-ext" data-act="ntsRe" data-v="closed" data-by="md">폐업 그대로</button></div></div><hr class="hr">` : '';
     const ops = ac === 'TERMINATED' ? `<table class="tbl small"><tbody><tr><td>최종 정산액</td><td class="num">${won(s.term.final)}</td></tr><tr><td>지금 지급</td><td class="num">${won(s.term.final - s.term.hold)}</td></tr><tr><td>유보(${GC.Policy.get('settlement.final_holdback')}%)</td><td class="num">${won(s.term.hold)}</td></tr><tr class="is-sum"><td>유보금 지급일</td><td class="num">${s.term.released ? '지급 완료' : fmtLong(s.term.release)}</td></tr></tbody></table>`
-      : `${ac === 'SUSPENDED' ? `<div class="field"><span class="lbl">해제 사유 (감사 로그 · 대표자에게 알림)</span>${seg('relReason', 'reason', REL_REASONS.map((r) => [r, r]), s.relReason)}</div>
+      : `${bizBox}${ac === 'SUSPENDED' ? `<div class="field"><span class="lbl">정지 사유</span><span class="small">${esc(s.suspendReason || '-')}</span></div>
+        <div class="field"><span class="lbl">해제 사유 (감사 로그 · 대표자에게 알림)</span>${seg('relReason', 'reason', REL_REASONS.map((r) => [r, REL_LABEL[r] || r]), s.relReason)}</div>
         <div class="cluster"><button class="btn btn-primary" data-act="unsuspend">정지 해제</button>${pendN ? `<span class="xsmall faint">고객이 아직 답하지 않은 제작 파트너 변경 제안 ${pendN}건은 거둬요</span>` : ''}</div><hr class="hr">` : ''}
-        <div class="field"><span class="lbl">사유 (${ac === 'SUSPENDED' ? '계약 종료' : '정지·종료'} 때 필수)</span>${seg('stopReason', 'reason', STOP_REASONS.map((r) => [r, r]), s.stopReason)}</div>
-        <div class="cluster">${ac === 'SUSPENDED' ? '' : `<button class="btn" data-act="suspend" ${reasonOk ? '' : 'disabled'}>본사 정지</button>`}
-          <button class="btn btn-danger" data-act="terminate" ${reasonOk ? '' : 'disabled'}>계약 종료</button></div>
+        <div class="field"><span class="lbl">사유 (${ac === 'SUSPENDED' ? '계약 종료' : '정지·종료'} 때 필수 · 메모 함께)</span>${reasonSeg}</div>
+        <p class="xsmall faint">사업자 휴업·폐업은 국세청 정기 조회(월 1회)에서 시스템이 정지해요. 페널티 판매 중지(A-PTN-03)는 2차예요. 파트너 요청은 계약 종료 사유예요. 서류 유효기간 만료는 계정 정지가 아니라 해당 품목 판매 중지예요.</p>
+        <div class="cluster">${ac === 'SUSPENDED' ? '' : `<button class="btn" data-act="suspend" ${reasonOk && !termOnly ? '' : 'disabled'}>본사 정지</button>`}
+          <button class="btn btn-danger" data-act="terminate" ${reasonOk ? '' : 'disabled'}>계약 종료</button>${termOnly && ac !== 'SUSPENDED' ? '<span class="xsmall faint">파트너 요청은 계약 종료에만 써요</span>' : ''}</div>
         <p class="xsmall faint">휴점은 파트너가 직접 켜고 꺼요. 본사 정지·계약 종료는 사유를 남기고 파트너에게 알리며 상품 노출을 바로 멈춰요. 정지 해제도 사유를 감사 로그에 남기고 대표자에게 알려요. 계약 종료는 되돌릴 수 없고 최종 정산액의 ${pv('settlement.final_holdback')}를 ${lpv('holdback_days')} 유보해요.</p>`;
     const otp = s.sec.out && s.sec.step === 'otpLost' ? `<div class="panel"><div class="panel-h"><h2>OTP 다시 등록 요청 · 대성포장 대표 계정</h2><span class="st st-todo">확인 필요</span></div><div class="panel-b stack">
         <p class="small">대표자가 휴대폰 본인인증을 마쳤어요(${fmtDate(s.sec.lostAt)}). 입점 서류와 맞는지 대조한 뒤 다시 등록을 허용하세요.</p>
@@ -895,7 +952,7 @@
     if (!s.orders.length) return '';
     const R = RESTRICTED(ac); const rem = remaining(s); const cur = accessCur(s, ac);
     const hqSt = (o) => (o.movedAway ? `${stLabel(o)} · <b>${esc(o.partner)}</b>로 변경`
-      : `${stLabel(o)}${chgPending(o) ? ' · <span class="tag tag-warn">제작 파트너 변경 제안 중</span>' : chgWithdrawn(o) && !ORDER_END.includes(o.st) ? ' · <span class="tag">변경 제안 거둠</span>' : ''}${o.cancelWhy === 'partner_change' ? ' · 제작 파트너 변경으로 함께 취소' : ''}`);
+      : `${stLabel(o)}${chgPending(o) ? ' · <span class="tag tag-warn">제작 파트너 변경 제안 중</span>' : chgWithdrawn(o) && !ORDER_END.includes(o.st) ? ' · <span class="tag">변경 제안 거둠</span>' : ''}${o.cancelWhy === 'partner_change' ? ' · 제작 파트너 변경으로 함께 취소' : ''}${printWaiting(o) && !R && !chgPending(o) ? ` · [인쇄 가능] ${slaShort(printDue(o), '기한')}${o.printLate ? ' <span class="tag tag-warn">지연 기록</span>' : ''}` : ''}${o.kind === 'addon' && o.st === 'PAID' ? ' · 본 항목 [인쇄 가능] 때 함께 발주 확인' : ''}`);
     const itemCell = (o) => (o.kind === 'addon' ? `${esc(o.item)} <span class="xsmall faint">추가 구성품 · ${o.parent}에 붙음</span>` : esc(o.item));
     return `<div class="panel"><div class="panel-h"><h2>대성포장 주문</h2><span class="xsmall faint">남은 ${rem.length}건 · A-ORD-01</span></div><div class="panel-b stack">
       <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>주문</th><th>상품</th><th>상태</th></tr></thead><tbody>
@@ -931,7 +988,7 @@
     const names = list.map((x) => `${esc(x.item)} ${won(x.paid)}`).join(', ');
     let v;
     if (!proposing && c && (c.result === 'agreed' || c.result === 'refunded')) v = `${names} · <b>함께 취소 · ${won(c.money.addonRefund)} 환불</b> <span class="xsmall faint">(공제 없음 · 새 파트너 구성품은 고객이 따로 주문)</span>`;
-    else if (!proposing && c && c.result === 'withdrawn') v = `${names} · 그대로 · 본 상품과 같은 송장으로 대성포장이 출고`;
+    else if (!proposing && c && c.result === 'withdrawn') v = `${names} · 그대로 · 본 항목 [인쇄 가능] 때 함께 발주 확인 · 같은 송장으로 대성포장이 출고`;
     else v = `${names} · 원래 판매자 상품이라 동의·환불·무응답 모두 <b>함께 취소 · 전액 환불</b> <span class="xsmall faint">(공제 없음)</span>`;
     return `<dt>붙은 구성품</dt><dd>${v}</dd>`;
   }
@@ -969,7 +1026,7 @@
           result = `고객 답변 대기<div class="demo chg-demo"><span class="demo-h">체험 · 고객 답</span><button class="btn btn-sm" data-act="chgAgree" data-id="${o.id}">고객 동의</button><button class="btn btn-sm" data-act="chgRefund" data-id="${o.id}">고객 전액 환불</button></div>`;
         } else if (c.result === 'withdrawn') {
           due = `<span class="faint">기한 멈춤 · ${fmtDate(c.doneAt)} 정지 해제</span>`;
-          result = `<span class="st">제안 거둠</span> 고객이 답하기 전에 정지가 풀려 대성포장이 이어서 만들어요${o.st === 'DESIGN_CONFIRMED' ? ' · [인쇄 가능] 다시 열림' : ''} · 고객에게 알림`;
+          result = `<span class="st">제안 거둠</span> 고객이 답하기 전에 정지가 풀려 대성포장이 이어서 만들어요${o.st === 'DESIGN_CONFIRMED' ? ` · [인쇄 가능] 다시 열림${o.handedAt ? ` · 확인 기한을 거둔 때부터 새로 셈 <span class="nw">${fmtDate(printDue(o))}</span>` : ''}` : ''} · 고객·대성포장 주문 담당자에게 알림`;
         } else {
           if (c.result === 'agreed') settle = settleCell(c.offer, c.money, true);
           due = `<span class="faint">${fmtDate(c.doneAt)} ${c.by === 'expired' ? '기한 지남' : '고객 답변'}</span>`;
@@ -990,7 +1047,7 @@
         <dt>새 파트너 정산</dt><dd>동의할 때 정산 기준을 다시 저장해요: 판매가 = 새 상품 대금 + 새 판비, 파트너 부담 할인 0, 요율 = 새 파트너의 그 상품 요율(동의 시점, 재주문 인하 없음). 고객이 낸 금액과의 차이는 플랫폼 부담 할인으로 구매 확정 때 보전해요. 바뀐 뒤 취소되면 판비 공제 상한은 원래 판비 줄 결제 금액이에요</dd>
         <dt>붙은 구성품</dt><dd>원래 판매자 상품이라 동의·전액 환불·무응답 모두 공제 없이 결제 금액 그대로 함께 취소·환불해요. 새 파트너 구성품이 필요하면 고객이 따로 주문해요</dd>
         <dt>전액 환불</dt><dd>파트너 귀책이라 디자인 착수 뒤라도 디자인비·판비까지 공제 없이 돌려주고 이용권·쿠폰을 되살려요(C-PAY-02)</dd>
-        <dt>정지가 풀리면</dt><dd>고객이 아직 답하지 않은 제안은 거둬요. 표시를 내리고 무응답 환불 기한을 멈추며 대성포장이 이어서 만들어요(확정된 건은 [인쇄 가능]이 다시 열림). 이미 동의·환불된 건은 그대로, 계약 종료는 해당 없음</dd>
+        <dt>정지가 풀리면</dt><dd>고객이 아직 답하지 않은 제안은 거둬요. 표시를 내리고 무응답 환불 기한을 멈추며 대성포장이 이어서 만들어요(확정된 건은 [인쇄 가능]이 다시 열림). 확정된 건은 거둔 때를 인쇄 패키지를 다시 전달한 때로 보고 [인쇄 가능] 확인 기한(${pv(PRINT_BD)})을 새로 세요. 정지 중에는 이 기한 알림을 보내지 않아요. 고객과 대성포장 주문 담당자(이어서 제작 안내)에게 알려요. 이미 동의·환불된 건은 그대로, 계약 종료는 해당 없음</dd>
         <dt>원래 파트너 청구</dt><dd>입점 계약을 따라요 ${draftTag}</dd></dl>
       <div class="demo"><span class="demo-h">고객 화면</span><span class="xsmall faint">고객은 주문 상세의 '판매자 변경 확인 필요'에서 [변경 동의]·[전액 환불]을 눌러요. 이 페이지에서는 결과의 체험 버튼으로 대신 눌러요(${days}일 안 무응답은 시계로).</span><a class="btn btn-sm" href="order.html">주문 페이지 열기</a></div>
     </div></div>`;
@@ -1062,20 +1119,28 @@
     if (s.custom && s.sampleReqAt && !s.sampleAt && ['SUBMITTED', 'REVIEWING', 'SAMPLE_CHECK', 'SUPPLEMENT'].includes(st)) rows.push(['인쇄 샘플 도착 감시', `발송 안내 + ${lpv('sample_wait_days')} 지나면 MD 연락·보류`, s.sampleHold ? '<span class="sla sla-over">보류 중</span>' : dLeft(addDays(s.sampleReqAt, L('sample_wait_days')))]);
     if (st === 'CONTRACT') rows.push(['전자 계약 서명', `리마인드 ${REMIND_DAYS.join('·')}일째 · ${lpv('contract_sign_days')} 지나면 MD 연락`, `${s.reminded}/${REMIND_DAYS.length}회 · ${dLeft(addDays(s.contractAt, L('contract_sign_days')))}`]);
     if (st === 'REJECTED' && s.rejected) rows.push(['재신청 제한', `${fmtDate(s.rejected.reapplyAt, false)}부터 가능`, dLeft(s.rejected.reapplyAt)]);
-    if (ac && ac !== 'TERMINATED') { rows.push(['신규 입점 인하 종료', `${fmtLong(newUntil())}부터 기본 요율`, dLeft(newUntil())]); rows.push(['사업자 상태 정기 조회', '월 1회 · 휴·폐업이면 판매 정지', '<span class="sla sla-ok">대기</span>']); }
+    if (ac && ac !== 'TERMINATED') {
+      rows.push(['신규 입점 인하 종료', `${fmtLong(newUntil())}부터 기본 요율`, dLeft(newUntil())]);
+      const bizStop = ac === 'SUSPENDED' && s.suspendKind === 'biz';
+      rows.push(['사업자 상태 정기 조회', bizStop ? '월 1회 · 다시 계속사업자면 담당 MD에게 알림(자동 해제 안 함)' : '월 1회 · 휴·폐업이면 판매 정지', bizStop && s.bizResumed ? '<span class="sla sla-warn">MD 확인 대기</span>' : bizStop ? '<span class="sla sla-over">휴·폐업 정지 중</span>' : '<span class="sla sla-ok">대기</span>']);
+    }
+    /* [인쇄 가능] 확인 기한 감시(D47·D46): 넘기면 파트너 리마인드 + 운영 알림 · 정지 중에는 보내지 않음 */
+    s.orders.filter(printWaiting).forEach((o) => rows.push([`[인쇄 가능] 확인 기한 · ${o.id}`, `패키지 전달 ${fmtDate(o.handedAt)} + ${pv(PRINT_BD)} · 넘기면 파트너 리마인드·운영팀 알림(지연은 기록만)`,
+      RESTRICTED(ac) || chgPending(o) ? '<span class="sla sla-warn">정지 중 · 알림 멈춤</span>' : o.printLate ? '<span class="sla sla-over">지연 · 알림 보냄</span>' : slaShort(printDue(o), '기한')]));
     if (s.inv && !s.inv.decided) rows.push(['직거래 소명 기한', fmtDate(s.inv.due), dLeft(s.inv.due)]);
     if (s.term && !s.term.released) rows.push(['계약 종료 유보금 지급', `${won(s.term.hold)} · ${fmtLong(s.term.release)}`, dLeft(s.term.release)]);
     if (ac && s.mfa) rows.push(['파트너 센터 자동 로그아웃', `${pv(IDLE_MIN)} 동안 쓰지 않으면 로그아웃 · 다시 들어올 때 비밀번호 + OTP`, s.sec.out ? '<span class="sla sla-over">로그아웃됨</span>' : '<span class="sla sla-ok">로그인 중</span>']);
     const shipping = s.orders.filter((o) => o.st === 'SHIPPED').length + (s.claim && !s.claim.done && s.claim.stage === 'SHIPPED' ? 1 : 0);
     if (shipping) rows.push(['배송 조회(스윗트래커)', `배송 중 ${shipping}건 · 다음 날 배송 완료로 바뀜`, '<span class="sla sla-ok">대기</span>']);
     if (RESTRICTED(ac) && s.orders.length) rows.push(['정지·종료 파트너 고객 정보 가림', `남은 주문이 모두 배송 완료되면 ${lpv('ship_info_days')}을 기다리지 않고 바로 가림`, accessCur(s, ac) === 'DONE' ? '<span class="sla sla-ok">가림</span>' : `<span class="sla sla-warn">남은 ${remaining(s).length}건</span>`]);
-    const canRe = (['REVIEWING', 'SAMPLE_CHECK', 'SUPPLEMENT', 'SUBMITTED'].includes(st) && !ac) || ac === 'ACTIVE' || ac === 'PAUSED';
+    /* 정지 중에도 재조회(D48: 휴·폐업 정지 파트너가 다시 계속사업자인지 확인) */
+    const canRe = (['REVIEWING', 'SAMPLE_CHECK', 'SUPPLEMENT', 'SUBMITTED'].includes(st) && !ac) || ac === 'ACTIVE' || ac === 'PAUSED' || ac === 'SUSPENDED';
     f.body.innerHTML = `<h3>배치·외부 연동</h3>
       <p class="small muted">사람이 누르지 않아도 시간이 되면 돌아가는 일들이에요. 위쪽 +1일·+7일로 시간을 보내면 자동으로 실행돼요.</p>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th>작업</th><th>기준</th><th>상태</th></tr></thead><tbody>
         ${rows.map((r) => `<tr><td>${r[0]}</td><td class="small">${r[1]}</td><td>${r[2]}</td></tr>`).join('') || '<tr><td colspan="3" class="faint">지금 기다리는 자동 작업이 없어요.</td></tr>'}</tbody></table></div>
       <div class="panel"><div class="panel-h"><h2>국세청 사업자 상태 재조회</h2></div><div class="panel-b stack">
-        <p class="small muted">심사 중인 신청과 계약 파트너를 다시 조회해요. 심사 중에 휴·폐업이 확인되면 자동 반려, 계약 파트너면 판매를 멈춰요(본사 정지).</p>
+        <p class="small muted">심사 중인 신청과 계약 파트너를 다시 조회해요. 심사 중에 휴·폐업이 확인되면 자동 반려, 계약 파트너면 판매를 멈춰요(본사 정지). 휴·폐업으로 정지된 파트너가 다시 계속사업자로 나오면 자동으로 풀지 않고 담당 MD에게 알려요.</p>
         <div class="cluster"><button class="btn btn-ext" data-act="ntsRe" data-v="ok" ${canRe ? '' : 'disabled'}>재조회 · 계속사업자 결과</button><button class="btn btn-ext" data-act="ntsRe" data-v="closed" ${canRe ? '' : 'disabled'}>재조회 · 폐업 결과</button></div>
         <p class="xsmall faint">명세서가 갈려요: 심사 중 휴·폐업은 P-ONB-02에서 "자동 보류", A-PTN-01에서 "자동 반려"예요. 여기서는 A-PTN-01을 따랐어요.</p></div></div>
       <div class="note note-ext small">외부 연동: PASS(휴대폰 본인인증) · 국세청 API(사업자 진위·상태) · 쿠콘(예금주 확인) · AWS S3·GuardDuty(서류 파일) · 모두싸인(전자 계약) · 솔라피(알림톡). 프로토타입에서는 안내 창으로 대신해요.</div>`;
@@ -1244,6 +1309,11 @@
       app.log('user', '대표 계정 2단계 인증 등록(OTP 앱 · TOTP) · 접속 기기·IP 기록 시작');
       app.log('rule', `2단계 인증 완료 → 상품 등록·주문·정산 메뉴가 열렸어요 · ${P(IDLE_MIN)}분 동안 쓰지 않으면 자동 로그아웃`);
       app.log('user', `체험용: 검수를 마친 상품에 들어온 주문 ${s.orders.length}건을 [주문]에 넣어 뒀어요${s.custom ? '(맞춤 3건: 디자인 중 · 디자인 확정 · 생산 중 + 디자인 확정 건에 붙은 추가 구성품 1건)' : ''}`);
+      if (s.custom) {
+        const o = findOrder('GC-2610-1038');
+        app.log('rule', `${o.id}: 인쇄 패키지가 ${fmtDate(o.handedAt)}에 전달됐어요 → [인쇄 가능] 확인 기한 ${fmtDate(printDue(o))}(전달된 때부터 ${P(PRINT_BD)}영업일 · 내려받은 때가 아님)`);
+        app.log('rule', `붙은 추가 구성품 ${o.id}-A1은 본 항목 [인쇄 가능] 전이라 결제 완료 · 따로 [발주 확인] 없이 [인쇄 가능] 때 함께 발주 확인`);
+      }
       refresh();
     },
     ptTab(b) { const s = S(); s.ptTab = b.dataset.t; s.shipOpen = null; refresh(); },
@@ -1264,7 +1334,13 @@
       const o = findOrder(b.dataset.id); const ac = app.state('acct');
       if (RESTRICTED(ac)) { app.log('warn', `[인쇄 가능] 시도 · ${o.id} → 정지·계약 종료 뒤에는 새 생산을 시작할 수 없어 서버가 거부`); return refresh(); }
       if (chgPending(o) || o.movedAway) { app.log('warn', `[인쇄 가능] 시도 · ${o.id} → 제작 파트너 변경 중인 항목이라 서버가 거부`); return refresh(); }
-      orderGo(o, 'printable', '파트너 [인쇄 가능] = 생산 시작'); refresh();
+      const due = printDue(o); const late = due && app.clock.now() > due;
+      orderGo(o, 'printable', '파트너 [인쇄 가능] = 생산 시작');
+      if (GC.sm.can('DESIGN', o.design, 'printable')) designGo(o, 'printable', '파트너 [인쇄 가능]');
+      if (due) app.log(late ? 'warn' : 'rule', late ? `[인쇄 가능] 확인 기한(${fmtDate(due)})을 넘겨 눌렀어요 → 지연으로 기록만(평가·페널티 반영은 2차)` : `[인쇄 가능] 확인 기한(${fmtDate(due)}) 안에 확인했어요 · 이때부터 생산 책임 시작`);
+      /* D49: 맞춤 항목에 붙은 추가 구성품은 본 항목 [인쇄 가능] 때 시스템이 함께 발주 확인(PAID → ACCEPTED) */
+      addonsOf(o).filter((x) => GC.sm.can('ORDER', x.st, 'parent_printable')).forEach((x) => orderGo(x, 'parent_printable', `본 항목 ${o.id} [인쇄 가능] 때 시스템이 함께 발주 확인 · 약속 출고일은 본 항목을 따름`));
+      refresh();
     },
     ship(b) {
       const s = S(); const o = findOrder(b.dataset.id); const ac = app.state('acct');
@@ -1368,11 +1444,12 @@
       app.go('acct', 'pause', { by: '파트너가 휴점' }); app.log('rule', '상품 노출 중단 · 진행 중 주문·클레임은 계속 처리'); refresh();
     },
     resume() { app.go('acct', 'resume', { by: '파트너가 재개' }); refresh(); },
-    stopReason(b) { S().stopReason = b.dataset.v; refresh(); },
+    stopReason(b) { const m = stopMeta(b.dataset.v); if (m.sys || m.phase) return; S().stopReason = b.dataset.v; refresh(); },
     async suspend() {
-      const s = S(); if (!s.stopReason) return;
+      const s = S(); if (!s.stopReason || stopMeta(s.stopReason).termOnly) return;
       if (!(await app.confirm({ title: '본사 정지할까요?', body: `<p>사유: <b>${esc(s.stopReason)}</b></p><p class="small">파트너에게 사유를 알리고 상품 노출을 바로 멈춰요. 정지 전에 들어온 진행 중 주문은 파트너가 마저 처리하고, 주문 엑셀·인쇄 패키지 다운로드는 막혀요.</p>`, ok: '정지하기', danger: true }))) return;
       app.go('acct', 'suspend', { by: `본사 정지 · ${s.stopReason}` }); s.suspendReason = s.stopReason; s.shipOpen = null; s.reinstated = null;
+      Object.assign(s, { suspendKind: 'manual', bizResumed: null, relReason: REL_REASONS[0] });
       app.notify('NOTI_PARTNER_ACCOUNT_SUSPENDED', `파트너 대표자 ${CO.ceo}`, CH_CEO, `본사 정지 · 사유 ${s.stopReason} · 상품 노출 중단`);
       app.log('rule', '상품 노출 즉시 중단 · 진행 중 주문·클레임은 계속 처리 · 주문 엑셀·인쇄 패키지 다운로드 막음 · 고객 배송 정보는 건별로만');
       s.stopReason = null; checkMask(); refresh();
@@ -1383,10 +1460,14 @@
       const s = S(); if (app.state('acct') !== 'SUSPENDED') return;
       const reason = s.relReason || REL_REASONS[0];
       const pend = s.orders.filter(chgPending); const settled = s.orders.filter((o) => o.chg && ['agreed', 'refunded'].includes(o.chg.result));
-      if (!(await app.confirm({ title: '정지를 풀까요?', body: `<p>해제 사유: <b>${esc(reason)}</b></p><p class="small">상품 노출과 주문 엑셀·인쇄 패키지 다운로드가 원래대로 돌아오고, 사유는 감사 로그에 남기고 대표자에게 알려요.${pend.length ? ` 고객이 아직 답하지 않은 제작 파트너 변경 제안 ${pend.length}건(${pend.map((o) => o.id).join(', ')})은 거두고 대성포장이 이어서 만들어요.` : ''}${settled.length ? ` 이미 동의·환불된 ${settled.length}건은 그대로예요.` : ''}</p>`, ok: '정지 해제' }))) return;
+      const biz = s.suspendKind === 'biz';
+      const bizNote = biz ? `<p class="small">${s.bizResumed ? '국세청 재조회 결과 계속사업자예요. ' : '<b>아직 국세청 재조회에서 계속사업자로 확인되지 않았어요.</b> '}미수금 · 서류 유효기간 · 열린 직거래 조사 같은 다른 정지 사유가 없는지 확인했나요?</p>` : '';
+      if (!(await app.confirm({ title: '정지를 풀까요?', body: `<p>해제 사유: <b>${esc(REL_LABEL[reason] || reason)}</b></p>${bizNote}<p class="small">상품 노출과 주문 엑셀·인쇄 패키지 다운로드가 원래대로 돌아오고, 사유는 감사 로그에 남기고 대표자에게 알려요.${pend.length ? ` 고객이 아직 답하지 않은 제작 파트너 변경 제안 ${pend.length}건(${pend.map((o) => o.id).join(', ')})은 거두고 대성포장이 이어서 만들어요.` : ''}${settled.length ? ` 이미 동의·환불된 ${settled.length}건은 그대로예요.` : ''}</p>`, ok: '정지 해제' }))) return;
       const prevReason = s.suspendReason;
       app.go('acct', 'unsuspend', { by: `본사 정지 해제 · ${reason}` }); s.suspendReason = null;
+      if (biz) app.log('rule', `${s.md ? s.md.name : '담당 MD'} 확인: 국세청 ${s.bizResumed ? '계속사업자' : '재조회 전'} · 미수금 없음 · 서류 유효 · 열린 직거래 조사 ${s.inv && !s.inv.decided ? '있음' : '없음'} → 수동 해제(시스템 자동 해제 없음, D48)`);
       app.log('rule', `감사 로그(A-SYS-02): 정지 해제 · 사유 "${esc(reason)}" · 정지 사유였던 "${esc(prevReason || '-')}" · 처리자 ${s.md ? s.md.name : '운영팀'} · ${fmtDate(app.clock.now())}`);
+      Object.assign(s, { suspendKind: null, bizResumed: null });
       app.notify('NOTI_PARTNER_ACCOUNT_REINSTATED', `파트너 대표자 ${CO.ceo}`, CH_CEO, `본사 정지 해제 · 사유 ${reason} · 상품 노출 재개 · 열람·다운로드 원래대로`);
       app.log('rule', '정지 해제 → 파트너 센터 열람·다운로드가 원래대로 돌아왔어요');
       pend.forEach((o) => chgWithdraw(o, reason));
@@ -1434,13 +1515,31 @@
     },
     invClose() { const s = S(); s.inv = null; app.log('user', '직거래 조사 종결 · 혐의 없음(증빙 부족) · 기록은 보관'); refresh(); },
     async ntsRe(b) {
-      const s = S(); const closed = b.dataset.v === 'closed';
-      await app.ext({ service: '국세청 사업자 상태 조회 API', what: '사업자 상태 재조회', lines: ['심사 중 신청과 계약 파트너를 다시 조회해요(계약 파트너는 월 1회)', `결과: ${closed ? '폐업' : '계속사업자'}`], result: '이 결과를 받은 것으로 처리해요' });
+      const s = S(); const closed = b.dataset.v === 'closed'; const byMd = b.dataset.by === 'md';
+      const who = byMd ? `${s.md ? s.md.name : '담당 MD'} 바로 다시 조회` : '정기 조회';
+      await app.ext({ service: '국세청 사업자 상태 조회 API', what: byMd ? '사업자 상태 바로 다시 조회(담당 MD)' : '사업자 상태 재조회', lines: [byMd ? '파트너가 사업을 다시 시작했다고 연락해 월 1회 정기 조회를 기다리지 않고 바로 조회해요' : '심사 중 신청과 계약 파트너를 다시 조회해요(계약 파트너는 월 1회)', `결과: ${closed ? '폐업' : '계속사업자'}`], result: '이 결과를 받은 것으로 처리해요' });
       const st = app.state('app'); const ac = app.state('acct');
-      if (!closed) { app.log('rule', '재조회 결과 계속사업자 · 바뀐 것 없음'); refresh(); return; }
+      if (!closed) {
+        /* D48: 휴·폐업으로 정지된 파트너가 다시 계속사업자 → 자동 해제 없이 담당 MD에게 알림 · 해제 사유 기본값 '사업자 상태 정상 확인' */
+        if (ac === 'SUSPENDED' && s.suspendKind === 'biz') {
+          if (s.bizResumed) app.log('rule', `${who} 결과도 계속사업자 · 담당 MD 확인 대기 그대로`);
+          else {
+            s.bizResumed = { at: app.clock.now(), by: who }; s.relReason = BIZ_OK; s.hqTab = 'manage';
+            app.log('rule', `${who} 결과 계속사업자 → 시스템은 정지를 자동으로 풀지 않아요(D48) · 담당 MD가 미수금·서류 같은 다른 정지 사유를 확인한 뒤 [정지 해제] · 해제 사유 기본값 '${BIZ_OK}'`);
+            app.notify('NOTI_INT_PARTNER_BIZ_RESUMED', `담당 ${s.md ? s.md.name : 'MD'}`, CH_INT, `대성포장(주) 사업자 상태 정상(계속사업자, ${who}) · 휴업·폐업 정지 해제 검토 · 미수금·서류 등 다른 정지 사유 확인 필요`);
+          }
+        } else app.log('rule', ac === 'SUSPENDED' ? `재조회 결과 계속사업자 · 정지 사유(${esc(s.suspendReason || '-')})와 관계없어 정지는 그대로` : '재조회 결과 계속사업자 · 바뀐 것 없음');
+        refresh(); return;
+      }
       if (ac === 'ACTIVE' || ac === 'PAUSED') {
-        app.go('acct', 'biz_closed', { by: '정기 재조회 · 폐업' }); s.suspendReason = '사업자 폐업(국세청 재조회)'; s.reinstated = null;
-        app.notify('NOTI_PARTNER_ACCOUNT_SUSPENDED', `파트너 대표자 ${CO.ceo}`, CH_CEO, '사업자 폐업 확인(국세청 정기 조회) · 판매 정지');
+        app.go('acct', 'biz_closed', { by: '정기 재조회 · 폐업' });
+        Object.assign(s, { suspendReason: `${BIZ_REASON} · 국세청 정기 조회(시스템)`, suspendKind: 'biz', bizResumed: null, reinstated: null, relReason: BIZ_OK, shipOpen: null });
+        app.notify('NOTI_PARTNER_ACCOUNT_SUSPENDED', `파트너 대표자 ${CO.ceo}`, CH_CEO, '사업자 폐업 확인(국세청 정기 조회) · 판매 정지 · 사업을 다시 시작하면 담당 MD에게 연락');
+        app.log('rule', '상품 노출 즉시 중단 · 진행 중 주문·클레임은 계속 처리 · 주문 엑셀·인쇄 패키지 다운로드 막음 · 다시 계속사업자로 확인돼도 자동으로 풀지 않고 MD가 확인 뒤 해제');
+        checkMask();
+      } else if (ac === 'SUSPENDED') {
+        if (s.suspendKind === 'biz') { s.bizResumed = null; s.relReason = BIZ_OK; app.log('rule', `${who} 결과 폐업 그대로 · 정지 유지`); }
+        else app.log('warn', `이미 본사 정지 중(${esc(s.suspendReason || '-')}) · 재조회 결과 폐업도 정지 사유로 함께 기록 · 해제 전에 사업자 상태도 확인`);
       } else if (['REVIEWING', 'SAMPLE_CHECK', 'SUPPLEMENT'].includes(st)) {
         doReject('기타', '국세청 재조회 결과 폐업이라 자동으로 반려했어요', '시스템 · 휴·폐업 자동 반려');
       } else if (st === 'SUBMITTED') {
@@ -1494,7 +1593,7 @@
     app.log('state', `주문 ${o.id}: ${stLabel(o)} 그대로 · 제작 파트너 ${CO.name} → ${esc(c.offer.seller)} · 상품 → ${esc(c.offer.name)} · 이력에 이전 파트너·상품 기록`);
     if (['APPROVED', 'HANDED_OFF', 'PREFLIGHT_REJECTED'].includes(o.design)) {
       designGo(o, 'partner_changed', `확정 디자인 그대로 ${esc(c.offer.seller)}에 인쇄 패키지 다시 전달`);
-      app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', `새 파트너 ${esc(c.offer.seller)}`, ['알림톡', '이메일', '알림센터'], `${o.id} 인쇄 패키지 도착 · 받은 뒤 ${P('production.print_check_bd')}영업일 안에 [인쇄 가능]`);
+      app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', `새 파트너 ${esc(c.offer.seller)}`, ['알림톡', '이메일', '알림센터'], `${o.id} 인쇄 패키지 도착 · 전달된 지금부터 ${P(PRINT_BD)}영업일 안(${fmtDate(GC.addBusinessDays(app.clock.now(), P(PRINT_BD)))}까지) [인쇄 가능]`);
       app.log('rule', `${CO.name}는 이 인쇄 패키지를 더 받을 수 없어요(다운로드 막힘 · 시도는 접근 기록) · 이미 받은 파일은 계약 종료 때 삭제 확인서로 정리`);
     } else app.log('rule', `디자인이 아직 확정 전(${GC.sm.stateName('DESIGN', o.design)})이라 디자인은 그대로 진행하고, 확정되면 인쇄 패키지는 ${esc(c.offer.seller)}에 가요`);
     if (m.refund) app.log('money', `차액 부분 환불 ${won(m.refund)} = 상품 + 판비 합계(할인 전 ${won(m.oldBase)} − ${won(m.newBase)}) × 결제 비율(${won(o.paid)} ÷ ${won(m.oldBase)}), 원 단위 내림 · 원래 결제 수단으로`);
@@ -1522,10 +1621,18 @@
     const c = o.chg;
     Object.assign(c, { result: 'withdrawn', by: 'reinstated', doneAt: app.clock.now(), why: reason });
     app.log('state', `주문 ${o.id}: ${stLabel(o)} 그대로 · 제작 파트너 변경 제안 거둠 · '판매자 변경 확인 필요' 표시 내림 · 무응답 환불 기한(${fmtDate(c.due)}) 멈춤 · 원래 파트너 ${CO.name}가 이어서 진행`);
-    if (o.st === 'DESIGN_CONFIRMED') app.log('rule', `${o.id}: 디자인이 확정된 건이라 [인쇄 패키지 받기]·[인쇄 가능]이 다시 열려요`);
+    /* D46: 확정된 건은 거둔 때를 '인쇄 패키지를 다시 전달한 때'로 보고 [인쇄 가능] 확인 기한을 새로 셈 */
+    let dueTxt = '디자인이 확정되면 인쇄 패키지가 와요';
+    if (o.st === 'DESIGN_CONFIRMED' && o.design === 'HANDED_OFF') {
+      const before = printDue(o);
+      Object.assign(o, { handedAt: app.clock.now(), printLate: false });
+      const due = printDue(o); dueTxt = `[인쇄 가능] 확인 기한 ${fmtDate(due)}`;
+      app.log('rule', `${o.id}: 디자인이 확정된 건이라 [인쇄 패키지 받기]·[인쇄 가능]이 다시 열려요 · 거둔 때를 인쇄 패키지를 다시 전달한 때로 보고 확인 기한을 새로 셈${before ? `(처음 기한 ${fmtDate(before)} → ` : '('}${fmtDate(due)}, ${P(PRINT_BD)}영업일)`);
+    }
     const ad = liveAddons(o);
-    if (ad.length) app.log('rule', `붙은 추가 구성품 ${ad.map((x) => x.id).join(', ')}도 그대로 · 본 상품과 같은 송장으로 출고`);
+    if (ad.length) app.log('rule', `붙은 추가 구성품 ${ad.map((x) => x.id).join(', ')}도 그대로 · 본 항목 [인쇄 가능] 때 함께 발주 확인 · 같은 송장으로 출고`);
     app.notify('NOTI_ITEM_PARTNER_CHANGE_WITHDRAWN', '고객', CH_CUST, `${o.id} 판매자 변경 제안을 거뒀어요 · 원래 판매자가 이어서 만들어요 · 따로 하실 일은 없어요`);
+    app.notify('NOTI_PARTNER_CHANGE_WITHDRAWN', PT_ORDER, CH_PT_WD, `이어서 제작 안내 · ${o.id} ${esc(o.item)} · 제작 파트너 변경 제안을 거둬 대성포장이 이어서 만들어요 · ${dueTxt}`);
   }
   /* 정지·계약 종료 뒤 남은 주문이 모두 배송 완료되면 고객 정보를 바로 가림(한 번만 기록) */
   function checkMask() {
@@ -1608,6 +1715,14 @@
           app.notify('NOTI_ITEM_PARTNER_CHANGE_PROPOSED', '고객', CH_CUST, `${o.id} 답변 기한 하루 전 다시 알림 · ${fmtDate(c.due)}까지 답이 없으면 전액 환불(예고)`);
         }
         if (c.remindAt && now >= c.due && GC.notice.elapsed(c.remindAt, now)) chgRefund(o, 'expired');
+      });
+      /* [인쇄 가능] 확인 기한(D47 · D46): 넘기면 파트너 리마인드 + 운영 알림 한 번 · 정지·종료·변경 제안 중에는 보내지 않음 */
+      s.orders.forEach((o) => {
+        if (!printWaiting(o) || o.printLate || chgPending(o) || RESTRICTED(ac)) return;
+        const due = printDue(o); if (now < due) return;
+        o.printLate = true;
+        app.notify('NOTI_PARTNER_PRINT_CHECK_DUE', PT_ORDER, CH_PT_DUE, `${o.id} [인쇄 가능] 확인 기한(${fmtDate(due)})이 지났어요 · 인쇄 패키지를 확인하고 [인쇄 가능]을 눌러 주세요`);
+        app.notify('NOTI_INT_PRINT_CHECK_LATE', `운영팀 · 담당 ${s.md ? s.md.name : 'MD'}`, CH_INT, `대성포장 ${o.id} [인쇄 가능] 확인 기한 초과 · 지연은 기록만(평가·페널티 반영은 2차)`);
       });
       checkMask();
       /* 로그인 보안: security.idle_logout_minutes 동안 쓰지 않으면 자동 로그아웃 (P-ONB-04) */

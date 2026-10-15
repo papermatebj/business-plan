@@ -286,3 +286,64 @@
 | 10 | A-MEM-02 수동 검토 영업일 1일·A-PTN-01 서류 심사 3일·전체 10일 '(정책값)'에 키 없음(키 없는 정책값 약 100곳 중 일부) | 맞춤 | A-MEM-02·A-PTN-01·A-SYS-03 | S10 조사 |
 
 엔진 제안(S9부터 남은 것, 채택 안 함): `calcOrder` 고객용 단계 이름('판매자 할인'), DISCARDED 사유 저장, `GC.settle.sumEvents`, 예고·기한 공통 도우미, `claim.tolerance`를 수량 %·위치 mm 두 키로, 업로드 주소 10분·다운로드 5분·변환 5분 정책값 키. S10에서 채택: `partnerChange` 판비 입력, `addonCascade` 남은 수량, `claim.label` 유형별, 옵션 키 2개.
+
+# S11 결과 (2026-10-16, 결정·반영 끝)
+
+> 시작: 원본 HTML·프로토타입이 S10 커밋 뒤 바뀌지 않음 확인. 조사(읽기 전용 서브에이전트 4갈래: 파트너 1·2·3 / 디자인비 쿠폰 7 / 정책값·알림 4·8·10 / 주문·클레임 5·6·9) → 결정 **D46~D52**(AskUserQuestion 2번, 7건 모두 추천안, `decisions.md` 맨 아래). 5·6번은 '맞춤'으로 적었지만 명세에 근거가 없어 결정(D49·D52)으로 올림.
+> 진행: 명세·엔진은 메인, 기획서·요청서는 포크 1개, 페이지는 서브에이전트 5개(partner / order / benefit / catalog+member+system / room+design), index는 메인.
+
+## 끝난 것
+**문서**
+- 명세: D46·D47(A-ORD-01 ⑦ 거둔 때부터 새로·정지 중 기한 알림 없음, D-PRD-02·P-ORD-06·A-SYS-03 `production.print_check_bd` '전달된 때부터') · D48(P-ONB-04·A-PTN-02 MD 확인 뒤 해제, A-MEM-02 회원은 '확인 필요' 자동 지움) · D49(C-STATE-01 PAID → ACCEPTED 행·구성품 규칙, P-ORD-01 새 줄) · D50·D51(A-MKT-01 최소 주문·적용 대상, C-PRICE-01 ④·판단 기준 표를 상품 할인/디자인비 두 행으로, U-BEN-01 두 곳, U-MY-02·C-PAY-02 부분 취소 때 다시 보지 않음) · D52(C-STATE-01 구성품 규칙, C-STATE-02 열린 클레임 줄, '기각' 포함). 맞춤 ① `NOTI_PARTNER_CHANGE_WITHDRAWN` ② 정지·해제 사유 목록 ④ `NOTI_INT_ROOM_MESSAGE` Slack '○ 10분 동안 안 읽으면 묶어 1회'·규칙 문장·`notify.room_digest_minutes` 설명 ⑧ 가격 경고 '절반 이하·3배 이상'(P-PRD-03·A-PRD-01·A-SYS-03) ⑩ 키 7개 표·본문(A-MEM-02·U-MEM-05·A-PTN-01·P-ONB-02), 판단 `NOTI_INT_BIZ_VERIFY_LATE`·`NOTI_INT_PARTNER_BIZ_RESUMED`. `#g-dec4` 26 → 33행, 머리말 33건, 함께 맞춘 것 한 문장. 기능 162 그대로, 검사 통과.
+- 기획서(포크): 15장 10-15~16 표 33행·머리말 33가지, '정지가 풀릴 때 변경 제안' 행, 07장 디자인비 쿠폰, 12장 50만원 기준 행. 요청서(포크): 06장 인쇄 준비 '넘겨받은 때부터', 08장 주문서 노트 5(쿠폰 조건 표기), S-28 쿠폰함, 주문 상세 구성품 노트(D49·D52). 메인 마무리: D52 '기각'을 명세·기획서·요청서에(order 에이전트 지적).
+
+**엔진**(검사 41 → **43개 통과**, TC-42·43 새로)
+- `calcOrder` 디자인비 쿠폰: 최소 주문 = 묶음의 맞춤 품목 금액(`designFees[].basis`), 조건을 채운 묶음 가운데 할인 큰 곳(같으면 앞), 못 채우면 `designFees[].couponShort`(D51). `partialCancel`이 디자인비 쿠폰을 원래 묶음·최소 주문 없이 고정(benefit 에이전트 지적 — 전엔 할인을 거둬 감).
+- ORDER `parent_printable`(PAID → ACCEPTED, D49). CLAIM_RETURN `EXCHANGE_REQUESTED`(pickup·withdraw), 이름 '반품·교환·재제작 클레임', `claim.step(…, claimType)` 유형별.
+- `price.priceChangeAlert()`·`priceChangeCheck(prev, next)`(공통 `pctRange`). 새 키 `product.price_change_alert`(text)·`partner.onboard_review_bd`·`onboard_sample_bd`·`onboard_total_bd`·`member.biz_manual_bd`·`member.biz_closed_grace_days`. `production.print_check_bd` 라벨.
+- 공통 CSS: 규칙 패널 `.rules .rule-row` 이름 칸 최소 5em(값이 길면 이름이 한 글자 폭으로 깨지던 것 — order·benefit 에이전트 지적).
+
+**페이지**(흐름 92 → **104개**, hub 제외 103)
+| 페이지 | 반영 | 흐름 | 새 흐름 |
+| --- | --- | --- | --- |
+| partner | D47 전달 시각 기준 기한·기한 넘김 알림, D46 거둔 때 새 기한·`NOTI_PARTNER_CHANGE_WITHDRAWN`·정지 중 알림 멈춤, 정지·해제 사유 목록('파트너 요청'은 계약 종료만), D48 재조회 정상 → MD 알림·확인표·해제, 입점 키 3개 → 엔진, D49 구성품 PAID → [인쇄 가능] 때 ACCEPTED·함께 출고 | 11개 PASS(2개 사유 고침) | partner-biz-resumed(+narrow) |
+| order | D49 구성품 PAID·즉시 취소·남은 주문 기준 재계산, D52 문구·거부 확정 뒤 원래대로, 반품 칩 곁가지 정리·`claim.step` 유형별 | 14개 PASS | order-addon-paid(+narrow) |
+| benefit | D50 대상 칸 숨김·'맞춤 디자인비 고정', D51 '맞춤 품목 N원 이상'·맞춤+일반 장면(부족 60,000원)·요청 2건 장면(할인 큰 요청), 부분 취소 안내 | 10개 PASS | benefit-design-coupon-min(+narrow) |
+| catalog·member·system | 가격 경고 → 엔진(절반·3배, 사업자가 결과 단가), member 키 2개 → 엔진·`NOTI_INT_BIZ_VERIFY_LATE`·D48 배너, system `TEXT_HOW`·Slack ○ 안내·알림 시연 22개 | 41개 PASS | catalog-price-alert, member-late, system-s11 |
+| room·design | 디자이너 Slack 10분 묶음(읽으면 안 보냄), design 고객 알림 코드 `NOTI_ROOM_MESSAGE`, D47 파트너 화면 기한·다시 전달 때 새로 | 20개 PASS | design-d47(+narrow), room-slack |
+| index(메인) | 개요 '근거' D20~D52 | — | — |
+
+**판단해서 넣은 것(결정과 다르면 고칠 것)**
+- `NOTI_PARTNER_CHANGE_WITHDRAWN` 이메일 ●(이웃 행은 ○ — 조건 없는 ○를 늘리지 않음), 프로토타입은 SMS 대체도 보냄(명세 행대로). 정지 중 기한 알림 멈춤은 디자인 확정 건 전체에(partner), 생산 보류 중에도 기한 알림을 멈추고 원래 기한 유지(design).
+- 정지 사유 '사업자 휴업·폐업'·'페널티 판매 중지(2차)'는 목록에 보이되 누를 수 없음, 수동 정지 해제 사유 기본값 '정지 사유 해소'(partner). [인쇄 가능] 때 디자인 상태도 IN_PRODUCTION으로(partner).
+- 디자인비 쿠폰 최소 주문을 50만원 이상으로 넣으면 경고만(저장은 됨), 조건 안 맞는 쿠폰은 흐리게 보여 주고 이유, 시연 쿠폰 최소 30만원(benefit).
+- 구성품을 먼저 취소한 뒤 판매자 변경 금액은 남은 주문을 다시 계산한 몫으로(판비 공제 상한 48,588원 — 결제 때 몫은 48,612원)(order).
+- 디자이너 Slack 묶음: 관리자 화면에서 10분 안에 읽으면 보내지 않음, 생산 협의 채널을 읽어도 풀리지 않음. 작업 시간만 흘러 10분이 지난 뒤 읽으면 '10분 안에 읽음'으로 남던 기존 버그도 고침(room).
+- 알림 시연 표(발췌)에 S11 코드 3개 + `NOTI_INT_ROOM_MESSAGE` 행(system). 회원 사업자 '확인 필요' 자동 해제 때 고객 알림은 넣지 않음(아래 확인 거리 11).
+
+## S11 마무리
+- 공통 CSS·엔진(`partialCancel`)을 마지막에 고친 뒤 전체 흐름 103개(hub 제외) 3개씩 다시 실행 — 모두 PASS, 엔진 검사 43개 통과. 다섯 문서 검사 통과(명세 기능 162 = 119·34·9, 중복 ID 없음, 태그 맞음), texts spec·plan·brief 다시 뽑음.
+- 재게시: 게시본 13개가 S10 커밋과 같음을 확인(index는 게시 뼈대만 다름)한 뒤 `build_publish.py` → https://claude.ai/artifact/WcNnk7zXsAEJq6jwuhPjDd **버전 9**.
+
+# S12 입력 — S11에서 새로 찾은 확인 거리 (2026-10-16 작성)
+
+> 결정이 급하지 않은 것들입니다. 범위 밖으로 남는 큰 것은 법률·PG 자문 답 반영(PG-71 포함).
+
+| # | 요약 | 종류(대강) | 명세 | 찾은 곳 |
+| --- | --- | --- | --- | --- |
+| 1 | 생산 보류(확정 후 변경·취소 중재) 중 [인쇄 가능] 기한 알림을 멈추나, 보류가 풀리면 기한을 새로 세나 이어서 세나(프로토타입은 멈추고 원래 기한 유지) | 결정 | D-PRD-02·D-APV-02 | design |
+| 2 | 변경 제안을 하기 전에 정지가 풀린 디자인 확정 건의 [인쇄 가능] 기한(D46은 '거두면'만 — 풀리자마자 지연 알림이 갈 수 있음) | 결정 | D-PRD-02·A-ORD-01 ⑦ | partner |
+| 3 | 파트너가 생산 협의 채널에 답했을 때 담당 디자이너에게 가는 알림 코드 없음 | 맞춤 | C-NOTI-01·D-PRD-03 | design |
+| 4 | 디자인비 쿠폰 최소 주문을 50만원 이상으로 넣는 것을 막을지(쓰일 일이 없음) | 맞춤 | A-MKT-01 | benefit |
+| 5 | 멤버십 이용권을 쓴 묶음(품목 2개 이상)의 남는 추가 품목 디자인비 19,000원에 디자인비 쿠폰을 쓸 수 있나, 그 묶음 첫 시안 뒤 취소 공제가 19,000원인지 39,000원을 더하는지 | 결정 | U-BEN-01·U-BEN-05·C-PAY-02 | benefit |
+| 6 | 같은 구성품 환불이 경로에 따라 다름(고객이 먼저 취소 = 재계산 6,000원 / 판매자 변경으로 함께 취소 = ⑥ 결제 금액 그대로 5,834원), A-ORD-01 ④ '원래 항목의 결제 비율'이 결제 때 기준인지 재계산 뒤 기준인지 | 결정 | A-ORD-01 ④⑥·C-PAY-02 | order |
+| 7 | 정지 사유가 하나뿐 — 수동 정지 중 폐업까지 확인되는 겹친 경우(계정 상태표에 정지 → 폐업 이동 없음) | 결정 | A-PTN-02·P-ONB-04 | partner |
+| 8 | 정지 사유 '기타'의 메모가 필수인지 | 맞춤 | A-PTN-02 | partner |
+| 9 | 휴업이면 사업자 혜택을 바로 멈추나: U-MEM-05·`NOTI_BIZ_STATUS_CHECK`('사업자가 적용 중지')는 바로 멈춤, A-MEM-02는 '확인 필요' 표시·폐업만 30일 유예 — 서로 어긋남, 휴업의 유예·해제 규칙 없음 | 결정 | U-MEM-05·A-MEM-02·C-NOTI-01 | member |
+| 10 | C-NOTI-01 이메일 칸의 조건 없는 ○ 11행(`NOTI_VBANK_EXPIRED`·`NOTI_PARTNER_ORDER_NEW` 등) — 범례 '앱 설치·권한'은 이메일에 맞지 않음 | 맞춤 | C-NOTI-01 | S11 조사 |
+| 11 | D48로 회원 '확인 필요'가 자동으로 지워질 때 고객에게 알리나(경고 알림은 보냄) | 맞춤 | A-MEM-02·C-NOTI-01 | member |
+| 12 | 키 없는 '(정책값)' 남은 것(명세 약 100곳 가운데 일부, 프로토타입 member 페이지 상수 6개 — 재조회 날짜·인증번호 시간 등) | 맞춤 | A-SYS-03 | S10·S11 조사 |
+
+참고(명세 문제 아님): 사업자가 할인율 방식은 상한 50%라 할인율만 바꿔서는 '절반 이하' 경고가 나지 않음(P-PRD-03). 프로토타입은 '[인쇄 가능] 2일을 넘기면 담당 MD 연락'을 넣지 않음.
+
+엔진 제안(채택 안 함, S12에서 판단): `GC.production.printDue`(디자인 확정 건 [인쇄 가능] 기한 — design·partner·order 계산 맞춤), 디자인 [인쇄 가능] 전이에 주문 항목 상태 연결, `CLAIM_STEP_BY_TYPE.REMAKE` 단계 더하기(design 페이지 상수 `REMAKE_STEP` 지우기 — '재제작품 출고'/'재제작품 보내는 중' 말 맞추기), `addBusinessDays`가 영업시간 밖 시작 시각을 그대로 잇는 것, `priceChangeCheck`가 `{kind, pct}`·문구를 돌려주기. S9부터 남은 것: `calcOrder` 고객용 단계 이름('판매자 할인'), DISCARDED 사유 저장, `GC.settle.sumEvents`, 예고·기한 공통 도우미, `claim.tolerance` 두 키, 업로드·다운로드·변환 시간 키.
