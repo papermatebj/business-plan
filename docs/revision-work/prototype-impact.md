@@ -1,4 +1,4 @@
-# 프로토타입 영향 목록 (S7 입력)
+# 프로토타입 영향 목록 (S7 입력 · S9 입력은 맨 아래)
 
 > 작성: 2026-10-14 S6. 근거: 부록 B 반영(S2~S5)과 S6 교차 검사·결정(D17~D19)으로 바뀐 명세 규칙을 지금 프로토타입(`prototype/`)과 대조한 결과입니다.
 > S7 진행 방법(서버·검증 도구·흐름 재실행·재게시)은 `docs/prototype-work/HANDOFF.md`를 그대로 따릅니다. 줄 번호는 2026-10-14 기준이라 고치다 보면 밀립니다. 함수 이름으로 찾으세요.
@@ -101,3 +101,33 @@
 - 알림 코드 없음: 파트너 계정 잠금·OTP 재등록, 고객 '제작 파트너 변경', 올린 사람에게 파일 검사 결과(감염·검사 불가).
 - 클레임 완료의 고객 라벨이 결과별(거부 확정·철회)로 나뉘지 않음(페이지에서 덮어씀).
 - 일반 주문 정산의 VAT 반올림 단위(주문 한 줄 vs 항목별).
+
+
+---
+
+# S9 입력 — S8 결정(D20~D33)과 맞춤 목록의 프로토타입 영향 (2026-10-15 작성)
+
+> 근거: `decisions.md` 맨 아래 'S8 남은 확인 거리 — D20~D33'과 'S8 맞춤 목록'. 명세·기획서·요청서는 S8에 고쳤고, 프로토타입은 아직 그대로입니다.
+> 진행 방법(서버·검증 도구·흐름 재실행·재게시)은 S7과 같이 `docs/prototype-work/HANDOFF.md`를 따릅니다. 지금 엔진 검사 33개, 흐름 63개(hub 제외). 줄 번호 대신 함수·상수 이름으로 찾으세요.
+> 위 'S7 결과'의 '남은 확인 거리' 6건은 S8에서 모두 정리됐습니다(출고 뒤 취소 = D23, 수정본 전이 = D27 + 맞춤, 정책값 키 = 맞춤, 알림 코드 = D32 + 맞춤, 클레임 완료 라벨 = D30, VAT 단위 = D22).
+
+| 분류 | 결정 | 프로토타입 위치 | 지금 → 바꿀 내용 | 영향 검사·흐름 | 크기 |
+| --- | --- | --- | --- | --- | --- |
+| 돈 | D22 VAT 단위 | E `vatSplit`·`confirmEvent`, settlement MVP 모드(일반 주문 한 이벤트) | MVP 모드도 항목별 2행(수저집 81,000 · 냅킨 58,000, 배송비는 냅킨 행), 일반 주문 공급가 13,636 → **13,637**·VAT 1,363 | tests/engine.test.js(13636 기대값), flows/settlement-mvp*.json('13,636') | 중 |
+| 돈 | D20 판비 | E 가격 계산(`priceCalc` 계열), catalog 맞춤 단가·주문서 미리보기, design 판비 공제 | 판비를 ① 상품 금액 줄로(즉시 할인 '판비 범위' 선택 시 할인, 본사 상품 쿠폰 안분 대상, 50만원 판정 제외). 판비 공제 상한 = 판비 줄의 결제 금액(할인·안분 뒤) | 엔진 검사 새로(판비 할인·안분·공제 상한) | 중 |
+| 돈 | D21 쿠폰 | E `hqCoupon.includeDesignFee` → 상품 할인 쿠폰(장바구니·상품 중 1) + `designCoupon`(디자인비에만) 두 자리, benefit·order 쿠폰 선택 | '디자인비 포함' 켜기 없앰. 신규 가입 쿠폰 + 첫 디자인 무료 쿠폰 동시 적용 예 | 엔진 검사 새로(두 자리 동시), benefit 흐름 | 중 |
+| 돈·상품 | D24 추가 구성품 + 옵션 3단 | catalog(파트너 옵션 등록·고객 상품 상세), order(장바구니·주문서·주문 상세), E 가격 계산·상태 | 옵션 3단 조합, 추가 구성품 등록(최대 20, `product.addon_max`)·고객 선택(본 상품 필요, 품절 구성품만 막음)·본 상품 줄 아래 붙은 줄·따로 된 주문 항목(혼자 취소, 본 상품 취소 시 출고 전 함께 취소)·파트너 할인 제외·50만원 제외 | 새 흐름(catalog-addon), 엔진 검사 새로 | 큼 |
+| 상태 | D23 출고 뒤 취소 이의 인정 | order(취소 거부 이의 → 인정), E `CLAIM_CANCEL` | 지금 동작(회수 뒤 환불, RETURNED)은 그대로. 완료 결과 `REFUNDED`로 표시, 엔진에 '취소 이의 인정 회수' 이벤트 이름 정리 | order 흐름 | 작 |
+| 상태 | D27 수정본 | E `PRODUCT_REVISION`·`PRODUCT`, catalog 수정본 패널 | IN_REVIEW → EDITING [검수 요청 취소], EDITING·NEEDS_FIX → DISCARDED [수정본 버리기], 판매 종료 때 열린 수정본 DISCARDED(SUSPENDED 중엔 그대로), `PRODUCT` IN_REVIEW → DRAFT | 엔진 검사 새로, catalog 흐름 | 중 |
+| 상태 | 맞춤(정산 보류 해제) | E `SETTLEMENT` | ON_HOLD → CONFIRMED(지급 실패·장애 보류 해제, 확정 금액 그대로 다음 지급 목록) 추가. 지금은 SCHEDULED로만 감 | settlement 흐름 | 작 |
+| 상태·문구 | D30 클레임 완료 라벨 | E `CLAIM_RETURN`·`CLAIM_CANCEL` 고객 라벨, order·design의 페이지 덮어쓰기(`REMAKE_LABEL` 등) | `result`(REFUNDED·EXCHANGED·REMADE·REJECTED·WITHDRAWN·DISMISSED)에서 라벨을 뽑고 페이지 덮어쓰기 제거 | order·design 흐름 라벨 기대값 | 중 |
+| 상태 | D33 제작 파트너 변경 | partner(정지·종료 일괄 처리, 임시 상태 `MOVED`), order(주문 상세), E | `MOVED` 없앰 → 운영 제안 → 고객 [변경 동의]/[전액 환불], 7일(`order.partner_change_reply_days`)·하루 전 다시 알림·예고 뒤 24시간 무응답 환불, 동의 시 상태 그대로 파트너만 바뀜·확정 건 패키지 재전달(HANDED_OFF), 차액(싸면 환불, 비싸도 더 안 받음). 알림 `NOTI_ITEM_PARTNER_CHANGE_PROPOSED`·`NOTI_ITEM_PARTNER_CHANGED` | 새 흐름(partner-change), partner 흐름 | 큼 |
+| 화면 | D28 허용 오차 | design 확정 체크리스트·사양 요약·스냅샷 | '±3%' → '수량 ±3%·인쇄 위치 ±2mm(상품 설정값)' | design 흐름 문구 | 작 |
+| 화면 | D29 규제 안내 | catalog 상품 상세(고객), system 또는 catalog 카테고리 관리 | 카테고리 '규제 안내 문구' 칸 + 상품 상세 접힌 상자(고친 날짜) | catalog 흐름 | 중 |
+| 화면 | D25 재입고 | catalog 품절 표시 | '재입고 알림 받기' 버튼이 있으면 2차 표시, MVP는 예정일만 | — | 작 |
+| 화면 | D31 알림 채널 | member 알림 설정 | 필수 알림 채널 선택이 있으면 없앰(마케팅 채널만) | member 흐름 | 작 |
+| 정책값 | 맞춤 + D26 | E 정책값 목록(`policies`), system 정책값 화면, catalog(`print_check_bd`·`promo_max_days` 페이지 상수), partner(보안 값) | 새 키: `security.password_min_length`·`security.login_fail_lock`·`security.idle_logout_minutes`·`production.print_check_bd`·`promo.instant_discount_max_days`·`promo.instant_discount_max_targets`·`product.addon_max`·`order.partner_change_reply_days`, `file.max_size` → `file.max_size_chat`·`_original`·`_logo`·`_image`. 페이지 상수를 키로 바꿈. system 파일 표: 로고 100MB(1개)·참고 이미지·간판 사진 행, 칼선 500MB | 엔진 검사(TC-33 정책값 키 목록) | 중 |
+| 알림 | D32 + 맞춤 | partner·catalog·system·room의 `app.notify('코드 없음', …)` | 코드 붙이기: `NOTI_PARTNER_ACCOUNT_LOCKED`·`NOTI_PARTNER_OTP_RESET`(대표자), `NOTI_FILE_SCAN_REJECTED`·`NOTI_PARTNER_FILE_SCAN_REJECTED`·`NOTI_INT_FILE_SCAN_REJECTED`, `NOTI_PARTNER_PRODUCT_SUSPENDED`·`NOTI_PARTNER_DOC_EXPIRY_NOTICE`, `NOTI_PARTNER_ACCOUNT_SUSPENDED`·`NOTI_PARTNER_TERMINATED`, `NOTI_PARTNER_PRINT_CHECK_DUE`·`NOTI_INT_PRINT_CHECK_LATE`, `NOTI_BIZ_STATUS_CHECK`, `NOTI_PARTNER_INVESTIGATION_NOTICE`·`_RESULT` | 흐름의 알림 로그 기대값 | 작 |
+| 화면 | 맞춤(버튼 이름) | catalog 상품 상세 | 맞춤 진입 버튼이 [디자인 요청하고 주문]이면 [맞춤 제작으로 주문하기]로, 옵션·수량 → 방식 선택 순서 | catalog 흐름 | 작 |
+
+**S9 시작 때 정할 것(추천안)**: ① 추가 구성품을 catalog·order 두 페이지 모두에 넣을지(추천: 둘 다, 흐름 하나로 이어 보기) ② 제작 파트너 변경을 partner(운영 일괄 처리)와 order(고객 동의) 중 어디서 시작해 보여줄지(추천: partner에서 정지 → order에서 동의/환불로 이어지는 흐름 하나) ③ 범위(추천: 표 전체).

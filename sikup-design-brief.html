@@ -190,7 +190,7 @@ s{color:var(--text-3)}
 .step .who{font-size:11.5px;font-weight:800;margin:6px 0 4px}
 .step h5{font-size:14px;font-weight:800;margin:0 0 4px}
 .step p{font-size:12.5px;color:var(--text-2);line-height:1.55}
-.step.c .who{color:var(--blue)} .step.d .who{color:var(--accent)} .step.s .who{color:var(--primary)}
+.step.c .who{color:var(--blue)} .step.d .who{color:var(--accent)} .step.s .who{color:var(--primary)} .step.o .who{color:var(--purple)}
 .step.d{border-color:color-mix(in srgb,var(--accent) 45%,var(--border))}
 .who-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;margin-bottom:16px;color:var(--text-2)}
 .who-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
@@ -252,6 +252,16 @@ s{color:var(--text-3)}
 .wf-pin b{transform:rotate(45deg);color:#fff;font-size:9px}
 .wf-chk{display:flex;gap:5px;align-items:flex-start;padding:2px 0}
 .wf-chk i{flex:none;width:10px;height:10px;border:1.5px solid var(--border-strong);border-radius:3px;margin-top:2px}
+.wf.off{opacity:.5}
+.wf-btn.dis{opacity:.45}
+.wf-tl{display:flex;gap:2px;margin:5px 0 4px}
+.wf-tl span{flex:1;min-width:0;text-align:center;font-size:8px;line-height:1.2;padding-top:3px;border-top:3px solid var(--border-strong);color:var(--text-3)}
+.wf-tl span.done{border-color:var(--primary);color:var(--text-2)}
+.wf-tl span.now{border-color:var(--accent);color:var(--accent);font-weight:800}
+.smap li .s{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10.5px;font-weight:700;color:var(--text-3);margin-left:4px}
+.cat{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:12px}
+.cat .col{border:1px solid var(--border);border-radius:14px;padding:12px 14px;background:var(--surface)}
+.cat h5{font-size:13.5px;font-weight:800;margin:0 0 8px}
 .an{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--blue);color:#fff;font-size:9px;font-weight:900;font-style:normal;vertical-align:1px;margin-left:3px;flex:none}
 .ph-cap{font-size:14px;font-weight:800;text-align:center}
 .ph-notes{width:100%;max-width:290px;font-size:12.5px;color:var(--text-2);list-style:none;padding:0;display:grid;gap:4px}
@@ -260,7 +270,7 @@ s{color:var(--text-3)}
 
 /* key screen cards */
 .ks-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
-.ks{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.ks{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;min-width:0}
 .ks.core{border:1.5px solid var(--accent);background:linear-gradient(180deg,var(--accent-weak),var(--surface) 55%)}
 .ks h4{font-size:15.5px;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ks .why{font-size:13px;color:var(--text-3);margin-bottom:10px}
@@ -305,7 +315,7 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
   .kpi .v{font-size:19px}
   .brand small{display:none}
   .icon-btn .lbl{display:none}
-  .ks-grid,.comp-grid{grid-template-columns:1fr}
+  .ks-grid,.comp-grid,.cat{grid-template-columns:minmax(0,1fr)}
 }
 @media print{
   .topbar,.toc,.icon-btn{display:none!important}
@@ -335,16 +345,17 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
     <div class="toc-title">CONTENTS</div>
     <a href="#scope"><span class="n">01</span>요청 개요</a>
     <a href="#users"><span class="n">02</span>누가 쓰나</a>
-    <a href="#direction"><span class="n">03</span>디자인 방향</a>
-    <a href="#structure"><span class="n">04</span>플랫폼·화면 구조</a>
-    <a href="#flows"><span class="n">05</span>핵심 흐름</a>
-    <a href="#screens"><span class="n">06</span>화면 목록</a>
-    <a href="#keyscreens"><span class="n">07</span>핵심 화면 상세</a>
-    <a href="#components"><span class="n">08</span>공통 컴포넌트·상태</a>
-    <a href="#rules"><span class="n">09</span>꼭 지킬 표시 규칙</a>
-    <a href="#later"><span class="n">10</span>나중에 붙을 것</a>
-    <a href="#delivery"><span class="n">11</span>산출물·전달</a>
-    <a href="#questions"><span class="n">12</span>함께 정할 것</a>
+    <a href="#terms"><span class="n">03</span>알아 둘 말</a>
+    <a href="#direction"><span class="n">04</span>디자인 방향</a>
+    <a href="#structure"><span class="n">05</span>플랫폼·화면 구조</a>
+    <a href="#flows"><span class="n">06</span>핵심 흐름</a>
+    <a href="#screens"><span class="n">07</span>화면 목록</a>
+    <a href="#keyscreens"><span class="n">08</span>핵심 화면 상세</a>
+    <a href="#components"><span class="n">09</span>공통 컴포넌트·상태</a>
+    <a href="#rules"><span class="n">10</span>꼭 지킬 표시 규칙</a>
+    <a href="#later"><span class="n">11</span>나중에 붙을 것</a>
+    <a href="#delivery"><span class="n">12</span>산출물·전달</a>
+    <a href="#questions"><span class="n">13</span>함께 정할 것</a>
   </nav>
 
   <main>
@@ -354,10 +365,10 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
       <h1>사용자 앱/웹 <em>디자인 요청서</em></h1>
       <p class="lead">식당·카페·배달 전문점 사장님이 수저집·냅킨·컵 같은 소모품을 사고, 매장 로고를 넣은 맞춤 제작까지 맡기는 <b>식업</b>의 고객 화면을 디자인해 주세요. 이 문서는 누가 쓰는지, 어떤 화면이 있는지, 꼭 들어가야 할 것과 지켜야 할 규칙을 정리한 <b>대략적인 틀</b>입니다. 색·글꼴·형태 같은 시각 스타일은 디자인팀이 정합니다.</p>
       <div class="meta-row">
-        <span>작성일 2026-10-12</span><span>대상: 디자인팀</span><span>근거: <a href="sikup-plan.html">플랫폼 기획서 v1.1</a> · <a href="sikup-spec.html">기능 명세서 v1.0</a></span><span>화면에 나오는 금액·요율은 모두 예시입니다(관리자가 바꾸는 값)</span>
+        <span>작성일 2026-10-12 · 고침 2026-10-15</span><span>2026-10-14 확정 사항까지 반영</span><span>대상: 디자인팀</span><span>근거: <a href="sikup-plan.html">플랫폼 기획서 v1.1</a> · <a href="sikup-spec.html">기능 명세서 v1.0</a></span><span>화면에 나오는 금액·요율은 모두 예시입니다(관리자가 바꾸는 값)</span>
       </div>
       <div class="kpis">
-        <div class="kpi"><div class="k">요청 범위</div><div class="v">화면 33개</div><div class="s">정밀 디자인 19개 + 공통 부품으로 조립 14개</div></div>
+        <div class="kpi"><div class="k">요청 범위</div><div class="v">화면 33개</div><div class="s">정밀 디자인 20개 + 공통 부품으로 조립 13개</div></div>
         <div class="kpi"><div class="k">화면은 하나로</div><div class="v">웹 = 앱</div><div class="s">앱은 같은 웹 화면을 감싼 웹뷰(Android·iOS)</div></div>
         <div class="kpi"><div class="k">기준 폭</div><div class="v">360 · 1280</div><div class="s">모바일 우선, 주요 화면만 PC 레이아웃</div></div>
         <div class="kpi"><div class="k">가장 중요한 흐름</div><div class="v">맞춤 디자인</div><div class="s">요청 → 시안 협의 → 확정 → 재주문</div></div>
@@ -372,22 +383,60 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
         <div class="card">
           <h4>요청하는 것</h4>
           <ul>
-            <li><b>디자인 기초:</b> 로고 사용 규칙, 컬러, 글꼴, 간격, 모서리, 그림자, 아이콘. 개발에서 그대로 옮길 수 있게 토큰으로 정리해 주세요(<a href="#delivery">11장</a>).</li>
-            <li><b>공통 컴포넌트:</b> 상품 카드, 가격 표기, 구간 단가표, 바텀시트, 타임라인, 상태 배지 등(<a href="#components">08장</a>).</li>
-            <li><b>화면:</b> <a href="#screens">06장</a>의 33개 화면(모바일 360 기준). 주요 화면 7개는 PC 1280도 함께 그려 주세요.</li>
-            <li><b>프로토타입:</b> <a href="#flows">05장</a>의 핵심 흐름 3개를 클릭해서 따라갈 수 있게.</li>
+            <li><b>디자인 기초:</b> 로고 사용 규칙, 컬러, 글꼴, 간격, 모서리, 그림자, 아이콘. 개발에서 그대로 옮길 수 있게 토큰으로 정리해 주세요(<a href="#delivery">12장</a>).</li>
+            <li><b>공통 컴포넌트:</b> 상품 카드, 가격 표기, 구간 단가표, 바텀시트, 타임라인, 상태 배지 등(<a href="#components">09장</a>).</li>
+            <li><b>화면:</b> <a href="#screens">07장</a>의 33개 화면(모바일 360 기준). 주요 화면 7개는 PC 1280도 함께 그려 주세요.</li>
+            <li><b>프로토타입:</b> <a href="#flows">06장</a>의 흐름 A·B·C를 클릭해서 따라갈 수 있게. 분쟁 구간인 흐름 D·E는 연결된 화면 흐름으로.</li>
           </ul>
         </div>
         <div class="card">
           <h4>이번 범위가 아닌 것</h4>
           <ul>
             <li><b>파트너 센터·통합 관리자 화면:</b> 관리자용 무료 템플릿(Tabler) 부품을 그대로 씁니다. 다만 로고와 대표 색은 맞출 예정입니다.</li>
-            <li><b>2차·3차 기능 화면:</b> 멤버십·리뷰·포인트·광고 등은 나중에 만듭니다. 대신 <a href="#later">10장</a>의 “자리”는 지금 화면에서 고려해 주세요.</li>
+            <li><b>2차·3차 기능 화면:</b> 멤버십·리뷰·포인트·광고 등은 나중에 만듭니다. 대신 <a href="#later">11장</a>의 “자리”는 지금 화면에서 고려해 주세요.</li>
             <li><b>마케팅 소재:</b> 광고 배너, 랜딩 페이지, 앱스토어 스크린샷은 나중에 따로 요청합니다.</li>
           </ul>
         </div>
       </div>
       <div class="callout info" style="margin-top:14px"><span class="ic">i</span><div>기능 하나하나의 동작·예외·입력 칸은 <a href="sikup-spec.html">기능 명세서</a>에 ID별로 있습니다. 이 문서의 초록색 ID(예: <a class="sid" href="sikup-spec.html#U-PDP-01">U-PDP-01</a>)를 누르면 해당 명세로 바로 갑니다. 문서끼리 다르면 <b>명세서가 기준</b>입니다.</div></div>
+
+      <h3 class="sub">어디까지 바꿔도 되나</h3>
+      <div class="grid g3">
+        <div class="card">
+          <h4><span class="b mvp">디자인팀이 정함</span></h4>
+          <ul>
+            <li>시각 스타일 전체: 컬러·글꼴·형태·아이콘·사진 톤(브랜드 기초는 <a href="#questions">13장 Q1</a>).</li>
+            <li>레이아웃, 정보의 위계, 인터랙션, 컴포넌트 모양.</li>
+            <li>화면 문구와 상태 라벨 다듬기(뜻은 그대로).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4><span class="b p2">제안 · 더 나은 안이면 바꿔도 됨</span></h4>
+          <ul>
+            <li>하단 탭 구성, 화면 지도, 와이어의 배치와 순서.</li>
+            <li>“정밀 / 부품” 구분, 화면을 나누거나 합치는 방법.</li>
+            <li>문구 예시, 상태 라벨, <a href="#questions">13장</a> 질문의 초록색 제안안.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4><span class="b must">꼭 지킴 · 바꾸려면 먼저 상의</span></h4>
+          <ul>
+            <li><a href="#rules">10장</a> 표시 규칙(가격·판매자 정보·동의·고지). 법과 분쟁 판단에 묶여 있습니다.</li>
+            <li>화면마다 <a href="#screens">07장</a> “꼭 들어갈 것”, 그리고 버튼이 보이는 조건.</li>
+            <li>주문서 금액 줄의 순서(판비 줄 포함), 시안 확정 체크리스트 5개, 공식 결정은 버튼으로만.</li>
+            <li><a href="#structure">05장</a>의 개발 조건(웹 = 앱, 서버가 그리는 화면, 토큰).</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 class="sub">진행과 중간 검토 (제안)</h3>
+      <div class="flow">
+        <div class="step s"><div class="who">1차 검토</div><h5>방향 맞추기</h5><p>스타일 방향 2안과 토큰 초안. 상품 상세·협의 룸·주문서 3개 화면에 입혀 비교합니다. 여기서 방향을 정합니다.</p></div>
+        <div class="step s"><div class="who">2차 검토</div><h5>맞춤 제작 흐름</h5><p>흐름 B의 정밀 화면과 상태 변형, 공통 컴포넌트 1차. 가장 어렵고 중요한 부분을 먼저 봅니다.</p></div>
+        <div class="step s"><div class="who">3차 검토</div><h5>전체 화면</h5><p>나머지 화면, PC 7개, 앱 전용 화면, 흐름 A·C 프로토타입.</p></div>
+        <div class="step s"><div class="who">전달</div><h5>넘기기</h5><p><a href="#delivery">12장</a> “넘기기 전 확인할 것”을 통과한 Figma 파일과 토큰.</p></div>
+      </div>
+      <p class="note">검토 때마다 기획·개발이 명세서 기준으로 빠진 상태·버튼·문구가 없는지 함께 확인합니다. 화면을 그리다 명세와 맞지 않거나 이상한 규칙을 발견하면 바로 알려 주세요. 디자인 쪽에서 더 나은 흐름을 찾으면 명세를 고칠 수 있습니다.</p>
     </section>
 
     <!-- ================= 02 USERS ================= -->
@@ -396,24 +445,42 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
 
       <div class="grid g3">
         <div class="card persona">
-          <span class="tag">1차 · 핵심</span>
+          <span class="tag">주 타깃</span>
           <h4>개인 식당·카페·배달 전문점 사장님</h4>
           <p>여러 품목을 조금씩 자주 삽니다. 가격에 민감하고 발주에 쓰는 시간을 줄이고 싶어 합니다. 매장 로고를 넣은 수저집·컵 수요가 큽니다.</p>
-          <div class="ctx"><b>쓰는 상황:</b> 영업 전·마감 후 휴대폰으로 짧게. 매장 공용 계정을 여럿이 쓰기도 함. 도수·별색·판비 같은 인쇄 용어는 낯섦.</div>
+          <div class="ctx"><b>쓰는 상황:</b> 영업 전·마감 후 휴대폰으로 짧게. 매장 공용 계정을 여럿이 쓰기도 함(그래서 이메일 가입도 둠). 도수·별색·판비 같은 인쇄 용어는 낯섦.</div>
         </div>
         <div class="card persona">
-          <span class="tag">2차 · 큰 주문</span>
+          <span class="tag">보조 타깃 · 큰 주문</span>
           <h4>프랜차이즈 본사·가맹점</h4>
-          <p>대량 구매와 브랜드 통일 디자인이 필요합니다. 이미 인쇄용 파일을 가진 경우가 많아 “자체 파일 주문”을 주로 씁니다. 큰 견적은 MVP에서 채팅 상담으로 받습니다.</p>
-          <div class="ctx"><b>쓰는 상황:</b> 본사 담당자가 PC로 주문·확인. 세금계산서와 사양 확인이 중요.</div>
+          <p>대량 구매, 브랜드 통일 디자인, 여러 매장 배송이 필요합니다. 본사 지정 품목과 견적 기반 거래가 중심이라 큰 견적은 MVP에서 채팅 상담으로 받습니다. 인쇄용 파일을 이미 가진 곳은 “자체 파일 주문”을 씁니다.</p>
+          <div class="ctx"><b>쓰는 상황:</b> 본사 담당자가 PC로 주문·확인. 세금계산서와 사양 확인이 중요. 여러 매장 관리(다매장)는 2차.</div>
         </div>
         <div class="card persona">
-          <span class="tag">3차 · 확장</span>
+          <span class="tag">확장 타깃</span>
           <h4>급식·케이터링·호텔</h4>
           <p>정기적으로 많이 삽니다. 세금계산서 기반 결제, 같은 상품 반복 주문이 핵심입니다.</p>
           <div class="ctx"><b>쓰는 상황:</b> 구매 담당자가 PC로 “지난 주문 그대로” 다시 주문.</div>
         </div>
       </div>
+      <p class="note">“주 타깃 · 보조 · 확장”은 고객의 비중입니다. 출시 단계를 뜻하는 MVP·2차·3차와는 다른 말입니다.</p>
+
+      <h3 class="sub">식업은 중간에서 연결합니다</h3>
+      <div class="grid g3">
+        <div class="card">
+          <h4>고객(사장님)</h4>
+          <p>상품을 고르고 결제합니다. 디자인은 식업 디자이너와, 상품·주문 문의는 식업 고객센터와 이야기합니다.</p>
+        </div>
+        <div class="card">
+          <h4>식업(본사)</h4>
+          <p>판매자를 입점시켜 중개하고, 구매 확정 뒤 판매자에게 대금을 정산합니다. 본사 디자이너가 시안을 만들고, 고객과 판매자 사이에서 인쇄 파일과 생산 이야기를 대신 전합니다.</p>
+        </div>
+        <div class="card">
+          <h4>판매자(입점 업체)</h4>
+          <p>상품을 등록하고, 주문을 받아 만들고 보냅니다. 맞춤 제작은 식업이 넘겨준 확정 인쇄 파일로만 인쇄합니다.</p>
+        </div>
+      </div>
+      <div class="callout tip" style="margin-top:14px"><span class="ic">✓</span><div><b>고객과 판매자는 직접 연락하지 않습니다.</b> 판매자 정보(상호·연락처 등)는 법에 따라 상품 상세에 그대로 보이지만, 문의는 [문의하기]·[1:1 문의]로 식업이 받고 협의 룸에는 판매자가 들어오지 않습니다. 식업이 중간에 있어서 생기는 안심(식업 보증, 본사 중재, 연락처 가림)이 화면에서 느껴지게 해 주세요.</div></div>
 
       <h3 class="sub">고객이 가장 자주 하는 일</h3>
       <ol class="tasks">
@@ -421,20 +488,73 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
         <li><div><b>필요한 품목을 단가로 비교해 고른다.</b> 박스 가격보다 “1매당 얼마”, 몇 박스부터 싸지는지, 최소 주문 수량(MOQ)을 봅니다.</div></li>
         <li><div><b>우리 가게 로고를 넣은 제품을 주문한다.</b> 디자인 방식 고르기 → 요청서 → 디자이너와 시안 협의 → 확정.</div></li>
         <li><div><b>주문·제작이 어디까지 왔는지 본다.</b> 디자인 → 제작 → 출고 → 배송 단계와 “지금 내가 할 일”.</div></li>
-        <li><div><b>증빙을 챙긴다.</b> 사업자 회원은 세금계산서가 기본. 한 주문에 판매자가 여럿이면 세금계산서도 여러 장입니다.</div></li>
+        <li><div><b>증빙을 챙긴다.</b> 사업자 회원은 세금계산서가 기본. 한 주문에 판매자가 여럿이면 세금계산서도 판매자별로 여러 장이고, 디자인비는 식업 명의로 따로 나갑니다.</div></li>
       </ol>
     </section>
 
-    <!-- ================= 03 DIRECTION ================= -->
+    <!-- ================= 03 TERMS ================= -->
+    <section class="sec" id="terms">
+      <div class="sec-head"><div class="sec-num">03</div><h2>알아 둘 말</h2><p>인쇄·도매·커머스 용어가 화면 곳곳에 나옵니다. 뜻을 알아야 정보의 무게를 제대로 나눌 수 있어서 먼저 정리했습니다. 고객도 낯설어하는 말이 많으니, 오른쪽 칸처럼 화면에서는 쉬운 말과 도움말을 함께 써 주세요.</p></div>
+
+      <div class="callout info" style="margin-bottom:14px"><span class="ic">i</span><div><b>“디자인팀”이 두 번 나옵니다.</b> 이 문서를 받아 앱 화면을 디자인하는 팀, 그리고 서비스 안에서 고객의 로고 시안을 만드는 본사 디자이너입니다. 흐름 그림의 주황색 “디자이너(시안 담당)”와 화면 속 “디자이너 ○○”는 뒤쪽입니다. 또 명세서·기획서의 <b>“파트너”</b>는 고객 화면에서 <b>“판매자”</b>라고 부릅니다.</div></div>
+
+      <div class="table-wrap"><table class="minw-760">
+        <thead><tr><th>말</th><th>뜻</th><th>화면에서는</th></tr></thead>
+        <tbody>
+          <tr class="grp"><td colspan="3">서비스·사람</td></tr>
+          <tr><td class="nw"><b>식업(본사)</b></td><td>플랫폼을 운영하는 회사. 상품은 대부분 입점한 판매자가 팔고 식업은 중개합니다. 디자인 서비스(디자인비·추가 수정·원본 파일)는 식업이 직접 팝니다.</td><td>판매자가 식업인 것은 구분해 표시(<a href="#rules">10장</a>)</td></tr>
+          <tr><td class="nw"><b>판매자(파트너)</b></td><td>입점해 상품을 파는 제조·유통·인쇄 업체. 한 주문에 판매자가 여럿일 수 있고, 배송·배송비·세금계산서는 판매자별로 따로 나갑니다.</td><td>판매자별 묶음, 판매자 정보</td></tr>
+          <tr><td class="nw"><b>사업자 회원</b></td><td>사업자등록번호를 국세청 정보로 확인받은 고객. 사업자 전용 가격(사업자가)과 세금계산서를 씁니다. 개인도 가입할 수 있습니다.</td><td>사업자 배지, 공급가 함께 표시</td></tr>
+          <tr><td class="nw"><b>디자이너(시안 담당)</b></td><td>본사 디자인팀 소속으로 고객의 시안을 만들고 고객·판매자 사이를 중계합니다. 고객은 판매자와 직접 연락하지 않습니다.</td><td>협의 룸의 대화 상대, 디자이너 소개 카드(활동명·담당 품목·운영시간)</td></tr>
+          <tr><td class="nw"><b>영업일 · 운영시간</b></td><td>영업일은 주말·공휴일을 뺀 날. 디자이너 운영시간은 평일 09~18시. 배정·시안·수정·검수 기한은 영업일·영업시간으로 세고, 고객 무응답(리마인드·보류·자동 취소)은 달력일로 셉니다.</td><td>“다음 시안 예정 10/16(금)”처럼 날짜로 바꿔 보여주기</td></tr>
+
+          <tr class="grp"><td colspan="3">상품·가격</td></tr>
+          <tr><td class="nw"><b>판매 방식 3가지</b></td><td><b>일반 전용</b>(인쇄 없는 무지 상품만) / <b>일반+맞춤</b>(무지로도, 로고를 넣어서도 살 수 있음) / <b>맞춤 전용</b>(로고를 넣은 주문만 받음). 한 상품은 이 중 하나입니다.</td><td>상품 상세의 세 가지 형태(<a href="#keyscreens">08장</a>)</td></tr>
+          <tr><td class="nw"><b>입수량 · 1매당 단가</b></td><td>박스 하나에 든 개수, 그리고 박스 가격 ÷ 입수량. 사장님은 박스 가격보다 1매(1개)당 얼마인지로 비교합니다.</td><td>“32,000원 / 박스 · 1매당 28원~”</td></tr>
+          <tr><td class="nw"><b>구간 단가</b></td><td>많이 살수록 싸지는 수량 구간별 가격. 예: 1~4박스 32,000원, 5~9박스 30,000원, 10박스 이상 28,000원.</td><td>구간 단가표, 현재 구간 강조, “2박스 더 담으면…”</td></tr>
+          <tr><td class="nw"><b>MOQ · 맞춤 MOQ</b></td><td>최소 주문 수량. 맞춤 제작은 인쇄판을 만들어야 해서 훨씬 큰 맞춤 MOQ(예: 10,000매)를 따로 둡니다.</td><td>“최소 주문 수량” 풀이를 함께, 수량 자동 보정 안내</td></tr>
+          <tr><td class="nw"><b>사업자가 · 공급가</b></td><td>사업자가는 판매자가 사업자 회원에게만 주는 더 낮은 가격(VAT 포함). 공급가는 부가세를 뺀 금액입니다. 고객 가격은 모두 VAT 포함으로 보여줍니다.</td><td>사업자 회원에게만 보임. 일반 회원·비로그인에게는 “사업자가 보기”</td></tr>
+          <tr><td class="nw"><b>출고 · 빠른 출고</b></td><td>판매자가 물건을 택배로 보내는 일. 빠른 출고는 영업일 1일 안 출고입니다. 같은 판매자라도 출고지나 출고 유형(일반/맞춤)이 다르면 따로 나갑니다.</td><td>출고 예정일, 판매자·출고지·출고 유형별 묶음</td></tr>
+          <tr><td class="nw"><b>옵션 · 추가 구성품</b></td><td>옵션은 사이즈·소재·색상처럼 상품 안에서 고르는 것(최대 3단 조합). 추가 구성품은 판매자가 상품에 붙여 둔 별도 품목(예: 수저집에 이쑤시개)으로, 정해진 가격 하나에 수량을 따로 고르고 본 상품과 함께 출고합니다. 주문 뒤에는 따로 된 줄이라 혼자 취소·반품할 수 있습니다.</td><td>옵션 선택 아래 추가 구성품 영역, 장바구니·주문의 붙은 줄</td></tr>
+
+          <tr class="grp"><td colspan="3">맞춤 디자인·인쇄</td></tr>
+          <tr><td class="nw"><b>디자인 방식 4가지</b></td><td><b>템플릿형</b>(정해진 틀에 매장명·문구·로고만 바꿈) / <b>맞춤형</b>(디자이너가 새로 디자인) / <b>자체 파일</b>(고객이 인쇄용 파일을 직접 올리고 디자이너가 검수) / <b>재주문</b>(예전에 확정한 디자인 그대로 다시 제작).</td><td>디자인 방식 선택 카드(S-11)</td></tr>
+          <tr><td class="nw"><b>디자인 요청 · 묶음</b></td><td>품목 1개당 디자인 요청 1건입니다. 수저집과 컵처럼 같은 콘셉트로 여러 품목을 만들면 요청 여러 건을 협의 룸 하나로 묶습니다. 시안·확정은 품목마다 따로 합니다.</td><td>“수저집 외 1”, 품목별 시안 탭</td></tr>
+          <tr><td class="nw"><b>협의 룸</b></td><td>고객과 디자이너가 요청서·시안·대화를 주고받는 방. 결제를 마치면 바로 열립니다.</td><td>디자인 탭, 주문 상세의 [협의 룸]</td></tr>
+          <tr><td class="nw"><b>시안 · 버전 · 안 · 목업</b></td><td>시안은 디자이너가 올린 디자인입니다. 고칠 때마다 v1·v2·v3 버전이 쌓이고, 한 버전에 A안·B안처럼 여러 안이 있을 수 있습니다. 목업은 실물에 합성한 미리보기 이미지입니다.</td><td>버전 탭, 안 선택, 비교</td></tr>
+          <tr><td class="nw"><b>핀 코멘트</b></td><td>시안 위 위치를 찍어 남기는 수정 의견. 번호가 붙고, 해결·미해결 상태가 있습니다.</td><td>시안 위 번호 핀 + 핀 목록</td></tr>
+          <tr><td class="nw"><b>확정 · 확정본</b></td><td>고객이 “이 시안대로 인쇄해 주세요”라고 공식 승인하는 일. 확정본은 고칠 수 없고, 인쇄와 분쟁 판단의 기준이 됩니다. 채팅으로 “좋아요”라고 해도 확정이 아닙니다.</td><td>[이 시안으로 확정] → 체크리스트 화면(S-18)</td></tr>
+          <tr><td class="nw"><b>인쇄 가능 확인</b></td><td>판매자가 넘겨받은 인쇄 파일을 보고 인쇄할 수 있다고 확인하는 일. 이 순간부터 생산이 시작되어, 확정 후 변경·취소를 받지 않습니다.</td><td>“제작이 시작되어 바꿀 수 없어요”</td></tr>
+          <tr><td class="nw"><b>판 · 판비</b></td><td>인쇄에 쓰는 판과 그 제작비. 판은 판매자가 보관하고 고객에게 주지 않습니다. 보관 기간 안에 같은 디자인을 재주문하면 판비가 면제됩니다.</td><td>판비 줄 + 판 안내 문구(ⓘ)</td></tr>
+          <tr><td class="nw"><b>도수 · 별색</b></td><td>도수는 인쇄에 쓰는 색의 수(2도 = 두 가지 색). 별색은 PANTONE 번호처럼 미리 정해진 잉크 색입니다. 상품마다 최대 도수가 있어 그보다 많은 색은 쓸 수 없습니다.</td><td>“최대 2색 인쇄”처럼 풀어서</td></tr>
+          <tr><td class="nw"><b>칼선 · 재단 여백</b></td><td>칼선은 제품 모양대로 자르는 선, 재단 여백은 잘릴 것을 대비한 바깥 여백(3mm)입니다. 자체 파일을 올리는 고객이 지켜야 하는 파일 요건입니다.</td><td>템플릿·칼선 파일 다운로드, 자동 점검 결과</td></tr>
+          <tr><td class="nw"><b>아웃라인 · RGB/CMYK</b></td><td>아웃라인은 글자를 도형으로 바꿔 글꼴이 깨지지 않게 하는 처리. RGB는 화면용 색, CMYK는 인쇄용 색이라 RGB 파일은 인쇄하면 색이 달라질 수 있습니다.</td><td>자동 점검 결과, “색이 달라질 수 있어요” 동의</td></tr>
+          <tr><td class="nw"><b>원본 파일</b></td><td>확정한 디자인의 편집할 수 있는 원본(AI 파일). 디자인 권리는 식업에 있고, 원본 파일은 따로 사야 받을 수 있습니다.</td><td>확정 뒤 원본 파일 구매 제안, 다운로드 화면</td></tr>
+
+          <tr class="grp"><td colspan="3">주문·클레임·돈</td></tr>
+          <tr><td class="nw"><b>항목 상태</b></td><td>상태는 주문 전체가 아니라 상품(주문 항목)마다 따로 움직입니다. 한 주문에 “배송 중”과 “디자인 진행 중”이 함께 있을 수 있습니다.</td><td>항목마다 상태 배지와 버튼</td></tr>
+          <tr><td class="nw"><b>구매 확정</b></td><td>배송 완료 뒤 “잘 받았다”고 확정하는 일. 누르지 않아도 7일 뒤 자동으로 확정되고, 그 뒤 판매자에게 돈이 넘어갑니다. 확정하면 단순 변심 반품은 안 됩니다.</td><td>[구매 확정], 자동 확정 예정일</td></tr>
+          <tr><td class="nw"><b>클레임 · 재제작</b></td><td>클레임은 취소·반품·교환·재제작 요청을 통틀어 부르는 말. 맞춤 제작품은 단순 변심으로 반품할 수 없고, 불량이면 다시 만들어 받는 재제작을 요청합니다.</td><td>[반품·교환] 대신 [재제작 요청]</td></tr>
+          <tr><td class="nw"><b>확정 후 변경·취소</b></td><td>디자인을 확정한 뒤, 판매자가 인쇄 가능을 확인하기 전까지만 하는 변경·취소 요청. 요청하면 생산이 멈추고(생산 보류) 판매자가 아니라 식업이 판단합니다(본사 중재).</td><td>“변경 요청 중”·“취소 중재 중” 표시</td></tr>
+          <tr><td class="nw"><b>이의 제기</b></td><td>판매자가 클레임을 거부했을 때, 거부 통지 뒤 3일 안에 식업에 다시 판단해 달라고 요청하는 일.</td><td>[이의 제기] → “이의 제기됨”</td></tr>
+          <tr><td class="nw"><b>증빙</b></td><td>세금계산서·현금영수증·카드 전표처럼 비용 처리에 쓰는 서류. 결제수단에 따라 고를 수 있는 것이 달라집니다.</td><td>주문서의 증빙 칸</td></tr>
+          <tr><td class="nw"><b>가상계좌 · 에스크로</b></td><td>가상계좌는 주문마다 발급되는 입금 전용 계좌. 에스크로(구매안전서비스)는 결제 대금을 결제대행사가 맡아 두었다가 거래가 끝나면 넘기는 제도입니다.</td><td>입금 계좌·기한·복사 / 웹 푸터 표시</td></tr>
+          <tr><td class="nw"><b>디자인 부가 결제</b></td><td>주문을 마친 뒤 협의 룸·확정 화면에서 따로 내는 디자인 관련 결제(추가 수정·자체 파일 보정·원본 파일·맞춤형 전환). 판매자는 식업입니다.</td><td>같은 바텀시트 → 결제 → 결과</td></tr>
+          <tr><td class="nw"><b>관리자 설정값</b></td><td>수수료·디자인비·기한·횟수 같은 숫자는 관리자 화면에서 바꿀 수 있습니다. 이 문서의 금액·횟수·일수는 지금의 기본값입니다.</td><td>숫자가 바뀌어도 레이아웃이 깨지지 않게</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ================= 04 DIRECTION ================= -->
     <section class="sec" id="direction">
-      <div class="sec-head"><div class="sec-num">03</div><h2>디자인 방향</h2><p>방향 제안입니다. 시각 스타일의 최종 결정은 디자인팀이 합니다.</p></div>
+      <div class="sec-head"><div class="sec-num">04</div><h2>디자인 방향</h2><p>방향 제안입니다. 시각 스타일의 최종 결정은 디자인팀이 합니다.</p></div>
 
       <div class="grid g2">
         <div class="card">
           <h4>이름과 성격</h4>
-          <p><b>식업</b>(食業, 영문 sikup) = 음식으로 생업을 꾸리는 일, 곧 외식업 사장님의 일입니다. 그 장사에 필요한 소모품 구매·재구매와 매장 로고 맞춤 제작을 한곳에서 돕는다는 뜻을 담았습니다. 한 줄 소개는 “사장님 매장 살림, 로고까지 한 번에”입니다.</p>
+          <p><b>식업</b>(食業, 영문 sikup) = 음식으로 생업을 꾸리는 일, 곧 외식업 사장님의 일입니다. 그 장사에 필요한 소모품 구매·재구매와 매장 로고 맞춤 제작을 한곳에서 돕는다는 뜻을 담았습니다. 한 줄 소개는 “사장님 매장 살림, 로고까지 한 번에”, 기획서의 대표 문구는 “매장 운영 소모품을 한 곳에서, 우리 가게 디자인까지 함께”입니다.</p>
           <div class="chips" style="margin-top:12px"><span class="k">믿음직한</span><span class="k">실용적인</span><span class="k">친근한</span><span class="k">깔끔한</span><span class="x">빽빽한 도매몰</span><span class="x">과한 감성 연출</span></div>
-          <p class="note">기존 문서들의 녹색 “식” 마크는 임시입니다. 로고·브랜드 컬러는 아직 없습니다(<a href="#questions">12장 Q1</a>).</p>
+          <p class="note">기존 문서들의 녹색 “식” 마크는 임시입니다. 로고·브랜드 컬러는 아직 없습니다(<a href="#questions">13장 Q1</a>).</p>
         </div>
         <div class="card">
           <h4>문구 톤</h4>
@@ -444,6 +564,7 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
             <li>“조건 충족 시”처럼 뭉뚱그리지 말고 <b>숫자로</b> 말합니다: “2박스 더 담으면 박스당 2,000원 할인”.</li>
             <li>오류는 원인과 다음 행동을 함께: “결제가 완료되지 않았어요. 담아 둔 상품과 쿠폰은 그대로 있어요.”</li>
             <li>문구는 이미지가 아니라 텍스트로 넣습니다(검색 노출과 수정이 쉬움).</li>
+            <li>명세서에 적힌 안내 문구는 <b>뜻의 기준</b>입니다. 숫자·조건은 그대로 두고 말투만 해요체로 바꿔 써 주세요(예: 명세 “맞춤 제작 전용 상품입니다” → 화면 “맞춤 제작 전용 상품이에요”).</li>
           </ul>
         </div>
       </div>
@@ -465,16 +586,19 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
           <tr><td class="nw"><b>구간 단가</b></td><td>2박스 더 담으면 박스당 2,000원 할인</td><td>수량 할인 적용 가능</td></tr>
           <tr><td class="nw"><b>디자인비</b></td><td>맞춤 품목 12만원 더 담으면 디자인비 무료</td><td>조건 충족 시 디자인비 무료</td></tr>
           <tr><td class="nw"><b>무료배송</b></td><td>8,000원 더 담으면 이 판매자 무료배송</td><td>무료배송 기준 미달</td></tr>
-          <tr><td class="nw"><b>연락처 가림</b></td><td>연락처는 대화로 공유할 수 없어요. 인쇄할 번호는 수정 요청의 ‘문구 변경’ 칸에 적어 주세요</td><td>부적절한 내용이 감지되었습니다</td></tr>
+          <tr><td class="nw"><b>연락처 가림</b></td><td>연락처는 대화로 공유할 수 없어요. 인쇄할 번호는 수정 요청의 ‘문구 변경’ 칸으로, 참고할 링크는 ‘참고 링크’ 칸으로 보내 주세요</td><td>부적절한 내용이 감지되었습니다</td></tr>
+          <tr><td class="nw"><b>기다리는 시간</b></td><td>첫 시안 예정: 10/19(월) 18시까지</td><td>곧 시안이 도착합니다</td></tr>
+          <tr><td class="nw"><b>공제 안내</b></td><td>첫 시안을 받아서 디자인비 39,000원을 빼고 돌려드려요</td><td>규정에 따라 일부 금액이 공제됩니다</td></tr>
+          <tr><td class="nw"><b>할 수 없을 때</b></td><td>제작이 시작되어 바꿀 수 없어요. 같은 디자인으로 [수정해서 재주문]할 수 있어요</td><td>변경 불가 상태입니다</td></tr>
           <tr><td class="nw"><b>가격 변경</b></td><td>변경된 상품이 있어요 · 32,000원 → 33,000원</td><td>장바구니 정보가 갱신되었습니다</td></tr>
           <tr><td class="nw"><b>맞춤 전용 상품</b></td><td>맞춤 제작 전용 상품이에요. 로고를 넣어 주문해 주세요</td><td>구매 불가 상품</td></tr>
         </tbody>
       </table></div>
     </section>
 
-    <!-- ================= 04 STRUCTURE ================= -->
+    <!-- ================= 05 STRUCTURE ================= -->
     <section class="sec" id="structure">
-      <div class="sec-head"><div class="sec-num">04</div><h2>플랫폼·화면 구조</h2><p>개발 방식 때문에 디자인에 생기는 조건, 반응형 기준, 내비게이션과 전체 화면 지도입니다.</p></div>
+      <div class="sec-head"><div class="sec-num">05</div><h2>플랫폼·화면 구조</h2><p>개발 방식 때문에 디자인에 생기는 조건, 반응형 기준, 내비게이션과 전체 화면 지도입니다.</p></div>
 
       <h3 class="sub">개발 방식이 디자인에 주는 조건</h3>
       <div class="table-wrap"><table class="minw-760">
@@ -484,8 +608,8 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
           <tr><td class="nw"><b>서버가 그리는 화면</b></td><td>화면은 서버에서 만들어 보내고 필요한 부분만 바꿉니다(Thymeleaf·htmx·Alpine.js). 바텀시트·모달·탭·아코디언·토스트·무한 스크롤은 문제없습니다. 화면 전환 애니메이션, 끌어서 하는 복잡한 조작, 실시간 그래픽은 최소로 해 주세요. 실시간은 협의 룸 대화뿐입니다.</td></tr>
           <tr><td class="nw"><b>Tailwind CSS</b></td><td>컬러·간격·글자 크기·모서리·그림자를 토큰으로 정해 주시면 그대로 설정에 옮깁니다. 간격은 4px 배수를 권합니다.</td></tr>
           <tr><td class="nw"><b>검색 노출</b></td><td>상품명·가격·설명은 텍스트여야 합니다. 상품 목록은 웹에서 페이지 번호, 앱에서 무한 스크롤로 다르게 동작합니다. <a class="sid" href="sikup-spec.html#U-SRCH-04">U-SRCH-04</a></td></tr>
-          <tr><td class="nw"><b>큰 파일 업로드</b></td><td>디자인 파일은 최대 500MB입니다. 업로드 진행률, “검사 중”(악성코드 검사), “변환 중”(미리보기 생성), 실패·재시도, 이어 올리기 상태가 필요합니다. <a class="sid" href="sikup-spec.html#C-FILE-01">C-FILE-01</a></td></tr>
-          <tr><td class="nw"><b>외부 창</b></td><td>결제(PG 결제창)와 휴대폰 본인인증(PASS)은 외부 화면입니다. 우리는 들어가기 전과 돌아온 뒤(성공·실패·취소)만 디자인합니다.</td></tr>
+          <tr><td class="nw"><b>큰 파일 업로드</b></td><td>파일 종류마다 한도가 다릅니다: 자체 인쇄 파일 500MB(AI·PDF·PSD·SVG·PNG·JPG), 협의 룸 첨부 100MB, 참고 이미지 장당 20MB·최대 10장, 간판 사진 장당 20MB·최대 5장, 클레임 사진 장당 20MB·최대 10장, 로고 1개 100MB(AI·PDF·SVG·PNG·JPG). 칸마다 형식·용량을 도움말로 보여주세요. 업로드 진행률, “검사 중”(악성코드 검사), “변환 중”(미리보기 생성), 실패·재시도, 이어 올리기 상태가 필요합니다. <a class="sid" href="sikup-spec.html#C-FILE-01">C-FILE-01</a></td></tr>
+          <tr><td class="nw"><b>외부 창</b></td><td>결제(PG 결제창)와 휴대폰 본인인증(본인확인기관 1곳, PASS·NICE·KCB 중 미정)은 외부 화면입니다. 우리는 들어가기 전과 돌아온 뒤(성공·실패·취소)만 디자인합니다. 결제 앱에서 돌아오지 못하고 앱을 다시 연 경우를 위해 주문 상세의 “결제 확인 중” 상태도 필요합니다. <a class="sid" href="sikup-spec.html#C-APP-03">C-APP-03</a></td></tr>
           <tr><td class="nw"><b>채팅 상담 버튼</b></td><td>채널톡 상담 버튼이 오른쪽 아래에 떠 있습니다. 하단 고정 버튼과 겹치지 않게 자리를 잡아 주시고, 협의 룸에서는 숨깁니다. <a class="sid" href="sikup-spec.html#U-CS-03">U-CS-03</a></td></tr>
         </tbody>
       </table></div>
@@ -515,13 +639,14 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
           <li><b>다시 사기:</b> 자주 산 상품과 같은 디자인 재주문을 모은 탭. 반복 구매가 많은 B2B라 탭으로 올렸습니다.</li>
           <li><b>디자인:</b> 진행 중인 디자인 요청과 협의 룸으로 바로 가는 탭. 확인할 시안 개수를 배지로 보여줍니다.</li>
           <li><b>PC:</b> 상단 헤더(로고 · 검색 · 장바구니 · 알림 · 마이) + 카테고리 메뉴(품목별/업종별).</li>
-          <li class="muted">제안입니다. 탭 구성은 디자인팀이 바꿔도 됩니다(<a href="#questions">12장 Q2</a>).</li>
+          <li class="muted">제안입니다. 탭 구성은 디자인팀이 바꿔도 됩니다(<a href="#questions">13장 Q2</a>).</li>
         </ul>
       </div>
 
       <h3 class="sub">화면 지도</h3>
+      <p class="t2" style="margin-bottom:12px">회색 글자는 <a href="#screens">07장</a> 화면 ID입니다. ID가 없는 것은 그 화면 안의 부품입니다.</p>
       <div class="smap">
-        <div class="col"><h5>홈</h5><ul>
+        <div class="col"><h5>홈 <span class="s muted" style="font-size:11px">S-05</span></h5><ul>
           <li>검색창 · 장바구니 · 알림</li>
           <li>자주 산 상품 · 같은 디자인 재주문</li>
           <li>배너 · 업종 바로가기</li>
@@ -529,262 +654,391 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
           <li>인기·추천 상품</li>
         </ul></div>
         <div class="col"><h5>카테고리·검색</h5><ul>
-          <li>카테고리</li><li class="sub">품목별 (3단계)</li><li class="sub">업종별 (10개 업종)</li>
-          <li>검색 입력</li><li class="sub">최근·인기·자동완성</li>
-          <li>검색 결과·상품 목록</li><li class="sub">필터 시트 · 정렬</li>
+          <li>카테고리<span class="s">S-06</span></li><li class="sub">품목별 (3단계)</li><li class="sub">업종별 (10개 업종)</li>
+          <li>검색 입력<span class="s">S-07</span></li><li class="sub">최근·인기·자동완성</li>
+          <li>검색 결과·상품 목록<span class="s">S-08</span></li><li class="sub">필터 시트 · 정렬</li>
         </ul></div>
         <div class="col"><h5>상품</h5><ul>
-          <li>상품 상세</li><li class="sub">일반 / 일반+맞춤 / 맞춤 전용</li>
-          <li>옵션·수량 선택 시트</li>
-          <li>상품정보·인증 서류 보기</li>
+          <li>상품 상세<span class="s">S-09</span></li><li class="sub">일반 / 일반+맞춤 / 맞춤 전용</li><li class="sub">상품정보·인증 서류 보기</li>
+          <li>옵션·수량 선택 시트<span class="s">S-10</span></li>
         </ul></div>
         <div class="col"><h5>맞춤 디자인 <span class="b hi">핵심</span></h5><ul>
-          <li>디자인 방식 선택</li>
-          <li class="sub">템플릿형 요청</li><li class="sub">맞춤형 요청서 (4단계)</li><li class="sub">자체 파일 업로드</li><li class="sub">같은 디자인 재주문</li>
-          <li>디자인 진행 목록</li>
-          <li>협의 룸</li><li class="sub">시안 보기·비교·핀</li><li class="sub">수정 요청</li><li class="sub">시안 확정</li>
+          <li>디자인 방식 선택<span class="s">S-11</span></li>
+          <li class="sub">템플릿형 요청<span class="s">S-12</span></li><li class="sub">맞춤형 요청서 (4단계)<span class="s">S-13</span></li><li class="sub">자체 파일 업로드 · 파일 수정 필요<span class="s">S-14</span></li><li class="sub">같은 디자인 재주문<span class="s">S-27</span></li>
+          <li>디자인 진행 목록<span class="s">S-19</span></li>
+          <li>협의 룸<span class="s">S-15</span></li><li class="sub">시안 보기·비교·핀<span class="s">S-16</span></li><li class="sub">수정 요청<span class="s">S-17</span></li><li class="sub">시안 확정<span class="s">S-18</span></li><li class="sub">디자인 부가 결제 · 원본 파일 다운로드</li>
         </ul></div>
         <div class="col"><h5>주문</h5><ul>
-          <li>장바구니</li>
-          <li>주문서</li><li class="sub">결제(PG 외부 창)</li>
-          <li>주문 완료</li>
+          <li>장바구니<span class="s">S-20</span></li>
+          <li>주문서<span class="s">S-21</span></li><li class="sub">결제(PG 외부 창)</li>
+          <li>주문 완료 · 결제 결과<span class="s">S-22</span></li>
         </ul></div>
         <div class="col"><h5>마이</h5><ul>
-          <li>주문 목록 · 주문 상세</li><li class="sub">취소 · 반품 · 교환 · 재제작</li>
-          <li>다시 사기</li>
-          <li>쿠폰함 · 찜·최근 본 상품</li>
-          <li>배송지 · 사업자 정보</li>
-          <li>알림 센터 · 알림 설정</li>
-          <li>계정 · 탈퇴</li>
+          <li>마이페이지 홈<span class="s">S-23</span></li>
+          <li>주문 목록<span class="s">S-24</span> · 주문 상세<span class="s">S-25</span></li><li class="sub">취소 · 반품 · 교환 · 재제작 · 이의 제기<span class="s">S-26</span></li><li class="sub">확정 후 변경·취소 요청</li><li class="sub">증빙 내역 · 확정 확인서</li>
+          <li>다시 사기<span class="s">S-27</span></li>
+          <li>쿠폰함<span class="s">S-28</span> · 찜·최근 본 상품<span class="s">S-31</span></li>
+          <li>배송지<span class="s">S-30</span> · 사업자 정보<span class="s">S-04</span></li>
+          <li>알림 센터 · 알림 설정<span class="s">S-29</span></li>
+          <li>계정 · 환불 계좌 · 탈퇴<span class="s">S-33</span></li>
         </ul></div>
         <div class="col"><h5>회원·고객센터</h5><ul>
-          <li>로그인 · 가입</li><li class="sub">약관 → 본인인증 → 완료</li>
-          <li>사업자 회원 인증</li>
-          <li>고객센터</li><li class="sub">FAQ · 채팅 상담 · 공지</li>
+          <li>로그인<span class="s">S-02</span></li>
+          <li>가입<span class="s">S-03</span></li><li class="sub">(이메일 입력) → 약관 → 본인인증 → 완료</li>
+          <li>사업자 회원 인증<span class="s">S-04</span></li>
+          <li>고객센터<span class="s">S-32</span></li><li class="sub">FAQ · 채팅 상담 · 공지</li>
+          <li>점검 안내 (웹·앱 공통)<span class="s">S-01</span></li>
         </ul></div>
-        <div class="col"><h5>앱 전용</h5><ul>
-          <li>스플래시</li><li>오프라인 · 점검</li><li>강제 업데이트</li><li>권한 요청 전 안내</li><li>앱 아이콘</li>
+        <div class="col"><h5>앱 전용 <span class="s muted" style="font-size:11px">S-01</span></h5><ul>
+          <li>스플래시</li><li>오프라인 · 서버 장애</li><li>강제 업데이트 · 지원 안 하는 OS</li><li>권한 요청 전 안내</li><li>앱 아이콘</li>
         </ul></div>
+      </div>
+
+      <h3 class="sub">취급 품목 (카테고리 예시)</h3>
+      <p class="t2" style="margin-bottom:12px">카테고리 화면·업종 묶음·상품 카드에 들어갈 실제 품목입니다. <span class="b mvp">초록</span> 품목은 로고를 넣는 맞춤 인쇄가 가능한 예시입니다. 실제 분류는 관리자가 정하고 최대 3단계입니다. 같은 물건을 여러 이름으로 부르므로(수저집 = 수저포장지 = 수저봉투) 검색은 동의어로도 찾습니다.</p>
+      <div class="cat">
+        <div class="col"><h5>테이블 세팅</h5><div class="chips"><span class="k">수저집(수저포장지)</span><span class="k">냅킨</span><span class="k">물티슈</span><span class="k">테이블 매트</span><span>이쑤시개</span><span class="k">컵받침</span></div></div>
+        <div class="col"><h5>카페·음료</h5><div class="chips"><span class="k">종이컵</span><span class="k">플라스틱컵</span><span class="k">컵홀더</span><span>리드(뚜껑)</span><span>빨대</span><span>캐리어</span></div></div>
+        <div class="col"><h5>포장·배달</h5><div class="chips"><span>배달 용기</span><span class="k">비닐·종이봉투</span><span class="k">쇼핑백</span><span class="k">박스</span><span class="k">실링 필름</span><span class="k">스티커</span><span class="k">테이프</span></div></div>
+        <div class="col"><h5>위생·청소</h5><div class="chips"><span>점보롤·화장지</span><span>핸드타올</span><span>위생장갑</span><span>위생모·마스크</span><span>세제</span><span>행주</span></div></div>
+        <div class="col"><h5>주방 소모품</h5><div class="chips"><span>랩·호일</span><span>지퍼백</span><span>키친타올</span><span>조리용 장갑</span><span>유산지</span></div></div>
+        <div class="col"><h5>비품·유니폼·홍보</h5><div class="chips"><span class="k">앞치마</span><span class="k">유니폼</span><span class="k">메뉴판</span><span class="k">POP·배너</span><span class="k">쿠폰·명함</span></div></div>
+        <div class="col"><h5>친환경</h5><div class="chips"><span>생분해 용기</span><span>종이빨대</span><span>사탕수수 용기</span><span class="k">친환경 쇼핑백</span></div></div>
       </div>
     </section>
 
-    <!-- ================= 05 FLOWS ================= -->
+    <!-- ================= 06 FLOWS ================= -->
     <section class="sec" id="flows">
-      <div class="sec-head"><div class="sec-num">05</div><h2>핵심 흐름</h2><p>프로토타입으로 만들어 주실 흐름 3개입니다. 화면 사이의 연결과 “다음 할 일”이 끊기지 않는지가 중요합니다.</p></div>
-      <div class="who-legend"><span><i style="background:var(--blue)"></i>고객</span><span><i style="background:var(--accent)"></i>디자인팀</span><span><i style="background:var(--primary)"></i>시스템</span></div>
+      <div class="sec-head"><div class="sec-num">06</div><h2>핵심 흐름</h2><p>화면 사이의 연결과 “다음 할 일”이 끊기지 않는지가 중요합니다. A·B·C는 클릭해서 따라가는 프로토타입으로, D·E는 분쟁이 가장 많이 나는 구간이라 연결된 화면 흐름으로 그려 주세요(프로토타입이면 더 좋습니다).</p></div>
+      <div class="who-legend"><span><i style="background:var(--blue)"></i>고객</span><span><i style="background:var(--accent)"></i>디자이너(시안 담당)</span><span><i style="background:var(--purple)"></i>식업 운영(본사 중재)</span><span><i style="background:var(--primary)"></i>시스템</span></div>
 
       <div class="flow-wrap">
-        <div class="flow-title">흐름 A · 처음 온 사장님의 일반 구매</div>
+        <div class="flow-title">흐름 A · 처음 온 사장님의 일반 구매 <span class="b lo">프로토타입</span></div>
         <div class="flow">
           <div class="step c"><div class="who">고객</div><h5>홈</h5><p>업종 바로가기 또는 검색</p></div>
           <div class="step c"><div class="who">고객</div><h5>상품 목록</h5><p>맞춤 인쇄·빠른 출고·MOQ 필터, 1매당 단가 비교</p></div>
           <div class="step c"><div class="who">고객</div><h5>상품 상세</h5><p>구간 단가표, 출고 예정일, 인증 서류</p></div>
-          <div class="step c"><div class="who">고객</div><h5>옵션·수량</h5><p>“2박스 더 담으면 할인” 안내</p></div>
+          <div class="step c"><div class="who">고객</div><h5>옵션·수량</h5><p>옵션(최대 3단)·추가 구성품, “2박스 더 담으면 할인” 안내</p></div>
           <div class="step c"><div class="who">고객</div><h5>장바구니</h5><p>판매자별 묶음, 무료배송까지 남은 금액. 비로그인이면 여기서 로그인(고르던 것 유지)</p></div>
-          <div class="step c"><div class="who">고객</div><h5>주문서 · 결제</h5><p>배송지·쿠폰·증빙·결제수단 → PG 결제창</p></div>
-          <div class="step s"><div class="who">시스템</div><h5>주문 완료</h5><p>주문번호, 예상 출고일, 가상계좌면 계좌·기한</p></div>
+          <div class="step c"><div class="who">고객</div><h5>주문서 · 결제</h5><p>배송지·쿠폰·증빙·결제수단·구매 조건 동의 → PG 결제창</p></div>
+          <div class="step s"><div class="who">시스템</div><h5>결제 결과</h5><p>성공 → 주문 완료 / 실패·취소 → 주문서(담은 상품·쿠폰 그대로) / 결과 확인 중</p></div>
+          <div class="step s"><div class="who">시스템</div><h5>주문 완료</h5><p>주문번호, 예상 출고일, 가상계좌면 계좌·기한(3일)·복사</p></div>
           <div class="step c"><div class="who">고객</div><h5>주문 상세</h5><p>배송 조회 → 구매 확정(7일 뒤 자동)</p></div>
         </div>
       </div>
 
       <div class="flow-wrap">
-        <div class="flow-title">흐름 B · 맞춤 제작 <span class="b hi">가장 중요</span></div>
+        <div class="flow-title">흐름 B · 맞춤 제작 <span class="b hi">가장 중요</span> <span class="b lo">프로토타입</span></div>
         <div class="flow">
-          <div class="step c"><div class="who">고객</div><h5>상품 상세</h5><p>“우리 가게 로고 넣기” 영역 → [맞춤 제작으로 주문하기]</p></div>
+          <div class="step c"><div class="who">고객</div><h5>상품 상세</h5><p>“우리 가게 로고 넣기”(인쇄 사양·방식별 가격·예상 도착일) → [맞춤 제작으로 주문하기]</p></div>
           <div class="step c"><div class="who">고객</div><h5>맞춤 옵션·수량</h5><p>맞춤 MOQ(예: 10,000매부터) 적용</p></div>
-          <div class="step c"><div class="who">고객</div><h5>디자인 방식 선택</h5><p>템플릿 · 맞춤 · 자체 파일 · 재주문 카드 비교</p></div>
+          <div class="step c"><div class="who">고객</div><h5>디자인 방식 선택</h5><p>템플릿 · 맞춤 · 자체 파일 · 재주문 카드 비교, 같은 콘셉트로 품목 더하기. 비로그인이면 이 화면 전에 로그인(고르던 옵션·수량 유지)</p></div>
           <div class="step c"><div class="who">고객</div><h5>요청서</h5><p>템플릿 입력 / 맞춤 4단계 / 파일 업로드·자동 점검</p></div>
-          <div class="step c"><div class="who">고객</div><h5>주문서 · 결제</h5><p>디자인비·판비 줄, 단계별 환불 규정 동의 → 선결제</p></div>
-          <div class="step s"><div class="who">시스템</div><h5>주문 완료</h5><p>“4시간 안에 디자이너 배정” 안내, 푸시 권한 요청, 협의 룸 바로가기</p></div>
-          <div class="step d"><div class="who">디자인팀</div><h5>배정 · 첫 시안</h5><p>영업시간 4시간 안 배정, 영업일 2일 안 첫 시안(템플릿은 1일)</p></div>
+          <div class="step c"><div class="who">고객</div><h5>주문서 · 결제</h5><p>판비·디자인비 줄, 단계별 환불 규정 동의 → 선결제</p></div>
+          <div class="step s"><div class="who">시스템</div><h5>주문 완료</h5><p>“영업시간 기준 4시간 안 배정”과 배정 예정 시각, 협의 룸 바로가기, 푸시 권한 요청. 가상계좌는 입금 확인 뒤 룸이 열림</p></div>
+          <div class="step d"><div class="who">디자이너</div><h5>배정 · 첫 시안</h5><p>디자이너 소개 카드. 영업일 2일 안 첫 시안(템플릿은 1일)</p></div>
           <div class="step c"><div class="who">고객</div><h5>협의 룸 · 시안 보기</h5><p>버전 비교, 핀 코멘트, 남은 무료 수정 횟수</p></div>
-          <div class="step c"><div class="who">고객</div><h5>수정 요청 또는 확정</h5><p>수정은 영업일 1일 안 새 버전. 확정은 체크리스트·동의</p></div>
-          <div class="step s"><div class="who">시스템</div><h5>제작 · 배송</h5><p>주문 상세 타임라인: 확정 → 제작 → 출고 → 배송 → 구매 확정</p></div>
+          <div class="step c"><div class="who">고객</div><h5>수정 요청 또는 확정</h5><p>수정은 영업일 1일 안 새 버전. 확정은 체크리스트 5개·동의 → 확정 확인서</p></div>
+          <div class="step s"><div class="who">시스템</div><h5>인쇄 준비</h5><p>판매자 인쇄 가능 확인(영업일 1일). 이때까지만 확정 후 변경·취소를 받음</p></div>
+          <div class="step s"><div class="who">시스템</div><h5>제작 · 배송</h5><p>제작 중(출고 예정일) → 출고 → 배송 → 구매 확정(7일 뒤 자동)</p></div>
         </div>
-        <div class="callout warn" style="margin-top:14px"><span class="ic">!</span><div><b>기다리는 시간을 보여 주세요.</b> 배정까지 영업시간 4시간, 첫 시안 영업일 2일, 수정본 영업일 1일입니다. 운영시간은 평일 09~18시입니다. 고객 응답이 없으면 3일째 리마인드, 14일째 보류, 30일째 자동 취소됩니다. 협의 룸과 디자인 진행 목록에 “다음 시안 예정 ○일”, “고객 응답 기다리는 중 ○일째” 같은 표시가 필요합니다. <a class="sid" href="sikup-spec.html#D-ROOM-07">D-ROOM-07</a></div></div>
+        <div class="callout warn" style="margin-top:14px"><span class="ic">!</span><div><b>기다리는 시간을 날짜와 시각으로 보여 주세요.</b> 배정까지 영업시간 4시간, 첫 시안 영업일 2일, 수정본 영업일 1일이고, 운영시간은 평일 09~18시(공휴일 제외)입니다. 화면에는 “첫 시안 예정: 10/19(월) 18시까지”처럼 계산된 시각을 보여주고, 고객 답변을 기다리거나 보류 중이거나 올린 파일을 검사하는 동안에는 “답변을 기다리는 동안 일정이 멈춰 있어요”처럼 바꿉니다. 고객 응답이 없으면 3일째 리마인드, 13일째 예고 뒤 14일째 보류, 29일째 예고 뒤 30일째 자동 취소입니다(이 날짜는 달력일). 협의 룸과 디자인 진행 목록에 “응답 기다리는 중 ○일째”, “○월 ○일 ○시 이후 보류돼요” 같은 표시가 필요합니다. <a class="sid" href="sikup-spec.html#D-STU-04">D-STU-04</a><a class="sid" href="sikup-spec.html#D-ROOM-07">D-ROOM-07</a></div></div>
       </div>
 
       <div class="flow-wrap">
-        <div class="flow-title">흐름 C · 다시 사기</div>
+        <div class="flow-title">흐름 C · 다시 사기 <span class="b lo">프로토타입</span></div>
         <div class="flow">
           <div class="step c"><div class="who">고객</div><h5>홈 · 다시 사기 탭</h5><p>자주 산 상품(구매 횟수·마지막 구매일)</p></div>
           <div class="step c"><div class="who">고객</div><h5>다시 담기</h5><p>지난 옵션·수량이 기본값, 여러 개 한 번에. 가격이 바뀌었으면 표시</p></div>
-          <div class="step c"><div class="who">고객</div><h5>같은 디자인 재주문</h5><p>확정 시안 미리보기, “판비 면제”, 수량만 고르기. 문구만 바꾸려면 [수정해서 재주문]</p></div>
-          <div class="step c"><div class="who">고객</div><h5>주문서</h5><p>재주문은 이전 확정본 확인 체크 + 취소·반품 제한 동의</p></div>
-          <div class="step s"><div class="who">시스템</div><h5>바로 제작</h5><p>디자인 단계 없이 제작으로 넘어감</p></div>
+          <div class="step c"><div class="who">고객</div><h5>같은 디자인 재주문</h5><p>확정 시안 미리보기, 같은 사양 안에서 수량·옵션 고르기, “판비 면제”(보관 기간 안 같은 판). 문구만 바꾸려면 [수정해서 재주문](문구 수정 1회 무료)</p></div>
+          <div class="step c"><div class="who">고객</div><h5>주문서</h5><p>“재주문(디자인비 없음 · 판비 면제)” 줄, 이전 확정본 확인 체크 + 취소·반품 제한 동의, 식업 보증 문구</p></div>
+          <div class="step s"><div class="who">시스템</div><h5>바로 제작</h5><p>디자인 단계 없이 디자인 확정 → 판매자 인쇄 확인 → 제작. 수정 재주문은 수정본을 확정한 뒤</p></div>
+        </div>
+      </div>
+
+      <div class="flow-wrap">
+        <div class="flow-title">흐름 D · 확정 후 변경·취소 <span class="b must">분쟁 구간</span> <span class="b lo">화면 흐름</span></div>
+        <div class="flow">
+          <div class="step c"><div class="who">고객</div><h5>주문 상세 · 협의 룸</h5><p>디자인 확정 뒤 판매자 인쇄 확인 전까지만 [확정 후 변경 요청]·[취소 요청]</p></div>
+          <div class="step c"><div class="who">고객</div><h5>요청 시트</h5><p>사유 입력. 취소는 공제 내역(디자인비 + 판을 만들었다고 증빙되면 판비)을 보고 동의</p></div>
+          <div class="step s"><div class="who">시스템</div><h5>생산 보류</h5><p>항목에 “변경 요청 중”·“취소 중재 중” 표시, [요청 철회] 가능</p></div>
+          <div class="step o"><div class="who">식업 운영</div><h5>본사 중재 결과</h5><p>변경 승인 → 다시 시안 단계 / 취소 승인 → 최종 환불액 / 기각·철회 → 생산 재개(기각에는 이의 제기 없음)</p></div>
+          <div class="step c"><div class="who">고객</div><h5>다시 확정</h5><p>변경 건은 새 시안을 다시 확정. 30일 답이 없으면 이전 확정본으로 되돌려 생산(알림)</p></div>
+        </div>
+      </div>
+
+      <div class="flow-wrap">
+        <div class="flow-title">흐름 E · 반품·재제작 거부와 이의 제기 <span class="b must">분쟁 구간</span> <span class="b lo">화면 흐름</span></div>
+        <div class="flow">
+          <div class="step c"><div class="who">고객</div><h5>주문 상세</h5><p>배송 완료 뒤 [반품·교환], 맞춤 제작은 [재제작 요청]</p></div>
+          <div class="step c"><div class="who">고객</div><h5>신청</h5><p>사유, 사진(불량이면 필수, 최대 10장), 회수 방법, 환불 예정 금액</p></div>
+          <div class="step s"><div class="who">시스템</div><h5>진행</h5><p>접수 → 회수 중 → 검수 중. 7일 안에 보내지 않으면 자동 철회</p></div>
+          <div class="step s"><div class="who">시스템</div><h5>판매자 거부 통지</h5><p>거부 사유와 [이의 제기](통지 뒤 3일만)</p></div>
+          <div class="step o"><div class="who">식업 운영</div><h5>이의 제기됨 → 결과</h5><p>이의 내용·사진을 받아 본사 중재. 인정 → 환불·재발송(이미 출고돼 거부된 취소는 회수한 뒤 검수 없이 환불) / 유지 → 거부 확정(결과가 최종)</p></div>
         </div>
       </div>
     </section>
 
-    <!-- ================= 06 SCREENS ================= -->
+    <!-- ================= 07 SCREENS ================= -->
     <section class="sec" id="screens">
-      <div class="sec-head"><div class="sec-num">06</div><h2>화면 목록</h2><p>MVP(정식 오픈)에 들어가는 고객 화면 33개입니다. “정밀”은 화면별로 꼼꼼히 디자인할 화면, “부품”은 공통 컴포넌트로 조립해도 되는 화면입니다. 구분은 디자인팀이 조정해도 됩니다.</p></div>
-      <div class="legend"><span><span class="b hi">정밀</span> 화면별 디자인 (19개)</span><span><span class="b lo">부품</span> 공통 부품으로 조립 (14개)</span><span><span class="b must">PC</span> PC 레이아웃도 필요 (7개)</span></div>
+      <div class="sec-head"><div class="sec-num">07</div><h2>화면 목록</h2><p>MVP(정식 오픈)에 들어가는 고객 화면 33개입니다. “정밀” 20개는 화면별로 꼼꼼히 디자인할 화면(기획서가 말하는 ‘핵심 화면’), “부품” 13개는 공통 컴포넌트로 조립해도 되는 화면입니다. 구분은 디자인팀이 조정해도 됩니다. “변형 · 상태” 칸의 경우마다 프레임이나 컴포넌트 변형이 있어야 합니다.</p></div>
+      <div class="legend"><span><span class="b hi">정밀</span> 화면별 디자인 (20개)</span><span><span class="b lo">부품</span> 공통 부품으로 조립 (13개)</span><span><span class="b must">PC</span> PC 레이아웃도 필요 (7개)</span></div>
 
       <div class="table-wrap"><table class="minw-900">
         <thead><tr><th>ID</th><th>화면</th><th>꼭 들어갈 것</th><th>변형 · 상태</th><th>구분</th><th>명세</th></tr></thead>
         <tbody>
           <tr class="grp"><td colspan="6">공통 · 진입</td></tr>
-          <tr><td class="id">S-01</td><td class="nw"><b>앱 시작·예외 화면</b></td><td>스플래시, 오프라인 [다시 시도], 점검(예상 종료 시각), 강제 업데이트(스토어 이동)</td><td>앱 전용</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#C-APP-01">C-APP-01</a><a class="sid" href="sikup-spec.html#U-CS-04">U-CS-04</a></td></tr>
-          <tr><td class="id">S-02</td><td class="nw"><b>로그인</b></td><td>카카오·애플 버튼(iOS는 애플 필수), 이메일 로그인, 아이디 찾기·비밀번호 재설정, 로그인 없이 둘러보기</td><td>네이버·구글 버튼 자리(2차), 실패·제재 안내</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-MEM-01">U-MEM-01</a><a class="sid" href="sikup-spec.html#U-MEM-02">U-MEM-02</a></td></tr>
-          <tr><td class="id">S-03</td><td class="nw"><b>가입</b><span class="sub" style="display:block">약관 → 본인인증 → 완료</span></td><td>전체 동의 + 필수·선택 구분, 마케팅 채널별 선택, 만 19세 이상 확인, 본인인증 진입, 완료 화면의 “사업자 인증하고 사업자가 보기”</td><td>이미 가입된 계정, 만 19세 미만, 탈퇴 후 30일 재가입 제한</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-MEM-03">U-MEM-03</a><a class="sid" href="sikup-spec.html#U-MEM-04">U-MEM-04</a></td></tr>
-          <tr><td class="id">S-04</td><td class="nw"><b>사업자 회원 인증</b></td><td>사업자등록번호(하이픈 자동)·대표자명·개업일자 → 상호·업태·종목·업종·주소·세금계산서 이메일</td><td>확인 중(국세청 지연), 3회 불일치 → 서류 심사 요청, 휴업·폐업</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MEM-05">U-MEM-05</a></td></tr>
+          <tr><td class="id">S-01</td><td class="nw"><b>앱 시작·예외 화면</b><span class="sub" style="display:block">+ 점검 안내</span></td><td>스플래시, 오프라인 [다시 시도], 서버 장애 안내(앱에 내장, [다시 시도]), 강제 업데이트(스토어 이동), 지원하지 않는 OS 안내. 계획 점검 화면(예상 종료 시각)은 <b>웹·앱 공통</b>이라 웹 레이아웃도 필요</td><td>앱 전용(점검 제외), Android 뒤로 가기 “한 번 더 누르면 종료” 토스트</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#C-APP-01">C-APP-01</a><a class="sid" href="sikup-spec.html#U-CS-04">U-CS-04</a></td></tr>
+          <tr><td class="id">S-02</td><td class="nw"><b>로그인</b></td><td>카카오·애플 버튼(iOS는 애플 필수), 이메일 로그인, 웹 “로그인 유지”(30일), 아이디 찾기(본인인증 → 일부 가린 이메일 pa***@gmail.com)·비밀번호 재설정(링크 30분), 로그인 없이 둘러보기</td><td>네이버·구글 버튼 자리(2차), 5회 실패 → 10분 잠금(이후 휴대폰 인증 추가), 재설정 링크 만료, 제재 안내</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-MEM-01">U-MEM-01</a><a class="sid" href="sikup-spec.html#U-MEM-02">U-MEM-02</a></td></tr>
+          <tr><td class="id">S-03</td><td class="nw"><b>가입</b><span class="sub" style="display:block">(이메일 입력) → 약관 → 본인인증 → 완료</span></td><td>이메일 가입이면 먼저 이메일·비밀번호(8~20자, 2종 이상)·확인 → 6자리 인증번호(5분, 재발송 1분 간격). 약관: 전체 동의 + 필수(이용약관·개인정보 수집·이용·만 19세 이상) / 선택(채널별 마케팅 수신·야간 수신·개인정보 마케팅 활용), 휴대폰 본인인증 진입, 완료 화면의 “사업자 인증하고 사업자가 보기”</td><td>이미 가입된 계정(가입 방식 표시: 카카오 / pa***@…), SNS로 가입된 이메일, 만 19세 미만, 탈퇴 후 30일 재가입 제한, 본인인증 서비스 점검 배너·다른 인증 수단 안내, 필수 약관이 바뀐 뒤 재동의 화면(동의 전엔 주문 불가)</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-MEM-02">U-MEM-02</a><a class="sid" href="sikup-spec.html#U-MEM-03">U-MEM-03</a><a class="sid" href="sikup-spec.html#U-MEM-04">U-MEM-04</a></td></tr>
+          <tr><td class="id">S-04</td><td class="nw"><b>사업자 회원 인증</b></td><td>사업자등록번호(하이픈 자동)·대표자명·개업일자 → 상호·업태·종목·업종·주소(기본 배송지로 등록할지 선택)·세금계산서 이메일. “인증 전에 결제한 주문은 사업자가 차액을 돌려드리지 않아요” 안내. 인증 뒤 사업자 정보 보기·수정</td><td>확인 중(국세청 지연), 3회 불일치 → 사업자등록증 올려 서류 심사(영업일 1일) 대기, 같은 사업자번호 4번째 계정은 막고 상담 안내, 휴업·폐업 → 사업자 혜택 중지</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MEM-05">U-MEM-05</a></td></tr>
 
           <tr class="grp"><td colspan="6">탐색</td></tr>
-          <tr><td class="id">S-05</td><td class="nw"><b>홈</b> <span class="b must">PC</span></td><td>검색창·장바구니·알림, (구매 이력 있으면) 자주 산 상품·같은 디자인 재주문, 배너, 업종 바로가기 10개, “우리 가게 로고 넣기”, 인기·추천 상품</td><td>비로그인·신규 / 재구매 고객 / 사업자(업종 맞춤 블록). 블록 순서는 관리자가 바꿈</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-SRCH-01">U-SRCH-01</a></td></tr>
-          <tr><td class="id">S-06</td><td class="nw"><b>카테고리</b></td><td>품목별 / 업종별 탭, 최대 3단계 분류, 업종을 고르면 필요한 품목 묶음</td><td>앱은 최근 본 카테고리를 펼쳐 둠</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-SRCH-02">U-SRCH-02</a></td></tr>
-          <tr><td class="id">S-07</td><td class="nw"><b>검색 입력</b></td><td>최근 검색어(하나씩·전체 삭제), 인기·추천 검색어, 한 글자·초성부터 자동완성, 카테고리 바로가기, “맞춤 인쇄 가능” 표시</td><td>—</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-SRCH-03">U-SRCH-03</a></td></tr>
-          <tr><td class="id">S-08</td><td class="nw"><b>검색 결과·상품 목록</b> <span class="b must">PC</span></td><td>상품 카드, 필터(맞춤 인쇄·바로 구매 가능·소재·친환경·빠른 출고·무료배송·파트너·MOQ·가격대), 정렬, 옵션 없는 상품은 카드에서 바로 담기</td><td>결과 0건(동의어 결과 → “찾는 상품 요청하기”), 필터 결과 0건, 앱 무한 스크롤 / 웹 페이지 번호</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-SRCH-04">U-SRCH-04</a></td></tr>
+          <tr><td class="id">S-05</td><td class="nw"><b>홈</b> <span class="b must">PC</span></td><td>검색창·장바구니·알림, (구매 이력 있으면) 자주 산 상품·같은 디자인 재주문, 배너, 업종 바로가기 10개, “우리 가게 로고 넣기”, 인기·추천 상품</td><td>비로그인·신규(자주 산 상품 대신 인기 상품·베스트 디자인) / 재구매 고객 / 사업자(업종 맞춤 블록). 블록 순서는 관리자가 바꿈, 블록 하나 실패 → 그 블록만 숨김</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-SRCH-01">U-SRCH-01</a></td></tr>
+          <tr><td class="id">S-06</td><td class="nw"><b>카테고리</b></td><td>품목별 / 업종별 탭, 최대 3단계 분류(<a href="#structure">05장 취급 품목</a>), 업종을 고르면 필요한 품목 묶음</td><td>앱은 최근 본 카테고리를 펼쳐 둠</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-SRCH-02">U-SRCH-02</a></td></tr>
+          <tr><td class="id">S-07</td><td class="nw"><b>검색 입력</b></td><td>최근 검색어(최대 10개, 하나씩·전체 삭제), 인기 검색어(최근 7일)·추천 검색어, 한 글자·초성부터 자동완성, 카테고리 바로가기, “맞춤 인쇄 가능” 표시</td><td>—</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-SRCH-03">U-SRCH-03</a></td></tr>
+          <tr><td class="id">S-08</td><td class="nw"><b>검색 결과·상품 목록</b> <span class="b must">PC</span></td><td>상품 카드, 필터(카테고리·가격대·맞춤 인쇄·바로 구매 가능·소재·친환경·빠른 출고·무료배송·판매자·MOQ 범위), 정렬(추천순·판매량순·낮은 단가순·최신순), 옵션 없는 상품은 카드에서 바로 담기</td><td>결과 0건(동의어 결과 → 그래도 없으면 “찾는 상품 요청하기”·인기 카테고리·인기 검색어), 필터 결과 0건(마지막 필터 풀기 제안), 앱 무한 스크롤 / 웹 페이지 번호, “리뷰 많은순” 정렬 자리(2차)</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-SRCH-04">U-SRCH-04</a></td></tr>
 
           <tr class="grp"><td colspan="6">상품</td></tr>
-          <tr><td class="id">S-09</td><td class="nw"><b>상품 상세</b> <span class="b must">PC</span></td><td>이미지 갤러리, 가격 영역(구간 단가표·1매당 단가), 맞춤 디자인 영역, 배송 정보(출고 예정일), 상세 설명(접힌 상태 → [펼치기], 이미지 확대), 상품정보·인증 서류, [문의하기], 교환·반품 안내, 판매자 정보, 공유·찜, 하단 고정 구매 버튼</td><td>일반 전용 / 일반+맞춤 / 맞춤 전용, 품절·판매 종료·파트너 휴무·맞춤 접수 중단</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-PDP-01">U-PDP-01</a><a class="sid" href="sikup-spec.html#U-PDP-03">U-PDP-03</a><a class="sid" href="sikup-spec.html#U-PDP-04">U-PDP-04</a><a class="sid" href="sikup-spec.html#U-PDP-07">U-PDP-07</a></td></tr>
-          <tr><td class="id">S-10</td><td class="nw"><b>옵션·수량 선택</b></td><td>옵션 2단 조합(재고·추가 금액), 주문 단위(박스·롤·1,000매) 수량 조절, 구간 단가표 현재 구간 강조, “2박스 더 담으면…”, 합계(상품·할인·예상 배송비)</td><td>MOQ 자동 보정, 품절 옵션, 맞춤 MOQ</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-PDP-02">U-PDP-02</a></td></tr>
+          <tr><td class="id">S-09</td><td class="nw"><b>상품 상세</b> <span class="b must">PC</span></td><td>이미지 갤러리(최대 10장, 확대), 판매자명(누르면 판매자 상품 모음), 가격 영역(구간 단가표·1매당 단가·[쿠폰 받기]), 맞춤 디자인 영역(인쇄 사양·방식별 가격·판비·제작 기간·예상 도착일·템플릿 미리보기), 배송 정보(출고 예정일·같은 판매자 묶음배송·착불이면 눈에 띄게), 상세 설명(접힌 상태 → [펼치기], 이미지 확대), 상품정보·인증 서류(PDF 뷰어), 일회용품 규제 안내(접힌 상자, 본사가 카테고리별로 쓰는 문구와 고친 날짜), [문의하기], 교환·반품 안내, 판매자 정보, 공유(카카오톡·링크 복사)·찜, 하단 고정 구매 버튼</td><td>일반 전용 / 일반+맞춤 / 맞춤 전용, 품절(비슷한 상품, 재입고 알림 자리 2차)·판매 종료·판매자 휴무·맞춤 접수 중단(“현재 맞춤 제작 접수 중단”, 버튼 끔), 맞춤 주문 이력 있음(“지난 디자인으로 다시 주문” 먼저), “세금계산서 불가 · 현금영수증만 가능” 판매자, 쿠폰 받은 뒤, 서류 다운로드는 로그인 회원만, 규제 안내 문구가 없는 카테고리 → 상자 없음</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-PDP-01">U-PDP-01</a><a class="sid" href="sikup-spec.html#U-PDP-03">U-PDP-03</a><a class="sid" href="sikup-spec.html#U-PDP-04">U-PDP-04</a><a class="sid" href="sikup-spec.html#U-PDP-07">U-PDP-07</a></td></tr>
+          <tr><td class="id">S-10</td><td class="nw"><b>옵션·수량 선택</b></td><td>옵션 최대 3단 조합(조합별 재고·추가 금액), 고른 조합이 줄로 쌓이는 선택 목록(조합별 수량·삭제), 그 아래 추가 구성품(예: 이쑤시개 1,000개, 구성품마다 가격·수량 따로, 본 상품을 1개 이상 골라야 담김), 주문 단위(박스·롤·1,000매) 수량 +/−·직접 입력, 구간 단가표 현재 구간 강조, “2박스 더 담으면…”, 합계(상품·할인·예상 배송비)</td><td>MOQ 미만·최대 주문 수량 초과 → 자동 보정 안내, 품절 옵션, 맞춤 MOQ, 맞춤 옵션은 재고 대신 “주문 제작”, 옵션이 3단이거나 조합이 많은 상품(최대 100개), 추가 구성품 품절(그 구성품만 막힘), 본 상품을 모두 빼면 추가 구성품도 같이 빠짐, 맞춤 상품에 붙은 추가 구성품(인쇄 없음, 맞춤 상품과 함께 출고)</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-PDP-02">U-PDP-02</a></td></tr>
 
           <tr class="grp"><td colspan="6">맞춤 디자인 · 핵심</td></tr>
-          <tr><td class="id">S-11</td><td class="nw"><b>디자인 방식 선택</b></td><td>카드 4장(템플릿·맞춤·자체 파일·재주문). 카드마다 비용, 첫 시안 예상 시점, 무료 수정 횟수, 디자인 권리. “같은 디자인으로 다른 품목 추가”(같은 콘셉트 묶음: 첫 품목 39,000원 + 추가 품목당 19,000원)</td><td>템플릿 없으면 비활성, 재주문은 이력이 있을 때만, 맞춤 MOQ로 수량 자동 상향 안내, 여러 품목 묶음</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-REQ-01">D-REQ-01</a></td></tr>
-          <tr><td class="id">S-12</td><td class="nw"><b>템플릿형 요청</b></td><td>템플릿 목록(업종·스타일 필터), 바꿀 수 있는 칸만 입력(매장명·문구·연락처·로고), 허용된 색 중 선택, 템플릿 원본 + 입력 요약</td><td>저해상도 로고 경고, 글자 수 초과</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-REQ-02">D-REQ-02</a></td></tr>
-          <tr><td class="id">S-13</td><td class="nw"><b>맞춤형 요청서</b><span class="sub" style="display:block">4단계</span></td><td>① 매장 정보 ② 소재(로고·문구·간판 사진·참고 이미지·링크) ③ 스타일 칩·색상·피하고 싶은 것 ④ 확인(디자인비 계산·동의). 같은 디자인으로 만들 품목 추가·빼기(요청서 하나로 여러 품목)</td><td>임시 저장 이어 쓰기, “로고 없음” 선택지, 업로드 실패 재시도, 품목 여러 개(디자인비 39,000 + 19,000 × 추가 품목 수)</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-REQ-03">D-REQ-03</a><a class="sid" href="sikup-spec.html#D-REQ-01">D-REQ-01</a></td></tr>
-          <tr><td class="id">S-14</td><td class="nw"><b>자체 파일 업로드</b></td><td>템플릿·칼선 다운로드와 파일 요건, 품목·면별 업로드, 자동 점검 결과(형식·크기·해상도·아웃라인·RGB/CMYK), 자가 확인 체크</td><td>치명 오류 강한 경고, RGB 색 차이 동의, 업로드 진행률</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-OWN-01">D-OWN-01</a></td></tr>
-          <tr><td class="id">S-15</td><td class="nw"><b>디자인 협의 룸</b> <span class="b must">PC</span></td><td>상단 상태·남은 무료 수정·다음 시안 예정, 최신 시안 카드, 디자이너 소개 카드, 메시지·파일·시스템 메시지·핀 참조, 읽음·입력 중, 운영시간 안내, 파일 모아보기. 확정 뒤에는 [확정 후 변경 요청]·[취소 요청](파트너 인쇄 확인 전까지). 추가 수정·보정은 디자인 부가 결제로</td><td>배정 전(자료만 올리기), 디자이너 질문 → “답변 필요”, 보류, 변경 요청 중·취소 중재 중(생산 보류), 완료 후 읽기 전용, 연결 끊김, 가려진 연락처, 품목 여러 개(품목별 시안 탭)</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-ROOM-01">D-ROOM-01</a><a class="sid" href="sikup-spec.html#D-ROOM-02">D-ROOM-02</a><a class="sid" href="sikup-spec.html#D-ROOM-06">D-ROOM-06</a><a class="sid" href="sikup-spec.html#D-ROOM-07">D-ROOM-07</a><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a></td></tr>
-          <tr><td class="id">S-16</td><td class="nw"><b>시안 보기·비교·핀</b></td><td>버전 탭(v1·v2·v3), A안·B안, 나란히·슬라이더 비교, 확대, 핀 찍기·목록·해결, 워터마크, 하단 고정 [수정 요청]·[이 시안으로 확정]</td><td>모바일은 확대한 뒤 핀, 길게 눌러 옮기기, 이월된 핀, 회수된 시안</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-ROOM-03">D-ROOM-03</a><a class="sid" href="sikup-spec.html#D-ROOM-04">D-ROOM-04</a></td></tr>
-          <tr><td class="id">S-17</td><td class="nw"><b>수정 요청</b></td><td>미해결 핀 묶음, 추가 설명, ‘문구 변경’ 칸(바꿀 문구 → 새 문구), 참고 링크·이미지, 남은 무료 횟수</td><td>무료 0회 → 추가 수정 10,000원(디자인 부가 결제, 작업 시작 뒤 환불 안 됨 고지), 템플릿형 레이아웃 변경 → 맞춤형 전환(차액 결제 + 취소 공제 규정 재동의), 범위 초과 안내, 결제 실패 → 입력 임시 저장</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#D-ROOM-05">D-ROOM-05</a><a class="sid" href="sikup-spec.html#D-OPT-01">D-OPT-01</a><a class="sid" href="sikup-spec.html#D-REQ-02">D-REQ-02</a></td></tr>
-          <tr><td class="id">S-18</td><td class="nw"><b>시안 확정</b></td><td>확정할 품목 선택(여러 품목이면 품목별로 확정), 선택한 시안·사양 요약 카드, 체크리스트 5개(모두 체크해야 확정), 포트폴리오 활용 동의(선택, 따로), 확정 뒤 확인서·원본 파일 구매 제안 → 디자인 부가 결제 → 원본 파일 다운로드(7일 링크·재발급·이용 범위)</td><td>인쇄 원본이 없으면 버튼 비활성, 아직 확정 안 한 품목 남음, 원본 파일은 내려받으면 환불 안 됨 고지</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-APV-01">D-APV-01</a><a class="sid" href="sikup-spec.html#D-OPT-01">D-OPT-01</a></td></tr>
-          <tr><td class="id">S-19</td><td class="nw"><b>디자인 진행 목록</b></td><td>진행 중 요청 카드(단계·고객 할 일 강조·남은 시간), 완료 목록</td><td>확인할 시안 개수 배지</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#D-ROOM-01">D-ROOM-01</a></td></tr>
+          <tr><td class="id">S-11</td><td class="nw"><b>디자인 방식 선택</b></td><td>카드 4장(템플릿·맞춤·자체 파일·재주문). 카드마다 같은 순서로 비용, 첫 시안 예상 시점, 무료 수정 횟수, 디자인 권리. “같은 콘셉트로 여러 품목 함께 만들기”(첫 품목 39,000원 + 추가 품목당 19,000원), 맨 아래 “대량·프랜차이즈는 상담으로 견적”</td><td>템플릿 없으면 비활성(이유 표시), 재주문은 이 상품에 확정 디자인이 있을 때만, 맞춤 MOQ로 수량 자동 상향 안내, 여러 품목 묶음, 고르던 옵션 품절 → 다시 고르기</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-REQ-01">D-REQ-01</a></td></tr>
+          <tr><td class="id">S-12</td><td class="nw"><b>템플릿형 요청</b></td><td>템플릿 목록(업종·스타일 필터), 바꿀 수 있는 칸만 입력(매장명 20자·문구 40자·연락처·SNS 30자·로고, 글자 수 카운터), 허용된 색(팔레트) 중 선택, 요청 메모(300자), 희망 도착일(고를 수 없는 날짜는 흐리게), 템플릿 원본 + 입력 요약, “무료 수정 2회: 글자·로고 교체와 위치 조정까지”</td><td>로고 없음 → “매장명을 글자 로고로 넣어요”, 저해상도 로고 → 벡터로 다시 그려 드림(1회 무료, 복잡한 로고 10,000원), 글자 수 초과, 메모에 레이아웃 변경 → 맞춤형 전환 안내. 입력값을 바로 합성하는 미리보기는 3차</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-REQ-02">D-REQ-02</a></td></tr>
+          <tr><td class="id">S-13</td><td class="nw"><b>맞춤형 요청서</b><span class="sub" style="display:block">4단계</span></td><td>① 매장 정보 ② 소재(로고·문구·간판 사진·참고 이미지·링크) ③ 스타일 칩·색상·피하고 싶은 것 ④ 확인(같은 콘셉트 품목 추가·빼기, 디자인비 계산, 무료 수정 3회·첫 시안 예정·단계별 환불 안내, 동의 3개: 소재 권리 보증·단계별 환불·디자인 권리). 칸별 한도는 <a href="#keyscreens">08장</a></td><td>임시 저장 이어 쓰기(30일), “로고 없음” → 글자 로고(로고 제작 의뢰는 2차 자리), 업로드 실패 → 그 파일만 재시도, 참고 링크 차단(메신저·오픈채팅), 색 수가 최대 도수 초과 경고, 스타일 칩 0개 오류, 품목 여러 개(39,000 + 19,000 × 추가 품목 수), 결제 뒤 배정 전까지 요청서 수정</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-REQ-03">D-REQ-03</a><a class="sid" href="sikup-spec.html#D-REQ-01">D-REQ-01</a></td></tr>
+          <tr><td class="id">S-14</td><td class="nw"><b>자체 파일 업로드</b><span class="sub" style="display:block">+ 파일 수정 필요</span></td><td>템플릿·칼선 파일 다운로드와 파일 요건(아웃라인·300dpi·재단 여백 3mm·최대 도수), 품목·면(앞·뒤)별 업로드(인쇄 면 단면/양면), 자동 점검 결과(형식·크기·해상도·아웃라인·RGB/CMYK, “참고용이며 최종 판단은 디자이너가 해요”), 사용 색상·요청 메모(300자), 자가 확인 체크(아웃라인·재단 여백·칼선), 권리 보증 동의, “검수는 인쇄할 수 있는지만 봐요(디자인·문구는 확인하지 않아요)” 고지</td><td>치명 오류 강한 경고 + [그래도 진행], RGB 색 차이 동의, 업로드 진행률·검사 중. <b>파일 수정 필요</b>(검수 반려): 반려 사유, 선택지 4개(재업로드 무료 · 보정 10,000원 · 맞춤형 전환 · 주문 취소 공제 0원)와 각 비용·환불 조건, 남은 무료 재검수(3회 중 n회, 다 쓰면 보정·전환만), [검수 결과 문의]</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-OWN-01">D-OWN-01</a><a class="sid" href="sikup-spec.html#D-OWN-02">D-OWN-02</a></td></tr>
+          <tr><td class="id">S-15</td><td class="nw"><b>디자인 협의 룸</b> <span class="b must">PC</span></td><td>품목별 상태 요약(묶음이면 품목 탭), 품목마다 남은 무료 수정·다음 시안 예정 시각, 최신 시안 카드, 디자이너 소개 카드(활동명·담당 품목·운영시간), 메시지·파일·시스템 메시지·핀 참조, 읽음·입력 중·보낸 시각, 메시지 검색, 파일 모아보기, 운영시간 안내. 확정 뒤에는 [확정 후 변경 요청]·[취소 요청](판매자 인쇄 확인 전까지). 추가 수정·보정은 디자인 부가 결제로</td><td>배정 전(자료만 올리기, [요청서 수정]), 디자이너 질문 → “답변 필요”, 보류 예고·보류 중(예정 시각과 취소 시 공제), 변경 요청 중·취소 중재 중(생산 보류), 인쇄용 정리·판매자 반려로 다시 확정 요청, 디자이너 교체 메시지, 운영시간 밖 자동 안내, 5분 안 [전송 취소], 가려진 연락처 + [잘못 가려졌어요], 완료·취소 뒤 90일은 “재문의”만, 그 뒤 읽기 전용, 연결 끊김, 가상계좌 입금 전(룸 준비 중)</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-ROOM-01">D-ROOM-01</a><a class="sid" href="sikup-spec.html#D-ROOM-02">D-ROOM-02</a><a class="sid" href="sikup-spec.html#D-ROOM-06">D-ROOM-06</a><a class="sid" href="sikup-spec.html#D-ROOM-07">D-ROOM-07</a><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a></td></tr>
+          <tr><td class="id">S-16</td><td class="nw"><b>시안 보기·비교·핀</b></td><td>버전 탭(v1·v2·v3), A안·B안(첫 시안 최대 2안), 나란히·슬라이더 비교, 확대, 핀 찍기(코멘트 + 참고 이미지 1장)·목록, 워터마크, [저해상도 저장], 이 버전에서 바뀐 것, 하단 고정 [수정 요청]·[이 시안으로 확정]</td><td>모바일은 확대한 뒤 핀, 길게 눌러 옮기기, 이월된 핀, 핀 “해결”은 디자이너가 표시하고 고객은 [다시 열기], 핀 30개 한도, 인쇄 원본이 없어 [확정] 비활성, 회수된 시안(“디자이너가 다시 올리는 중”), 자체 파일 건은 “인쇄 미리보기”</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-ROOM-03">D-ROOM-03</a><a class="sid" href="sikup-spec.html#D-ROOM-04">D-ROOM-04</a></td></tr>
+          <tr><td class="id">S-17</td><td class="nw"><b>수정 요청</b></td><td>대상 안 선택(안이 둘이면), 미해결 핀 묶음, 추가 설명(1,000자), ‘문구 변경’ 칸(바꿀 문구 → 새 문구, 최대 10줄), 참고 링크(5개)·이미지(10장), 남은 무료 횟수, “모아서 한 번에 요청하세요” 안내</td><td>핀도 설명도 없으면 접수 불가, 무료 0회 → 추가 수정 10,000원(디자인 부가 결제, 작업 시작 뒤 환불 안 됨 고지), 제출 뒤 10분 [요청 취소](횟수 돌려받음), 템플릿형 레이아웃 변경 → 맞춤형 전환(차액 결제 + 취소 공제 규정 재동의), 범위 초과 → [새 맞춤형으로 요청]·[지금 방향으로 계속], 결제 실패 → 입력 임시 저장, “정정 버전(수정 횟수 차감 없음)” 배지</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#D-ROOM-05">D-ROOM-05</a><a class="sid" href="sikup-spec.html#D-OPT-01">D-OPT-01</a><a class="sid" href="sikup-spec.html#D-REQ-02">D-REQ-02</a></td></tr>
+          <tr><td class="id">S-18</td><td class="nw"><b>시안 확정</b></td><td>확정할 품목 선택(여러 품목이면 품목별로 확정), 선택한 시안·사양 요약 카드(항목은 <a href="#keyscreens">08장</a>), 체크리스트 5개(모두 체크해야 확정), 포트폴리오 활용 동의(선택, 따로). 확정 뒤: 확정 확인서(PDF, 이메일·마이), 디자인 권리 안내, 원본 파일 구매 제안 → 디자인 부가 결제 → 원본 파일 다운로드(7일 링크·다시 받기·이용 범위)</td><td>인쇄 원본이 없으면 버튼 비활성, 판매 중지·품절이면 확정 막고 안내, 아직 확정 안 한 품목 남음, 자체 파일 보정본 다시 확정, 고객이 알림 링크로 여는 “본인 확정 동의” 화면(운영자가 확정 절차를 대신 시작한 경우), 원본 파일은 내려받으면 환불 안 됨 고지</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#D-APV-01">D-APV-01</a><a class="sid" href="sikup-spec.html#D-OPT-01">D-OPT-01</a></td></tr>
+          <tr><td class="id">S-19</td><td class="nw"><b>디자인 진행 목록</b></td><td>진행 중 요청 카드(품목별 단계·고객 할 일 강조·다음 예정 시각), 완료 목록</td><td>확인할 시안 개수 배지, 보류 예고, 일정 멈춤(답변 대기·보류·파일 검사 중)</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#D-ROOM-01">D-ROOM-01</a></td></tr>
 
           <tr class="grp"><td colspan="6">주문</td></tr>
-          <tr><td class="id">S-20</td><td class="nw"><b>장바구니</b> <span class="b must">PC</span></td><td>판매자·출고지·출고 유형(일반/맞춤)별 묶음과 배송비·“○원 더 담으면 무료배송”, 맞춤 항목(방식·디자인비·요청서 작성 여부/[요청서 작성]), 수량 변경·선택 삭제, 하단 합계</td><td>변경된 상품 알림(이전 → 현재 가격), 품절 자동 제외, MOQ 미달, 빈 장바구니</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-ORD-01">U-ORD-01</a></td></tr>
-          <tr><td class="id">S-21</td><td class="nw"><b>주문서</b> <span class="b must">PC</span></td><td>판매자별 상품, 배송지(수령 시간·하차 조건), 쿠폰 자동 추천, 증빙(결제수단과 연동, 사업자는 세금계산서 기본), 결제수단, 금액(정해진 순서, 디자인비 줄에 추가 품목 19,000원 × n), 맞춤 고지·동의, 결제 버튼</td><td>요청서 없는 맞춤 항목이면 결제 막기, 가격 변경, 쿠폰 조건 미달, 사업자 공급가·부가세, 카드·간편결제 → 증빙은 카드 전표로 고정, 세금계산서 못 내는 판매자 → “현금영수증만 가능”, 계좌이체·가상계좌 → 환불 계좌 안내</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-ORD-02">U-ORD-02</a><a class="sid" href="sikup-spec.html#D-REQ-04">D-REQ-04</a><a class="sid" href="sikup-spec.html#U-ORD-05">U-ORD-05</a></td></tr>
-          <tr><td class="id">S-22</td><td class="nw"><b>주문 완료</b></td><td>주문번호·금액·예상 출고일, 가상계좌 정보·복사, 맞춤이면 배정 안내·협의 룸 바로가기·푸시 권한 요청</td><td>일반 / 맞춤 / 가상계좌, 룸 “준비 중”</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-ORD-04">U-ORD-04</a></td></tr>
+          <tr><td class="id">S-20</td><td class="nw"><b>장바구니</b> <span class="b must">PC</span></td><td>판매자·출고지·출고 유형(일반/맞춤)별 묶음과 배송비·“○원 더 담으면 무료배송”, 맞춤 항목(방식·디자인비·요청서 작성 여부/[요청서 작성]), 본 상품 줄 아래 붙은 추가 구성품 줄, 옵션·수량 변경, 선택 삭제, 골라서 주문, 하단 합계(상품 금액·즉시 할인·예상 배송비·결제 예정 금액)</td><td>변경된 상품 알림(이전 → 현재 가격), 품절·판매 중지 자동 제외, MOQ 미달(주문할 때 경고·보정 제안), 빈 장바구니, 최대 100개</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-ORD-01">U-ORD-01</a></td></tr>
+          <tr><td class="id">S-21</td><td class="nw"><b>주문서</b> <span class="b must">PC</span></td><td>판매자별 상품, 배송지(수령 시간·하차 조건)·요청사항, 쿠폰(상품 할인 쿠폰(장바구니·상품 중 1장) + 디자인비 쿠폰 1장 + 배송비 쿠폰 배송 묶음당 1장, 가장 큰 할인 조합 자동 → 시트에서 바꾸기), 증빙(결제수단과 연동, 사업자는 세금계산서 기본), 결제수단(카드·간편결제(토스페이·카카오페이·네이버페이)·계좌이체·가상계좌), 금액(정해진 순서, <a href="#keyscreens">08장</a>), 구매 조건 확인 동의(필수) + 맞춤 고지·동의, 결제 버튼(한 번만 눌림)</td><td>요청서 없는 맞춤 항목이면 결제 막기, 가격·재고 변경, 쿠폰 조건 미달(자동 해제), 사업자 공급가·부가세, 카드·간편결제 → 증빙은 카드 전표로 고정, 현금영수증(소득공제 휴대폰 번호 / 지출증빙 사업자번호), 세금계산서 못 내는 판매자 → “현금영수증만 가능”, 계좌이체·가상계좌 → 환불 계좌 안내·에스크로 표시, 판매자가 허용한 맞춤 묶음 → “함께 받기 / 먼저 받기(배송비 추가)”, 제주·도서산간 추가 배송비, 화물 “착불”(결제 금액 제외), 재주문 줄, PG 점검 배너</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-ORD-02">U-ORD-02</a><a class="sid" href="sikup-spec.html#U-ORD-03">U-ORD-03</a><a class="sid" href="sikup-spec.html#D-REQ-04">D-REQ-04</a><a class="sid" href="sikup-spec.html#U-ORD-05">U-ORD-05</a><a class="sid" href="sikup-spec.html#C-PRICE-03">C-PRICE-03</a></td></tr>
+          <tr><td class="id">S-22</td><td class="nw"><b>주문 완료</b><span class="sub" style="display:block">+ 결제 결과</span></td><td>주문번호·결제 금액·결제수단·배송지·예상 출고일, 가상계좌 정보(계좌·기한·금액)·복사, 맞춤이면 “영업시간 기준 4시간 안 배정”과 배정 예정 시각·협의 룸 바로가기·푸시 권한 요청, [주문 상세 보기]·[쇼핑 계속하기]</td><td>일반 / 맞춤 / 가상계좌(맞춤은 “입금이 확인되면 협의 룸이 열려요”), 룸 “준비 중”. 결제창에서 돌아온 뒤: 실패·취소(주문서로, 담은 상품·쿠폰 그대로) / 결과 확인 중(진행 표시, 확인되면 알림) / 결제됐지만 주문을 못 만들어 자동 취소함(주문서로, 환불 안내)</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-ORD-04">U-ORD-04</a><a class="sid" href="sikup-spec.html#U-ORD-03">U-ORD-03</a></td></tr>
 
           <tr class="grp"><td colspan="6">마이 · 다시 사기 · 고객센터</td></tr>
-          <tr><td class="id">S-23</td><td class="nw"><b>마이페이지 홈</b></td><td>회원 유형(사업자 배지), 진행 중 주문·디자인 요약, 바로가기(주문·다시 사기·쿠폰·배송지·사업자 정보·알림 설정·고객센터)</td><td>멤버십 자리(2차)</td><td><span class="b hi">정밀</span></td><td>—</td></tr>
-          <tr><td class="id">S-24</td><td class="nw"><b>주문 목록</b></td><td>기간·상태 탭, 주문 카드(항목별 상태)</td><td>—</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MY-01">U-MY-01</a></td></tr>
-          <tr><td class="id">S-25</td><td class="nw"><b>주문 상세</b> <span class="b must">PC</span></td><td>판매자별 묶음·항목 상태, 배송 타임라인, 맞춤 디자인 타임라인(요청 → 배정 → 시안 → 확정 → 제작 → 출고)과 룸 바로가기, 상태별 버튼, 결제·증빙, 디자인 부가 결제 내역·원본 파일 다운로드, [주문할 때의 상품 정보 보기]</td><td>상태에 맞는 버튼만 노출(<a href="#components">08장</a>): 확정 뒤 파트너 인쇄 확인 전 [확정 후 변경 요청]·[취소 요청], 판매자 거부 뒤 3일 [이의 제기], 배송 완료 뒤 일반 상품 [반품·교환]·[구매 확정] / 맞춤 제작 [재제작 요청]·[구매 확정]</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-MY-01">U-MY-01</a><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a></td></tr>
-          <tr><td class="id">S-26</td><td class="nw"><b>취소·반품·교환·재제작</b></td><td>항목·수량 선택, 사유, 환불 예정 금액(공제 내역), 사진 첨부(앱은 카메라), 회수 방법, 환불 계좌(계좌이체·가상계좌, 계좌 인증 뒤 등록), 진행 상태</td><td>판매자 승인 대기, 확정 후 취소(본사 중재: 공제 내역 확인·동의 → 중재 결과), 거부 → [이의 제기](통지 뒤 3일만, 누르면 “이의 제기됨”), 0원 환불 동의</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MY-02">U-MY-02</a><a class="sid" href="sikup-spec.html#U-MY-03">U-MY-03</a><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a></td></tr>
-          <tr><td class="id">S-27</td><td class="nw"><b>다시 사기</b></td><td>자주 산 상품(구매 횟수·마지막 구매일·수량, 다시 담기, 여러 개 담기), 같은 디자인 재주문 카드(확정 시안, 판비 면제, [재주문]·[수정해서 재주문]), 식업 보증 문구</td><td>일부 품절, 판매 종료 → 비슷한 상품, 판 보관 만료 → 판비 표시</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-MY-04">U-MY-04</a><a class="sid" href="sikup-spec.html#D-RE-01">D-RE-01</a></td></tr>
-          <tr><td class="id">S-28</td><td class="nw"><b>쿠폰함</b></td><td>사용 가능·사용 완료·만료 탭, 조건(최소 금액·최대 할인·대상·기간), 쿠폰 코드 입력</td><td>—</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-BEN-01">U-BEN-01</a></td></tr>
-          <tr><td class="id">S-29</td><td class="nw"><b>알림 센터·알림 설정</b></td><td>탭(주문·배송 / 디자인 / 혜택 / 공지), 읽음 표시. 설정: 끌 수 없는 필수 알림, 마케팅 채널별·야간 수신, OS 권한 상태</td><td>—</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MY-06">U-MY-06</a></td></tr>
-          <tr><td class="id">S-30</td><td class="nw"><b>배송지 목록·입력</b></td><td>배송지 이름(예: 강남점)·수령인·연락처·주소 검색·수령 가능 시간·하차 조건·요청사항·기본 배송지</td><td>도서산간 표시</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MEM-06">U-MEM-06</a></td></tr>
-          <tr><td class="id">S-31</td><td class="nw"><b>찜·최근 본 상품</b></td><td>찜 목록(가격 변동·품절 표시), 최근 본 상품 50개</td><td>판매 종료 한 번에 정리</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MY-05">U-MY-05</a></td></tr>
-          <tr><td class="id">S-32</td><td class="nw"><b>고객센터</b></td><td>FAQ(카테고리·검색), 채팅 상담 연결, 공지(중요 공지 고정), 긴급 공지 팝업(“오늘 하루 보지 않기”)</td><td>운영시간 밖 안내</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-CS-02">U-CS-02</a><a class="sid" href="sikup-spec.html#U-CS-04">U-CS-04</a></td></tr>
-          <tr><td class="id">S-33</td><td class="nw"><b>계정·탈퇴</b></td><td>SNS 계정 연결, 비밀번호 변경, 탈퇴(진행 중 건·남은 혜택 안내, 본인 확인)</td><td>탈퇴할 수 없는 사유</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MEM-08">U-MEM-08</a></td></tr>
+          <tr><td class="id">S-23</td><td class="nw"><b>마이페이지 홈</b></td><td>회원 유형(사업자 배지), 진행 중 주문·디자인 요약(할 일 먼저), 바로가기(주문·다시 사기·쿠폰·배송지·사업자 정보·증빙 내역(S-24)·환불 계좌(S-33)·알림 설정·고객센터), 이용약관·개인정보 처리방침(앱)</td><td>멤버십·내 디자인 자리(2차)</td><td><span class="b hi">정밀</span></td><td>—</td></tr>
+          <tr><td class="id">S-24</td><td class="nw"><b>주문 목록</b></td><td>증빙 발행 내역 모아 보기(마이 바로가기로 들어올 때, 이메일 재발송·사후 신청), 기간(1·3·6개월·1년·직접 입력), 상태 탭(전체·입금 대기·진행 중·배송 중·완료·취소/반품), 주문 카드(대표 상태 = 항목 중 가장 앞 단계, 항목별 상태)</td><td>주문 없음, 5년 전 주문까지</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MY-01">U-MY-01</a></td></tr>
+          <tr><td class="id">S-25</td><td class="nw"><b>주문 상세</b> <span class="b must">PC</span></td><td>판매자별 묶음·항목 상태, 배송 타임라인(택배사·송장), 맞춤 디자인 타임라인(요청 → 배정 → 시안 → 확정 → 판매자 인쇄 확인 → 제작(출고 예정일) → 출고)과 룸 바로가기, 상태별 버튼, 결제·증빙(발행 내역·이메일 재발송·사후 신청), 디자인 부가 결제 내역·원본 파일 다운로드·확정 확인서, [주문할 때의 상품 정보 보기], [1:1 문의], [배송지 변경](발주 확인 전만), 본 상품 줄 아래 붙은 추가 구성품 줄(따로 취소·반품)</td><td>상태에 맞는 버튼만 노출(<a href="#components">09장</a>), 출고 지연 안내(사유·새 예정일·[바로 취소]), 출고 예정일 바뀜(사유), 결제 확인 중, 송장 직후 “택배사 정보 반영 전입니다”, 항목이 수량으로 나뉜 줄, 자동 취소 사유(입금 기한·재고 부족·판매자 품절·판매자 변경 제안에 답 없음), [구매 확정] 확인 다이얼로그, 포트폴리오 동의 철회, <b>제작 판매자 변경 제안</b>(판매자가 판매를 멈추거나 입점이 끝나 인쇄 전 맞춤 항목을 같은 사양의 다른 판매자 상품으로 옮기자는 제안: 대체 상품·판매자, 확정 디자인 그대로, 가격 차이(더 싸면 차액 환불, 비싸면 더 받지 않음), 답변 기한(기본 7일), [변경 동의]·[전액 환불](디자인비 포함), 답이 없으면 전액 환불) → 동의 뒤 “제작 판매자가 바뀌었어요”</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-MY-01">U-MY-01</a><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a><a class="sid" href="sikup-spec.html#D-PRD-04">D-PRD-04</a><a class="sid" href="sikup-spec.html#U-ORD-05">U-ORD-05</a><a class="sid" href="sikup-spec.html#D-REQ-04">D-REQ-04</a></td></tr>
+          <tr><td class="id">S-26</td><td class="nw"><b>취소·반품·교환·재제작</b><span class="sub" style="display:block">+ 이의 제기</span></td><td>항목·수량 선택(본 상품 취소 → 붙은 추가 구성품도 같이, 추가 구성품만 따로도 됨), 사유, 환불 예정 금액(취소 상품 금액, 조건이 깨져 줄어든 할인, 무료배송 기준 아래로 내려간 배송비, 디자인 공제, 반품 배송비를 줄로 나눠 보여주고 환불액·돌려받는 쿠폰·환불 예정일: 카드 3~5영업일, 반품은 회수 확인 뒤 3영업일), 사진 첨부(불량·오배송이면 필수, 최대 10장, 앱은 카메라), 교환할 옵션, 맞춤 불량은 [재제작 받기]/[환불 받기], 회수 방법(자동 회수 / 직접 발송 + 송장), 환불 계좌(계좌이체·가상계좌, 계좌 인증 뒤 등록), 진행 단계</td><td>상태별 취소: 입금 대기·결제 완료 [주문 취소](바로) / 상품 준비 중 [취소 요청](판매자 확인, 영업일 1일 지나면 자동 승인). 디자인 진행 중 취소(첫 시안 전 전액 환불·쿠폰 복원 / 뒤 디자인비 공제, 템플릿·자체 파일 0원). 확정 후 취소(본사 중재: 공제 내역 동의 → 결과, [요청 철회]). 환불액 0원 이하(출고 전 → 전체 취소 안내 / 반품 → 차액 추가 결제 또는 혜택 포기 동의, 불량이면 면제). 교환 → 반품 전환 동의, 부분 취소 안 되는 결제수단 안내, 거부 → [이의 제기](3일, 내용·사진) → “이의 제기됨” → 결과</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-MY-02">U-MY-02</a><a class="sid" href="sikup-spec.html#U-MY-03">U-MY-03</a><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a><a class="sid" href="sikup-spec.html#C-STATE-02">C-STATE-02</a></td></tr>
+          <tr><td class="id">S-27</td><td class="nw"><b>다시 사기</b></td><td>자주 산 상품(구매 횟수·마지막 구매일·수량, 다시 담기, 여러 개 담기), 같은 디자인 재주문 카드(확정 시안, 판비 면제와 판 보관 만료일, [재주문]·[수정해서 재주문]), 식업 보증 문구</td><td>일부 품절, 판매 종료 → 같은 사양의 다른 판매자 상품(판비 새로, 디자인비 0원), 판 보관 만료 → 판비 표시, 판매자가 사양을 바꿈 → 재주문 대신 새 맞춤 요청 안내, 수정 재주문으로 판이 바뀜 → 판비 표시</td><td><span class="b hi">정밀</span></td><td><a class="sid" href="sikup-spec.html#U-MY-04">U-MY-04</a><a class="sid" href="sikup-spec.html#D-RE-01">D-RE-01</a></td></tr>
+          <tr><td class="id">S-28</td><td class="nw"><b>쿠폰함</b></td><td>사용 가능·사용 완료·만료 탭, 쿠폰 종류(장바구니·상품·배송비·디자인비)와 한 주문에 함께 쓰는 장수(상품 할인 쿠폰 = 장바구니·상품 중 1장, 디자인비 1장, 배송비 묶음당 1장), 조건(최소 금액·최대 할인·대상·기간), 사업자 전용 표시, 쿠폰 코드 입력</td><td>쿠폰 없음, 코드 5회 오입력 → 10분 잠금</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-BEN-01">U-BEN-01</a></td></tr>
+          <tr><td class="id">S-29</td><td class="nw"><b>알림 센터·알림 설정</b></td><td>탭(주문·배송 / 디자인 / 혜택·이벤트 / 공지), 읽음 표시, 누르면 해당 화면으로. 설정: 끌 수 없는 필수 알림, 마케팅 채널별(앱 푸시·브랜드 메시지·이메일)·야간 수신, “디자인 알림은 앱 푸시를 권장해요”, OS 권한 상태와 [설정으로 이동]</td><td>알림 없음, OS 알림 꺼짐 → “중요한 알림은 알림톡으로 보내요”, 마케팅 동의를 바꾸면 결과(일시·내용) 표시</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MY-06">U-MY-06</a></td></tr>
+          <tr><td class="id">S-30</td><td class="nw"><b>배송지 목록·입력</b></td><td>배송지 이름(예: 강남점, 20자)·수령인·연락처·추가 연락처(매장 유선)·주소 검색·수령 가능 시간(50자)·하차 조건(엘리베이터 있음·없음, 1층 하차, 계단 운반 등)·요청사항(100자, 자주 쓰는 문구)·기본 배송지</td><td>도서산간 표시, 주소 검색 결과 없음 → 직접 입력(배송 불가 위험 안내), 최대 20개</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MEM-06">U-MEM-06</a></td></tr>
+          <tr><td class="id">S-31</td><td class="nw"><b>찜·최근 본 상품</b></td><td>찜 목록(최신순, 가격 변동·품절 표시), 최근 본 상품 50개</td><td>판매 종료 한 번에 정리, 빈 화면, 찜 폴더 자리(2차)</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MY-05">U-MY-05</a></td></tr>
+          <tr><td class="id">S-32</td><td class="nw"><b>고객센터</b></td><td>FAQ(카테고리·검색·많이 본 질문), 채팅 상담 연결, 공지(중요 공지 고정, 약관 개정은 시행일과 바뀌기 전·후 비교), 긴급 공지 팝업(“오늘 하루 보지 않기”)</td><td>운영시간 밖(챗봇·FAQ), 상담 도구 장애 → FAQ와 고객센터 이메일</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-CS-02">U-CS-02</a><a class="sid" href="sikup-spec.html#U-CS-04">U-CS-04</a></td></tr>
+          <tr><td class="id">S-33</td><td class="nw"><b>계정·탈퇴</b></td><td>SNS 계정 연결, 이메일 등록(SNS 가입자), 휴대폰 번호 변경(재인증만), 비밀번호 변경, [모든 기기에서 로그아웃], 환불 계좌 등록·변경(계좌 인증). 탈퇴: 진행 중 건·남은 혜택 안내, 확정 디자인은 탈퇴 뒤 볼 수도 다시 주문할 수도 없다는 경고와 원본 파일 구매 바로가기 → 사유 선택(선택) → 본인 확인</td><td>탈퇴할 수 없는 사유(진행 중 주문·환불 미완료 등)</td><td><span class="b lo">부품</span></td><td><a class="sid" href="sikup-spec.html#U-MEM-08">U-MEM-08</a></td></tr>
         </tbody>
       </table></div>
     </section>
 
-    <!-- ================= 07 KEY SCREENS ================= -->
+    <!-- ================= 08 KEY SCREENS ================= -->
     <section class="sec" id="keyscreens">
-      <div class="sec-head"><div class="sec-num">07</div><h2>핵심 화면 상세</h2><p>가장 신경 써야 할 화면들의 구성입니다. 아래 와이어는 <b>정보 배치를 설명하기 위한 그림</b>이고, 시각 디자인이 아닙니다. 순서와 묶음은 디자인팀이 바꿔도 됩니다.</p></div>
+      <div class="sec-head"><div class="sec-num">08</div><h2>핵심 화면 상세</h2><p>가장 신경 써야 할 화면들의 구성입니다. 아래 와이어는 <b>정보 배치를 설명하기 위한 그림</b>이고, 시각 디자인이 아닙니다. 순서와 묶음은 디자인팀이 바꿔도 됩니다. 예시 내용은 <a href="#delivery">12장</a> 표에서 가져왔고, 와이어마다 보여주려는 상태에 맞춰 상황을 조금씩 바꿨습니다(협의 룸·시안 확정은 수저집·종이컵 묶음, 주문서는 수저집 한 품목, 주문 상세는 다른 날의 주문).</p></div>
 
       <div class="phones">
         <!-- Phone 1: PDP -->
         <div class="ph-wrap">
           <div class="phone"><div class="scr">
-            <div class="wf-top">←<span class="sp"></span><span class="ghost">검색</span><span class="ghost">장바구니</span></div>
+            <div class="wf-top">←<span class="sp"></span><span class="ghost">공유</span><span class="ghost">검색</span><span class="ghost">장바구니</span></div>
             <div class="wf-body">
               <div class="wf img">이미지 갤러리 (최대 10장)</div>
               <div class="wf-row"><span class="wf-chip ac">맞춤 인쇄</span><span class="wf-chip">빠른 출고</span><span class="wf-chip">친환경<i class="an">2</i></span></div>
               <div><div class="t">크라프트 수저집 40×240mm 1,000매</div><div>○○포장 ›</div></div>
-              <div class="wf"><div class="cap">일반 회원·비로그인 화면<i class="an">5</i></div><div class="big">32,000원 <span style="font-weight:600;font-size:10.5px">/ 박스 · 1매당 28원~</span></div><div>사업자가 보기 ›</div>
+              <div class="wf"><div class="cap">일반 회원·비로그인 화면<i class="an">5</i></div><div class="big">32,000원 <span style="font-weight:600;font-size:10.5px">/ 박스 · 1매당 28원~</span></div><div class="wf-row"><span>사업자가 보기 ›</span><span class="sp" style="flex:1"></span><span class="wf-chip">쿠폰 받기</span></div>
                 <div class="wf-line"><span>1~4박스</span><b>32,000원</b></div><div class="wf-line"><span>5~9박스</span><b>30,000원</b></div><div class="wf-line"><span>10박스 이상</span><b>28,000원</b></div></div>
               <div class="wf"><div class="cap">사업자 회원 화면 · <span class="wf-chip">사업자</span></div><div class="big">31,000원 <span style="font-weight:600;font-size:10.5px">/ 박스 · 1매당 27원~</span></div><div>공급가 28,182원</div>
                 <div class="wf-line"><span>1~4박스</span><b>31,000원</b></div><div class="wf-line"><span>5~9박스</span><b>29,000원</b></div><div class="wf-line"><span>10박스 이상</span><b>27,000원</b></div></div>
               <div class="wf hl"><div class="t">우리 가게 로고 넣기<i class="an">1</i></div>
-                <div class="wf-row" style="margin:4px 0"><span class="wf-chip">템플릿 무료</span><span class="wf-chip">맞춤 39,000원</span><span class="wf-chip">자체 파일 무료</span></div>
-                <div>맞춤 10,000매부터 · 판비 50,000원(재주문 면제) · 제작 영업일 7일(파트너 인쇄 확인 후)</div>
+                <div>플렉소 인쇄 · 앞면 30×150mm · 최대 2도</div>
+                <div class="wf-row" style="margin:4px 0"><span class="wf-chip">템플릿 무료</span><span class="wf-chip">맞춤 39,000원</span><span class="wf-chip">자체 파일 검수 무료</span></div>
+                <div class="wf-row" style="margin:2px 0 4px"><span class="wf-chip">템플릿 미리보기</span><span class="wf-chip">미리보기</span><span class="wf-chip">미리보기</span></div>
+                <div>맞춤 10,000매부터 · 판비 50,000원 ⓘ(보관 기간 안 같은 판으로 재주문하면 면제) · 제작 영업일 7일(판매자 인쇄 확인 후)</div>
+                <div>예상 도착 10/30~11/5 · 디자인 확정일에 따라 달라져요<i class="an">6</i></div>
                 <span class="wf-btn in">맞춤 제작으로 주문하기</span></div>
-              <div class="wf">배송 · 오늘 14시 전 결제 시 내일 출고 · 3만원 이상 무료배송</div>
+              <div class="wf">배송 · 오늘 14시 전 결제 시 내일 출고 · 3만원 이상 무료배송 · 같은 판매자 상품 묶음배송</div>
               <div class="wf fill"><div class="t">상세 설명<i class="an">4</i></div>판매자가 올린 이미지·글 (일부만 보임)<span class="wf-btn in">상세 설명 펼치기</span></div>
-              <div class="wf fill">상품정보·인증 서류 · 교환·반품 · 판매자 정보<i class="an">3</i></div>
+              <div class="wf fill">상품정보·인증 서류 · 교환·반품 · 판매자 정보 · 문의하기<i class="an">3</i></div>
+              <div class="wf">일회용품 규제 안내 ⌄ <span class="ghost">· 10/1 고침</span><i class="an">7</i></div>
             </div>
             <div class="wf-bot"><span class="wf-btn sm">♡</span><span class="wf-btn">장바구니</span><span class="wf-btn pri">바로 구매</span></div>
           </div></div>
-          <div class="ph-cap">상품 상세 (일반+맞춤)</div>
+          <div class="ph-cap">상품 상세 (일반+맞춤) · S-09</div>
           <ul class="ph-notes">
-            <li><i class="an">1</i><span>맞춤 디자인 가능 상품에만 보입니다. 맞춤 전용 상품은 하단 버튼이 이 버튼 하나로 바뀝니다.</span></li>
+            <li><i class="an">1</i><span>맞춤 디자인 가능 상품에만 보입니다. 맞춤 전용 상품은 일반 가격·구매 버튼이 없고 하단 버튼이 이 버튼 하나로 바뀝니다. 버튼 이름은 명세(U-PDP-01·03, D-REQ-01)와 같고, 누르면 맞춤 옵션·수량을 고른 뒤 디자인 방식 선택(S-11)으로 갑니다. 하단 바에서 일반 구매와 어떻게 나눌지는 <a href="#questions">13장 Q3</a>에서 정합니다.</span></li>
             <li><i class="an">2</i><span>친환경·인증 배지는 검수된 서류가 있을 때만.</span></li>
-            <li><i class="an">3</i><span>판매자 정보와 중개자 고지는 숨기지 않습니다.</span></li>
+            <li><i class="an">3</i><span>판매자 정보와 중개자 고지는 숨기지 않습니다. 문의는 판매자 연락처가 아니라 [문의하기](식업 채팅 상담)로.</span></li>
             <li><i class="an">4</i><span>세로로 긴 상세 이미지가 많습니다. 처음엔 일부만 보이고 [펼치기], 이미지는 눌러서 확대.</span></li>
-            <li><i class="an">5</i><span>가격 영역은 보는 사람에 따라 두 벌입니다(한 화면에 둘 다 나오지 않음). 일반 회원·비로그인 화면에는 사업자가·사업자 공급가가 드러나면 안 되고 “사업자가 보기”만 둡니다. 사업자 회원 화면은 사업자 구간표와 공급가를 보여주고, 사업자가가 없는 상품은 일반가를 씁니다. 1매당 단가는 가장 낮은 구간 기준입니다(<a href="#components">08장 가격 표기 규칙</a>).</span></li>
+            <li><i class="an">5</i><span>가격 영역은 보는 사람에 따라 두 벌입니다(한 화면에 둘 다 나오지 않음). 일반 회원·비로그인 화면에는 사업자가·사업자 공급가가 드러나면 안 되고 “사업자가 보기”만 둡니다(비로그인은 누르면 로그인, 로그인한 일반 회원은 “사업자 인증하고 사업자가 보기” → S-04). 사업자 회원 화면은 사업자 구간표와 공급가를 보여주고, 사업자가가 없는 상품은 일반가를 씁니다. 1매당 단가는 가장 낮은 구간 기준입니다(<a href="#components">09장 가격 표기 규칙</a>).</span></li>
+            <li><i class="an">6</i><span>예상 도착일은 디자인 기간 + 판매자 인쇄 확인(영업일 1일) + 제작 기간 + 배송(1~2일)을 더한 범위입니다. 판매자가 맞춤 접수를 멈추면 “현재 맞춤 제작 접수 중단”으로 바꾸고 버튼을 끕니다.</span></li>
+            <li><i class="an">7</i><span>일회용품 규제는 자주 바뀌어 본사가 카테고리마다 안내 문구를 쓰고 고칩니다. 접힌 상자로 두고 고친 날짜를 함께 보여줍니다. 문구가 없는 카테고리는 상자를 그리지 않습니다.</span></li>
           </ul>
         </div>
 
-        <!-- Phone 2: Room chat -->
+        <!-- Phone 2: Method select -->
         <div class="ph-wrap">
           <div class="phone"><div class="scr">
-            <div class="wf-top">←<span>수저집 외 1</span><span class="sp"></span><span class="wf-chip ac">시안 확인 필요</span></div>
+            <div class="wf-top">←<span>디자인 방식 선택</span></div>
             <div class="wf-body">
-              <div class="wf fill"><div class="wf-row"><span class="t">무료 수정 2회 남음</span><span class="sp"></span></div><div>응답 기다리는 중 1일째<i class="an">3</i></div></div>
-              <div class="wf hl"><div class="wf-row"><span class="t">v3 시안 도착</span><span class="wf-chip">10/12</span></div><div>수저집 · 종이컵 목업</div><span class="wf-btn in">크게 보고 결정하기<i class="an">1</i></span></div>
-              <div class="wf-msg sys">디자이너 김OO 배정 · 평일 09~18시 운영</div>
-              <div class="wf-msg"><span class="from">디자이너 김OO</span>로고를 키우고 띠 색을 간판색에 맞췄어요.</div>
-              <div class="wf-msg"><span class="from">디자이너 김OO</span>[PDF] 수저집_v3_목업.pdf · 2.4MB</div>
-              <div class="wf-msg me"><span class="from">나</span><span class="wf-chip ac">핀 1</span> 전화번호 대신 인스타 계정 넣을 수 있나요?</div>
-              <div class="wf-msg sys">연락처는 대화로 공유할 수 없어요. 인쇄할 번호는 ‘문구 변경’ 칸에 적어 주세요</div>
+              <div class="wf fill">크라프트 수저집 · 10,000매<br><span style="color:var(--accent);font-weight:700">맞춤 제작은 10,000매부터라 수량을 올렸어요</span><i class="an">3</i></div>
+              <div class="wf"><div class="wf-row"><span class="t">템플릿형</span><span class="wf-chip">가장 빠름</span></div>
+                <div class="wf-line"><span>비용</span><b>무료</b></div><div class="wf-line"><span>첫 시안</span><b>영업일 1일 예상</b></div><div class="wf-line"><span>무료 수정</span><b>2회 (글자·로고 교체)</b></div><div class="wf-line"><span>디자인 권리</span><b>식업 보유 · 매장 사용</b></div></div>
+              <div class="wf hl"><div class="wf-row"><span class="t">맞춤형</span><span class="wf-chip ac">선택됨</span></div>
+                <div class="wf-line"><span>비용</span><b>39,000원</b></div><div class="wf-line"><span class="hint">맞춤 품목 50만원 이상이면 무료</span></div><div class="wf-line"><span>첫 시안</span><b>영업일 2일 예상</b></div><div class="wf-line"><span>무료 수정</span><b>3회</b></div><div class="wf-line"><span>디자인 권리</span><b>식업 보유 · 매장 사용</b></div></div>
+              <div class="wf"><div class="t">자체 파일<i class="an">1</i></div>
+                <div class="wf-line"><span>비용</span><b>검수 무료</b></div><div class="wf-line"><span>검수 결과</span><b>영업일 1일</b></div><div class="wf-line"><span>다시 올리기</span><b>무료 재검수 3회</b></div><div class="wf-line"><span>디자인 권리</span><b>고객 소유</b></div></div>
+              <div class="wf off"><div class="t">재주문<i class="an">2</i></div><div>이 상품으로 확정한 디자인이 있을 때 열려요</div></div>
+              <div class="wf">＋ 같은 콘셉트로 다른 품목 함께 만들기<br><span class="muted">추가 품목당 19,000원 · 협의 룸은 하나</span><i class="an">4</i></div>
+              <div class="muted" style="text-align:center">대량·프랜차이즈 주문은 상담으로 견적 받기 ›</div>
+            </div>
+            <div class="wf-bot"><span class="wf-btn pri">다음</span></div>
+          </div></div>
+          <div class="ph-cap">디자인 방식 선택 · S-11</div>
+          <ul class="ph-notes">
+            <li><i class="an">1</i><span>네 카드는 같은 항목을 같은 순서로(비용 · 첫 시안 · 무료 수정 · 권리) 나란히 비교되게. 자체 파일은 수정 대신 재검수 횟수입니다.</span></li>
+            <li><i class="an">2</i><span>고를 수 없는 카드는 숨기지 말고 흐리게 + 이유. 템플릿이 없는 상품은 템플릿형이 이렇게 됩니다.</span></li>
+            <li><i class="an">3</i><span>맞춤 MOQ 때문에 수량을 올렸으면 위에서 알려 줍니다.</span></li>
+            <li><i class="an">4</i><span>품목을 더하면 디자인비가 첫 품목 39,000원 + 추가 품목당 19,000원. 시안·확정은 품목마다 따로, 협의 룸은 하나입니다.</span></li>
+          </ul>
+        </div>
+
+        <!-- Phone 3: Room chat -->
+        <div class="ph-wrap">
+          <div class="phone"><div class="scr">
+            <div class="wf-top">←<span>수저집 외 1</span><span class="sp"></span><span class="ghost">검색</span><span class="ghost">파일</span></div>
+            <div class="wf-body">
+              <div class="wf-row"><span class="wf-chip ac">수저집 · 시안 확인 필요</span><span class="wf-chip">종이컵 · 시안 만드는 중</span><i class="an">3</i></div>
+              <div class="wf fill"><div class="t">수저집 · 무료 수정 1회 남음</div><div>응답 기다리는 중 1일째</div><div class="muted">종이컵 첫 시안 예정 10/19(월) 18시까지</div></div>
+              <div class="wf hl"><div class="wf-row"><span class="t">수저집 v3 시안 도착</span><span class="wf-chip">10/15</span></div><div>A안 · 목업 2장</div><span class="wf-btn in">크게 보고 결정하기<i class="an">1</i></span></div>
+              <div class="wf-msg sys">디자이너 하루 배정 · 수저집·컵 담당 · 평일 09~18시</div>
+              <div class="wf-msg"><span class="from">디자이너 하루</span>로고를 키우고 띠 색을 간판색에 맞췄어요.</div>
+              <div class="wf-msg"><span class="from">디자이너 하루</span>[PDF] 수저집_v3_목업.pdf · 2.4MB</div>
+              <div class="wf-msg me"><span class="from">나 · 읽음</span><span class="wf-chip ac">핀 2</span> 전화번호 010-****-**** 대신 인스타 계정 넣어 주세요<br><span class="muted">잘못 가려졌어요 ›</span><i class="an">4</i></div>
+              <div class="wf-msg sys">연락처는 대화로 공유할 수 없어요. 인쇄할 번호는 수정 요청의 ‘문구 변경’ 칸으로, 참고할 링크는 ‘참고 링크’ 칸으로 보내 주세요</div>
             </div>
             <div class="wf-bot"><span class="wf-btn sm">＋</span><span class="wf-btn" style="text-align:left;font-weight:500;color:var(--text-3)">메시지 입력<i class="an">2</i></span><span class="wf-btn sm pri">전송</span></div>
           </div></div>
-          <div class="ph-cap">디자인 협의 룸 (대화)</div>
+          <div class="ph-cap">디자인 협의 룸 (대화) · S-15</div>
           <ul class="ph-notes">
-            <li><i class="an">1</i><span>공식 결정은 시안 보기 화면의 하단 버튼으로만 합니다.</span></li>
+            <li><i class="an">1</i><span>공식 결정은 시안 보기 화면의 하단 버튼으로만 합니다. 채팅의 “좋아요”는 확정이 아닙니다.</span></li>
             <li><i class="an">2</i><span>이 화면에서는 채팅 상담(채널톡) 버튼을 숨깁니다.</span></li>
-            <li><i class="an">3</i><span>다음 시안 예정 / 응답 대기 일수 / 보류 예고를 상단에.</span></li>
+            <li><i class="an">3</i><span>묶음이면 단계·남은 수정·다음 예정 시각은 품목마다 따로입니다. 보류 예고(“○월 ○일 ○시 이후 보류돼요”)와 일정 멈춤도 여기 위쪽에.</span></li>
+            <li><i class="an">4</i><span>가려지는 것: 휴대폰·전화번호, 이메일, 메신저 ID·오픈채팅 링크, 계좌번호, 허용 목록 밖 링크. 인스타그램·지도 같은 허용 링크는 그대로 보입니다. 잘못 가려졌으면 원문 복원을 요청합니다.</span></li>
           </ul>
         </div>
 
-        <!-- Phone 3: Proposal viewer -->
+        <!-- Phone 4: Proposal viewer -->
         <div class="ph-wrap">
           <div class="phone"><div class="scr">
             <div class="wf-top">←<span class="wf-chip">v1</span><span class="wf-chip">v2</span><span class="wf-chip ac">v3 최신</span><span class="sp"></span><span class="ghost">비교</span></div>
             <div class="wf-body">
-              <div class="wf-row"><span class="wf-chip ac">A안</span><span class="wf-chip">B안</span><span class="sp"></span><span class="wf-chip">확대</span></div>
+              <div class="wf-row"><span class="wf-chip ac">A안</span><span class="wf-chip">B안</span><span class="sp" style="flex:1"></span><span class="wf-chip">확대</span><span class="wf-chip">저해상도 저장</span></div>
               <div class="wf-canvas">시 안<span class="wf-pin" style="left:30%;top:22%"><b>1</b></span><span class="wf-pin" style="left:62%;top:60%"><b>2</b></span></div>
-              <div class="wf"><div class="t">핀 코멘트<i class="an">2</i></div><div class="wf-line"><span>1 로고 조금 더 크게</span><b>미해결</b></div><div class="wf-line"><span>2 전화번호 → 인스타 계정</span><b>미해결</b></div></div>
+              <div class="wf"><div class="t">핀 코멘트<i class="an">2</i></div><div class="wf-line"><span>1 로고 조금 더 크게</span><b>미해결</b></div><div class="wf-line"><span>2 전화번호 → 인스타 계정</span><b>미해결</b></div><div class="wf-line"><span class="muted">v2에서 넘어온 핀 1개</span></div></div>
               <div class="wf fill">사양 · 40×240mm · 크라프트 · 2도(PANTONE 3415C, 블랙) · 10,000매(±3%)</div>
               <div class="wf fill">이 버전에서 바뀐 것: 로고 크기, 상단 띠 색</div>
             </div>
             <div class="wf-bot"><span class="wf-btn">수정 요청</span><span class="wf-btn pri">이 시안으로 확정<i class="an">1</i></span></div>
           </div></div>
-          <div class="ph-cap">시안 보기 · 핀</div>
+          <div class="ph-cap">시안 보기 · 핀 · S-16</div>
           <ul class="ph-notes">
-            <li><i class="an">1</i><span>[확정]을 누르면 체크리스트·동의 화면(S-18)이 열립니다. 바로 확정되지 않습니다.</span></li>
-            <li><i class="an">2</i><span>핀은 확대한 뒤 찍고, 길게 눌러 옮깁니다. 시안에는 워터마크가 들어갑니다.</span></li>
+            <li><i class="an">1</i><span>[확정]을 누르면 체크리스트·동의 화면(S-18)이 열립니다. 바로 확정되지 않습니다. 인쇄 원본이 아직 없으면 비활성.</span></li>
+            <li><i class="an">2</i><span>핀은 확대한 뒤 찍고, 길게 눌러 옮깁니다(버전당 30개). “해결”은 디자이너가 표시하고 고객은 다시 열 수 있습니다. 시안에는 워터마크가 들어가고, 저장은 워터마크 들어간 저해상도만.</span></li>
           </ul>
         </div>
 
-        <!-- Phone 4: Checkout -->
+        <!-- Phone 5: Approve -->
+        <div class="ph-wrap">
+          <div class="phone"><div class="scr">
+            <div class="wf-top">←<span>시안 확정</span></div>
+            <div class="wf-body">
+              <div class="wf-row"><span class="wf-chip ac">수저집 · 확정할 품목</span><span class="wf-chip">종이컵 · 아직 시안 전</span></div>
+              <div class="wf img" style="height:84px">수저집 v3 · A안 (워터마크)</div>
+              <div class="wf fill"><div class="t">사양 요약<i class="an">1</i></div>
+                <div class="wf-line"><span>상품</span><b>크라프트 수저집 40×240mm</b></div>
+                <div class="wf-line"><span>수량</span><b>10,000매 (수량 ±3%·위치 ±2mm)</b></div>
+                <div class="wf-line"><span>인쇄</span><b>플렉소 · 앞면 · 2도</b></div>
+                <div class="wf-line"><span>색상</span><b>PANTONE 3415C, 블랙</b></div>
+                <div class="wf-line"><span>인쇄 문구</span><b>을지로 손칼국수 · @eulji_noodle</b></div>
+                <div class="wf-line"><span>예상 출고</span><b>10/27(화)</b></div></div>
+              <div class="wf"><div class="wf-chk"><i></i><span>매장명·문구에 틀린 글자가 없어요</span></div><div class="wf-chk"><i></i><span>전화번호·SNS 주소를 확인했어요</span></div><div class="wf-chk"><i></i><span>화면과 실제 인쇄 색은 조금 다를 수 있어요</span></div><div class="wf-chk"><i></i><span>수량·사이즈를 확인했어요(수량 ±3%·인쇄 위치 ±2mm)</span></div></div>
+              <div class="wf hl"><div class="wf-chk"><i></i><span>(필수 동의) 맞춤 제작이라 확정한 뒤에는 취소·반품이 제한돼요<i class="an">2</i></span></div></div>
+              <div class="wf"><div class="wf-chk"><i></i><span>(선택) 포트폴리오 사례로 써도 좋아요<i class="an">3</i></span></div></div>
+            </div>
+            <div class="wf-bot"><span class="wf-btn pri dis">이 시안으로 확정하기</span></div>
+          </div></div>
+          <div class="ph-cap">시안 확정 · S-18</div>
+          <ul class="ph-notes">
+            <li><i class="an">1</i><span>사양 요약은 확정 확인서(PDF)와 같은 항목·순서입니다. 인쇄 문구는 전문을 보여 오탈자 확인의 근거로 씁니다.</span></li>
+            <li><i class="an">2</i><span>다섯 개를 모두 체크해야 버튼이 켜집니다. 취소·반품 제한은 법적 동의라 다른 항목과 떼어 둡니다.</span></li>
+            <li><i class="an">3</i><span>포트폴리오 동의는 선택·기본 해제. 안 해도 확정되고, 나중에 주문 상세에서 철회합니다.</span></li>
+          </ul>
+        </div>
+
+        <!-- Phone 6: Checkout -->
         <div class="ph-wrap">
           <div class="phone"><div class="scr">
             <div class="wf-top">←<span>주문서</span></div>
             <div class="wf-body">
               <div class="wf">배송지 · 강남점 (평일 10~15시, 1층 하차)</div>
-              <div class="wf">쿠폰 · 가장 큰 할인 1장 자동 적용</div>
-              <div class="wf">증빙 · 세금계산서 (사업자 기본)<i class="an">4</i></div>
+              <div class="wf">쿠폰 · 할인이 가장 큰 조합 자동 적용 (1장) ›<i class="an">5</i></div>
+              <div class="wf">결제수단 · 계좌이체 ›<br>증빙 · 세금계산서 (사업자 기본)<i class="an">4</i></div>
               <div class="wf">
                 <div class="wf-line"><span>상품 금액</span><b>300,000원</b></div>
-                <div class="wf-line"><span>파트너 할인</span><b>−10,000원</b></div>
-                <div class="wf-line"><span>디자인비 (맞춤형)<i class="an">1</i></span><b>39,000원</b></div>
+                <div class="wf-line"><span>판비 ⓘ <i class="an">2</i></span><b>50,000원</b></div>
+                <div class="wf-line"><span>판매자 할인 (즉시 할인)</span><b>−10,000원</b></div>
+                <div class="wf-line"><span>디자인비 (맞춤형) <i class="an">1</i></span><b>39,000원</b></div>
                 <div class="wf-line"><span class="hint">맞춤 품목 21만원 더 담으면 디자인비 무료</span></div>
-                <div class="wf-line"><span>판비 ⓘ<i class="an">2</i></span><b>50,000원</b></div>
                 <div class="wf-line"><span>본사 쿠폰</span><b>−5,000원</b></div>
                 <div class="wf-line"><span>배송비</span><b>0원</b></div>
                 <div class="wf-line tot"><span>최종 결제 (VAT 포함)</span><b>374,000원</b></div>
                 <div class="wf-line"><span>공급가 340,000 · 부가세 34,000</span></div>
               </div>
-              <div class="wf hl"><div class="wf-chk"><i></i><span>(필수) 디자인 확정 후 생산 시작, 디자인 단계별 환불 규정에 동의합니다<i class="an">3</i></span></div><div class="wf-chk"><i></i><span>(필수) 판은 제작 파트너가 보관하며 넘겨드리지 않습니다</span></div></div>
+              <div class="wf hl"><div class="wf-chk"><i></i><span>(필수) 주문 상품과 구매 조건을 확인했어요</span></div><div class="wf-chk"><i></i><span>(필수) 디자인 확정 후 생산 시작, 디자인 단계별 환불 규정에 동의합니다 <i class="an">3</i></span></div><div class="wf-chk"><i></i><span>(필수) 판은 제작 파트너가 보관하며 넘겨드리지 않습니다</span></div></div>
             </div>
             <div class="wf-bot"><span class="wf-btn pri">374,000원 결제하기</span></div>
           </div></div>
-          <div class="ph-cap">주문서 (맞춤 항목 포함)</div>
+          <div class="ph-cap">주문서 (수저집 한 품목 맞춤) · S-21</div>
           <ul class="ph-notes">
-            <li><i class="an">1</i><span>디자인비 줄은 4가지: 39,000원 / 무료(50만원 이상) / 무료(멤버십) / 무료(쿠폰). 같은 디자인으로 품목을 더 묶으면 아래에 “추가 품목 19,000원 × n” 줄이 붙습니다(50만원 기준은 묶음 안 맞춤 품목을 합쳐서 판정).</span></li>
-            <li><i class="an">2</i><span>판비 옆에 판 안내 문구(<a href="#rules">09장</a>).</span></li>
-            <li><i class="an">3</i><span>디자인비가 무료로 판정되면 결제 버튼 위에 공제 고지 체크가 하나 더 붙습니다.</span></li>
-            <li><i class="an">4</i><span>증빙은 결제수단에 따라 바뀝니다. 카드·간편결제를 고르면 “카드 전표”로 고정되고 세금계산서·현금영수증을 고를 수 없습니다. 세금계산서를 못 내는 판매자 상품은 “현금영수증만 가능”. 계좌이체·가상계좌는 환불할 때 등록한 환불 계좌로 보낸다고 안내합니다.</span></li>
+            <li><i class="an">1</i><span>디자인비 줄(MVP)은 39,000원 / 무료(50만원 이상) / 무료(첫 디자인 무료 쿠폰). 방식별로 템플릿형 “무료”, 자체 파일 “검수 무료”, 재주문 “재주문 · 디자인비 없음 · 판비 면제”. 같은 콘셉트로 품목을 더 묶으면 “추가 품목 19,000원 × n” 줄이 붙습니다(50만원 기준은 묶음 안 맞춤 품목을 합쳐 판매자 할인 뒤 금액으로 판정). “무료(멤버십)”은 2차 자리.</span></li>
+            <li><i class="an">2</i><span>판비는 판매자에게 내는 상품 대금이라 상품 금액 바로 아래(판매자 할인 위)에 둡니다. 판매자가 판비에도 할인을 걸었으면 판매자 할인이, 본사 상품 할인 쿠폰은 쿠폰 조건에 맞으면 판비에도 걸립니다. 디자인비 무료 기준(50만원)에는 판비가 들어가지 않습니다. ⓘ로 판 안내 문구(<a href="#rules">10장</a>)를 엽니다.</span></li>
+            <li><i class="an">3</i><span>맞춤형 디자인비가 무료로 판정되면 결제 버튼 바로 위에 “첫 시안을 받은 뒤 취소하면 디자인비 39,000원을 공제합니다” 체크가 하나 더 붙습니다.</span></li>
+            <li><i class="an">4</i><span>증빙은 결제수단에 따라 바뀝니다. 카드·간편결제를 고르면 “카드 전표”로 고정되고 세금계산서·현금영수증을 고를 수 없습니다. 세금계산서를 못 내는 판매자 상품은 “현금영수증만 가능”. 계좌이체·가상계좌는 에스크로 표시와 함께, 환불할 때 등록한 환불 계좌로 보낸다고 안내합니다.</span></li>
+            <li><i class="an">5</i><span>쿠폰은 자리마다 1장씩입니다: 상품 할인 쿠폰(장바구니·상품 중 1장) + 디자인비 쿠폰 1장 + 배송비 쿠폰 배송 묶음당 1장. 상품 할인 쿠폰은 디자인비에 걸리지 않습니다. 할인이 가장 큰 조합을 자동으로 고르고 시트에서 바꿀 수 있습니다.</span></li>
+          </ul>
+        </div>
+
+        <!-- Phone 7: Order detail -->
+        <div class="ph-wrap">
+          <div class="phone"><div class="scr">
+            <div class="wf-top">←<span>주문 상세</span></div>
+            <div class="wf-body">
+              <div class="muted">10/12 주문 · 판매자 2곳 · 항목 3개</div>
+              <div class="wf"><div class="cap">○○포장 · 일반</div><div class="wf-row"><span class="t">업소용 물티슈 400매 × 5박스</span></div><div class="wf-row"><span class="wf-chip">배송 완료</span><span class="muted">10/22 자동 구매 확정</span></div><div class="wf-row"><span class="wf-btn in">구매 확정</span><span class="wf-btn in">반품·교환</span><span class="wf-btn in">배송 조회</span></div></div>
+              <div class="wf hl"><div class="cap">△△인쇄 · 맞춤 제작<i class="an">1</i></div><div class="t">크라프트 쇼핑백 중 1,000장</div><div class="wf-row"><span class="wf-chip ac">디자인 확정</span></div>
+                <div class="wf-tl"><span class="done">요청</span><span class="done">배정</span><span class="done">시안</span><span class="now">확정</span><span>인쇄 확인</span><span>제작</span><span>출고</span></div>
+                <div>판매자가 인쇄를 확인하기 전까지 바꿀 수 있어요<i class="an">2</i></div><div class="wf-row"><span class="wf-btn in">확정 후 변경 요청</span><span class="wf-btn in">취소 요청</span><span class="wf-btn in">협의 룸</span></div></div>
+              <div class="wf"><div class="cap">△△인쇄 · 맞춤 제작</div><div class="t">로고 인쇄 냅킨 10,000매</div><div class="wf-row"><span class="wf-chip">제작 중 · 출고 예정 10/23</span></div>
+                <div class="wf-tl"><span class="done">요청</span><span class="done">배정</span><span class="done">시안</span><span class="done">확정</span><span class="done">인쇄 확인</span><span class="now">제작</span><span>출고</span></div>
+                <div class="muted">제작이 시작되어 바꿀 수 없어요 · 수정해서 재주문 ›<i class="an">3</i></div></div>
+              <div class="wf fill">결제 · 계좌이체 · 세금계산서(판매자별 2장) + 디자인비는 식업 명의로 따로</div>
+              <div class="wf fill">주문할 때의 상품 정보 보기 · 확정 확인서 · 1:1 문의<i class="an">4</i></div>
+            </div>
+            <div class="wf-bot"><span class="wf-btn">이 주문 그대로 다시 담기</span></div>
+          </div></div>
+          <div class="ph-cap">주문 상세 · S-25</div>
+          <ul class="ph-notes">
+            <li><i class="an">1</i><span>상태와 버튼은 항목마다 따로입니다. 한 주문에 배송 완료·디자인 확정·제작 중이 함께 있을 수 있습니다.</span></li>
+            <li><i class="an">2</i><span>맞춤 항목 타임라인에 “판매자 인쇄 확인”을 따로 둡니다. 이 단계 전까지만 [확정 후 변경 요청]·[취소 요청]이 보입니다.</span></li>
+            <li><i class="an">3</i><span>그 뒤에는 버튼 대신 이유와 다음 길을 안내합니다.</span></li>
+            <li><i class="an">4</i><span>[1:1 문의]는 주문번호를 넘겨 채팅 상담을 엽니다. 배송지 변경은 발주 확인 전에만 직접 할 수 있습니다.</span></li>
           </ul>
         </div>
       </div>
-      <p class="note">와이어의 금액은 예시입니다. 실제 금액·요율은 관리자 화면에서 바뀌므로 자릿수가 늘어도(예: 1,234,000원) 깨지지 않게 해 주세요. PC 협의 룸은 시안 보기(왼쪽)와 대화(오른쪽)를 나란히 둔 2단을 제안합니다. 기획서 06장에 PC 화면 예시가 있습니다.</p>
+      <p class="note">와이어의 금액·날짜는 예시입니다. 실제 금액·요율은 관리자 화면에서 바뀌므로 자릿수가 늘어도(예: 1,234,000원) 깨지지 않게 해 주세요. PC 협의 룸은 시안 보기(왼쪽)와 대화(오른쪽)를 나란히 둔 2단을 제안합니다. 기획서 06장 “디자인 협의 룸 (화면 예시)”은 이 2단 배치만 참고해 주세요. 그 예시 속 대화(인스타 계정을 대화로 주고받음)와 첨부 형식은 이 문서와 명세를 따릅니다.</p>
 
       <h3 class="sub">화면별로 꼭 챙길 것</h3>
       <div class="ks-grid">
@@ -792,7 +1046,7 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
           <h4>홈 <span class="b hi">S-05</span></h4>
           <p class="why">처음 온 사장님과 다시 찾은 사장님 둘 다 필요한 상품에 바로 닿게.</p>
           <ul>
-            <li>구매 이력이 있으면 맨 위에 “자주 산 상품”과 “같은 디자인 다시 주문”.</li>
+            <li>구매 이력이 있으면 맨 위에 “자주 산 상품”과 “같은 디자인 다시 주문”. 없으면 인기 상품·베스트 디자인.</li>
             <li>업종 바로가기 10개: 한식 · 중식 · 일식 · 양식 · 카페 · 베이커리 · 주점 · 배달 전문 · 급식 · 기타.</li>
             <li>“우리 가게 로고 넣기” 소개 블록 → 디자인 가능 상품 목록.</li>
             <li>블록 하나를 못 불러와도 그 블록만 숨기고 나머지는 보여줍니다.</li>
@@ -803,10 +1057,11 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
           <h4>상품 카드 <span class="b lo">컴포넌트</span></h4>
           <p class="why">목록 어디서나 같은 규칙으로 가격과 조건을 보여주는 기본 부품.</p>
           <ul>
-            <li>대표 이미지, 상품명(2줄 넘을 수 있음), 판매자명, 박스 가격 + “1매당 ○원~”, 배지, 평점 자리(2차).</li>
+            <li>대표 이미지, 찜 하트, 상품명(2줄 넘을 수 있음), 판매자명, 박스 가격 + “1매당 ○원~”, 배지, 평점 자리(2차). 사업자 회원에게는 사업자가 기준.</li>
             <li>맞춤 전용 상품은 박스 가격 대신 “맞춤 제작 1매당 18원~ · 10,000매부터”.</li>
             <li>옵션 없는 상품은 카드에서 바로 담기. 품절은 흐리게, 목록 뒤로.</li>
-            <li>상품 사진은 판매자가 올려 비율·배경이 제각각입니다. 썸네일 비율과 잘림 규칙을 정해 주세요.</li>
+            <li>상품 사진은 판매자가 올립니다. 대표 이미지는 정사각형 1,000px 이상·흰 배경을 권장하지만 지키지 않은 사진도 들어오므로, 썸네일 비율과 잘림·여백 규칙을 정해 주세요.</li>
+            <li>광고 카드(3차)가 목록 1·2·7·12번째 자리에 끼어도 깨지지 않게.</li>
           </ul>
           <div class="refs"><a class="sid" href="sikup-spec.html#U-SRCH-04">U-SRCH-04</a></div>
         </div>
@@ -814,145 +1069,175 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
           <h4>상품 상세의 세 가지 형태 <span class="b hi">S-09</span></h4>
           <p class="why">상품 하나가 판매 방식에 따라 다르게 보입니다.</p>
           <ul>
-            <li><b>일반 전용:</b> 옵션·수량 → [장바구니]·[바로 구매].</li>
+            <li><b>일반 전용:</b> 옵션(최대 3단)·수량, 있으면 추가 구성품 → [장바구니]·[바로 구매].</li>
             <li><b>일반+맞춤:</b> 위 + “우리 가게 로고 넣기” 영역과 [맞춤 제작으로 주문하기]. 하단 바에서 두 경로를 어떻게 나눌지 정해 주세요(<a href="#questions">Q3</a>).</li>
             <li><b>맞춤 전용:</b> 일반 가격·구매 버튼 없음. 상단에 “맞춤 제작 전용 상품이에요”, 가격 영역은 맞춤 구간 단가표, 버튼은 [맞춤 제작으로 주문하기] 하나.</li>
             <li>맞춤 주문 이력이 있으면 “지난 디자인으로 다시 주문”을 먼저.</li>
+            <li>추가 구성품(판매자가 상품에 붙여 둔 별도 품목, 예: 수저집에 이쑤시개)은 옵션 아래에서 고르고 수량을 따로 정합니다. 정해진 가격 하나(구간 단가·사업자가 없음)이고, 본 상품을 1개 이상 골라야 담깁니다. 품절된 구성품만 막습니다.</li>
+            <li>카테고리에 일회용품 규제 안내가 있으면 상품정보 영역에 접힌 상자로(고친 날짜 함께).</li>
           </ul>
-          <div class="refs"><a class="sid" href="sikup-spec.html#U-PDP-01">U-PDP-01</a><a class="sid" href="sikup-spec.html#U-PDP-03">U-PDP-03</a></div>
+          <div class="refs"><a class="sid" href="sikup-spec.html#U-PDP-01">U-PDP-01</a><a class="sid" href="sikup-spec.html#U-PDP-02">U-PDP-02</a><a class="sid" href="sikup-spec.html#U-PDP-03">U-PDP-03</a><a class="sid" href="sikup-spec.html#U-PDP-04">U-PDP-04</a></div>
         </div>
         <div class="ks">
           <h4>상세 설명 영역 <span class="b hi">S-09</span></h4>
           <p class="why">판매자가 에디터로 쓴 글·표·이미지를 그대로 보여주는 영역. 다른 쇼핑몰용으로 만든 세로로 긴 이미지가 대부분일 것입니다.</p>
           <ul>
-            <li>처음엔 일정 높이까지만 보여주고 아래를 흐리게 + [상세 설명 펼치기]. 펼친 뒤 끝에 [접기].</li>
-            <li>이미지는 화면 폭에 맞춰 틈 없이 이어 붙임(잘라서 저장한 조각도 한 장처럼). 누르면 확대 보기.</li>
+            <li>처음엔 일정 높이(예: 1,200px)까지만 보여주고 아래를 흐리게 + [상세 설명 펼치기]. 펼친 뒤 끝에 [접기]. 상세 설명이 비어 있으면 영역을 숨깁니다.</li>
+            <li>이미지는 화면 폭에 맞춰 틈 없이 이어 붙임(잘라서 저장한 조각도 한 장처럼). 누르면 확대 보기. 일부 이미지를 못 불러오면 그 자리에만 [다시 불러오기].</li>
             <li>글은 우리 글꼴·크기로 보입니다. 판매자가 정할 수 있는 건 제목 단계·굵기·정해진 색·정렬뿐이니, 상세 설명 안의 제목·본문·표 스타일을 정해 주세요.</li>
             <li>넓은 표는 표만 가로로 밀어서 보기. PC는 최대 폭 1,000px 가운데 정렬.</li>
-            <li>끝에 작은 [이 상품 신고하기].</li>
+            <li>끝에 작은 [이 상품 신고하기] → 사유(연락처 노출·사실과 다른 정보·저작권 침해)를 고르는 시트.</li>
           </ul>
           <div class="refs"><a class="sid" href="sikup-spec.html#U-PDP-07">U-PDP-07</a></div>
         </div>
         <div class="ks core">
           <h4>디자인 방식 선택 <span class="b hi">S-11</span></h4>
-          <p class="why">고객이 비교해서 고를 수 있게 카드마다 같은 항목을 나란히.</p>
-          <div class="table-wrap" style="box-shadow:none;margin-top:4px"><table style="font-size:12.5px">
-            <thead><tr><th>방식</th><th>비용</th><th>무료 수정</th><th>첫 시안</th></tr></thead>
+          <p class="why">고객이 비교해서 고를 수 있게 카드마다 같은 항목을 나란히. 아래 표의 비용·첫 시안·무료 수정과 표 밑의 디자인 권리 한 줄이 카드에 들어가고, 마지막 칸은 요청서·주문서의 환불 안내에 씁니다.</p>
+          <div class="table-wrap" style="box-shadow:none;margin-top:4px"><table style="font-size:12.5px;min-width:540px">
+            <thead><tr><th>방식</th><th>비용</th><th>첫 시안</th><th>무료 수정</th><th>취소할 때 공제</th></tr></thead>
             <tbody>
-              <tr><td><b>템플릿형</b></td><td>무료</td><td>2회</td><td>영업일 1일</td></tr>
-              <tr><td><b>맞춤형</b></td><td>39,000원<span class="sub">맞춤 품목 50만원 이상 무료</span></td><td>3회</td><td>영업일 2일</td></tr>
-              <tr><td><b>자체 파일</b></td><td>검수 무료</td><td>재업로드 3회</td><td>검수 영업일 1일</td></tr>
-              <tr><td><b>재주문</b></td><td>없음<span class="sub">판비 면제</span></td><td>—</td><td>디자인 단계 없음</td></tr>
+              <tr><td><b>템플릿형</b></td><td>무료</td><td>영업일 1일</td><td>2회<span class="sub">글자·로고 교체, 위치 조정</span></td><td>확정 전 0원<span class="sub">확정 뒤엔 판비 공제만</span></td></tr>
+              <tr><td><b>맞춤형</b></td><td>39,000원<span class="sub">맞춤 품목 50만원 이상 무료</span></td><td>영업일 2일</td><td>3회</td><td>첫 시안 뒤 디자인비 공제<span class="sub">무료로 받았어도 39,000원</span></td></tr>
+              <tr><td><b>자체 파일</b></td><td>검수 무료<span class="sub">보정 10,000원</span></td><td>검수 영업일 1일</td><td>재검수 3회</td><td>확정 전 0원<span class="sub">시작한 보정비만 환불 안 됨</span></td></tr>
+              <tr><td><b>재주문</b></td><td>없음<span class="sub">같은 판이 보관 중이면 판비 면제</span></td><td>디자인 단계 없음<span class="sub">수정 재주문은 영업일 1일</span></td><td>—<span class="sub">문구만 바꾸는 수정 재주문은 1회 무료</span></td><td>판비 0원이면 생산 전 바로 취소(0원)<span class="sub">판비를 냈으면 확정 후 취소(본사 중재, 판비 공제)</span></td></tr>
             </tbody>
           </table></div>
           <ul style="margin-top:8px">
-            <li>카드마다 디자인 권리도 한 줄: 템플릿·맞춤은 “회사 보유, 매장 사용권”, 자체 파일은 “고객 소유”.</li>
-            <li>“같은 디자인으로 다른 품목 추가”: 수저집과 컵처럼 같은 콘셉트로 여러 품목을 만들 때 고릅니다. 디자인비는 첫 품목 39,000원 + 추가 품목당 19,000원이고, 품목마다 시안·확정은 따로지만 협의 룸은 하나입니다.</li>
+            <li>카드마다 디자인 권리도 한 줄: 템플릿·맞춤은 “식업 보유, 매장 사용권”, 자체 파일은 “고객 소유”, 재주문은 “처음과 같음”.</li>
+            <li>“같은 콘셉트로 여러 품목 함께 만들기”: 수저집과 컵처럼 같은 콘셉트로 여러 품목을 만들 때 고릅니다. 디자인비는 첫 품목 39,000원 + 추가 품목당 19,000원이고, 품목마다 시안·확정은 따로지만 협의 룸은 하나입니다. 2차의 “다른 품목에 적용”(이미 확정한 디자인을 다른 품목에 옮김)과는 다른 기능이라 이름을 구분해 주세요.</li>
           </ul>
-          <div class="refs"><a class="sid" href="sikup-spec.html#D-REQ-01">D-REQ-01</a></div>
+          <div class="refs"><a class="sid" href="sikup-spec.html#D-REQ-01">D-REQ-01</a><a class="sid" href="sikup-spec.html#D-OPT-01">D-OPT-01</a></div>
         </div>
         <div class="ks core">
           <h4>맞춤형 요청서 4단계 <span class="b hi">S-13</span></h4>
-          <p class="why">요청서 품질이 첫 시안 품질과 수정 횟수를 좌우합니다. 한 화면에 몰아넣지 마세요.</p>
+          <p class="why">요청서 품질이 첫 시안 품질과 수정 횟수를 좌우합니다. 한 화면에 몰아넣지 마세요. 괄호 안은 입력 한도입니다.</p>
           <ol>
-            <li><b>매장 정보:</b> 매장명(사업자면 상호 자동), 업종, 매장 소개·분위기.</li>
-            <li><b>소재:</b> 로고(없으면 “로고 없음” 체크), 인쇄할 문구(전화번호·SNS 가능), 간판·외관 사진, 참고 이미지 10장, 참고 링크.</li>
-            <li><b>스타일:</b> 키워드 칩 최대 3개(모던 · 귀여운 · 전통 · 고급 · 친환경 · 미니멀 · 레트로…), 지정 색상 또는 “디자이너에게 맡김”, 피하고 싶은 것.</li>
-            <li><b>확인:</b> 같은 디자인으로 만들 품목(추가·빼기), 디자인비 계산(첫 품목 39,000원 + 추가 품목 19,000원 × n, 무료면 “무료”, 아니면 무료까지 부족한 금액), 무료 수정 3회·첫 시안 예정·단계별 환불 안내, 동의 체크.</li>
+            <li><b>매장 정보:</b> 매장명(30자, 사업자면 상호 자동), 업종(10개 중 하나), 매장 소개·분위기(500자, 예시 문구를 자리 글로).</li>
+            <li><b>소재:</b> 로고(없으면 “로고 없음” → 매장명 글자 로고), 인쇄할 문구(200자, 전화번호·SNS 가능, 오탈자 확인 안내), 간판·외관 사진(5장), 참고 이미지(10장, 장당 20MB), 참고 링크(5개, 메신저·오픈채팅 링크는 막음).</li>
+            <li><b>스타일:</b> 키워드 칩 1~3개 필수(모던 · 귀여운 · 전통 · 고급 · 친환경 · 미니멀 · 레트로…), 지정 색상(PANTONE·HEX, 상품 최대 도수를 넘으면 경고) 또는 “디자이너에게 맡김”, 피하고 싶은 것(200자), 희망 도착일(가능한 가장 빠른 날짜 표시).</li>
+            <li><b>확인:</b> 같은 콘셉트로 만들 품목(추가·빼기), 디자인비 계산(첫 품목 39,000원 + 추가 품목 19,000원 × n, 무료면 “무료”, 아니면 “맞춤 품목 ○원 더 담으면 디자인비 무료”), 무료 수정 3회·첫 시안 예정·단계별 환불(첫 시안 전 전액 환불, 뒤에는 디자인비 공제) 안내, 동의 3개(소재 권리 보증 · 단계별 환불 규정 · 디자인 권리). 다른 브랜드의 상표·캐릭터를 쓰려는 요청은 거절될 수 있다고 알립니다.</li>
           </ol>
           <div class="refs"><a class="sid" href="sikup-spec.html#D-REQ-03">D-REQ-03</a></div>
+        </div>
+        <div class="ks core">
+          <h4>협의 룸 · 시안 보기 <span class="b hi">S-15</span> <span class="b hi">S-16</span></h4>
+          <p class="why">고객이 가장 오래 머무는 곳입니다. “지금 무엇을 기다리는지”와 “내가 할 일”이 늘 보여야 합니다.</p>
+          <ul>
+            <li>묶음이면 품목 탭마다 단계, 남은 무료 수정, 다음 예정 시각을 따로 보여주고, 위쪽에 품목별 요약을 둡니다.</li>
+            <li>예정은 “첫 시안 예정: 10/19(월) 18시까지”처럼 날짜와 시각으로. 답변 대기·보류·파일 검사 중에는 “일정이 멈춰 있어요”로 바꿉니다.</li>
+            <li>메시지는 지울 수 없고, 보낸 지 5분 안에만 “전송 취소”(취소된 메시지로 표시). 운영시간 밖에 보내면 “다음 영업일 ○일 09시부터 답변해요” 자동 안내.</li>
+            <li>첨부는 AI·PDF·PSD·PNG·JPG·SVG 100MB까지, 디자인 파일은 미리보기가 만들어질 때까지 “변환 중”, 못 만들면 “미리보기 없음(원본만 받기)”.</li>
+            <li>완료·취소된 룸은 90일 동안 “재문의”만 열고 남은 기간을 표시, 그 뒤 읽기 전용.</li>
+          </ul>
+          <div class="refs"><a class="sid" href="sikup-spec.html#D-ROOM-02">D-ROOM-02</a><a class="sid" href="sikup-spec.html#D-ROOM-06">D-ROOM-06</a><a class="sid" href="sikup-spec.html#D-STU-04">D-STU-04</a></div>
         </div>
         <div class="ks core">
           <h4>시안 확정 <span class="b hi">S-18</span></h4>
           <p class="why">확정하면 인쇄가 시작되고 취소·반품이 제한됩니다. 분쟁의 기준이 되는 화면입니다.</p>
           <ul>
             <li>품목이 여럿이면 맨 위에서 확정할 품목을 고릅니다. 확정은 품목별로 하고, 아직 확정하지 않은 품목은 따로 표시합니다.</li>
-            <li>선택한 시안과 사양 요약 카드를 크게.</li>
-            <li>체크리스트 5개를 모두 체크해야 [확정] 활성: 매장명·문구 오탈자 / 전화번호·SNS / 모니터와 실물 색 차이 / 수량·사이즈(±3%) / 확정 후 취소·반품 제한 동의.</li>
+            <li>사양 요약 카드 항목(확정 확인서와 같은 순서): 상품·옵션, 수량과 허용 오차(수량 ±3%·인쇄 위치 ±2mm, 상품마다 더 엄격할 수 있음), 사이즈·소재, 인쇄 방식·도수·면, 사용 색상, 인쇄 문구 전문, 확정 시안(버전·안), 예상 출고일.</li>
+            <li>체크리스트 5개를 모두 체크해야 [확정] 활성: 매장명·문구 오탈자 / 전화번호·SNS / 모니터와 실물 색 차이 / 수량·사이즈(수량 ±3%·인쇄 위치 ±2mm, 결제 때 상품 설정값) / 확정 후 취소·반품 제한 동의(따로).</li>
             <li>그 아래 따로: 포트폴리오 활용 동의(선택, 기본 해제).</li>
-            <li>확정 뒤: 확정 확인서 받기, 디자인 권리 안내, 원본 파일(30,000원) 제안. 사면 디자인 부가 결제를 거쳐 원본 파일 다운로드 화면(링크 7일 유효·다시 받기·이용 범위 안내)으로 갑니다. 같은 화면은 주문 상세에서도 열립니다.</li>
+            <li>확정 뒤: 확정 확인서(PDF, 이메일·마이페이지로, 주문 상세에서 다시 받기), 디자인 권리 안내, 원본 파일(30,000원) 제안. 사면 디자인 부가 결제를 거쳐 원본 파일 다운로드 화면으로 갑니다: 파일 형식 AI·PDF(글꼴 윤곽선 처리), 링크 7일 유효·다시 받기, 이용 범위(우리 매장용이면 다른 업체에서 인쇄 가능, 재판매·양도 불가, 식업 밖에서 인쇄하면 재제작·환불 보증 없음).</li>
           </ul>
-          <div class="refs"><a class="sid" href="sikup-spec.html#D-APV-01">D-APV-01</a></div>
+          <div class="refs"><a class="sid" href="sikup-spec.html#D-APV-01">D-APV-01</a><a class="sid" href="sikup-spec.html#D-OPT-01">D-OPT-01</a></div>
         </div>
         <div class="ks">
           <h4>장바구니 <span class="b hi">S-20</span></h4>
           <p class="why">여러 판매자 상품을 한 번에 사지만 배송은 판매자별로 나갑니다.</p>
           <ul>
-            <li>판매자·출고지·출고 유형(일반/맞춤)별 묶음마다 배송비와 “○원 더 담으면 무료배송”. 같은 판매자라도 일반 상품과 맞춤 제작 상품은 따로 출고되므로 묶음이 나뉩니다.</li>
+            <li>판매자·출고지·출고 유형(일반/맞춤)별 묶음마다 배송비와 “○원 더 담으면 무료배송”. 맞춤 제작은 만든 뒤 출고하므로 같은 판매자라도 일반 상품과 묶음이 나뉘는 것이 기본입니다. 판매자가 “함께 출고”를 허용하면 주문서에서 “함께 받기(맞춤 출고일에 같이) / 먼저 받기(배송비 추가)”를 고릅니다.</li>
             <li>맞춤 항목은 “맞춤 제작” 표시, 디자인 방식, 디자인비, 요청서 작성 여부. 요청서가 없으면 [요청서 작성].</li>
+            <li>추가 구성품은 본 상품 줄 바로 아래에 붙여 보여주고 수량을 따로 바꿉니다. 본 상품을 빼면 같이 빠집니다. 같은 묶음으로 본 상품과 함께 출고합니다(맞춤 상품에 붙으면 맞춤 출고일에 같이).</li>
             <li>가격·재고가 바뀌었으면 위쪽에 “변경된 상품이 있어요”와 이전 → 현재 가격.</li>
             <li>쿠폰은 주문서에서 적용합니다(장바구니에는 없음).</li>
           </ul>
-          <div class="refs"><a class="sid" href="sikup-spec.html#U-ORD-01">U-ORD-01</a></div>
+          <div class="refs"><a class="sid" href="sikup-spec.html#U-ORD-01">U-ORD-01</a><a class="sid" href="sikup-spec.html#C-PRICE-03">C-PRICE-03</a></div>
         </div>
         <div class="ks">
           <h4>주문서의 금액 순서 <span class="b hi">S-21</span></h4>
           <p class="why">결제 계산과 같은 순서로 보여줘야 금액이 맞아떨어집니다.</p>
           <ol>
-            <li>상품 금액(구간 단가 적용)</li>
-            <li>파트너 할인(즉시 할인·파트너 쿠폰)</li>
-            <li>디자인비·유료 옵션(무료 사유 또는 부족 금액)</li>
-            <li>판비(판 안내 문구)</li>
-            <li>본사 쿠폰</li>
-            <li>배송비·배송비 쿠폰</li>
+            <li>상품 금액(구간 단가 적용, 추가 구성품은 정해진 가격 × 수량)</li>
+            <li>판비(판 안내 문구) — 판매자 대금이라 상품 금액 바로 아래. 판매자 할인·본사 상품 할인 쿠폰이 판비에도 걸릴 수 있고, 디자인비 무료 기준(50만원)에는 들어가지 않습니다</li>
+            <li>판매자 할인(명세의 “파트너 할인”. MVP는 즉시 할인, 판매자 쿠폰은 2차 자리). 추가 구성품에는 걸리지 않습니다</li>
+            <li>디자인비(무료 사유 또는 부족 금액, 묶음이면 추가 품목 줄). 급행·교정쇄 같은 디자인 유료 옵션 줄은 2차 자리</li>
+            <li>본사 상품 할인 쿠폰(1장). 디자인비 쿠폰은 여기가 아니라 디자인비 줄에서 바로 빼고 ‘무료(첫 디자인 무료 쿠폰)’처럼 보여 줍니다.</li>
+            <li>배송비·배송비 쿠폰(제주·도서산간 추가 배송비 포함, 화물 착불은 “착불”로 따로 표시하고 결제 금액에서 뺌)</li>
             <li>포인트(2차 자리)</li>
             <li>최종 결제 금액(VAT 포함). 사업자 회원은 공급가액·부가세 함께</li>
           </ol>
           <ul style="margin-top:8px">
-            <li>증빙 칸은 결제수단과 함께 바뀝니다: 카드·간편결제 → “카드 전표”로 고정, 계좌이체·가상계좌 → 세금계산서·현금영수증·미발행 중 선택. 세금계산서를 못 내는 판매자 상품이 섞이면 그 묶음은 “현금영수증만 가능”.</li>
+            <li>증빙 칸은 결제수단과 함께 바뀝니다: 카드·간편결제 → “카드 전표”로 고정, 계좌이체·가상계좌 → 세금계산서·현금영수증(소득공제 휴대폰 번호 / 지출증빙 사업자번호)·미발행 중 선택. 세금계산서를 못 내는 판매자 상품이 섞이면 그 묶음은 “현금영수증만 가능”. 세금계산서는 판매자별로 여러 장, 디자인비는 식업 명의로 따로 나간다고 안내합니다.</li>
           </ul>
-          <div class="refs"><a class="sid" href="sikup-spec.html#U-ORD-02">U-ORD-02</a><a class="sid" href="sikup-spec.html#U-ORD-05">U-ORD-05</a></div>
+          <div class="refs"><a class="sid" href="sikup-spec.html#U-ORD-02">U-ORD-02</a><a class="sid" href="sikup-spec.html#C-PRICE-01">C-PRICE-01</a><a class="sid" href="sikup-spec.html#U-ORD-05">U-ORD-05</a></div>
         </div>
         <div class="ks">
           <h4>주문 상세 <span class="b hi">S-25</span></h4>
           <p class="why">상태는 주문 전체가 아니라 상품(항목)마다 따로 움직입니다.</p>
           <ul>
-            <li>한 주문 안에 “배송 중” 항목과 “디자인 중” 항목이 함께 있을 수 있습니다.</li>
-            <li>맞춤 항목: 요청 → 배정 → 시안 → 확정 → 제작 → 출고 타임라인과 협의 룸 바로가기.</li>
-            <li>버튼은 상태에 맞을 때만: 출고 뒤 [취소] 숨김, 배송 완료 뒤 일반 상품은 [반품·교환]·[구매 확정], 맞춤 제작 상품은 [재제작 요청]·[구매 확정](맞춤은 단순 변심 반품이 안 됨), 구매 확정 뒤와 교환·재제작을 받은 뒤에는 불량 반품(맞춤은 재제작 요청)만.</li>
-            <li>디자인 확정 뒤 파트너가 인쇄를 확인하기 전까지만 [확정 후 변경 요청]·[취소 요청]. 판비를 면제받은 재주문은 [취소 요청] 대신 [취소](중재 없이 바로, 공제 0원). 그 뒤에는 버튼 대신 “제작이 시작되어 바꿀 수 없어요”와 [수정해서 재주문] 안내(아래 ‘확정 후 변경·취소’).</li>
+            <li>한 주문 안에 “배송 중” 항목과 “디자인 진행 중” 항목이 함께 있을 수 있습니다. 수량 일부를 취소·반품하면 한 상품이 두 줄로 나뉩니다.</li>
+            <li>맞춤 항목: 요청 → 배정 → 시안 → 확정 → 판매자 인쇄 확인 → 제작(출고 예정일) → 출고 타임라인과 협의 룸 바로가기. 출고 예정일이 바뀌면 사유를 함께.</li>
+            <li>버튼은 상태에 맞을 때만(<a href="#components">09장 상태 표</a>): 출고 뒤 [취소] 숨김, 배송 완료 뒤 일반 상품은 [반품·교환]·[구매 확정], 맞춤 제작 상품은 [재제작 요청]·[구매 확정](맞춤은 단순 변심 반품이 안 됨), 구매 확정 뒤와 교환·재제작을 받은 뒤에는 불량 반품(맞춤은 재제작 요청)만.</li>
+            <li>[구매 확정]은 확인 다이얼로그로: “확정하면 단순 변심 반품은 안 되고, 불량은 받은 날부터 3개월·안 날부터 30일 안에 신청할 수 있어요.”</li>
+            <li>디자인 확정 뒤 판매자가 인쇄를 확인하기 전까지만 [확정 후 변경 요청]·[취소 요청]. 판비를 면제받은 재주문은 [취소 요청] 대신 [취소](중재 없이 바로, 공제 0원). 그 뒤에는 버튼 대신 “제작이 시작되어 바꿀 수 없어요”와 [수정해서 재주문] 안내(아래 ‘확정 후 변경·취소’).</li>
+            <li>판매자가 출고 지연을 알리면 지연 사유와 새 출고 예정일, 공제 없는 [바로 취소](송장 등록 전까지, 맞춤 제작은 제외)를 보여줍니다.</li>
             <li>판매자가 취소·반품·교환·재제작을 거부한 항목은 거부 통지 뒤 3일 동안만 [이의 제기](본사가 중재로 기각한 확정 후 취소는 제외). 누르면 바로 “이의 제기됨”으로 바뀌고 본사가 중재합니다. 3일이 지나면 버튼이 사라집니다.</li>
+            <li>추가 구성품은 본 상품 줄 아래 붙은 따로 된 줄입니다. 혼자 취소·반품할 수 있고, 본 상품을 취소하면 붙은 추가 구성품 중 아직 출고 전인 것도 같이 취소됩니다(출고된 것은 반품).</li>
+            <li><b>제작 판매자 변경 제안:</b> 판매자가 판매를 멈추거나 입점이 끝나 인쇄 전 맞춤 항목을 만들 수 없으면, 식업이 같은 사양의 다른 판매자 상품을 제안합니다. 항목에 카드로: 대체 상품·판매자, “확정 디자인은 그대로예요”, 가격 차이(더 싸면 차액 환불, 더 비싸도 더 받지 않음), 답변 기한(기본 7일), [변경 동의]·[전액 환불](디자인비 포함). 기한까지 답이 없으면 전액 환불하고, 하루 전에 한 번 더 알립니다. 동의하면 “제작 판매자가 바뀌었어요”와 새 판매자 이름.</li>
             <li>“이 주문 그대로 다시 담기”, 맞춤은 [같은 디자인으로 재주문].</li>
           </ul>
-          <div class="refs"><a class="sid" href="sikup-spec.html#U-MY-01">U-MY-01</a></div>
+          <div class="refs"><a class="sid" href="sikup-spec.html#U-MY-01">U-MY-01</a><a class="sid" href="sikup-spec.html#D-PRD-04">D-PRD-04</a><a class="sid" href="sikup-spec.html#D-REQ-04">D-REQ-04</a></div>
         </div>
         <div class="ks core">
           <h4>확정 후 변경·취소 <span class="b hi">S-25</span> <span class="b hi">S-15</span> <span class="b hi">S-26</span></h4>
-          <p class="why">디자인을 확정한 뒤 “문구를 바꾸고 싶다”, “취소하고 싶다”는 요청은 분쟁이 가장 많이 나는 구간입니다. 흐름 전체를 그려 주세요.</p>
+          <p class="why">디자인을 확정한 뒤 “문구를 바꾸고 싶다”, “취소하고 싶다”는 요청은 분쟁이 가장 많이 나는 구간입니다. 흐름 전체를 그려 주세요(<a href="#flows">06장 흐름 D</a>).</p>
           <ol>
-            <li><b>요청:</b> 주문 상세나 협의 룸에서 [확정 후 변경 요청] 또는 [취소 요청] → 사유 입력. 파트너가 인쇄를 확인하기 전까지만 보입니다.</li>
+            <li><b>요청:</b> 주문 상세나 협의 룸에서 [확정 후 변경 요청] 또는 [취소 요청] → 사유 입력. 판매자가 인쇄를 확인하기 전까지만 보입니다. 같은 순간에 인쇄 확인이 먼저 기록되면 “이미 제작이 시작돼 요청이 접수되지 않았어요”.</li>
             <li><b>생산 보류:</b> 접수하면 바로 생산이 멈추고, 항목 상태에 “변경 요청 중” 또는 “취소 중재 중”이 붙습니다(상태가 아니라 표시).</li>
             <li><b>변경:</b> 승인되면 다시 시안 단계로 돌아가고(수정 1회 차감, 없으면 추가 수정 결제) 새 시안을 다시 확정해야 합니다. 판을 이미 만들었고 바뀐 내용이 판에 들어가면 새 판비를 안내합니다. 이렇게 다시 시안 단계가 된 건에서 [취소 요청]을 누르면 일반 취소가 아니라 이 확정 후 취소 흐름(공제 동의 → 본사 중재)으로 갑니다.</li>
-            <li><b>취소:</b> 요청할 때 공제 내역을 보여 주고 동의를 받습니다: 디자인비(낸 금액, 무료로 받은 맞춤형은 39,000원) + 판비(파트너가 판을 만들었다고 증빙한 경우만, 최대 낸 판비). 본사가 중재한 결과와 최종 환불액을 알려 줍니다.</li>
+            <li><b>취소:</b> 요청할 때 공제 내역을 보여 주고 동의를 받습니다: 디자인비(낸 금액, 무료로 받은 맞춤형은 39,000원, 템플릿형·자체 파일은 0원) + 판비(판매자가 판을 만들었다고 증빙한 경우만, 최대 낸 판비). 본사가 중재한 결과와 최종 환불액을 알려 줍니다.</li>
             <li><b>철회·결과:</b> 고객이 요청을 거두거나 취소가 기각되면 표시가 사라지고 생산이 이어집니다(변경 건은 새 시안을 확정해 다시 전달할 때까지 생산 보류). 본사 중재 결과라 기각에는 [이의 제기]가 없습니다. 판비를 낸 재주문(보관 기간이 지났거나 판을 새로 만드는 수정 재주문)의 취소도 이 흐름을 따릅니다. 변경 건에 30일 동안 답이 없으면 본사가 이전 확정본으로 되돌려 생산을 이어 갑니다(알림).</li>
           </ol>
           <div class="refs"><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a><a class="sid" href="sikup-spec.html#C-STATE-03">C-STATE-03</a><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a></div>
         </div>
         <div class="ks">
+          <h4>취소·반품의 환불 금액 <span class="b hi">S-26</span></h4>
+          <p class="why">“왜 이 금액인지”가 보여야 분쟁이 줄어듭니다. 부분 취소는 남은 상품으로 할인·배송비를 다시 계산하기 때문에 생각보다 적게 돌려받을 수 있습니다.</p>
+          <ul>
+            <li>환불 예정 금액은 줄로 나눠: 취소 상품 금액, 조건이 깨져 줄어든 할인, 무료배송 기준 아래로 내려간 배송비, 디자인 공제(이유 한 줄: “첫 시안을 받기 전이라 전액 환불돼요” / “첫 시안을 받아 디자인비 39,000원을 공제해요”), 반품 배송비 → 환불액. 돌려받는 쿠폰과 환불 예정일(카드 3~5영업일, 반품은 회수 확인 뒤 3영업일)을 함께.</li>
+            <li>환불액이 0원 이하이면 출고 전 부분 취소는 막고 [전체 취소]를 안내, 반품은 “0원 환불 + 차액 ○원 추가 결제” 또는 “받은 할인 포기” 중 하나에 동의받습니다(불량·오배송이면 이 동의 없이 진행).</li>
+            <li>계좌이체·가상계좌는 환불 계좌가 필요합니다. 등록 전이면 이 화면에서 계좌 인증 뒤 등록합니다.</li>
+            <li>본 상품을 취소하면 붙은 추가 구성품 중 아직 출고 전인 것도 같이 취소되어 환불 금액에 함께 들어갑니다. 추가 구성품만 따로 취소·반품할 수도 있습니다.</li>
+          </ul>
+          <div class="refs"><a class="sid" href="sikup-spec.html#U-MY-02">U-MY-02</a><a class="sid" href="sikup-spec.html#U-MY-03">U-MY-03</a><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a></div>
+        </div>
+        <div class="ks">
           <h4>디자인 부가 결제 (공통 부품) <span class="b hi">S-17</span> <span class="b hi">S-18</span></h4>
           <p class="why">주문을 마친 뒤 협의 룸·확정 화면에서 따로 내는 돈입니다. 어디서든 같은 모양으로 열리게 해 주세요.</p>
           <ul>
-            <li>쓰는 곳: 추가 수정(10,000원), 자체 파일 보정(10,000원), 원본 파일(30,000원), 템플릿형·자체 파일 → 맞춤형 전환(차액 39,000원, 50만원 기준이면 무료).</li>
+            <li>쓰는 곳: 추가 수정(10,000원), 자체 파일 보정(10,000원), 원본 파일(30,000원), 복잡한 로고 벡터 재작업(10,000원, 단순하면 1회 무료), 템플릿형·자체 파일 → 맞춤형 전환(차액 39,000원, 50만원 기준이면 무료).</li>
             <li>바텀시트(무엇을·얼마·환불 조건) → 결제 → 결과. 성공하면 작업이 접수되거나 다운로드가 열리고, 실패하면 원래 흐름 그대로 두고 쓰던 내용은 임시 저장합니다.</li>
-            <li>환불 조건을 결제 버튼 위에 적습니다: 추가 수정·보정은 작업을 시작하면 환불되지 않고, 원본 파일은 내려받기 전 7일 안에만 환불됩니다. 맞춤형 전환은 맞춤형 취소 공제 규정을 다시 보여 주고 동의를 받습니다.</li>
-            <li>결제한 내역은 원 주문에 붙어 주문 상세에서 보입니다(본사가 판매자).</li>
+            <li>환불 조건을 결제 버튼 위에 적습니다: 추가 수정·보정은 작업을 시작하면 환불되지 않고, 원본 파일은 내려받기 전 7일 안에만 환불됩니다. 맞춤형 전환은 맞춤형 취소 공제 규정을 다시 보여 주고 동의를 받으며, “무료 수정 3회로 새로 시작, 첫 시안은 결제 시각부터 영업일 2일”을 알립니다.</li>
+            <li>결제한 내역은 원 주문에 붙어 주문 상세에서 보입니다(판매자는 식업).</li>
           </ul>
           <div class="refs"><a class="sid" href="sikup-spec.html#D-OPT-01">D-OPT-01</a><a class="sid" href="sikup-spec.html#D-REQ-02">D-REQ-02</a><a class="sid" href="sikup-spec.html#D-OWN-02">D-OWN-02</a></div>
         </div>
       </div>
     </section>
 
-    <!-- ================= 08 COMPONENTS ================= -->
+    <!-- ================= 09 COMPONENTS ================= -->
     <section class="sec" id="components">
-      <div class="sec-head"><div class="sec-num">08</div><h2>공통 컴포넌트·상태</h2><p>여러 화면에서 반복되는 부품과, 상태별로 무엇을 보여줄지입니다. “부품” 화면은 이 컴포넌트들로 조립합니다.</p></div>
+      <div class="sec-head"><div class="sec-num">09</div><h2>공통 컴포넌트·상태</h2><p>여러 화면에서 반복되는 부품과, 상태별로 무엇을 보여줄지입니다. “부품” 화면은 이 컴포넌트들로 조립합니다. 색이 칠해진 칩은 특히 공들일 부품입니다.</p></div>
 
       <div class="comp-grid">
-        <div class="comp"><h5>탐색</h5><div class="chips"><span>상단 바(웹/앱)</span><span>하단 탭</span><span>검색창·자동완성</span><span>카테고리 트리</span><span>필터 칩·필터 시트</span><span>정렬</span><span>탭</span><span>업종 바로가기</span><span>배너</span></div></div>
-        <div class="comp"><h5>가격·구매</h5><div class="chips"><span class="k">상품 카드</span><span class="k">가격 표기</span><span class="k">구간 단가표</span><span class="k">상세 설명 뷰어(펼치기·확대)</span><span>옵션 선택</span><span>수량 조절(주문 단위)</span><span>하단 고정 구매 바</span><span>판매자별 묶음</span><span>금액 요약</span><span>쿠폰 선택</span></div></div>
-        <div class="comp"><h5>맞춤 디자인</h5><div class="chips"><span class="k">방식 비교 카드</span><span class="k">단계 표시(스텝)</span><span>스타일 칩</span><span>색상 입력</span><span class="k">파일 업로드</span><span>자동 점검 결과</span><span>시안 카드</span><span>버전 탭·비교</span><span>핀·핀 목록</span><span>말풍선·시스템 메시지</span><span>디자이너 소개 카드</span><span>남은 무료 수정 표시</span><span class="k">디자인 부가 결제(바텀시트 → 결제 → 결과)</span><span>원본 파일 다운로드(7일 링크·다시 받기)</span><span>품목 선택(여러 품목 묶음)</span></div></div>
-        <div class="comp"><h5>주문·상태</h5><div class="chips"><span class="k">상태 배지</span><span class="k">타임라인</span><span>주문 카드</span><span>환불 예정 금액</span><span class="k">공제 내역·동의</span><span>환불 계좌 등록(계좌 인증)</span><span>가상계좌 정보·복사</span><span>배송 조회</span></div></div>
-        <div class="comp"><h5>입력·동의</h5><div class="chips"><span>텍스트 입력·오류</span><span>주소 검색</span><span class="k">동의 체크(전체/필수/선택)</span><span>체크리스트</span><span>날짜 선택</span><span>사진 첨부(카메라)</span></div></div>
-        <div class="comp"><h5>피드백·시스템</h5><div class="chips"><span>토스트</span><span>확인 다이얼로그</span><span>바텀시트</span><span>스켈레톤 로딩</span><span>빈 화면</span><span>오류·재시도</span><span>권한 요청 전 안내</span><span>채팅 상담 버튼</span><span>긴급 공지 팝업</span></div></div>
+        <div class="comp"><h5>탐색</h5><div class="chips"><span>상단 바(웹/앱)</span><span>하단 탭</span><span>검색창·자동완성</span><span>카테고리 트리</span><span>필터 칩·필터 시트</span><span>정렬</span><span>탭</span><span>업종 바로가기</span><span>배너</span><span>웹 푸터</span></div></div>
+        <div class="comp"><h5>가격·구매</h5><div class="chips"><span class="k">상품 카드</span><span class="k">가격 표기</span><span class="k">구간 단가표</span><span class="k">상세 설명 뷰어(펼치기·확대)</span><span>옵션 선택·선택 목록</span><span>추가 구성품 선택·붙은 줄</span><span>수량 조절(주문 단위)</span><span>하단 고정 구매 바</span><span>판매자별 묶음</span><span>금액 요약</span><span>쿠폰 선택 시트</span><span>결제수단·증빙 선택</span></div></div>
+        <div class="comp"><h5>맞춤 디자인</h5><div class="chips"><span class="k">방식 비교 카드</span><span class="k">단계 표시(스텝)</span><span>스타일 칩</span><span>색상 입력</span><span class="k">파일 업로드(한도 도움말)</span><span>자동 점검 결과</span><span>시안 카드</span><span>버전 탭·비교</span><span>핀·핀 목록</span><span>말풍선·시스템 메시지</span><span>가려진 메시지·복원 요청</span><span>디자이너 소개 카드</span><span>품목 탭(묶음)</span><span class="k">일정 표시(예정 시각·멈춤·보류 예고)</span><span>남은 무료 수정 표시</span><span>사양 요약 카드</span><span class="k">디자인 부가 결제(바텀시트 → 결제 → 결과)</span><span>원본 파일 다운로드(7일 링크·다시 받기)</span></div></div>
+        <div class="comp"><h5>주문·상태</h5><div class="chips"><span class="k">상태 배지</span><span class="k">표시 배지(답변 필요·변경 요청 중 등)</span><span class="k">타임라인</span><span>주문 카드</span><span class="k">환불 예정 금액(줄 나눔)</span><span class="k">공제 내역·동의</span><span>환불 계좌 등록(계좌 인증)</span><span>가상계좌 정보·복사</span><span>배송 조회</span></div></div>
+        <div class="comp"><h5>입력·동의</h5><div class="chips"><span>텍스트 입력·글자 수·오류</span><span>주소 검색</span><span class="k">동의 체크(전체/필수/선택)</span><span>체크리스트</span><span>날짜 선택(고를 수 없는 날)</span><span>사진 첨부(카메라)</span><span>인증번호 입력(타이머)</span></div></div>
+        <div class="comp"><h5>피드백·시스템</h5><div class="chips"><span>토스트</span><span>확인 다이얼로그</span><span>바텀시트</span><span>스켈레톤 로딩</span><span>빈 화면</span><span>오류·재시도</span><span>점검·장애 배너</span><span>권한 요청 전 안내</span><span>채팅 상담 버튼</span><span>긴급 공지 팝업</span></div></div>
       </div>
       <p class="note">브라우저 기본 경고창(alert·confirm)은 쓰지 않습니다. 확인이 필요한 곳은 우리 디자인의 확인 다이얼로그로 만들어 주세요.</p>
 
@@ -960,12 +1245,14 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
       <div class="table-wrap"><table class="minw-760">
         <thead><tr><th>상황</th><th>표기 예</th><th>규칙</th></tr></thead>
         <tbody>
-          <tr><td class="nw"><b>일반 회원</b></td><td class="nw">32,000원 · 1매당 28원~</td><td>모든 고객 가격은 VAT 포함. 1매당 단가 = 박스 가격 ÷ 입수량, 가장 낮은 구간 기준으로 “~부터”.</td></tr>
-          <tr><td class="nw"><b>사업자 회원</b></td><td class="nw">31,000원 (공급가 28,182원) · 1매당 27원~</td><td>사업자가(일반가보다 낮음)를 VAT 포함으로 보여주고 공급가를 함께. 구간 단가표도 사업자가로. 사업자 배지. 파트너가 사업자가를 두지 않은 상품은 일반가.</td></tr>
-          <tr><td class="nw"><b>비로그인</b></td><td class="nw">32,000원 · 사업자가 보기</td><td>일반가와 “사업자가 보기” 안내.</td></tr>
+          <tr><td class="nw"><b>일반 회원</b></td><td class="nw">32,000원 · 1매당 28원~</td><td>모든 고객 가격은 VAT 포함. 1매당 단가 = 박스 가격 ÷ 입수량, 가장 낮은 구간 기준으로 “~부터”. 사업자가 대신 “사업자 인증하고 사업자가 보기”(→ 사업자 회원 인증).</td></tr>
+          <tr><td class="nw"><b>사업자 회원</b></td><td class="nw">31,000원 (공급가 28,182원) · 1매당 27원~</td><td>사업자가(일반가보다 낮음)를 VAT 포함으로 보여주고 공급가를 함께. 구간 단가표·낮은 단가순 정렬·가격대 필터도 사업자가 기준. 사업자 배지. 판매자가 사업자가를 두지 않은 상품은 일반가.</td></tr>
+          <tr><td class="nw"><b>비로그인</b></td><td class="nw">32,000원 · 사업자가 보기</td><td>일반가와 “사업자가 보기”(누르면 로그인).</td></tr>
           <tr><td class="nw"><b>즉시 할인</b></td><td class="nw">28,800원 <s>32,000원</s> 10%</td><td>할인 전 가격은 최근 20일 실제 결제 최저 단가가 있을 때만. 없으면 할인가만 보여주는 형태도 필요. 일반가·사업자가는 따로 계산하므로, 같은 상품도 사업자 회원 화면에는 할인 전 가격 없이 할인가만 나올 수 있습니다.</td></tr>
-          <tr><td class="nw"><b>맞춤 전용</b></td><td class="nw">맞춤 제작 1매당 18원~ · 10,000매부터</td><td>판비·디자인비는 빼고 맞춤 최저 구간 단가. 맞춤 단가에도 사업자가가 있으면 사업자 회원에게는 사업자가 기준.</td></tr>
-          <tr><td class="nw"><b>품절</b></td><td class="nw">품절 · 재입고 예정 10/20</td><td>구매 버튼 끄기, 비슷한 상품 제안.</td></tr>
+          <tr><td class="nw"><b>맞춤 전용</b></td><td class="nw">맞춤 제작 1매당 18원~ · 10,000매부터</td><td>판비·디자인비는 빼고 맞춤 최저 구간 단가. 맞춤 단가에도 사업자가가 있으면 사업자 회원에게는 사업자가 기준. 판비는 회원 유형과 관계없이 같은 금액.</td></tr>
+          <tr><td class="nw"><b>재주문</b></td><td class="nw">재주문 · 디자인비 없음 · 판비 면제</td><td>보관 기간 안에 같은 판매자가 같은 판을 쓸 때만 판비 면제. 보관 기간이 지났거나 판이 바뀌면 판비를 표시.</td></tr>
+          <tr><td class="nw"><b>배송비</b></td><td class="nw">배송비 3,000원 · 8,000원 더 담으면 무료 · 제주 +3,000원</td><td>판매자 묶음마다 따로. 제주·도서산간 추가 배송비는 무료배송이어도 붙음. 화물 “착불”은 결제 금액에 넣지 않고 상품 상세·주문서에 눈에 띄게.</td></tr>
+          <tr><td class="nw"><b>품절</b></td><td class="nw">품절 · 재입고 예정 10/20</td><td>구매 버튼 끄기, 비슷한 상품 제안, 재입고 예정일 표시. [재입고 알림 받기]는 2차 자리.</td></tr>
         </tbody>
       </table></div>
 
@@ -986,62 +1273,67 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
       </table></div>
 
       <h3 class="sub">상태 표시 (고객용 라벨 제안)</h3>
-      <p class="t2" style="margin-bottom:12px">내부 상태 이름을 고객에게 그대로 보여주지 않습니다. 아래 라벨은 제안이고 다듬어도 됩니다. <span class="b act">할 일</span> 표시가 붙은 상태는 고객이 움직여야 다음으로 넘어가므로 눈에 띄게 해 주세요.</p>
+      <p class="t2" style="margin-bottom:12px">내부 상태 이름을 고객에게 그대로 보여주지 않습니다. 아래 라벨은 제안이고 다듬어도 됩니다. <span class="b act">할 일</span> 표시가 붙은 상태는 고객이 움직여야 다음으로 넘어가므로 목록·배지·알림에서 눈에 띄게 해 주세요. 오른쪽 칸은 그 상태에서 보여줄 버튼과 안내입니다.</p>
       <div class="grid g2">
         <div class="table-wrap"><table>
-          <thead><tr><th>주문 항목 상태</th><th>고객 라벨</th><th>고객이 할 일</th></tr></thead>
+          <thead><tr><th>주문 항목 상태</th><th>고객 라벨</th><th>버튼 · 안내</th></tr></thead>
           <tbody>
-            <tr><td><code>PAYMENT_PENDING</code></td><td><b>입금 대기</b> <span class="b act">할 일</span></td><td>계좌·기한 보고 입금(3일)</td></tr>
-            <tr><td><code>PAID</code></td><td><b>결제 완료</b></td><td>—</td></tr>
-            <tr><td><code>ACCEPTED</code></td><td><b>상품 준비 중</b></td><td>—</td></tr>
-            <tr><td><code>DESIGNING</code></td><td><b>디자인 진행 중</b></td><td>오른쪽 표의 세부 단계</td></tr>
-            <tr><td><code>DESIGN_CONFIRMED</code></td><td><b>디자인 확정</b></td><td>파트너 인쇄 확인 전까지 [확정 후 변경 요청]·[취소 요청] 가능</td></tr>
-            <tr><td>생산 보류 표시<span class="sub" style="display:block">확정 후 변경·취소 요청</span></td><td><b>변경 요청 중 · 취소 중재 중</b></td><td>본사 확인을 기다림. 요청 철회 가능</td></tr>
-            <tr><td><code>IN_PRODUCTION</code></td><td><b>제작 중</b></td><td>—</td></tr>
+            <tr><td><code>PAYMENT_PENDING</code></td><td><b>입금 대기</b> <span class="b act">할 일</span></td><td>계좌·기한 보고 입금(3일). [주문 취소]는 바로</td></tr>
+            <tr><td><code>PAID</code></td><td><b>결제 완료</b></td><td>[주문 취소] 바로 환불</td></tr>
+            <tr><td><code>ACCEPTED</code></td><td><b>상품 준비 중</b></td><td>[취소 요청](판매자 확인, 영업일 1일 지나면 자동 승인). 출고 지연 안내를 받았으면 [바로 취소]</td></tr>
+            <tr><td><code>DESIGNING</code></td><td><b>디자인 진행 중</b></td><td>오른쪽 표의 세부 단계. [취소]는 첫 시안 전이면 전액 환불, 뒤면 디자인비 공제</td></tr>
+            <tr><td><code>DESIGN_CONFIRMED</code></td><td><b>디자인 확정</b></td><td>판매자 인쇄 확인 전까지 [확정 후 변경 요청]·[취소 요청]</td></tr>
+            <tr><td>생산 보류 표시<span class="sub" style="display:block">확정 후 변경·취소 요청</span></td><td><b>변경 요청 중 · 취소 중재 중</b></td><td>본사 확인을 기다림. [요청 철회]</td></tr>
+            <tr><td><code>IN_PRODUCTION</code></td><td><b>제작 중</b></td><td>출고 예정일(바뀌면 사유)</td></tr>
             <tr><td><code>SHIPPED</code></td><td><b>배송 중</b></td><td>배송 조회</td></tr>
-            <tr><td><code>DELIVERED</code></td><td><b>배송 완료</b></td><td>구매 확정 또는 반품·교환. 맞춤 제작은 구매 확정 또는 재제작 요청(7일 뒤 자동 확정)</td></tr>
-            <tr><td><code>CONFIRMED</code></td><td><b>구매 확정</b></td><td>다시 담기</td></tr>
-            <tr><td><code>CANCELED</code> 등</td><td><b>취소 완료 · 반품 완료</b></td><td>—</td></tr>
-            <tr><td><code>EXCHANGED</code></td><td><b>교환·재제작 완료</b></td><td>다시 불량이면 받은 날부터 3개월 안에 불량 반품(맞춤은 재제작 요청)</td></tr>
-            <tr><td>클레임 진행 중</td><td><b>취소 요청 중 · 반품 진행 중 · 교환 진행 중 · 재제작 진행 중</b></td><td>회수 방법·송장 입력</td></tr>
-            <tr><td>판매자 거부<span class="sub" style="display:block">취소·반품·교환·재제작 거부</span></td><td><b>판매자 거부</b> <span class="b act">할 일</span></td><td>거부 사유 확인, 3일 안에 [이의 제기]. 누르면 “이의 제기됨”(본사 중재, 결과가 최종)</td></tr>
+            <tr><td><code>DELIVERED</code></td><td><b>배송 완료</b></td><td>[구매 확정](7일 뒤 자동, 예정일 표시). 일반 상품 [반품·교환](단순 변심은 받은 날부터 7일 안), 맞춤 제작은 [재제작 요청]</td></tr>
+            <tr><td><code>CONFIRMED</code></td><td><b>구매 확정</b></td><td>다시 담기. 불량이면 받은 날부터 3개월·안 날부터 30일 안에 [불량 반품](맞춤은 [재제작 요청])</td></tr>
+            <tr><td><code>CANCELED</code> <code>RETURNED</code></td><td><b>취소 완료 · 반품 완료</b></td><td>자동 취소면 사유(입금 기한 지남 · 재고 부족 · 판매자 품절 · 판매자 변경 제안에 답 없음, 전액 환불)</td></tr>
+            <tr><td><code>EXCHANGED</code></td><td><b>교환·재제작 완료</b></td><td>다시 불량이면 받은 날부터 3개월·안 날부터 30일 안에 불량 반품(맞춤은 재제작 요청)</td></tr>
+            <tr><td>클레임 진행 중</td><td><b>취소 요청 중 · 반품·교환·재제작 진행 중</b></td><td>접수 → 회수 중 → 검수 중 → 승인/거부 → (교환품·재제작품 발송) → 완료. 회수 방법·송장 입력, 7일 안에 보내지 않으면 자동 철회</td></tr>
+            <tr><td>판매자 거부<span class="sub" style="display:block">취소·반품·교환·재제작 거부</span></td><td><b>판매자 거부</b> <span class="b act">할 일</span></td><td>거부 사유 확인, 3일 안에 [이의 제기](내용·사진). 누르면 “이의 제기됨” → 본사 중재, 결과가 최종(인정 → 환불·재발송, 이미 출고된 취소 건은 회수한 뒤 검수 없이 환불 / 유지 → 거부 확정, 회수한 상품은 돌려보내고 배송비는 고객 부담)</td></tr>
+            <tr><td>끝난 클레임<span class="sub" style="display:block">완료 결과별</span></td><td><b>환불 완료 · 교환 완료 · 재제작 완료 · 거부 확정 · 신청 철회 · 취소 기각</b></td><td>결과에 맞는 라벨 하나만(취소 기각 = 본사가 기각한 확정 후 취소). 환불 완료면 환불액·환불 수단, 거부 확정·취소 기각이면 사유. 신청 철회는 고객이 거둔 것과 7일 안에 보내지 않아 자동 철회된 것을 함께 씀</td></tr>
+            <tr><td>제작 판매자 변경 제안<span class="sub" style="display:block">인쇄 전 맞춤 항목</span></td><td><b>판매자 변경 확인 필요</b> <span class="b act">할 일</span></td><td>대체 상품·가격 차이 보고 [변경 동의] 또는 [전액 환불]. 답변 기한(기본 7일)이 지나면 전액 환불</td></tr>
           </tbody>
         </table></div>
         <div class="table-wrap"><table>
-          <thead><tr><th>디자인 세부 단계</th><th>고객 라벨</th><th>고객이 할 일</th></tr></thead>
+          <thead><tr><th>디자인 세부 단계</th><th>고객 라벨</th><th>버튼 · 안내</th></tr></thead>
           <tbody>
-            <tr><td><code>REQUESTED</code></td><td><b>디자이너 배정 대기</b></td><td>자료 추가 가능</td></tr>
-            <tr><td><code>ASSIGNED</code> <code>IN_PROGRESS</code></td><td><b>시안 만드는 중</b></td><td>다음 시안 예정 시각 표시</td></tr>
-            <tr><td><code>IN_PROGRESS</code> 등 + 고객 답변 대기 표시</td><td><b>답변 필요</b> <span class="b act">할 일</span></td><td>디자이너 질문에 룸에서 답하기(3일째 리마인드, 14일째 보류)</td></tr>
+            <tr><td><code>REQUESTED</code></td><td><b>디자이너 배정 대기</b></td><td>배정 예정 시각. 자료 추가, [요청서 수정](배정 전까지)</td></tr>
+            <tr><td><code>ASSIGNED</code> <code>IN_PROGRESS</code></td><td><b>시안 만드는 중</b></td><td>다음 시안 예정 시각(“10/19(월) 18시까지”)</td></tr>
+            <tr><td><code>IN_PROGRESS</code> 등 + 고객 답변 대기 표시</td><td><b>답변 필요</b> <span class="b act">할 일</span></td><td>디자이너 질문에 룸에서 답하기. 그동안 일정이 멈춤(3일째 리마인드, 14일째 보류)</td></tr>
             <tr><td><code>PROPOSED</code></td><td><b>시안 확인 필요</b> <span class="b act">할 일</span></td><td>수정 요청 또는 확정</td></tr>
-            <tr><td><code>REVISION</code></td><td><b>수정 중</b></td><td>—</td></tr>
-            <tr><td><code>FILE_SUBMITTED</code> <code>FILE_REVIEW</code></td><td><b>파일 검수 중</b></td><td>—</td></tr>
-            <tr><td><code>FILE_REJECTED</code></td><td><b>파일 수정 필요</b> <span class="b act">할 일</span></td><td>재업로드 · 보정 · 맞춤형 전환 · 취소 중 선택</td></tr>
-            <tr><td><code>ON_HOLD</code></td><td><b>보류 중</b> <span class="b act">할 일</span></td><td>[진행 재개] (30일째 자동 취소, 하루 전 예고). 확정 후 변경 건은 자동 취소하지 않고 본사가 이전 확정본으로 되돌림</td></tr>
-            <tr><td><code>APPROVED</code> <code>HANDED_OFF</code> <code>PREFLIGHT_REJECTED</code></td><td><b>디자인 확정 · 제작 준비 중</b></td><td>—</td></tr>
-            <tr><td><code>CANCELED</code></td><td><b>취소됨</b></td><td>—</td></tr>
+            <tr><td><code>PROPOSED</code><span class="sub" style="display:block">확정 뒤 다시</span></td><td><b>다시 확정 필요</b> <span class="b act">할 일</span></td><td>인쇄용 정리·판매자 반려로 눈에 보이는 부분이 바뀜. 이전 확정본과 비교해 보고 다시 확정</td></tr>
+            <tr><td><code>REVISION</code></td><td><b>수정 중</b></td><td>수정본 예정 시각(영업일 1일)</td></tr>
+            <tr><td><code>FILE_SUBMITTED</code> <code>FILE_REVIEW</code></td><td><b>파일 검수 중</b></td><td>검수 결과 예정(영업일 1일)</td></tr>
+            <tr><td><code>FILE_REJECTED</code></td><td><b>파일 수정 필요</b> <span class="b act">할 일</span></td><td>재업로드(무료 재검수 3회) · 보정 10,000원 · 맞춤형 전환 · 취소(공제 0원) 중 선택</td></tr>
+            <tr><td><code>ON_HOLD</code></td><td><b>보류 중</b> <span class="b act">할 일</span></td><td>[진행 재개] 또는 룸에 메시지. 29일째 예고 뒤 30일째 자동 취소(첫 시안 전이면 전액 환불, 뒤면 디자인비 공제). 확정 후 변경 건은 자동 취소하지 않고 본사가 이전 확정본으로 되돌림</td></tr>
+            <tr><td><code>APPROVED</code> <code>HANDED_OFF</code> <code>PREFLIGHT_REJECTED</code></td><td><b>디자인 확정 · 제작 준비 중</b></td><td>판매자 인쇄 확인 전까지 변경·취소 요청 가능</td></tr>
+            <tr><td><code>COMPLETED</code> <code>CANCELED</code></td><td><b>완료 · 취소됨</b></td><td>90일 동안 룸에 “재문의”, 그 뒤 읽기 전용</td></tr>
           </tbody>
         </table></div>
       </div>
-      <p class="note">상태 전이 전체는 명세 <a class="sid" href="sikup-spec.html#C-STATE-01">C-STATE-01</a>(주문 항목)·<a class="sid" href="sikup-spec.html#C-STATE-02">C-STATE-02</a>(클레임)·<a class="sid" href="sikup-spec.html#C-STATE-03">C-STATE-03</a>(디자인 요청)에 있습니다. ‘답변 필요’·‘변경 요청 중’·‘취소 중재 중’은 상태가 아니라 표시라서, 상태 라벨 옆에 붙는 배지로 디자인해도 됩니다.</p>
+      <p class="note">상태 전이 전체는 명세 <a class="sid" href="sikup-spec.html#C-STATE-01">C-STATE-01</a>(주문 항목)·<a class="sid" href="sikup-spec.html#C-STATE-02">C-STATE-02</a>(클레임)·<a class="sid" href="sikup-spec.html#C-STATE-03">C-STATE-03</a>(디자인 요청)에 있습니다. ‘답변 필요’·‘변경 요청 중’·‘취소 중재 중’은 상태가 아니라 표시라서, 상태 라벨 옆에 붙는 배지로 디자인해도 됩니다. 디자인 요청의 제작·배송 단계는 주문 항목 상태를 그대로 보여줍니다. 주문 목록 카드의 대표 상태는 항목 중 가장 앞 단계 상태입니다(예: 하나라도 디자인 진행 중이면 “디자인 진행 중”).</p>
 
       <h3 class="sub">모든 화면에 필요한 상태</h3>
       <div class="table-wrap"><table class="minw-760">
         <thead><tr><th>상태</th><th>예</th></tr></thead>
         <tbody>
           <tr><td class="nw"><b>로딩</b></td><td>목록·상세는 스켈레톤. 결제 결과 확인처럼 기다려야 하는 곳은 진행 표시와 안내 문구.</td></tr>
-          <tr><td class="nw"><b>빈 화면</b></td><td>빈 장바구니, 주문 없음, 찜 없음, 검색 결과 0건(동의어 결과 → “찾는 상품 요청하기”와 인기 카테고리).</td></tr>
-          <tr><td class="nw"><b>오류</b></td><td>홈 블록 하나 실패 → 그 블록만 숨김. 결제 실패 → 주문서로 돌아가 이유와 다음 행동. 업로드 실패 → 그 파일만 재시도.</td></tr>
-          <tr><td class="nw"><b>바뀜 알림</b></td><td>가격·재고 변경, 쿠폰 자동 해제, 디자인비 재계산(바뀐 금액 강조).</td></tr>
-          <tr><td class="nw"><b>업로드</b></td><td>올리는 중(진행률) → 검사 중 → 변환 중 → 완료 / 실패·재시도 / 악성코드 발견(다시 올려 달라는 안내) / 검사할 수 없는 파일(암호를 풀거나 나눠서 다시 올려 달라는 안내) / 확인 중(검사가 늦어져 운영팀이 확인 중). 검사 중에는 디자인 기한이 멈춘다고 안내.</td></tr>
-          <tr><td class="nw"><b>앱 전용</b></td><td>오프라인(앱에 내장), 서버 점검, 강제 업데이트, 알림·카메라·사진 권한 요청 전 이유 안내.</td></tr>
+          <tr><td class="nw"><b>빈 화면</b></td><td>빈 장바구니, 주문 없음, 찜 없음, 쿠폰 없음, 알림 없음, 검색 결과 0건(동의어 결과 → “찾는 상품 요청하기”·인기 카테고리·인기 검색어).</td></tr>
+          <tr><td class="nw"><b>오류</b></td><td>홈 블록 하나 실패 → 그 블록만 숨김. 결제 실패 → 주문서로 돌아가 이유와 다음 행동(담은 상품·쿠폰 그대로). 업로드 실패 → 그 파일만 재시도. 상세 이미지 일부 실패 → 그 자리만 [다시 불러오기].</td></tr>
+          <tr><td class="nw"><b>바뀜 알림</b></td><td>가격·재고 변경, 쿠폰 자동 해제, 디자인비 재계산(바뀐 금액 강조), 출고 예정일 변경(사유).</td></tr>
+          <tr><td class="nw"><b>일정 표시</b></td><td>예정 시각(“첫 시안 예정: 10/19(월) 18시까지”), 일정 멈춤(답변 대기·보류·파일 검사 중), 보류·자동 취소 예고(“○월 ○일 ○시 이후 보류돼요”).</td></tr>
+          <tr><td class="nw"><b>업로드</b></td><td>올리는 중(진행률, 끊기면 이어 올리기) → 검사 중 → 변환 중 → 완료 / 실패·재시도 / 악성코드 발견(다시 올려 달라는 안내) / 검사할 수 없는 파일(암호를 풀거나 나눠서 다시 올려 달라는 안내) / 확인 중(검사가 늦어져 운영팀이 확인 중) / 미리보기 없음(원본만 받기). 검사 중에는 디자인 일정이 멈춘다고 안내. 칸마다 형식·용량을 도움말로(<a href="#structure">05장</a>).</td></tr>
+          <tr><td class="nw"><b>외부 서비스 장애</b></td><td>결제수단별 점검 배너(PG 장애), “본인인증 서비스 점검 중” 배너(가입·휴대폰 번호 변경·아이디 찾기), 채팅 상담 장애 → FAQ와 고객센터 이메일.</td></tr>
+          <tr><td class="nw"><b>앱 전용</b></td><td>오프라인·서버 장애(앱에 내장), 강제 업데이트, 지원하지 않는 OS, 알림·카메라·사진 권한 요청 전 이유 안내, 알림 권한을 거부하면 “중요한 알림은 알림톡으로 보내요”. 계획 점검(예상 종료 시각)은 웹·앱 공통.</td></tr>
         </tbody>
       </table></div>
     </section>
 
-    <!-- ================= 09 RULES ================= -->
+    <!-- ================= 10 RULES ================= -->
     <section class="sec" id="rules">
-      <div class="sec-head"><div class="sec-num">09</div><h2>꼭 지킬 표시 규칙</h2><p>법·약관·분쟁 대비 때문에 반드시 보여줘야 하거나, 이렇게 보여주면 안 되는 것들입니다. 디자인 단계에서 자리를 잡아 두지 않으면 나중에 화면을 크게 고쳐야 합니다.</p></div>
+      <div class="sec-head"><div class="sec-num">10</div><h2>꼭 지킬 표시 규칙</h2><p>법·약관·분쟁 대비 때문에 반드시 보여줘야 하거나, 이렇게 보여주면 안 되는 것들입니다. 디자인 단계에서 자리를 잡아 두지 않으면 나중에 화면을 크게 고쳐야 합니다.</p></div>
 
       <div class="table-wrap"><table class="minw-900">
         <thead><tr><th>규칙</th><th>어디에</th><th>명세</th></tr></thead>
@@ -1050,62 +1342,76 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
           <tr><td>고객에게 보이는 가격은 모두 VAT 포함. 사업자 회원은 공급가를 함께, 비로그인은 일반가 + “사업자가 보기”.</td><td>상품 카드·상세·장바구니·주문서</td><td><a class="sid" href="sikup-spec.html#U-SRCH-01">U-SRCH-01</a></td></tr>
           <tr><td>할인 전 가격(취소선)은 근거가 있을 때만 표시. 근거 없는 “정가”를 만들지 않습니다. 일반 회원·비로그인 화면에 사업자가가 보이면 안 됩니다(할인 전 가격 포함).</td><td>상품 카드·상세</td><td><a class="sid" href="sikup-spec.html#U-PDP-01">U-PDP-01</a></td></tr>
           <tr><td>상품 상세 아래쪽에 판매자 정보(상호·대표자·사업자번호·통신판매업 신고번호·주소·연락처)와 “통신판매중개자이며 거래 당사자가 아님” 고지. <b>숨기지 않습니다.</b> 상품 문의는 판매자 연락처가 아니라 [문의하기]로 받는다고 안내.</td><td>상품 상세</td><td><a class="sid" href="sikup-spec.html#U-PDP-01">U-PDP-01</a></td></tr>
-          <tr><td>식업이 직접 파는 것(디자인 서비스·멤버십·PB)은 판매자가 다르다는 걸 구분해 표시.</td><td>상품 상세·주문서</td><td>기획서 07장 I</td></tr>
-          <tr><td>웹 화면 맨 아래(푸터)에 회사 사업자 정보, 통신판매중개자 고지, 구매안전서비스(에스크로) 표시, 이용약관·<b>개인정보 처리방침</b> 링크. 처리방침 링크는 다른 링크보다 눈에 띄게.</td><td>웹 전체 하단, 앱은 마이·고객센터</td><td>기획서 07장 I</td></tr>
+          <tr><td>식업이 직접 파는 것(디자인 서비스·멤버십·PB)은 판매자가 다르다는 걸 구분해 표시. 증빙도 식업 명의로 따로 나갑니다.</td><td>상품 상세·주문서·주문 상세</td><td>기획서 07장 I · <a class="sid" href="sikup-spec.html#D-REQ-04">D-REQ-04</a></td></tr>
+          <tr><td>웹 화면 맨 아래(푸터)에 회사 사업자 정보, 통신판매중개자 고지, 구매안전서비스(에스크로) 표시, 이용약관·디자인 서비스 약관·<b>개인정보 처리방침</b> 링크. 처리방침 링크는 다른 링크보다 눈에 띄게.</td><td>웹 전체 하단, 앱은 마이·고객센터</td><td>관련 법령 · 기획서 07장 I</td></tr>
           <tr><td>친환경·생분해·인증 배지는 검수된 서류가 있을 때만.</td><td>상품 카드·상세</td><td><a class="sid" href="sikup-spec.html#U-PDP-04">U-PDP-04</a></td></tr>
           <tr><td>광고 상품은 “광고” 표시, 일반 결과와 섞지 않음(3차, 자리만).</td><td>검색 결과·홈</td><td><a class="sid" href="sikup-spec.html#U-SRCH-04">U-SRCH-04</a></td></tr>
           <tr><td>증빙은 결제수단에 맞는 것만 고를 수 있게. 카드·간편결제는 카드 전표가 증빙이라 세금계산서·현금영수증을 고를 수 없습니다. 세금계산서를 발급할 수 없는 판매자 상품은 “현금영수증만 가능”을 표시합니다.</td><td>상품 상세·주문서</td><td><a class="sid" href="sikup-spec.html#U-ORD-05">U-ORD-05</a></td></tr>
-          <tr><td>계좌이체·가상계좌 환불은 등록한 환불 계좌로 보냅니다. 환불 계좌는 예금주 확인(계좌 인증) 뒤에 등록되고, 계좌가 없으면 입력을 요청합니다.</td><td>취소·반품 화면·마이</td><td><a class="sid" href="sikup-spec.html#U-MY-02">U-MY-02</a><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a></td></tr>
+          <tr><td>계좌이체·가상계좌에는 구매안전서비스(에스크로) 적용을 표시합니다. 환불은 등록한 환불 계좌로 보내고, 환불 계좌는 예금주 확인(계좌 인증) 뒤에 등록되며 계좌가 없으면 입력을 요청합니다.</td><td>주문서·취소·반품 화면·마이</td><td><a class="sid" href="sikup-spec.html#C-PAY-01">C-PAY-01</a><a class="sid" href="sikup-spec.html#U-MY-02">U-MY-02</a><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a></td></tr>
+          <tr><td>화물 “착불”은 결제 금액에 넣지 않고 상품 상세와 주문서에 눈에 띄게 표시합니다. 제주·도서산간 추가 배송비도 미리 보여줍니다.</td><td>상품 상세·주문서</td><td><a class="sid" href="sikup-spec.html#C-PRICE-03">C-PRICE-03</a></td></tr>
+          <tr><td>주문서에는 “주문 상품과 구매 조건을 확인했어요” 필수 동의를 둡니다(일반 주문 포함).</td><td>주문서</td><td><a class="sid" href="sikup-spec.html#U-ORD-02">U-ORD-02</a></td></tr>
 
           <tr class="grp"><td colspan="3">맞춤 제작</td></tr>
-          <tr><td>판비 옆 판 안내: “판비는 인쇄판 제작비입니다. 인쇄판은 제작 파트너가 보관하며 고객에게 넘겨드리지 않습니다. 보관 기간(○개월) 안에 식업에서 재주문하면 판비가 면제됩니다.” (문구는 법률 자문 전 초안)</td><td>상품 상세 맞춤 영역·주문서</td><td><a class="sid" href="sikup-spec.html#U-PDP-03">U-PDP-03</a></td></tr>
+          <tr><td>판비 옆 판 안내: “판비는 인쇄판 제작비입니다. 인쇄판은 제작 파트너가 보관하며 고객에게 넘겨드리지 않습니다. 보관 기간(○개월) 안에 식업에서 재주문하면 판비가 면제됩니다.” (문구는 법률 자문 전 초안이라 원문 그대로 둡니다. 문구 속 ‘제작 파트너’를 고객 화면 말 ‘판매자’로 바꿀지는 자문 뒤 함께 정합니다)</td><td>상품 상세 맞춤 영역·주문서</td><td><a class="sid" href="sikup-spec.html#U-PDP-03">U-PDP-03</a></td></tr>
+          <tr><td>맞춤형 요청서 확인 단계에서 소재 권리 보증·단계별 환불 규정·디자인 권리(식업 보유, 매장 이용권) 동의를 받고, 다른 브랜드의 상표·캐릭터 요청은 거절될 수 있다고 알립니다.</td><td>맞춤형 요청서</td><td><a class="sid" href="sikup-spec.html#D-REQ-03">D-REQ-03</a></td></tr>
+          <tr><td>자체 파일은 “검수는 인쇄할 수 있는지만 봐요(디자인·문구는 확인하지 않아요)”를 미리 알리고, 올린 파일이 남의 권리를 침해하지 않는다는 권리 보증 동의를 받습니다.</td><td>자체 파일 업로드</td><td><a class="sid" href="sikup-spec.html#D-OWN-01">D-OWN-01</a></td></tr>
           <tr><td>맞춤 항목이 있으면 주문서에 “디자인 확정 후 생산 시작, 디자인 단계별 환불 규정” 고지와 동의. 디자인비를 무료로 받는 맞춤형은 결제 버튼 바로 위에 “첫 시안을 받은 뒤 취소하면 디자인비 39,000원을 공제합니다” 체크를 따로.</td><td>주문서</td><td><a class="sid" href="sikup-spec.html#D-REQ-04">D-REQ-04</a></td></tr>
           <tr><td>재주문은 이전 확정본(시안·인쇄 문구 전문) 확인 체크와 취소·반품 제한 동의.</td><td>주문서(재주문)</td><td><a class="sid" href="sikup-spec.html#D-RE-01">D-RE-01</a></td></tr>
+          <tr><td>식업 보증 문구: “식업에서 재주문하면 불량·오인쇄 때 다시 만들거나 환불해 드립니다.” 플랫폼 밖 거래에는 이 보증이 없다는 차이를 드러내는 문구입니다.</td><td>다시 사기·재주문 화면·주문서(재주문)·출고 알림</td><td><a class="sid" href="sikup-spec.html#D-RE-01">D-RE-01</a></td></tr>
           <tr><td>시안 확정은 체크리스트 5개를 모두 체크해야 활성. 취소·반품 제한 동의는 다른 항목과 섞지 않고 따로. 포트폴리오 활용 동의는 선택이고 기본 해제.</td><td>시안 확정</td><td><a class="sid" href="sikup-spec.html#D-APV-01">D-APV-01</a></td></tr>
           <tr><td>공식 결정은 버튼으로만. 대화 영역과 [수정 요청]·[이 시안으로 확정]을 시각적으로 분리.</td><td>협의 룸·시안 보기</td><td><a class="sid" href="sikup-spec.html#D-ROOM-03">D-ROOM-03</a></td></tr>
           <tr><td>고객에게 보이는 시안에는 워터마크(회사 로고·“시안”). 다운로드는 워터마크가 들어간 저해상도만.</td><td>시안 보기</td><td><a class="sid" href="sikup-spec.html#D-ROOM-03">D-ROOM-03</a></td></tr>
-          <tr><td>대화·핀에 쓴 연락처·외부 링크는 자동으로 가려짐(예: 010-****-****) + 안내 문구. 인쇄할 번호는 ‘문구 변경’ 칸으로.</td><td>협의 룸·수정 요청</td><td><a class="sid" href="sikup-spec.html#D-ROOM-06">D-ROOM-06</a></td></tr>
+          <tr><td>대화·핀에 쓴 휴대폰·전화번호, 이메일, 메신저 ID·오픈채팅 링크, 계좌번호, 허용 목록 밖 링크는 자동으로 가려짐(예: 010-****-****) + 안내 문구. 인스타그램·지도 같은 허용 링크는 그대로 보입니다. 인쇄할 번호는 ‘문구 변경’ 칸으로, 참고 링크는 ‘참고 링크’ 칸으로.</td><td>협의 룸·수정 요청</td><td><a class="sid" href="sikup-spec.html#D-ROOM-06">D-ROOM-06</a></td></tr>
           <tr><td>채팅 상담 버튼은 협의 룸에서 숨김(디자인 대화와 섞이지 않게).</td><td>협의 룸</td><td><a class="sid" href="sikup-spec.html#U-CS-03">U-CS-03</a></td></tr>
-          <tr><td>확정 후 변경·취소 요청은 파트너가 인쇄를 확인하기 전까지만 받습니다. 취소는 본사 중재이며, 요청할 때 공제 내역(디자인비 + 판을 만들었다고 증빙되면 판비, 최대 낸 판비)을 보여 주고 동의를 받습니다.</td><td>주문 상세·협의 룸·취소 화면</td><td><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a></td></tr>
+          <tr><td>확정 후 변경·취소 요청은 판매자가 인쇄를 확인하기 전까지만 받습니다. 취소는 본사 중재이며, 요청할 때 공제 내역(디자인비 + 판을 만들었다고 증빙되면 판비, 최대 낸 판비)을 보여 주고 동의를 받습니다.</td><td>주문 상세·협의 룸·취소 화면</td><td><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a></td></tr>
           <tr><td>디자인 부가 결제는 결제 버튼 위에 환불 조건을 보여 줍니다: 추가 수정·보정은 작업을 시작하면 환불되지 않음, 원본 파일은 내려받기 전 7일 안에만 환불(내려받은 뒤에는 청약철회 제한, 법률 검토 필요). 맞춤형 전환 결제 때는 맞춤형 취소 공제 규정을 다시 알리고 동의를 받습니다.</td><td>수정 요청·자체 파일 반려·시안 확정·주문 상세</td><td><a class="sid" href="sikup-spec.html#D-OPT-01">D-OPT-01</a><a class="sid" href="sikup-spec.html#D-REQ-02">D-REQ-02</a></td></tr>
+          <tr><td>원본 파일 이용 범위: 우리 매장용이면 다른 업체에서 인쇄할 수 있고, 재판매·양도는 안 되며, 식업 밖에서 인쇄한 것에는 식업 보증이 없습니다.</td><td>원본 파일 구매·다운로드</td><td><a class="sid" href="sikup-spec.html#D-OPT-01">D-OPT-01</a></td></tr>
 
           <tr class="grp"><td colspan="3">회원·동의·알림</td></tr>
-          <tr><td>가입 동의는 전체 동의 + 개별 항목, 필수/선택 구분, 선택 항목은 기본으로 체크하지 않음. 마케팅 수신은 채널별(앱 푸시·브랜드 메시지·이메일)과 야간(21~08시)을 따로. 각 항목 전문 “보기”.</td><td>가입·알림 설정</td><td><a class="sid" href="sikup-spec.html#U-MEM-04">U-MEM-04</a></td></tr>
+          <tr><td>가입 동의는 전체 동의 + 개별 항목, 필수/선택 구분, 선택 항목은 기본으로 체크하지 않음. 마케팅 수신은 채널별(앱 푸시·브랜드 메시지·이메일)과 야간(21~08시)을 따로, 개인정보 마케팅 활용도 따로. 각 항목 전문 “보기”. 필수 약관이 바뀌면 다음 로그인 때 다시 동의받습니다.</td><td>가입·알림 설정·재동의</td><td><a class="sid" href="sikup-spec.html#U-MEM-04">U-MEM-04</a></td></tr>
+          <tr><td>마케팅 수신 동의를 바꾸면 처리 결과(일시·내용)를 보여 줍니다.</td><td>알림 설정</td><td><a class="sid" href="sikup-spec.html#U-MY-06">U-MY-06</a></td></tr>
           <tr><td>만 19세 이상만 가입. 미만이면 안내하고 멈춤.</td><td>가입</td><td><a class="sid" href="sikup-spec.html#U-MEM-03">U-MEM-03</a></td></tr>
           <tr><td>주문·배송·디자인 같은 거래 알림은 끌 수 없는 “필수 알림”으로 표시. 고객이 바꿀 수 있는 건 마케팅 알림뿐.</td><td>알림 설정</td><td><a class="sid" href="sikup-spec.html#U-MY-06">U-MY-06</a></td></tr>
+          <tr><td>탈퇴하면 확정한 디자인을 다시 보거나 재주문할 수 없다는 점을 알리고, 원본 파일 구매를 안내합니다(탈퇴 처리는 법률 자문 전 초안).</td><td>계정·탈퇴</td><td><a class="sid" href="sikup-spec.html#U-MEM-08">U-MEM-08</a></td></tr>
           <tr><td>앱 권한(알림·카메라·사진)은 처음 필요할 때 이유를 먼저 보여주고 요청. 필수/선택 구분.</td><td>앱</td><td><a class="sid" href="sikup-spec.html#C-APP-02">C-APP-02</a></td></tr>
           <tr><td>iOS 앱에서는 원본 파일·멤버십 결제를 웹으로 안내할 수 있습니다(인앱결제 대상인지 확인 중). 해당 버튼 문구·동작이 바뀔 수 있게 여유를 두세요.</td><td>원본 파일 구매·멤버십</td><td><a class="sid" href="sikup-spec.html#C-APP-03">C-APP-03</a></td></tr>
         </tbody>
       </table></div>
-      <div class="callout warn" style="margin-top:14px"><span class="ic">!</span><div>위 문구 중 일부(판 안내, 무료 디자인 취소 공제, 청약철회 제한 동의, 원본 파일 다운로드 뒤 환불 제한)는 <b>법률 자문을 받기 전 초안</b>입니다. 문구가 바뀌어도 자리는 그대로 쓰도록, 두세 줄 길이 변화에 버티게 디자인해 주세요.</div></div>
+      <div class="callout warn" style="margin-top:14px"><span class="ic">!</span><div>위 문구 중 일부(판 안내, 무료 디자인 취소 공제, 청약철회 제한 동의, 원본 파일 다운로드 뒤 환불 제한, 탈퇴 처리)는 <b>법률 자문을 받기 전 초안</b>입니다. 문구가 바뀌어도 자리는 그대로 쓰도록, 두세 줄 길이 변화에 버티게 디자인해 주세요.</div></div>
     </section>
 
-    <!-- ================= 10 LATER ================= -->
+    <!-- ================= 11 LATER ================= -->
     <section class="sec" id="later">
-      <div class="sec-head"><div class="sec-num">10</div><h2>나중에 붙을 것</h2><p>지금은 디자인하지 않지만, 오픈 뒤 3개월~1년 안에 붙는 기능입니다. 지금 화면에 들어갈 자리만 생각해 두면 나중에 갈아엎지 않아도 됩니다.</p></div>
+      <div class="sec-head"><div class="sec-num">11</div><h2>나중에 붙을 것</h2><p>지금은 디자인하지 않지만, 오픈 뒤 3개월(2차)~1년(3차) 안에 붙는 기능입니다. 지금 화면에 들어갈 자리만 생각해 두면 나중에 갈아엎지 않아도 됩니다.</p></div>
       <div class="table-wrap"><table class="minw-760">
         <thead><tr><th>기능</th><th>단계</th><th>지금 화면에서 고려할 자리</th></tr></thead>
         <tbody>
-          <tr><td class="nw"><b>리뷰·별점</b></td><td><span class="b p2">2차</span></td><td>상품 카드의 평점, 상품 상세의 리뷰 영역, 주문 상세의 [리뷰 쓰기]. 대가를 받은 리뷰는 “제공받은 리뷰” 표시.</td></tr>
-          <tr><td class="nw"><b>사장님 멤버십</b></td><td><span class="b p2">2차</span></td><td>마이 홈 배너, 멤버 특가, 상품 상세 “이번 달 무료 디자인 1회 남음”, 주문서 혜택 줄, “멤버십으로 ○원 아꼈어요”.</td></tr>
-          <tr><td class="nw"><b>포인트·등급</b></td><td><span class="b p2">2차</span></td><td>주문서 포인트 줄, 마이 홈의 등급·포인트.</td></tr>
-          <tr><td class="nw"><b>기획전·창업 패키지</b></td><td><span class="b p2">2차</span></td><td>홈 블록, “한 번에 담기”.</td></tr>
+          <tr><td class="nw"><b>리뷰·별점</b></td><td><span class="b p2">2차</span></td><td>상품 카드의 평점, 상품 상세의 리뷰 영역, 주문 상세의 [리뷰 쓰기], 정렬 “리뷰 많은순”. 대가를 받은 리뷰는 “제공받은 리뷰” 표시.</td></tr>
+          <tr><td class="nw"><b>사장님 멤버십</b></td><td><span class="b p2">2차</span></td><td>마이 홈 배너, 멤버 특가, 상품 상세 “이번 달 무료 디자인 1회 남음”, 주문서 디자인비 “무료(멤버십)”·혜택 줄, “멤버십으로 ○원 아꼈어요”. 멤버십 회원에게는 급행 옵션을 보여주지 않음.</td></tr>
+          <tr><td class="nw"><b>포인트·등급</b></td><td><span class="b p2">2차</span></td><td>주문서 포인트 줄, 마이 홈의 등급·포인트, 재주문 적립(1%).</td></tr>
+          <tr><td class="nw"><b>판매자 쿠폰</b></td><td><span class="b p2">2차</span></td><td>주문서 판매자 할인 줄(즉시 할인 아래), 상품 상세 쿠폰 받기.</td></tr>
+          <tr><td class="nw"><b>기획전·창업 패키지</b></td><td><span class="b p2">2차</span></td><td>홈 블록, “한 번에 담기”, 맞춤 가능 품목의 “디자인 통일하기”.</td></tr>
           <tr><td class="nw"><b>브랜딩 사례</b></td><td><span class="b p2">2차</span></td><td>홈 블록, 상품 상세 “디자인 사례 더 보기”, 요청서의 “이 스타일로 요청”.</td></tr>
-          <tr><td class="nw"><b>디자인 보관함·다른 품목에 적용</b></td><td><span class="b p2">2차</span></td><td>다시 사기 탭(매장별 확정 디자인 모음).</td></tr>
-          <tr><td class="nw"><b>다매장</b></td><td><span class="b p2">2차</span></td><td>상단 매장 선택기, 주문 목록 매장 필터.</td></tr>
+          <tr><td class="nw"><b>디자인 보관함 · 다른 품목에 적용</b></td><td><span class="b p2">2차</span></td><td>마이 &gt; 내 디자인(매장별 디자인 카드: 미리보기·품목·확정일·마지막 주문일·보관 만료일 / 버튼: 재주문·수정해서 재주문·다른 품목에 적용·원본 파일 구매·확정 확인서). 디자인 방식 선택에 “적용” 카드가 하나 늘어남. 다시 사기 탭과 어떻게 이을지는 <a href="#questions">Q2</a>와 함께.</td></tr>
+          <tr><td class="nw"><b>다매장</b></td><td><span class="b p2">2차</span></td><td>상단 매장 선택기, 주문 목록 매장 필터, 협의 룸에 매장 담당자 초대.</td></tr>
           <tr><td class="nw"><b>상품 Q&amp;A · 샘플 신청 · 대량 견적</b></td><td><span class="b p2">2차</span></td><td>상품 상세의 버튼 자리(지금은 [문의하기]가 채팅 상담으로 연결).</td></tr>
           <tr><td class="nw"><b>네이버·구글 로그인</b></td><td><span class="b p2">2차</span></td><td>로그인 화면의 버튼 2개.</td></tr>
-          <tr><td class="nw"><b>급행·교정쇄·로고 제작·브랜드 패키지</b></td><td><span class="b p2">2차</span></td><td>주문서의 디자인 유료 옵션 줄, 디자인 서비스 상품.</td></tr>
-          <tr><td class="nw"><b>재구매 리마인드·추천</b></td><td><span class="b p2">2차</span>~<span class="b p3">3차</span></td><td>홈·장바구니·주문 완료의 “함께 많이 사는 상품” 블록.</td></tr>
-          <tr><td class="nw"><b>광고</b></td><td><span class="b p3">3차</span></td><td>검색 결과·카테고리 상단 광고 자리(20개 중 최대 4개) + “광고” 표시.</td></tr>
+          <tr><td class="nw"><b>급행 · 교정쇄</b></td><td><span class="b p2">2차</span></td><td>주문서의 디자인 유료 옵션 줄(급행은 멤버십 회원에게 숨김). 교정쇄는 주문 상세 타임라인에 “교정쇄 제작 → 교정쇄 확인([승인]/[반려]) → 본생산” 단계와 할 일 배지가 붙습니다.</td></tr>
+          <tr><td class="nw"><b>출고 전 검수 사진</b></td><td><span class="b p2">2차</span></td><td>주문 상세 제작 단계에 실물 사진 1~3장과 [출고 전 문의](24시간 안).</td></tr>
+          <tr><td class="nw"><b>로고 제작 · 브랜드 패키지</b></td><td><span class="b p2">2차</span></td><td>맞춤형 요청서 “로고 없음”의 [로고 제작 의뢰], 디자인비 계산 아래 “브랜드 패키지 99,000원이 더 저렴해 자동 적용” 줄.</td></tr>
+          <tr><td class="nw"><b>맞춤 품목 재주문 리마인드</b></td><td><span class="b p2">2차</span></td><td>예상 소진 전에 보내는 푸시·브랜드 메시지(“(광고)” 표시, 마케팅 동의자만)와 “이 알림 그만 받기”.</td></tr>
+          <tr><td class="nw"><b>그 밖의 2차 자리</b></td><td><span class="b p2">2차</span></td><td>찜 폴더, 휴면 계정 복구 화면, 자체 문의함(1:1 문의 이력), 오타 보정 검색어 제안, 지정일 배송(매장 오픈일 맞춤), 재입고 알림 받기.</td></tr>
+          <tr><td class="nw"><b>추천 블록</b></td><td><span class="b p3">3차</span></td><td>홈·장바구니·주문 완료의 “함께 많이 사는 상품”, “같은 업종 사장님들이 많이 산 상품”.</td></tr>
+          <tr><td class="nw"><b>광고</b></td><td><span class="b p3">3차</span></td><td>먼저 정액 광고(홈 메인 배너, 카테고리 첫 줄 고정, 기획전 노출), 다음에 검색·카테고리 목록 20개 중 1·2·7·12번째 고정 광고 카드. 모두 “광고” 표시.</td></tr>
           <tr><td class="nw"><b>정기배송 · 셀프 디자인 에디터</b></td><td><span class="b p3">3차</span></td><td>상품 상세 “정기배송”, 템플릿형 요청의 실시간 미리보기.</td></tr>
+          <tr><td class="nw"><b>식업 직영(PB)</b></td><td><span class="b p3">3차</span></td><td>“식업 직영” 배지, 판매자 표시 “식업”.</td></tr>
         </tbody>
       </table></div>
     </section>
 
-    <!-- ================= 11 DELIVERY ================= -->
+    <!-- ================= 12 DELIVERY ================= -->
     <section class="sec" id="delivery">
-      <div class="sec-head"><div class="sec-num">11</div><h2>산출물·전달</h2><p>개발(1인)이 그대로 옮기기 쉽게 정리해 주시면 됩니다.</p></div>
+      <div class="sec-head"><div class="sec-num">12</div><h2>산출물·전달</h2><p>개발(1인)이 그대로 옮기기 쉽게 정리해 주시면 됩니다.</p></div>
 
       <div class="grid g2">
         <div class="card">
@@ -1113,17 +1419,19 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
           <ul>
             <li><b>00 Cover:</b> 버전, 변경 이력, 결정 메모.</li>
             <li><b>01 Foundations:</b> 컬러, 글꼴·크기 단계, 간격, 모서리, 그림자, 아이콘.</li>
-            <li><b>02 Components:</b> 08장 컴포넌트와 상태별 변형(기본·눌림·비활성·오류).</li>
-            <li><b>03 Mobile:</b> 06장 화면(360 기준).</li>
+            <li><b>02 Components:</b> 09장 컴포넌트와 상태별 변형(기본·눌림·비활성·오류).</li>
+            <li><b>03 Mobile:</b> 07장 화면(360 기준).</li>
             <li><b>04 PC:</b> PC 표시가 붙은 7개 화면(1280 기준).</li>
-            <li><b>05 Flows:</b> 05장 흐름 3개 프로토타입.</li>
-            <li><b>06 App:</b> 스플래시, 오프라인·점검·업데이트, 권한 안내, 앱 아이콘.</li>
+            <li><b>05 Flows:</b> 06장 흐름 A·B·C 프로토타입(모바일), 흐름 D·E 화면 흐름.</li>
+            <li><b>06 App:</b> 스플래시, 오프라인·서버 장애·업데이트·지원 안 하는 OS, 권한 안내, 앱 아이콘(iOS 1024px 원본, Android 전경·배경 레이어).</li>
           </ul>
         </div>
         <div class="card">
           <h4>토큰과 에셋</h4>
           <ul>
             <li>토큰 이름은 쓰임 기준으로(예: <code>text/primary</code>, <code>bg/surface</code>, <code>status/action-needed</code>). 색 이름(green-500)만으로 짓지 않으면 Tailwind로 옮기기 쉽고, 나중에 다크 모드도 붙이기 쉽습니다.</li>
+            <li>토큰은 Figma 변수로 만들고, 개발이 Tailwind 설정에 옮길 수 있게 이름·값 표(또는 JSON)로도 내보내 주세요. 컴포넌트 이름과 변형 이름(예: <code>Button/Primary/Disabled</code>)도 같은 규칙으로.</li>
+            <li>글자 크기는 모바일 본문 15px 이상, 보조 글자 13px 이상을 권합니다(바쁜 손·작은 화면, 원칙 6).</li>
             <li>글꼴은 웹폰트 1종 권장. 상업용으로 무료인 글꼴이면 라이선스 걱정이 없습니다(인쇄물용 폰트 라이선스와는 별개).</li>
             <li>아이콘은 SVG 한 세트(같은 선 두께·모서리).</li>
             <li>사진·일러스트를 쓰면 WebP로 내보낼 수 있게 원본을 남겨 주세요.</li>
@@ -1131,35 +1439,57 @@ footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);color
         </div>
       </div>
 
+      <h3 class="sub">화면에 넣을 예시 내용</h3>
+      <p class="t2" style="margin-bottom:12px">가짜 글(Lorem ipsum)이나 “상품명” 같은 자리 글 대신 실제와 비슷한 내용으로 채워 주세요. 사장님이 실제로 보게 될 길이와 밀도에서 디자인을 판단해야 합니다. 아래는 문서 전체에서 같이 쓰는 예시입니다(이름은 모두 가상).</p>
+      <div class="table-wrap"><table class="minw-760">
+        <thead><tr><th>항목</th><th>보통 예시</th><th>긴 값 · 극단 예시</th></tr></thead>
+        <tbody>
+          <tr><td class="nw"><b>매장 · 고객</b></td><td>을지로 손칼국수(한식, 사업자 회원) · 카페 오늘(카페, 일반 회원)</td><td>○○치킨 가맹본부 구매팀(프랜차이즈, PC로 주문)</td></tr>
+          <tr><td class="nw"><b>상품명</b></td><td>크라프트 수저집 40×240mm 1,000매 · 무지 종이컵 6.5oz 1,000개 · 업소용 물티슈 400매 · 크라프트 쇼핑백 중 50장</td><td>친환경 생분해 PLA 코팅 크라프트 수저집 숟가락·젓가락 겸용 40×240mm 1박스 1,000매</td></tr>
+          <tr><td class="nw"><b>판매자</b></td><td>○○포장 · △△인쇄</td><td>주식회사 ○○○패키징 경기 화성 제2공장</td></tr>
+          <tr><td class="nw"><b>금액</b></td><td>32,000원 · 374,000원 · 1매당 28원~</td><td>1,234,000원(7자리), 공급가·부가세가 함께 붙은 줄</td></tr>
+          <tr><td class="nw"><b>인쇄 문구</b></td><td>을지로 손칼국수 · @eulji_noodle</td><td>매장명 + 영업시간 + 전화번호 + SNS + 주소가 모두 들어간 세 줄 문구</td></tr>
+          <tr><td class="nw"><b>디자이너</b></td><td>디자이너 하루(활동명) · 평일 09~18시</td><td>디자이너가 바뀌었을 때의 안내 메시지</td></tr>
+          <tr><td class="nw"><b>기한 · 시각</b></td><td>다음 시안 예정 10/16(금) · 응답 기다리는 중 2일째</td><td>보류 예고(“내일 보류돼요”), 연휴를 끼어 길어진 예정일</td></tr>
+          <tr><td class="nw"><b>주문</b></td><td>판매자 2곳 · 항목 3개(일반 1 + 맞춤 2)</td><td>판매자 4곳 · 항목 9개, 항목마다 상태가 다른 주문</td></tr>
+        </tbody>
+      </table></div>
+
       <h3 class="sub">넘기기 전 확인할 것</h3>
       <div class="table-wrap"><table class="minw-760">
         <thead><tr><th>항목</th><th>기준</th></tr></thead>
         <tbody>
-          <tr><td class="nw"><b>상태별 화면</b></td><td>빈 화면·로딩·오류가 핵심 화면마다 있음(08장).</td></tr>
+          <tr><td class="nw"><b>상태별 화면</b></td><td>빈 화면·로딩·오류가 핵심 화면마다 있음(09장). <a href="#screens">07장</a> “변형 · 상태” 칸의 경우마다 프레임이나 컴포넌트 변형이 있음.</td></tr>
+          <tr><td class="nw"><b>버튼이 보이는 조건</b></td><td>주문 상세·협의 룸처럼 상태에 따라 버튼이 바뀌는 화면은 상태별 프레임이나 표로 정리(어느 상태에 어떤 버튼이 보이는지).</td></tr>
+          <tr><td class="nw"><b>실제 문구</b></td><td>위 예시 내용과 실제 안내·고지 문구로 채움. 가짜 글 없음.</td></tr>
+          <tr><td class="nw"><b>컴포넌트·토큰</b></td><td>컴포넌트는 변형(기본·눌림·비활성·오류·로딩)을 가진 Figma 컴포넌트로, 컬러·글자·간격은 변수(토큰)로. 이름은 쓰임 기준.</td></tr>
           <tr><td class="nw"><b>긴 값</b></td><td>2줄 넘는 상품명, 7자리 금액(1,234,000원), 긴 판매자명, 3줄짜리 고지 문구에서 깨지지 않음.</td></tr>
-          <tr><td class="nw"><b>터치·글자</b></td><td>터치 영역 44px 이상, 본문 대비 4.5:1 이상, 본문 글자 너무 작지 않게.</td></tr>
+          <tr><td class="nw"><b>터치·글자</b></td><td>터치 영역 44px 이상, 본문 대비 4.5:1 이상, 본문 15px·보조 13px 이상 권장.</td></tr>
           <tr><td class="nw"><b>색만으로 구분하지 않기</b></td><td>상태 배지·필수 표시·오류에 글자나 아이콘을 함께.</td></tr>
           <tr><td class="nw"><b>앱 안전 영역</b></td><td>하단 탭·하단 고정 버튼이 홈 인디케이터와 겹치지 않음, 채팅 상담 버튼과도 겹치지 않음.</td></tr>
           <tr><td class="nw"><b>텍스트는 텍스트로</b></td><td>배너·안내를 이미지 안 글자로 만들지 않음(검색 노출·수정).</td></tr>
+          <tr><td class="nw"><b>글자 키움 · 키보드</b></td><td>휴대폰 글자 크기를 키워도 버튼·가격이 잘리지 않음. PC는 키보드 포커스가 보이고, 아이콘만 있는 버튼에도 이름(읽어 줄 글)이 있음.</td></tr>
         </tbody>
       </table></div>
     </section>
 
-    <!-- ================= 12 QUESTIONS ================= -->
+    <!-- ================= 13 QUESTIONS ================= -->
     <section class="sec" id="questions">
-      <div class="sec-head"><div class="sec-num">12</div><h2>함께 정할 것</h2><p>디자인을 시작하기 전이나 초안을 보면서 같이 정할 것들입니다. 초록색은 제안안입니다.</p></div>
+      <div class="sec-head"><div class="sec-num">13</div><h2>함께 정할 것</h2><p>디자인을 시작하기 전이나 초안을 보면서 같이 정할 것들입니다. 초록색은 제안안입니다.</p></div>
       <div class="dec">
-        <div class="dq"><div class="q"><i>Q1</i>브랜드 기초를 이번에 함께 만들까요?</div><p>로고·브랜드 컬러가 아직 없습니다. 상표 출원도 앞두고 있습니다. 앱 디자인 전에 기초를 먼저 잡아야 합니다.</p><div class="opts"><span class="rec">앱 디자인과 함께 로고·컬러까지</span><span>로고는 따로 맡기고 컬러·글꼴만</span></div></div>
+        <div class="dq"><div class="q"><i>Q1</i>브랜드 기초를 이번에 함께 만들까요?</div><p>로고·브랜드 컬러가 아직 없습니다. 상표 출원도 앞두고 있습니다. 앱 디자인 전에 기초를 먼저 잡아야 합니다. 로고는 시안 워터마크·파비콘·앱 아이콘처럼 아주 작은 크기와 인쇄물에서도 쓰입니다. “식업”은 업종을 뜻하는 말이라 상표 식별력을 위해 도형 요소도 함께 검토해 주세요(변리사 확인 예정). 로고가 늦어지면 임시 워드마크로 화면 작업을 먼저 진행하는 방법도 있습니다.</p><div class="opts"><span class="rec">앱 디자인과 함께 로고·컬러까지</span><span>로고는 따로 맡기고 컬러·글꼴만</span></div></div>
         <div class="dq"><div class="q"><i>Q2</i>하단 탭 구성</div><p>반복 구매와 진행 중인 디자인을 탭으로 올린 제안입니다.</p><div class="opts"><span class="rec">홈 · 카테고리 · 다시 사기 · 디자인 · 마이</span><span>장바구니를 탭으로</span><span>다른 구성</span></div></div>
         <div class="dq"><div class="q"><i>Q3</i>일반+맞춤 상품의 하단 버튼</div><p>같은 상품을 무지로 살 수도, 로고를 넣어 주문할 수도 있습니다. 두 경로를 하단 고정 바에서 어떻게 나눌지 정해 주세요.</p><div class="opts"><span class="rec">하단 바는 일반 구매, 맞춤은 본문 영역 버튼</span><span>하단 바에 [로고 넣기] 버튼 추가</span><span>처음에 “무지 / 로고 넣기” 선택</span></div></div>
         <div class="dq"><div class="q"><i>Q4</i>협의 룸 모바일 구성</div><p>대화와 시안 보기를 한 화면에서 어떻게 오갈지.</p><div class="opts"><span class="rec">대화 중심 + 최신 시안 카드 → 시안 전체 화면</span><span>시안 중심 + 대화는 아래에서 올리는 시트</span></div></div>
         <div class="dq"><div class="q"><i>Q5</i>다크 모드</div><p>MVP 필수는 아닙니다. 토큰만 쓰임 기준으로 나눠 두면 나중에 붙일 수 있습니다.</p><div class="opts"><span class="rec">MVP 제외, 토큰만 대비</span><span>MVP부터 지원</span></div></div>
         <div class="dq"><div class="q"><i>Q6</i>사진·일러스트</div><p>홈 배너와 “우리 가게 로고 넣기” 소개에는 실제 제품·매장 연출이 효과적입니다.</p><div class="opts"><span class="rec">핵심 품목(수저집·컵·쇼핑백) 목업 이미지 제작</span><span>일러스트 위주</span><span>스톡 이미지</span></div></div>
+        <div class="dq"><div class="q"><i>Q7</i>고객이 받는 문서·메시지</div><p>앱 화면 밖에서 고객이 보는 것들입니다: 시안 워터마크(회사 로고·“시안”), 확정 확인서(사양 요약 PDF), 주문·시안 도착·출고 이메일. 알림톡은 카카오 양식이라 문구만 씁니다.</p><div class="opts"><span class="rec">워터마크·확인서 PDF·이메일 공통 틀 1개까지</span><span>앱 화면만(나머지는 개발 기본 틀)</span></div></div>
       </div>
+      <p class="note">일회용품 규제 안내 자리는 정했습니다(2026-10-15): 본사가 카테고리마다 쓰는 안내를 상품 상세에 접힌 상자로 보여줍니다(<a href="#screens">07장 S-09</a>, <a href="#keyscreens">08장</a> 상품 상세 와이어 ⑦).</p>
     </section>
 
     <footer>
-      식업 사용자 앱/웹 디자인 요청서 · 2026-10-12 · 근거: <a href="sikup-plan.html">플랫폼 기획서</a>, <a href="sikup-spec.html">기능 명세서</a> · 화면의 금액·요율은 모두 예시(관리자 설정값)이며, 일부 고지 문구는 법률 자문 전 초안입니다.
+      식업 사용자 앱/웹 디자인 요청서 · 2026-10-12 작성 · 2026-10-15 고침 · 근거: <a href="sikup-plan.html">플랫폼 기획서</a>, <a href="sikup-spec.html">기능 명세서</a> · 화면의 금액·요율은 모두 예시(관리자 설정값)이며, 일부 고지 문구는 법률 자문 전 초안입니다.
     </footer>
   </main>
 </div>

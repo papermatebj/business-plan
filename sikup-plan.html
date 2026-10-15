@@ -706,7 +706,7 @@ tr.hl td{background:var(--primary-weak)}
         </ul></div>
         <div class="fcard"><h4>상품 상세</h4><ul class="flist">
           <li><span class="b mvp">MVP</span><div><b>수량 구간별 단가표</b><p>1박스 / 5박스 / 10박스 이상 같은 구간별 단가를 보여주고, 장바구니에서 자동 계산합니다.</p></div></li>
-          <li><span class="b mvp">MVP</span><div><b>옵션·주문 단위·MOQ</b><p>사이즈·소재·인쇄 도수, 박스·롤·1,000매 같은 주문 단위, 최소 주문 수량.</p></div></li>
+          <li><span class="b mvp">MVP</span><div><b>옵션·주문 단위·MOQ</b><p>사이즈·소재·색상 같은 옵션(최대 3단 조합), 함께 고르는 추가 구성품, 박스·롤·1,000매 같은 주문 단위, 최소 주문 수량. 인쇄 방식 같은 맞춤 인쇄 옵션은 맞춤 디자인에서 따로 고릅니다.</p></div></li>
           <li><span class="b mvp">MVP</span><div><b>맞춤 디자인 배지·제작 정보</b><p>인쇄 방식, 인쇄 영역, 제작 기간(영업일), 판비 안내.</p></div></li>
           <li><span class="b mvp">MVP</span><div><b>상세 설명</b><p>파트너가 쓴 이미지·글·표 상세 설명. 처음엔 일부만 보이고 [펼치기], 이미지 확대, 휴대폰용 크기로 빠르게 로딩. 주문할 때 본 버전을 주문 상세에서 다시 볼 수 있습니다.</p></div></li>
           <li><span class="b mvp">MVP</span><div><b>인증·시험성적서 열람</b><p>식품용 기구 적합 여부, 위생용품 신고 정보.</p></div></li>
@@ -740,7 +740,7 @@ tr.hl td{background:var(--primary-weak)}
         </ul></div>
         <div class="fcard"><h4>콘텐츠(오늘의집 방식)</h4><ul class="flist">
           <li><span class="b p2">2차</span><div><b>매장 브랜딩 사례</b><p>“이 카페는 이렇게 만들었어요” 같은 디자인 포트폴리오. 사례에서 바로 같은 스타일로 요청할 수 있게 해 디자인 수요로 이어지게 합니다.</p></div></li>
-          <li><span class="b opt">검토 후보</span><div><b>창업·운영 매거진</b><p>창업 체크리스트, 원가 절감 팁, 일회용품 규제 안내. 2년 차 이후 검토할 후보라 기능 명세서에는 넣지 않았습니다.</p></div></li>
+          <li><span class="b opt">검토 후보</span><div><b>창업·운영 매거진</b><p>창업 체크리스트, 원가 절감 팁, 일회용품 규제 해설 글. 2년 차 이후 검토할 후보라 기능 명세서에는 넣지 않았습니다. 해당 품목 상세에 붙이는 짧은 규제 안내는 MVP입니다(07장 C).</p></div></li>
         </ul></div>
       </div>
     </section>
@@ -755,16 +755,16 @@ tr.hl td{background:var(--primary-weak)}
           <li><span class="b p2">2차</span><div><b>부계정·권한</b><p>상품·출고·정산 담당자를 나눠 접근 권한을 줍니다.</p></div></li>
         </ul></div>
         <div class="fcard"><h4>상품 관리</h4><ul class="flist">
-          <li><span class="b mvp">MVP</span><div><b>상품 등록</b><p>옵션, 수량 구간 단가, MOQ, 사업자 전용가(선택), 배송 정보, 상품정보제공고시.</p></div></li>
+          <li><span class="b mvp">MVP</span><div><b>상품 등록</b><p>옵션(조합형 최대 3단), 추가 구성품(본 상품과 함께 고르는 별도 품목, 이름·가격·재고), 수량 구간 단가, MOQ, 사업자 전용가(선택), 배송 정보, 상품정보제공고시.</p></div></li>
           <li><span class="b mvp">MVP</span><div><b>상세 설명 작성</b><p>에디터(Summernote)로 글·표·이미지를 쓰거나, 다른 쇼핑몰용 상세 이미지를 여러 장 한 번에 올립니다. 미리보기, 기본 틀, 버전 관리. 연락처·외부 링크·QR은 자동 검사.</p></div></li>
           <li><span class="b mvp">MVP</span><div><b>검수 요청과 승인 상태</b><p>본사 검수를 통과해야 노출되며, 반려 사유를 확인할 수 있습니다.</p></div></li>
-          <li><span class="b mvp">MVP</span><div><b>재고·품절 관리</b><p>품절 처리, 재입고 예정일.</p></div></li>
+          <li><span class="b mvp">MVP</span><div><b>재고·품절 관리</b><p>품절 처리, 재입고 예정일. 고객의 재입고 알림 신청은 2차입니다.</p></div></li>
           <li><span class="b p2">2차</span><div><b>엑셀 일괄 등록·수정</b><p>품목 수가 많은 도매 파트너용.</p></div></li>
         </ul></div>
         <div class="fcard core"><h4>맞춤 디자인 설정 <span class="b core">핵심</span></h4><ul class="flist">
           <li><span class="b mvp">MVP</span><div><b>판매 방식·디자인 가능 여부</b><p>상품마다 일반 전용 / 일반 + 맞춤 / 맞춤 전용 중에서 고릅니다. 같은 수저집을 두 번 등록하지 않고 상품 하나에 일반 단가와 맞춤 단가를 함께 넣으며, ‘맞춤 인쇄 가능’은 옵션 단위로도 켜고 끕니다. 무지 상품을 팔지 않는 인쇄 공장은 맞춤 전용으로 등록합니다.</p></div></li>
           <li><span class="b mvp">MVP</span><div><b>인쇄 사양</b><p>인쇄 방식, 인쇄 영역(mm), 최대 도수, 별색 가능 여부, 허용 파일 형식.</p></div></li>
-          <li><span class="b mvp">MVP</span><div><b>템플릿·칼선 파일</b><p>디자이너가 바로 작업할 수 있는 AI/PDF 템플릿.</p></div></li>
+          <li><span class="b mvp">MVP</span><div><b>템플릿·칼선 파일</b><p>디자이너가 바로 작업할 수 있는 AI·PDF·SVG 템플릿(최대 500MB).</p></div></li>
           <li><span class="b mvp">MVP</span><div><b>맞춤 단가·판비·리드타임</b><p>맞춤 전용 MOQ와 구간 단가(사업자 전용가 선택), 최초 판비(동판비), 제작 기간.</p></div></li>
         </ul></div>
         <div class="fcard"><h4>주문·배송·클레임</h4><ul class="flist">
@@ -892,7 +892,7 @@ tr.hl td{background:var(--primary-weak)}
             <span class="pin" style="left:calc(50% - 82px);top:58px"><b>1</b></span>
             <span class="pin" style="left:calc(50% - 30px);top:236px"><b>2</b></span>
           </div>
-          <div class="spec"><b>확정 시 기록되는 사양</b> · 수저집 40×240mm · 크라프트지 · 2도(PANTONE 3415C, 블랙) · 문구 “오늘밥상 / 02-000-0000” · 수량 10,000매(±3%) · 제작 영업일 7일</div>
+          <div class="spec"><b>확정 시 기록되는 사양</b> · 수저집 40×240mm · 크라프트지 · 2도(PANTONE 3415C, 블랙) · 문구 “오늘밥상 / 02-000-0000” · 수량 10,000매(±3%) · 인쇄 위치 ±2mm · 제작 영업일 7일</div>
           <div class="room-actions"><button class="btn ghost" type="button">수정 요청</button><button class="btn pri" type="button">이 시안으로 확정</button></div>
         </div>
         <div class="chat">
@@ -900,8 +900,8 @@ tr.hl td{background:var(--primary-weak)}
           <div class="msg them"><span class="from">디자이너 김OO</span>요청하신 대로 로고 크기를 키우고, 상단 띠 색상을 매장 간판 색(3415C)에 맞췄어요. 종이컵 목업도 함께 올렸습니다!</div>
           <div class="msg them file"><span class="fi">PDF</span><div><b style="font-size:12.5px">오늘밥상_수저집_v3_목업.pdf</b><br><span style="font-size:11.5px;opacity:.7">2.4MB</span></div></div>
           <div class="msg me"><span class="from">고객 · 오늘밥상</span><span class="pinref">● 1</span>로고는 좋아요. 전화번호 대신 인스타 계정을 넣을 수 있을까요?</div>
-          <div class="msg them"><span class="from">디자이너 김OO</span>가능합니다. 계정 주소 알려주시면 v4로 반영해 드릴게요. (이번이 마지막 무료 수정이에요)</div>
-          <div class="chat-input"><span>메시지 입력 · 파일 첨부(AI·PDF·PNG, 최대 100MB)</span><button class="btn pri" type="button" style="padding:6px 12px">전송</button></div>
+          <div class="msg them"><span class="from">디자이너 김OO</span>가능합니다. 인쇄할 계정은 [수정 요청]의 ‘문구 변경’ 칸에 적어 주시면 v4로 반영해 드릴게요. (이번이 마지막 무료 수정이에요)</div>
+          <div class="chat-input"><span>메시지 입력 · 파일 첨부(AI·PDF·PSD·PNG·JPG·SVG, 최대 100MB)</span><button class="btn pri" type="button" style="padding:6px 12px">전송</button></div>
         </div>
       </div>
 
@@ -916,13 +916,13 @@ tr.hl td{background:var(--primary-weak)}
         <div class="card"><h4 style="font-size:15px;margin-bottom:8px">분쟁을 막는 장치</h4><ul class="t2" style="font-size:13.5px;display:grid;gap:4px">
           <li><b>공식 의사결정 버튼</b>([수정 요청] [확정])을 채팅과 분리해 증빙으로 남깁니다</li>
           <li>확정 시 사양 스냅샷, 오탈자·전화번호 체크리스트, 동의 시각과 IP를 저장합니다</li>
-          <li>색상 오차(모니터와 인쇄물 차이) 고지에 동의를 받습니다</li>
+          <li>색상 오차(모니터와 인쇄물 차이)와 허용 오차(수량 ±3%·인쇄 위치 ±2mm, 상품마다 더 엄격하게 정할 수 있음) 고지에 동의를 받습니다</li>
           <li>대화 기록을 보관합니다(계약·결제 기록 5년, 분쟁 기록 3년)</li>
         </ul></div>
         <div class="card"><h4 style="font-size:15px;margin-bottom:8px">운영 장치</h4><ul class="t2" style="font-size:13.5px;display:grid;gap:4px">
           <li>시안 도착, 수정 완료, 확정 요청을 알림톡·푸시·이메일로 보냅니다</li>
           <li>운영시간(평일 09~18시) 안내, 부재 시 자동 응답</li>
-          <li>연락처·외부 링크를 자동으로 가립니다(직거래 방지)</li>
+          <li>대화 속 연락처·외부 링크를 자동으로 가립니다(직거래 방지). 인쇄할 전화번호·SNS 계정은 [수정 요청]의 ‘문구 변경’ 칸에 받으며 그 칸은 가리지 않고, 지도·인스타그램 같은 허용 링크는 그대로 보입니다</li>
           <li>3일 무응답이면 리마인드, 14일이면 보류, 30일이면 자동 취소(단계별 공제, 확정 후 변경 건은 자동 취소 대신 이전 확정본 복원)</li>
         </ul></div>
       </div>
@@ -1038,7 +1038,7 @@ tr.hl td{background:var(--primary-weak)}
             <li><b>위생용품</b>(식당용 물티슈, 일회용 컵·수저·빨대·이쑤시개, 화장지, 종이냅킨 등): 위생용품 제조업·수입업 신고 여부와 표시 사항을 확인합니다. <span class="law">위생용품 관리법</span></li>
             <li><b>친환경 표시:</b> ‘생분해’, ‘친환경’ 같은 문구는 환경표지 인증 등 근거가 있어야 합니다. 근거 없이 쓰면 그린워싱으로 제재받을 수 있습니다. <span class="law">환경기술산업법</span></li>
             <li><b>상품정보제공고시:</b> 품목별 필수 정보(소재, 제조국, 제조자, 규격)를 입력해야 등록됩니다. <span class="law">전자상거래법 고시</span></li>
-            <li><b>일회용품 규제 안내:</b> 매장 안 일회용품 사용 규제는 자주 바뀌므로 해당 품목 상세에 최신 안내를 붙입니다. <span class="law">자원재활용법</span></li>
+            <li><b>일회용품 규제 안내:</b> 매장 안 일회용품 사용 규제는 자주 바뀌므로 해당 품목 상세에 최신 안내를 붙입니다. 본사가 카테고리마다 안내 문구를 쓰고 고치며, 그 카테고리 상품 상세에 접힌 안내 상자로 고친 날짜와 함께 보여 줍니다(문구가 없으면 상자 없음, 2026-10-15 확정, 명세 <a href="sikup-spec.html#A-PRD-02">A-PRD-02</a>·<a href="sikup-spec.html#U-PDP-04">U-PDP-04</a>). <span class="law">자원재활용법</span></li>
             <li><b>금지 품목:</b> 인증이나 신고가 없는 식품 접촉 제품, 상표권 침해품, 위조품.</li>
             <li><b>상세 설명:</b> 연락처·외부 링크·QR, 다른 쇼핑몰 이름·로고·쿠폰, 가격·할인 문구(가격 영역과 달라질 수 있음)는 넣을 수 없습니다. 상품정보제공고시는 이미지로 대신할 수 없고 정해진 칸에 씁니다. 사진·글의 권리는 파트너가 보증합니다.</li>
             <li><b>검수:</b> 신규 상품은 운영팀 검수 후 노출하고, 상세 설명을 포함한 주요 정보를 바꾸면 다시 검수합니다. 입점 뒤 샘플 점검은 운영팀이 수작업으로 하고 상품 검수 기록에 ‘샘플 점검’ 메모로 남깁니다(2026-10-14 확정, 명세 A-PRD-01). 신고 기능을 둡니다.</li>
@@ -1093,7 +1093,7 @@ tr.hl td{background:var(--primary-weak)}
             <tbody>
               <tr><td><b>첫 시안을 받기 전</b></td><td>가능</td><td>100% 환불(멤버십 무료 이용권·쿠폰도 돌려줌)</td></tr>
               <tr><td><b>첫 시안을 받은 뒤 ~ 최종 확정 전</b></td><td>가능</td><td>디자인비를 빼고 환불. 무료로 받은 맞춤형은 39,000원 공제, 템플릿형·자체 파일과 무료로 받은 ‘적용’(2차)은 공제 없음</td></tr>
-              <tr><td><b>최종 확정 후 ~ 파트너 인쇄 확인 전</b><br>(확정 후 변경으로 다시 시안 단계가 된 건·판비를 낸 재주문 포함)</td><td>원칙적으로 불가(본사 중재)</td><td>디자인비 공제 + 판을 만든 것이 증빙되면 판비 공제. 판비 공제 = min(증빙한 판 제작 실비, 고객이 낸 판비)이고, 같은 금액을 파트너에게 ‘취소 보상’으로 지급합니다(2026-10-14 확정). 증빙이 없으면 판비는 공제하지 않습니다</td></tr>
+              <tr><td><b>최종 확정 후 ~ 파트너 인쇄 확인 전</b><br>(확정 후 변경으로 다시 시안 단계가 된 건·판비를 낸 재주문 포함)</td><td>원칙적으로 불가(본사 중재)</td><td>디자인비 공제 + 판을 만든 것이 증빙되면 판비 공제. 판비 공제 = min(증빙한 판 제작 실비, 고객이 낸 판비)이고(고객이 낸 판비는 파트너 할인·본사 쿠폰을 반영한 결제 금액, 2026-10-15 확정), 같은 금액을 파트너에게 ‘취소 보상’으로 지급합니다(2026-10-14 확정). 증빙이 없으면 판비는 공제하지 않습니다</td></tr>
               <tr><td><b>판비 면제 재주문 · 파트너 인쇄 확인 전</b></td><td>가능(본사 중재 없이 바로)</td><td>공제 0원, 낸 금액 전부 환불(예: 판 보관 기간 안이라 판비 면제 → 인쇄 250,000원을 그대로 환불). 판비를 낸 재주문(보관 기간이 지났거나 수정 재주문으로 판을 새로 만듦)은 바로 위 행과 같습니다(2026-10-14 확정)</td></tr>
               <tr><td><b>생산 시작 후(파트너 인쇄 확인 후)</b></td><td>불가</td><td>불량·오인쇄면 재제작(기본) 또는 고객이 원하면 환불</td></tr>
             </tbody>
@@ -1350,7 +1350,7 @@ tr.hl td{background:var(--primary-weak)}
           <tr><td><b>파트너·관리자</b></td><td>Thymeleaf + Tabler(Bootstrap 기반 무료 관리자 템플릿) + htmx</td><td>표·폼 위주 화면을 이미 만들어진 부품으로 빠르게 조립</td><td>AdminLTE</td></tr>
           <tr><td><b>디자인 협의 룸</b></td><td>Spring WebSocket(STOMP) + stomp.js + 바닐라 JS</td><td>실시간 메시지·시안 알림. web(고객)과 admin(디자이너), 여러 대 서버 사이 메시지는 Redis pub/sub로 중계</td><td>Sendbird(일정이 부족할 때)</td></tr>
           <tr><td><b>상품 상세 에디터</b></td><td>Summernote(Bootstrap 5용) + 서버 HTML 정화(jsoup Safelist)</td><td>파트너 센터가 Bootstrap 5 기반(Tabler)이라 잘 맞고 스크립트만 붙이면 됨(MIT). 이미지는 S3로 바로 올리고 Base64 삽입·HTML 직접 편집은 끔. 저장한 HTML은 서버가 허용 태그만 남김</td><td>Toast UI Editor</td></tr>
-          <tr><td><b>시안 핀 코멘트</b></td><td>이미지 위 비율 좌표 핀 + 바닐라 JS</td><td>라이브러리 없이 구현 가능. 마킹·확대 같은 고급 기능은 2차에 Konva.js</td><td>Fabric.js</td></tr>
+          <tr><td><b>시안 핀 코멘트</b></td><td>이미지 위 비율 좌표 핀 + 바닐라 JS</td><td>라이브러리 없이 구현 가능. 시안 확대·축소(핀치)는 MVP에 바닐라 JS로 넣고, 시안 위에 그리는 마킹 같은 고급 기능만 2차에 Konva.js</td><td>Fabric.js</td></tr>
           <tr><td><b>앱</b></td><td>웹뷰 쉘: Android(Java 또는 Kotlin, WebView) + iOS(Swift, WKWebView)</td><td>결제 앱 호출·카카오 로그인 가이드가 네이티브 기준으로 가장 잘 정리돼 있음. 쉘은 작아 혼자 만들 수 있음. iOS 빌드에는 Mac 필요</td><td>Capacitor, React Native WebView</td></tr>
           <tr><td><b>세션·캐시</b></td><td>Redis + Spring Session</td><td>서버 2대 이상에서 로그인 유지(웹뷰 쿠키 그대로), WebSocket 중계, 분산 락. 관리자 세션은 도메인·쿠키를 따로 씀</td><td>MySQL 세션(서버 1대일 때)</td></tr>
           <tr><td><b>검색</b></td><td>MVP: MySQL FULLTEXT(ngram) + 한 글자 접두 검색 + 초성 컬럼 + 동의어 테이블 → 2차 이후 조건 충족 시 OpenSearch(nori)</td><td>운영할 서버를 줄이고, 상품이 늘면 옮김(상품 5,000개 이상 또는 검색 품질 문제)</td><td>Algolia</td></tr>
@@ -1963,7 +1963,7 @@ tr.hl td{background:var(--primary-weak)}
 
     <!-- ================= 15 DECISIONS ================= -->
     <section class="sec" id="decisions">
-      <div class="sec-head"><div class="sec-num">15</div><h2>확정 사항 · 남은 결정</h2><p>2026-10-12에 확정한 29가지, 2026-10-13에 더한 3가지(사업자가), 2026-10-14에 더한 19가지(부록 B)와 아직 정해야 할 항목입니다. 확정 내용 가운데 기능에 관한 것은 기능 명세서에 모두 반영했습니다.</p></div>
+      <div class="sec-head"><div class="sec-num">15</div><h2>확정 사항 · 남은 결정</h2><p>2026-10-12에 확정한 29가지, 2026-10-13에 더한 3가지(사업자가), 2026-10-14에 더한 19가지(부록 B), 2026-10-15에 더한 14가지(남은 확인 거리)와 아직 정해야 할 항목입니다. 확정 내용 가운데 기능에 관한 것은 기능 명세서에 모두 반영했습니다.</p></div>
       <h3 class="sub" style="margin-top:0">확정 (2026-10-12)</h3>
       <div class="table-wrap"><table class="minw-760">
         <thead><tr><th>항목</th><th>확정 내용</th></tr></thead>
@@ -2036,6 +2036,28 @@ tr.hl td{background:var(--primary-weak)}
         </tbody>
       </table></div>
 
+      <h3 class="sub">확정 (2026-10-15 추가 · 남은 확인 거리)</h3>
+      <p class="t2" style="margin-bottom:10px">부록 B를 반영한 뒤 문서끼리 아직 어긋나 있던 곳(디자인 요청서 보강·프로토타입 반영에서 나온 확인 거리)을 정한 결정입니다. 금액·기간은 모두 관리자 설정값이고, 법적 성격이 있는 항목은 자문 답을 받으면 다시 봅니다. 명세서에 들어가는 결정은 명세서 00장 ‘<a href="sikup-spec.html#g-dec4">확정된 결정 (2026-10-15 추가 · 남은 확인 거리)</a>’ 표에도 있습니다.</p>
+      <div class="table-wrap"><table class="minw-760">
+        <thead><tr><th>항목</th><th>확정 내용</th></tr></thead>
+        <tbody>
+          <tr><td><b>판비 위치</b></td><td>판비는 상품 금액 쪽 한 줄입니다(주문서에서 상품 금액 바로 아래). 파트너가 즉시 할인 범위에 판비를 고르면 판비에도 할인이 걸리고, 본사 상품 할인 쿠폰·포인트도 다른 상품 금액처럼 걸립니다. 50만원 디자인 무료 판정에서는 지금처럼 뺍니다. 판비 공제의 상한인 ‘고객이 낸 판비’는 할인을 반영한 결제 금액입니다(07장 F, <a href="sikup-spec.html#C-PRICE-01">C-PRICE-01</a>·<a href="sikup-spec.html#C-PAY-02">C-PAY-02</a>)</td></tr>
+          <tr><td><b>본사 쿠폰 장수</b></td><td>한 주문에 상품 할인 쿠폰(장바구니·상품 중) 1장 + 디자인비 쿠폰 1장 + 배송비 쿠폰 배송 묶음당 1장. 신규 가입 쿠폰과 첫 디자인 무료 쿠폰을 함께 쓸 수 있습니다. ‘디자인비 포함’ 설정은 없애고 디자인비 쿠폰 종류 하나로 정리합니다. 2차 파트너·공동 쿠폰은 파트너별 1장이 더해집니다(공동 쿠폰은 본사 상품 할인 쿠폰과 함께 못 씀, <a href="sikup-spec.html#C-PRICE-02">C-PRICE-02</a>)</td></tr>
+          <tr><td><b>수수료 VAT 나누는 단위</b></td><td>판매 수수료의 공급가·VAT는 주문 항목(정산 이벤트)마다 나눠 저장하고, 정산서·월 세금계산서는 그 합으로 씁니다. 월 합계로 다시 나누지 않습니다(예: 수저집 9,000 + 냅킨 6,000 = 공급가 13,637 + VAT 1,363, <a href="sikup-spec.html#C-STL-01">C-STL-01</a>)</td></tr>
+          <tr><td><b>출고 뒤 취소가 이의로 인정될 때</b></td><td>파트너가 ‘이미 출고’로 취소를 거부했는데 고객의 이의 제기를 본사가 인정하면, 취소 건 그대로 플랫폼이 회수하고 회수 뒤 파트너 검수 없이 환불합니다. 주문 항목은 반품 완료로 닫고, 회수 배송비는 중재 판정대로 냅니다(<a href="sikup-spec.html#C-STATE-01">C-STATE-01</a>·<a href="sikup-spec.html#C-STATE-02">C-STATE-02</a>)</td></tr>
+          <tr><td><b>옵션·추가 구성품</b></td><td>옵션은 조합형 최대 3단이고, 추가 구성품(본 상품과 함께 고르는 별도 품목)도 MVP에 넣습니다. 추가 구성품은 고정 가격이고 주문에서는 따로 된 주문 항목이라 혼자 취소·반품할 수 있으며, 본 상품을 취소하면 출고 전인 것은 같이 취소됩니다. 파트너 할인은 본 상품에만, 본사 쿠폰·포인트는 함께 걸리고, 수수료는 그 카테고리의 일반 요율이며, 본 상품과 같이 출고합니다(03장·04장, <a href="sikup-spec.html#U-PDP-02">U-PDP-02</a>·<a href="sikup-spec.html#P-PRD-02">P-PRD-02</a>·<a href="sikup-spec.html#C-PRICE-01">C-PRICE-01</a>)</td></tr>
+          <tr><td><b>재입고 알림</b></td><td>고객의 재입고 알림 신청은 2차입니다. MVP는 품절 표시와 재입고 예정일까지 보여 줍니다(04장, <a href="sikup-spec.html#P-PRD-02">P-PRD-02</a>)</td></tr>
+          <tr><td><b>로고·칼선 파일 크기</b></td><td>고객 로고 100MB(1개), 참고 이미지 장당 20MB(최대 10장), 칼선·템플릿 AI·PDF·SVG 500MB. 파일 크기 정책값은 종류별로 나눕니다(<a href="sikup-spec.html#C-FILE-01">C-FILE-01</a>)</td></tr>
+          <tr><td><b>상품 수정본 버리기</b></td><td>판매 중 상품의 수정본은 [수정본 버리기]로 닫을 수 있고(‘수정 취소’로 기록), 판매를 끝내면 열린 수정본도 함께 닫습니다. 판매 중인 상품은 이전에 승인된 내용 그대로입니다(<a href="sikup-spec.html#P-PRD-07">P-PRD-07</a>)</td></tr>
+          <tr><td><b>확정 때 허용 오차 동의</b></td><td>맞춤 디자인을 확정할 때 수량 ±3%와 인쇄 위치 ±2mm(상품마다 더 엄격하게 정할 수 있음)를 함께 알리고 동의받아 사양 스냅샷에 남깁니다(06장, <a href="sikup-spec.html#D-APV-01">D-APV-01</a>)</td></tr>
+          <tr><td><b>일회용품 규제 안내</b></td><td>본사가 카테고리마다 규제 안내 문구를 관리하고, 그 카테고리 상품 상세에 접힌 안내 상자로 고친 날짜와 함께 보여 줍니다(MVP). 매거진 글은 검토 후보 그대로입니다(07장 C, <a href="sikup-spec.html#A-PRD-02">A-PRD-02</a>·<a href="sikup-spec.html#U-PDP-04">U-PDP-04</a>)</td></tr>
+          <tr><td><b>끝난 클레임 표시</b></td><td>클레임의 끝 상태는 하나로 두고 결과(환불 완료·교환 완료·재제작 완료·거부 확정·신청 철회·취소 기각)를 함께 저장해, 고객 화면에 결과별로 보여 줍니다(<a href="sikup-spec.html#C-STATE-02">C-STATE-02</a>)</td></tr>
+          <tr><td><b>필수 알림 채널</b></td><td>주문·배송·디자인 같은 필수 알림은 고객이 끄거나 채널을 고를 수 없고, 알림 표대로 보냅니다(알림톡, 실패하면 문자). 고객이 바꿀 수 있는 것은 마케팅 알림뿐입니다(<a href="sikup-spec.html#C-NOTI-01">C-NOTI-01</a>·<a href="sikup-spec.html#U-MY-06">U-MY-06</a>)</td></tr>
+          <tr><td><b>파트너 보안 알림</b></td><td>파트너 센터 계정 잠금(비밀번호 5회 실패)과 OTP 다시 등록은 담당자가 아니라 대표자에게 알립니다(<a href="sikup-spec.html#C-NOTI-01">C-NOTI-01</a>·<a href="sikup-spec.html#P-ONB-04">P-ONB-04</a>)</td></tr>
+          <tr><td><b>제작 파트너 변경</b></td><td>파트너의 판매 중지·정지·계약 종료로 생산 전 맞춤 주문을 같은 사양의 다른 파트너 상품으로 옮길 때는 운영팀이 제안하고 고객 동의를 받습니다. 기한(7일, 관리자 설정값) 안에 답이 없으면 디자인비까지 전액 환불합니다. 확정 디자인은 그대로이고, 새 상품이 더 싸면 차액을 돌려주며 비싸거나 판비가 새로 생겨도 고객에게 더 받지 않습니다. 원래 파트너에게 그 차액을 청구할지는 입점 계약을 따릅니다(법률 자문 전 초안, <a href="sikup-spec.html#A-ORD-01">A-ORD-01</a>·<a href="sikup-spec.html#D-REQ-04">D-REQ-04</a>·<a href="sikup-spec.html#A-PTN-02">A-PTN-02</a>)</td></tr>
+        </tbody>
+      </table></div>
+
       <h3 class="sub">남은 결정</h3>
       <div class="dec">
         <div class="dq"><div class="q"><i>Q1</i>개발 기간 중 파일럿 운영</div><div class="opts"><span class="rec">스마트스토어 + 카카오톡 채널로 소규모 맞춤 주문</span><span>개발 완료 후 바로 오픈</span></div><p>개발 기간(약 1년) 동안 수요·파트너·템플릿·정책을 미리 검증할 수 있습니다.</p></div>
@@ -2050,7 +2072,7 @@ tr.hl td{background:var(--primary-weak)}
           <tr><td><b>수수료 계산식</b></td><td>최종 요율 = max(5%, 기준 요율(파트너 예외 요율 또는 카테고리의 일반·맞춤 요율) − 플랜 인하 − 신규 입점 인하 − 재주문 인하 + 기획전 가산). 수수료는 VAT 포함 판매가에 매기고 VAT를 또 더하지 않음</td><td>한 식으로만 계산해 정산 오류를 막음</td></tr>
           <tr><td><b>정산 단위·차감</b></td><td>구매 확정·클레임 완료·중재·조정을 정산 이벤트로 모음. 차감 순서는 이전 마이너스 → 분쟁 조정 → 위약금 → 플랜료 → 광고비, 못 뺀 금액은 미수금으로 넘김(4주 또는 30만원 넘으면 청구서)</td><td>정산 배치를 구현할 수 있게 규칙을 하나로 정함</td></tr>
           <tr><td><b>클레임 기한</b></td><td>취소 1영업일(넘기면 자동 승인, 맞춤 확정 후 취소는 제외), 고객 반품 발송 7일, 회수 접수 2영업일, 검수 2영업일, 이의 제기 3일, 중재 결과는 최종</td><td>법정 환급 기한(회수 후 3영업일) 안에 처리</td></tr>
-          <tr><td><b>50만원 무료 기준</b></td><td>같은 디자인 요청의 맞춤 품목 금액, 파트너 할인 후·본사 쿠폰 전, VAT 포함(배송비·판비·디자인비 제외)</td><td>쿠폰 적용에 따라 무료 여부가 뒤집히지 않게 함</td></tr>
+          <tr><td><b>50만원 무료 기준</b></td><td>같은 디자인 요청의 맞춤 품목 금액, 파트너 할인 후·본사 쿠폰 전, VAT 포함(배송비·판비·디자인비·추가 구성품 제외)</td><td>쿠폰 적용에 따라 무료 여부가 뒤집히지 않게 함</td></tr>
           <tr><td><b>같은 콘셉트 추가 품목</b></td><td>디자인비 품목당 19,000원(첫 품목 39,000원). 브랜드 패키지(99,000원, 5품목까지 + 브랜드 가이드)와 비교해 싼 쪽 자동 적용</td><td>디자인 재사용분만큼 낮춰 여러 품목 주문을 유도</td></tr>
           <tr><td><b>검색 광고 비율</b></td><td>검색·카테고리 결과 20개 중 광고 최대 4개</td><td>검색 품질과 광고 매출의 균형</td></tr>
           <tr><td><b>PB 상품 노출</b></td><td>검색 랭킹 우대 없음(파트너와 같은 기준)</td><td>파트너와의 갈등, 공정 경쟁 위험 줄이기</td></tr>
