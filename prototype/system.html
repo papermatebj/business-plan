@@ -649,7 +649,7 @@
       <div class="panel"><div class="panel-h"><h2>알림 이벤트 매트릭스 (${EVENTS.length}개 발췌)</h2><span class="xsmall faint">● 항상 · ○ 조건부 · — 안 보냄</span></div><div class="panel-b stack">
         <div class="tbl-wrap"><table class="tbl small mx"><thead><tr><th>이벤트 · 받는 사람</th>${['알림톡', 'SMS', '푸시', '메일', '센터', 'Slack'].map((h) => `<th class="sym">${h}</th>`).join('')}</tr></thead><tbody>
           ${EVENTS.map((e) => `<tr><td>${esc(e.label)} <span class="faint">· ${esc(e.to)}</span>${e.lazy ? ' <span class="tag">야간엔 08시</span>' : ''}<span class="code">${e.code.replace(/_/g, '_<wbr>')}</span></td>${e.ch.map((x) => `<td class="sym"${x.length > 1 ? ` title="${esc(x)}"` : ''}>${x.charAt(0)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
-        <p class="xsmall faint">○ 조건: 배송 완료 알림톡은 앱 푸시를 못 받을 때, 협의 룸 알림톡은 ${pv('notify.room_digest_minutes')} 동안 안 읽으면 묶어 1회, 앱 푸시는 앱 설치·권한이 있을 때. 표의 알림은 ‘마케팅 수신 동의자만’이라고 적은 행(예: NOTI_COUPON_EXPIRE_SOON)을 빼면 모두 정보성이라, 고객이 끄거나 채널을 고를 수 없고 표대로 보내요(알림톡 → 실패 시 문자). 고객이 고르는 건 마케팅 알림의 채널뿐이에요. 알림 문구에 고객 전화번호·주소를 넣지 않아요.</p></div></div>`;
+        <p class="xsmall faint">○ 조건: 배송 완료 알림톡은 앱 푸시를 못 받을 때, 협의 룸 알림톡은 ${pv('notify.room_digest_minutes')} 동안 안 읽으면 묶어 1회, 앱 푸시는 앱 설치·권한이 있을 때, ‘마케팅 수신 동의자만’ 행의 앱 푸시·이메일은 고객이 마케팅 채널로 켰을 때. 표의 알림은 ‘마케팅 수신 동의자만’이라고 적은 행(예: NOTI_COUPON_EXPIRE_SOON)을 빼면 모두 정보성이라, 고객이 끄거나 채널을 고를 수 없고 표대로 보내요(알림톡 → 실패 시 문자). 고객이 고르는 건 마케팅 알림의 채널뿐이에요. 알림 문구에 고객 전화번호·주소를 넣지 않아요.</p></div></div>`;
   }
 
   /* 감사 로그 */

@@ -6074,12 +6074,12 @@ section.sec>.callout,section.sec>.states,section.sec>.table-wrap,section.sec>.ca
         <tr><td>확정 후 변경 건 이전 확정본 복원(30일 무응답, 본사 중재, <a href="#C-STATE-03">C-STATE-03</a>)<br><code>NOTI_DESIGN_RESTORED</code></td><td>고객</td><td>●</td><td>●</td><td>●</td><td>●</td><td>●</td><td>—</td></tr>
         <tr><td>최종 확정 완료(사양 요약 첨부)<br><code>NOTI_DESIGN_APPROVED</code></td><td>고객</td><td>●</td><td>●</td><td>○</td><td>●</td><td>●</td><td>—</td></tr>
         <tr><td>생산 시작<br><code>NOTI_PRODUCTION_STARTED</code></td><td>고객</td><td>○ 앱 푸시 못 받을 때</td><td>—</td><td>●</td><td>—</td><td>●</td><td>—</td></tr>
-        <tr><td>판 보관 만료 예고(30일 전, 2차, 초안)<br><code>NOTI_PLATE_EXPIRY_NOTICE</code></td><td>고객(마케팅 수신 동의자만, 광고성 여부 확인 전)</td><td>—</td><td>—</td><td>●</td><td>●</td><td>●</td><td>—</td></tr>
+        <tr><td>판 보관 만료 예고(30일 전, 2차, 초안)<br><code>NOTI_PLATE_EXPIRY_NOTICE</code></td><td>고객(마케팅 수신 동의자만, 광고성 여부 확인 전)</td><td>—</td><td>—</td><td>○ 마케팅 채널로 켰을 때(앱 설치·권한)</td><td>○ 마케팅 채널로 켰을 때</td><td>●</td><td>—</td></tr>
         <tr class="grp"><td colspan="8">고객 · 혜택·멤버십</td></tr>
         <tr><td>정기결제 예정(월간 3일 전·연간 7일 전) · 요금 변경 30일 전<br><code>NOTI_MEMBERSHIP_RENEW_NOTICE</code> · <code>NOTI_MEMBERSHIP_PRICE_NOTICE</code></td><td>고객</td><td>●</td><td>●</td><td>—</td><td>●</td><td>●</td><td>—</td></tr>
         <tr><td>멤버십 결제 완료 · 결제 실패(재시도 안내)<br><code>NOTI_MEMBERSHIP_PAID</code> · <code>NOTI_MEMBERSHIP_PAY_FAILED</code></td><td>고객</td><td>●</td><td>●</td><td>○</td><td>●</td><td>●</td><td>—</td></tr>
         <tr><td>멤버십 해지·환불 · D+7 자동 해지<br><code>NOTI_MEMBERSHIP_CANCELED</code> · <code>NOTI_MEMBERSHIP_AUTO_CANCELED</code></td><td>고객</td><td>●</td><td>●</td><td>○</td><td>●</td><td>●</td><td>—</td></tr>
-        <tr><td>쿠폰 만료 7일 전(<a href="#U-BEN-01">U-BEN-01</a>, 2026-10-16 나눔)<br><code>NOTI_COUPON_EXPIRE_SOON</code></td><td>고객(마케팅 수신 동의자만, 광고성 여부 확인 전)</td><td>—</td><td>—</td><td>○</td><td>○</td><td>●</td><td>—</td></tr>
+        <tr><td>쿠폰 만료 7일 전(<a href="#U-BEN-01">U-BEN-01</a>, 2026-10-16 나눔)<br><code>NOTI_COUPON_EXPIRE_SOON</code></td><td>고객(마케팅 수신 동의자만, 광고성 여부 확인 전)</td><td>—</td><td>—</td><td>○ 마케팅 채널로 켰을 때(앱 설치·권한)</td><td>○ 마케팅 채널로 켰을 때</td><td>●</td><td>—</td></tr>
         <tr><td>포인트 소멸 30일 전(2차, <a href="#U-BEN-02">U-BEN-02</a>, 2026-10-16 나눔)<br><code>NOTI_POINT_EXPIRE_SOON</code></td><td>고객</td><td>—</td><td>—</td><td>○</td><td>●</td><td>●</td><td>—</td></tr>
         <tr class="grp"><td colspan="8">파트너(협의 룸에 참여하지 않으므로 생산 협의 채널 알림만 받음)</td></tr>
         <tr><td>신규 주문<br><code>NOTI_PARTNER_ORDER_NEW</code></td><td>파트너</td><td>●</td><td>●</td><td>—</td><td>○</td><td>●</td><td>—</td></tr>
@@ -6127,7 +6127,7 @@ section.sec>.callout,section.sec>.states,section.sec>.table-wrap,section.sec>.ca
         <li>발송 결과(성공·실패·대체 발송)를 이벤트별로 기록합니다.</li>
       </ol></div>
       <div class="fsec"><h5>규칙·정책</h5><ul>
-        <li>이 표의 알림은 ‘마케팅 수신 동의자만’이라고 적은 행(판 보관 만료 예고·쿠폰 만료 예고 — 광고성 여부 확인 전)을 빼면 모두 거래·서비스 관련 정보성 알림입니다. 광고성 메시지는 캠페인(<a href="#A-MKT-03">A-MKT-03</a>)으로만 앱 푸시·카카오 브랜드 메시지·이메일로 보내고, 알림톡으로는 보내지 않습니다(<a href="#C-NOTI-02">C-NOTI-02</a>).</li>
+        <li>이 표의 알림은 ‘마케팅 수신 동의자만’이라고 적은 행(판 보관 만료 예고·쿠폰 만료 예고 — 광고성 여부 확인 전)을 빼면 모두 거래·서비스 관련 정보성 알림입니다. 이 두 행의 앱 푸시·이메일은 고객이 마케팅 알림 채널로 켜 둔 것으로만 보내고, 알림센터에는 늘 남깁니다(<a href="#U-MY-06">U-MY-06</a>, 2026-10-16 맞춤). 광고성 메시지는 캠페인(<a href="#A-MKT-03">A-MKT-03</a>)으로만 앱 푸시·카카오 브랜드 메시지·이메일로 보내고, 알림톡으로는 보내지 않습니다(<a href="#C-NOTI-02">C-NOTI-02</a>).</li>
         <li>정보성 알림은 고객이 끌 수 없고 채널도 고르지 않습니다. 위 표대로 보내고, 알림톡이 실패하면 SMS로 대신합니다(<a href="#C-NOTI-02">C-NOTI-02</a>). 고객은 마케팅 수신과 마케팅 알림의 채널만 켜고 끕니다(<a href="#U-MY-06">U-MY-06</a>, 2026-10-15 확정).</li>
         <li>협의 룸·생산 협의 채널 메시지 묶음은 10분입니다(정책값). 파트너는 고객 협의 룸에 없으므로 룸 알림을 받지 않습니다.</li>
         <li>알림톡 템플릿은 오픈 4주 전까지 검수를 마칩니다. 파트너 알림은 파트너 센터에 등록한 담당자(주문·정산 담당 구분)에게 보냅니다. 단, 보안·계정 알림(계정 잠금·OTP 다시 등록·정산 계좌 변경·계정 정지·계약 종료·직거래 조사)은 담당자가 아니라 대표자에게 보냅니다(2026-10-15 확정).</li>
