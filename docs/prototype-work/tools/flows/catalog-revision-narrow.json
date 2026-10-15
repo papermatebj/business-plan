@@ -31,6 +31,20 @@
   "act": "requestReview"
  },
  {
+  "act": "cancelReview",
+  "after": 300
+ },
+ {
+  "eval": "document.querySelector('#gc-strips').innerText.includes('임시 저장')"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"submit\""
+ },
+ {
+  "act": "requestReview"
+ },
+ {
   "role": "hq"
  },
  {
@@ -178,5 +192,60 @@
  {
   "act": "descEdit",
   "shot": "catalog-vn-09-new-revision"
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#pdesc');i.value=i.value+' 두꺼운 50g 옵션도 있어요.';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "act": "descSubmit"
+ },
+ {
+  "act": "descCancelReview",
+  "shot": "catalog-vn-10-cancel-review"
+ },
+ {
+  "eval": "document.querySelector('#gc-strips').innerText.includes('수정 작성 중')"
+ },
+ {
+  "act": "descDiscard",
+  "after": 300
+ },
+ {
+  "eval": "(()=>{const t=document.querySelector('#gc-device').innerText;return t.includes('수정 취소') && t.includes('파트너가 버림') && document.querySelector('#gc-strips').innerText.includes('수정 취소');})()"
+ },
+ {
+  "eval": "document.querySelector('#gc-device .note').scrollIntoView({block:'start'})",
+  "shot": "catalog-vn-11-discarded"
+ },
+ {
+  "act": "descEdit"
+ },
+ {
+  "eval": "(()=>{const i=document.querySelector('#pdesc');i.value=i.value+' 블랙 색상도 골라요.';i.dispatchEvent(new Event('input',{bubbles:true}));})()",
+  "after": 700
+ },
+ {
+  "act": "descSubmit"
+ },
+ {
+  "act": "ptab",
+  "attr": "data-k=\"list\""
+ },
+ {
+  "act": "endSale",
+  "keepDialog": true,
+  "after": 300,
+  "shot": "catalog-vn-12-end-dialog"
+ },
+ {
+  "wait": 100
+ },
+ {
+  "eval": "(()=>{const t=document.querySelector('#gc-device').innerText;return t.includes('판매 종료') && t.includes('수정본 기록') && document.querySelector('#gc-strips').innerText.includes('수정 취소');})()"
+ },
+ {
+  "role": "partner",
+  "shot": "catalog-vn-13-ended-history"
  }
 ]

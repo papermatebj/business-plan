@@ -122,6 +122,43 @@
   .zoom-box { overflow: auto; max-height: 560px; border: 1px solid var(--rule); border-radius: 8px; background: var(--sheet); }
   .zoom-in { width: 160%; }
   .zoom-in svg { display: block; width: 100%; height: auto; }
+  /* 옵션 3단·추가 구성품(P-PRD-02 · U-PDP-02 · 2026-10-15 D24) */
+  .opt-row { display: grid; grid-template-columns: minmax(0, 140px) minmax(0, 1fr) 44px; gap: 8px; align-items: center; }
+  @media (max-width: 600px) { .opt-row { grid-template-columns: minmax(0, 1fr) 44px; } .opt-row .ov { grid-column: 1 / -1; grid-row: 2; } }
+  .desk-main .tbl-wrap > .tbl.opt-tbl { min-width: 420px; }
+  .desk-main .tbl-wrap > .tbl.ad-tbl { min-width: 440px; }
+  .opt-tbl .input, .ad-tbl .input { min-height: 32px; padding: 3px 8px; text-align: right; font-variant-numeric: tabular-nums; width: 96px; }
+  .opt-tbl td:nth-child(3) .input, .ad-tbl td:nth-child(3) .input { width: 76px; }
+  .opt-tbl td:not(:first-child), .ad-tbl td:not(:first-child) { width: 1%; white-space: nowrap; }
+  .opt-tbl tr.is-err td, .ad-tbl tr.is-err td { background: var(--stop-weak); }
+  .osel { display: grid; gap: 6px; }
+  .osel label { font-size: 12.5px; color: var(--ink-2); }
+  .sel-line { border: 1px solid var(--rule-strong); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; background: var(--sheet-2); }
+  .add-line { margin-left: 6px; padding-left: 10px; border-left: 2px solid var(--rule-strong); font-size: 13px; display: flex; justify-content: space-between; gap: 8px; }
+  .add-line span:first-child { min-width: 0; }
+  .add-line span:last-child { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .addon-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--rule); font-size: 13.5px; }
+  .addon-row:first-child { border-top: 0; }
+  .addon-row.is-out .an { color: var(--ink-3); }
+  .addon-row .an small { display: block; font-size: 12px; color: var(--ink-3); }
+  .qty.sm button { width: 32px; height: 32px; font-size: 16px; }
+  .qty.sm input { width: 40px; height: 32px; }
+  .qty button:disabled { opacity: .4; cursor: not-allowed; }
+  .calc { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; font-size: 13.5px; align-items: baseline; margin: 0; }
+  .calc dt { min-width: 0; }
+  .calc dt small { display: block; font-size: 11.5px; color: var(--ink-3); }
+  .calc dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .calc .tot { font-weight: 700; border-top: 1px solid var(--rule); padding-top: 6px; }
+  .mcard { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; }
+  /* 일회용품 규제 안내(A-PRD-02 · U-PDP-04 · 2026-10-15 D29) */
+  .regbox { border: 1px solid var(--rule-strong); border-radius: 10px; background: var(--sheet-2); }
+  .regbox summary { cursor: pointer; padding: 10px 12px; font-size: 13.5px; font-weight: 600; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; list-style: none; }
+  .regbox summary::-webkit-details-marker { display: none; }
+  .regbox summary::after { content: "펼치기"; font-weight: 400; color: var(--ink-3); font-size: 12px; flex: none; }
+  .regbox[open] summary::after { content: "접기"; }
+  .regbox .rb { padding: 0 12px 12px; font-size: 13px; line-height: 1.6; color: var(--ink-2); white-space: pre-line; }
+  .reg-ta { min-height: 120px; }
+  @media (max-width: 600px) { .psteps { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 </style>
 </head>
 <body>
@@ -143,13 +180,13 @@
     doc_notice_days: { v: 30, unit: '일', label: '서류 만료 사전 알림(P-PRD-06)' },
     ship_days_max: { v: 2, unit: '영업일', label: '일반 상품 출고 소요일 최대(P-PRD-04)' },
     fix_repeat_md: { v: 3, unit: '회', label: '같은 사유 보완 요청 시 MD 상담 안내(P-PRD-07)' },
-    detail_img_mb: { v: 20, unit: 'MB', label: '상세 이미지 장당 최대 크기(P-PRD-09)' },
     detail_slice_px: { v: 3000, unit: 'px', label: '세로로 긴 상세 이미지를 자르는 높이(P-PRD-09)' },
     detail_html_kb: { v: 200, unit: 'KB', label: '상세 설명 HTML 최대 크기(P-PRD-09)' },
     detail_fold_px: { v: 1200, unit: 'px', label: '상세 설명 처음 보이는 높이(U-PDP-07)' },
     detail_ver_keep: { v: 6, unit: '개월', label: '주문에 연결되지 않은 이전 버전 보관(P-PRD-09)' },
-    print_check_bd: { v: 1, unit: '영업일', label: '파트너 인쇄 확인 기간(예상 도착 계산, U-PDP-03, 키 없음)' },
-    promo_max_days: { v: 90, unit: '일', label: '즉시 할인 기간 최대(P-PRM-01, 키 없음)' },
+    opt_combo_max: { v: 100, unit: '개', label: '옵션 조합 최대(P-PRD-02 "정책값", 키 없음)' },
+    opt_extra_down: { v: 50, unit: '%', label: '옵션 추가 금액 하한(기본가의 −50%, P-PRD-02, 키 없음)' },
+    opt_extra_up: { v: 200, unit: '%', label: '옵션 추가 금액 상한(기본가의 +200%, P-PRD-02, 키 없음)' },
   };
   const pc = (k) => PC[k].v;
   const pvc = (k, text) => `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(PC[k].label)} — 엔진에 없어 이 페이지 상수로 둠">${text != null ? text : PC[k].v + PC[k].unit}</span>`;
@@ -217,21 +254,36 @@
     [/\d[\d,]*\s*%\s*할인|할인\s*쿠폰|무료\s*배송|\d[\d,.]*\s*만?\s*원/, '가격·할인·무료배송 문구'],
   ];
 
+  /* 옵션 3단·추가 구성품(P-PRD-02 · U-PDP-02 · C-PRICE-01, 2026-10-15 D24 = C) */
+  const OPT_MAX_NAMES = 3;
+  const OPT_NEXT = { name: '포장', vals: '100매 묶음, 벌크' }; /* [옵션명 추가]를 누르면 채워 두는 예시 */
+  const OPT_EXTRA = { '두꺼운 50g': 3000, '블랙': 2000, '벌크': -1000 }; /* 조합 추가 금액 기본값(박스당) */
+  const OPT_OUT = '두꺼운 50g|블랙|벌크'; /* 재고 0인 조합(품절 옵션 예시) */
+  const ADDON_EX = [
+    { name: '이쑤시개 개별포장 1,000개', price: 6000, stock: 120 },
+    { name: '종이 젓가락 개별포장 100벌', price: 4500, stock: 0 },
+    { name: '업소용 물티슈 100매', price: 3500, stock: 80 },
+  ];
+  /* 일회용품 규제 안내(A-PRD-02 · U-PDP-04, 2026-10-15 D29): 본사가 카테고리마다 쓰고 고침 · 선택 · 500자 */
+  const REG_MAX = 500;
+  const REG_CATS = { sujeo: { name: '수저·젓가락 포장 › 수저집', match: '수저' }, cup: { name: '컵·컵홀더 › 종이컵', match: '종이컵' } };
+  const REG_TEXT0 = '식품접객업 매장 안에서는 일회용 수저·포크 등의 사용이 제한될 수 있어요(「자원의 절약과 재활용촉진에 관한 법률」, 지자체 단속 시기는 다를 수 있어요).\n배달·포장 주문에 함께 넣는 수저집은 쓸 수 있어요.\n시행일·대상 품목이 자주 바뀌니 매장에 맞는지 한 번 더 확인해 주세요.';
+
   let asideEl = null;
   const app = UI.mount({
     domain: 'catalog',
     title: '상품 등록·검수·검색',
-    lede: '파트너가 판매 방식·구간 단가·맞춤 인쇄 사양·상세 설명·인증 서류를 넣어 상품을 등록하면, 본사가 체크리스트로 검수하고, 승인된 상품만 고객 검색과 상세 화면에 나옵니다. 고객은 초성·동의어로 찾고 수량 구간 단가와 펼쳐 보는 상세 설명을 보며 고릅니다. 상세 설명은 저장할 때마다 새 버전으로 쌓이고, 판매 중에 고치면 수정본으로 바뀐 부분만 다시 검수합니다(승인·보완 요청·수정 반려). 판매 중 상품의 즉시 할인과 사업자가 역전 경고도 여기서 봅니다.',
-    meta: '근거: 기능 명세서 P-PRD-01~07·09 · P-PRM-01 · A-PRD-01·02 · U-SRCH-01~04 · U-PDP-01~04·07 · C-SRCH-01 · C-PRICE-01·03 · 디자인 요청서 S-05~S-10',
+    lede: '파트너가 판매 방식·구간 단가·옵션(최대 3단)·추가 구성품·맞춤 인쇄 사양·상세 설명·인증 서류를 넣어 상품을 등록하면, 본사가 체크리스트로 검수하고, 승인된 상품만 고객 검색과 상세 화면에 나옵니다. 고객은 초성·동의어로 찾고 옵션 3단과 추가 구성품을 골라 담거나 [맞춤 제작으로 주문하기]로 맞춤 옵션·수량을 정한 뒤 디자인 방식 선택으로 넘어갑니다. 상세 설명은 저장할 때마다 새 버전으로 쌓이고, 판매 중에 고치면 수정본으로 바뀐 부분만 다시 검수합니다(승인·보완 요청·수정 반려·검수 요청 취소·수정본 버리기). 판매 중 상품의 즉시 할인(판비 적용 범위 포함)과 사업자가 역전 경고, 본사가 카테고리마다 쓰는 일회용품 규제 안내도 여기서 봅니다.',
+    meta: '근거: 기능 명세서 P-PRD-01~07·09 · P-PRM-01 · A-PRD-01·02 · U-SRCH-01~04 · U-PDP-01~04·07 · D-REQ-01 · C-SRCH-01 · C-PRICE-01·03 · 디자인 요청서 S-05~S-10 · 결정 D20·D24~D27·D29',
     actors: [
       { id: 'partner', nav: ['주문', '상품', '배송비', '정산'], navOn: '상품', url: 'partner.sikup.co.kr/products/new' },
       { id: 'hq', nav: ['상품 검수', '카테고리', '전시', '검색 사전'], navOn: '상품 검수', url: 'admin.sikup.co.kr/products/review' },
       { id: 'customer', title: '식업', tab: '홈' },
     ],
     strips: [
-      { id: 'product', machine: 'PRODUCT', label: '상품 판매 상태', note: '크라프트 수저집 · P-PRD-07 · A-PRD-01 · 품절은 상태가 아니라 재고 0일 때의 표시값' },
+      { id: 'product', machine: 'PRODUCT', label: '상품 판매 상태', note: '크라프트 수저집 · P-PRD-07 · A-PRD-01 · 품절은 상태가 아니라 재고 0일 때의 표시값 · 검수 중에는 [검수 요청 취소]로 임시 저장으로' },
       { id: 'doc', machine: 'CATALOG_DOC', label: '인증 서류', note: '식품용 기구 시험성적서 · 식품 접촉 카테고리 필수 · P-PRD-06' },
-      { id: 'rev', machine: 'PRODUCT_REVISION', label: '판매 중 상품 수정본', note: 'P-PRD-07 · A-PRD-01 · 상품 상태와 따로 · 재검수 중·보완 요청·수정 반려 동안 이전 승인 내용으로 계속 판매 · 상품당 열린 수정본 하나' },
+      { id: 'rev', machine: 'PRODUCT_REVISION', label: '판매 중 상품 수정본', note: 'P-PRD-07 · A-PRD-01 · 상품 상태와 따로 · 재검수 중·보완 요청·수정 반려 동안 이전 승인 내용으로 계속 판매 · 상품당 열린 수정본 하나 · 수정 취소(버리기·판매 종료)는 기록만 남음(D27)' },
     ],
     render: (actor, f) => VIEWS[actor](f),
     onReset: init,
@@ -249,8 +301,13 @@
       bizMode: 'amount', bizRate: 3,
       moq: 1, mult: 1, maxQty: 100, ship: null, eco: false,
       cust: { methods: ['옵셋'], side: '앞면', area: '40×240', colors: '2도', spot: true, template: false, moq: 10000, tiers: [{ min: 10, price: 30000, biz: 0 }, { min: 30, price: 26000, biz: 0 }], bizMode: 'none', bizRate: 5, plate: 50000, plateKeep: null, lead: 7, cap: 50000 },
-      promo: { type: 'rate', value: 10, applyBiz: true }, promoLive: null,
-      rev: { n: 0, declined: [], reason: '', custSeen: false },
+      promo: { type: 'rate', value: 10, applyBiz: true, plate: false, days: 7 }, promoLive: null,
+      rev: { n: 0, declined: [], discarded: [], reason: '', custSeen: false, startVer: 0, hist: [] },
+      opt: { kind: 'combo', rows: [{ name: '두께', vals: '기본 40g, 두꺼운 50g' }, { name: '색상', vals: '크라프트, 블랙' }], cx: {} },
+      addons: [], adForm: { ...ADDON_EX[0] }, adErr: [],
+      osel: [], addq: {}, cart: null,
+      reg: { sujeo: { text: REG_TEXT0, at: new Date(2026, 9, 1, 10, 0), hist: [{ at: new Date(2026, 9, 1, 10, 0), by: '운영팀 MD 박○○', what: '고침 · 배달·포장용 안내 문장 추가' }] }, cup: { text: '', at: null, hist: [] } },
+      regCat: 'sujeo', regDraft: {},
       docs: { test: null, eco: null },
       review: { checks: {}, comment: '', due: null, warned: false, fixCount: 0 },
       live: null, qp: [], monitor: [], hqTab: 'review', suspend: null, appeal: false,
@@ -319,17 +376,63 @@
   /* 판매 중 상품 수정본(P-PRD-07): 열린 수정본 = 작성 중·재검수 중·보완 요청. 상품마다 하나뿐 */
   const revOpen = () => ['EDITING', 'IN_REVIEW', 'NEEDS_FIX'].includes(app.state('rev'));
   function clearRev() { app.setState('rev', null, { log: false }); app.strips.rev.lastMainIdx = null; }
+  /** 수정본을 수정 취소(DISCARDED)로 닫은 뒤: 기록 남기고, 그 수정본 버전 표시를 바꾸고, 에디터를 판매 중 내용으로 되돌림 */
+  function closeRevision(reason) {
+    const s = S(); const L = s.live.det;
+    const vers = s.det.versions.filter((v) => v.v > s.rev.startVer && v.v > (s.det.liveVer || 0)).map((v) => v.v);
+    s.rev.discarded.push(...vers);
+    s.rev.hist.unshift({ n: s.rev.n, ver: vers[0] || null, result: 'DISCARDED', reason, at: app.clock.now() });
+    s.desc = L.text; s.det.imgs = JSON.parse(JSON.stringify(L.imgs)); s.det.tpl = L.tpl; s.det.dirty = false;
+  }
   /* 즉시 할인(P-PRM-01): 엔진 bizInversion과 같은 모양 { type, value, applyBiz } */
   const discTxt = (d) => (d.type === 'rate' ? `${d.value}%` : won(d.value));
-  const promoOf = (p) => ({ type: p.type, value: p.value, applyBiz: p.applyBiz });
+  /* plate: '맞춤 상품 적용 범위'에 판비를 고름(2026-10-15 D20) → 엔진 calcOrder items[].instant.plate */
+  const promoOf = (p) => ({ type: p.type, value: p.value, applyBiz: p.applyBiz, plate: !!p.plate });
   function promoErrors(p, tiers) {
     const max = GC.Policy.get('promo.instant_discount_max'); const cap = Math.floor((minP(tiers) * max) / 100); const e = [];
+    const maxDays = GC.Policy.get('promo.instant_discount_max_days');
     if (p.type === 'rate' && !(p.value >= 1 && p.value <= max)) e.push(`할인율은 1%에서 ${max}% 사이로 넣어 주세요`);
     if (p.type === 'amount' && !(p.value >= 1 && p.value <= cap)) e.push(`정액 할인은 판매가의 ${max}%(${won(cap)}) 이하로 넣어 주세요`);
+    if (!(p.days >= 1 && p.days <= maxDays)) e.push(`기간은 1일에서 ${maxDays}일 사이로 넣어 주세요`);
     if (!e.length && tiers.some((t) => GC.price.applyInstantUnit(t.price, p) < 100)) e.push('할인 후 가격이 100원 미만이 되는 구간이 있어요');
     return e;
   }
-  const invText = (inv) => inv.map((x) => `${x.i + 1}구간(${x.min}박스부터) 일반 할인가 ${won(x.normalAfter)} < 사업자가 ${won(x.biz)}`).join(' · ');
+
+  /* ── 옵션 3단(P-PRD-02): 옵션명 최대 3개 → 조합 자동 생성(최대 100개), 조합마다 추가 금액·재고 ── */
+  const splitVals = (t) => String(t || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const optAxes = (o) => (o && o.kind === 'combo' ? o.rows.map((r) => ({ name: String(r.name || '').trim(), vals: splitVals(r.vals) })) : []);
+  function comboCount(o) { const ax = optAxes(o); return ax.length ? ax.reduce((a, x) => a * x.vals.length, 1) : 0; }
+  function optCombos(o) {
+    const ax = optAxes(o); if (!ax.length || ax.some((a) => !a.vals.length) || comboCount(o) > pc('opt_combo_max')) return [];
+    let out = [[]]; ax.forEach((a) => { out = out.flatMap((c) => a.vals.map((v) => c.concat(v))); });
+    return out.map((vs) => { const key = vs.join('|'); const d = o.cx[key] || {}; return { key, vs, extra: d.extra != null ? d.extra : vs.reduce((t, v) => t + (OPT_EXTRA[v] || 0), 0), stock: d.stock != null ? d.stock : (key === OPT_OUT ? 0 : 150) }; });
+  }
+  function optErrors(o, base, mode) {
+    const e = []; if (!o || o.kind !== 'combo') return e;
+    const ax = optAxes(o);
+    if (ax.length > OPT_MAX_NAMES) e.push(`옵션명은 ${OPT_MAX_NAMES}개까지 넣을 수 있어요`);
+    ax.forEach((a, i) => { if (!a.name) e.push(`${i + 1}번째 옵션명을 넣어 주세요`); if (!a.vals.length) e.push(`${i + 1}번째 옵션값을 쉼표로 나눠 넣어 주세요`); });
+    const names = ax.map((a) => a.name).filter(Boolean); if (new Set(names).size < names.length) e.push('같은 옵션명이 두 번 있어요');
+    const n = comboCount(o); if (n > pc('opt_combo_max')) e.push(`조합이 ${num(n)}개예요. 최대 ${pc('opt_combo_max')}개까지 만들 수 있어요`);
+    if (mode !== 'custom' && base > 0) {
+      const lo = -Math.floor((base * pc('opt_extra_down')) / 100); const hi = Math.floor((base * pc('opt_extra_up')) / 100);
+      optCombos(o).forEach((c) => { if (c.extra < lo || c.extra > hi) e.push(`"${c.vs.join(' / ')}" 추가 금액은 기본가의 −${pc('opt_extra_down')}%~+${pc('opt_extra_up')}%(${won(lo)}~+${won(hi)})만 넣을 수 있어요`); });
+    }
+    return e;
+  }
+  /* ── 추가 구성품(P-PRD-02): 이름·판매가(VAT 포함)·재고 · 고정 단가 · 상품당 최대 product.addon_max ── */
+  function addonFormErrors(f, count) {
+    const e = [];
+    if (count >= GC.Policy.get('product.addon_max')) e.push(`추가 구성품은 상품당 ${GC.Policy.get('product.addon_max')}개까지예요`);
+    if (!String(f.name || '').trim()) e.push('이름을 넣어 주세요');
+    if (String(f.name || '').length > 40) e.push('이름은 40자까지예요');
+    if (!(f.price >= 100 && f.price < 1e8)) e.push('판매가는 100원 이상 1억원 미만이어야 해요');
+    if (!(f.stock >= 0)) e.push('재고를 0 이상으로 넣어 주세요');
+    return e;
+  }
+  const invText = (inv, c) => inv.map((x) => `${x.i + 1}구간(${c ? `${num(x.min * 1000)}매` : `${x.min}박스`}부터) 일반 할인가 ${won(x.normalAfter)} < 사업자가 ${won(x.biz)}`).join(' · ');
+  /* 사업자가 역전 검사 대상: 맞춤 전용이면 맞춤 단가, 아니면 일반 구간 단가 */
+  const promoInv = (L, p) => (L.mode === 'custom' ? GC.price.bizInversion(L.cust.tiers, bizOf(L.cust), promoOf(p)) : GC.price.bizInversion(L.tiers, bizOf(L), promoOf(p)));
   const descHits = () => GC.mask(S().desc, 'chat').hits;
   const KIND = { phone: '전화번호', email: '이메일', link: '외부 링크', messenger: '메신저', account: '계좌번호' };
   const ymd = (d) => `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
@@ -416,7 +519,7 @@
 
   function snapshot() {
     const s = S();
-    return JSON.parse(JSON.stringify({ mode: s.mode, name: s.name, desc: s.desc, det: makeDoc(s), keywords: s.keywords, tiers: s.tiers, bizMode: s.bizMode, bizRate: s.bizRate, moq: s.moq, mult: s.mult, maxQty: s.maxQty, ship: s.ship, cust: s.cust, eco: s.eco }));
+    return JSON.parse(JSON.stringify({ mode: s.mode, name: s.name, desc: s.desc, det: makeDoc(s), keywords: s.keywords, tiers: s.tiers, bizMode: s.bizMode, bizRate: s.bizRate, moq: s.moq, mult: s.mult, maxQty: s.maxQty, ship: s.ship, cust: s.cust, eco: s.eco, opt: s.opt, addons: s.addons }));
   }
   function toProduct(L) {
     const s = S(); const d = app.state('doc');
@@ -426,6 +529,8 @@
       custom: { moq: L.cust.moq, tiers: L.cust.tiers.map((t) => ({ min: t.min, price: t.price })), bizTiers: GC.price.bizTiers(L.cust.tiers.map((t) => ({ min: t.min, price: t.price })), bizOf(L.cust)), plate: L.cust.plate, plateKeep: L.cust.plateKeep || null, lead: L.cust.lead, methods: L.cust.methods.join('·'), area: L.cust.area + 'mm', side: L.cust.side, colors: L.cust.colors, spot: L.cust.spot },
       ship: L.ship || 'basic', shipDays: L.mode === 'custom' ? L.cust.lead : SHIP_TPL[L.ship || 'basic'].days, eco: !!(L.eco && s.docs.eco && s.docs.eco.ok), foodCert: ['VERIFIED', 'EXPIRING'].includes(d),
       sales: 0, rank: 1, date: '2026-10-12', cat: '수저·젓가락 포장 수저집', keywords: L.keywords, ind: CATEGORY.industries, desc: L.desc, det: L.det, moq: L.moq, mult: L.mult, maxQty: L.maxQty, thumb: 'kraft',
+      /* 옵션 3단·추가 구성품(P-PRD-02). 사업자가 할인율 방식이면 옵션 추가 금액에도 같은 비율(bizOptionExtra) */
+      axes: optAxes(L.opt), combos: optCombos(L.opt), addons: L.addons || [], biz: bizOf(L),
       /* 판매 중에 건 즉시 할인. 새 상품이라 최근 결제 기록이 없어 할인 전 가격 없이 할인가만 보임 */
       instant: s.promoLive ? promoOf(s.promoLive) : null, hist: [],
     };
@@ -487,6 +592,86 @@
         ${p.noOption && !p.soldout ? `<div><button class="btn btn-sm" data-act="addCart" data-id="${p.id}">담기</button></div>` : ''}</div></div>`;
   }
 
+  /* ── 고객: 옵션 3단·추가 구성품·금액 미리보기(U-PDP-02 · U-PDP-03 · C-PRICE-01). 금액은 결제와 같은 엔진 calcOrder ── */
+  const hasOpts = (p) => !!(p && p.axes && p.axes.length && p.combos && p.combos.length);
+  const addonsOf = (p) => (p && p.addons) || [];
+  function selCombo(p) {
+    if (!hasOpts(p)) return null; const sel = S().osel;
+    if (sel.length < p.axes.length || p.axes.some((a, i) => !sel[i])) return null;
+    return p.combos.find((c) => c.key === sel.slice(0, p.axes.length).join('|')) || null;
+  }
+  /** 본 상품(옵션)을 골랐는지: 옵션이 없는 상품은 늘 true. 추가 구성품은 이때만 담김 */
+  const hasMain = (p) => !hasOpts(p) || !!selCombo(p);
+  /* 맞춤 단가에 거는 즉시 할인: 맞춤 사업자가로 사는데 '사업자가 적용 안 함'이면 걸지 않음 */
+  const cInstant = (p, mem) => (!p.instant || (cBiz(p, mem) && p.instant.applyBiz === false) ? null : p.instant);
+  function addonItems(p, shipKey) {
+    if (!hasMain(p)) return [];
+    return addonsOf(p).filter((a) => a.stock > 0 && (S().addq[a.id] || 0) > 0)
+      .map((a) => ({ id: a.id, name: a.name, partnerId: 'P', shipKey, qty: S().addq[a.id], tiers: [{ min: 1, price: a.price }], addonOf: 'main' }));
+  }
+  const shipOf = (p) => { const t = SHIP_TPL[p.ship || 'basic']; return t.base ? { name: t.name, type: 'conditional', base: t.base, freeOver: t.freeOver } : { name: t.name, type: 'free', base: 0 }; };
+  /** 일반 구매(옵션·수량 + 추가 구성품). 옵션 추가 금액은 박스당 단가에 더함(사업자가 할인율이면 같은 비율로) */
+  function normalCalc(p, mem) {
+    const s = S(); const biz = usesBiz(p, mem); const ins = instantOf(p, mem); const combo = selCombo(p);
+    const extra = combo ? (biz ? GC.price.bizOptionExtra(combo.extra, p.biz) : combo.extra) : 0;
+    const tiers = (biz ? p.bizTiers : p.tiers).map((t) => ({ min: t.min, price: t.price + extra }));
+    const items = hasMain(p) ? [{ id: 'main', name: p.name, partnerId: 'P', shipKey: 'N', qty: s.qty, tiers, instant: ins ? ins.disc : null, priceType: biz ? 'BIZ' : 'NORMAL' }, ...addonItems(p, 'N')] : [];
+    return { combo, extra, tiers, ins, r: items.length ? GC.price.calcOrder({ items, shipping: { N: shipOf(p) } }) : null };
+  }
+  /** 맞춤 주문 미리보기: 맞춤 단가 + 판비(① 상품 금액 바로 아래 줄) + 즉시 할인(판비 범위 선택 시 판비에도) + 맞춤형 디자인비 판정 */
+  function customCalc(p, mem, withAddons) {
+    const s = S(); const ins = cInstant(p, mem);
+    const items = [{ id: 'main', name: p.name, partnerId: 'P', shipKey: 'C', qty: s.cqty, tiers: cTiersOf(p, mem), instant: ins, plateFee: p.custom.plate, designGroup: 'g', priceType: cBiz(p, mem) ? 'BIZ' : 'NORMAL' }];
+    if (withAddons) items.push(...addonItems(p, 'C'));
+    return GC.price.calcOrder({ items, designGroups: [{ id: 'g', type: 'CUSTOM' }], shipping: { C: shipOf(p) } });
+  }
+  /** 금액 줄(주문서 순서: 상품 금액 → 판비 → 판매자 할인 → 디자인비 → 배송비). 고객 화면이라 '판매자 할인' */
+  function calcHtml(r, o = {}) {
+    const t = r.totals; const sh = r.shippingLines[0]; const L0 = r.lines[0]; const rows = [];
+    rows.push(['상품 금액', won(t.gross), t.addons ? `추가 구성품 ${won(t.addons)} 포함 · 정해진 가격 × 수량` : o.custom ? '맞춤 단가 × 수량' : '구간 단가 × 수량']);
+    if (t.plates) rows.push(['판비', won(t.plates), '인쇄판 제작비 · 1회 · 상품 금액']);
+    if (t.instantDisc) rows.push(['판매자 할인', `−${won(t.instantDisc)}`, `즉시 할인${L0 && L0.plateInstantDisc ? ` · 판비 ${won(L0.plateInstantDisc)} 포함` : t.plates ? ' · 판비 제외' : ''}${t.addons ? ' · 추가 구성품 제외' : ''}`]);
+    if (o.custom) { const d = r.designFees[0]; rows.push(['디자인비(맞춤형)', d.fee ? won(d.fee) : '무료', d.fee ? '템플릿형·자체 파일을 고르면 0원' : `맞춤 품목 ${won(d.basis)} · 기준 이상`]); }
+    rows.push(['예상 배송비', sh.fee ? won(sh.fee) : '무료', sh.fee && sh.freeShort > 0 ? `${won(sh.freeShort)} 더 담으면 무료배송` : '']);
+    rows.push([o.custom ? '예상 합계(맞춤형 기준)' : '합계', won(t.customerTotal), '']);
+    return `<dl class="calc">${rows.map(([k, v, sub], i) => `<dt class="${i === rows.length - 1 ? 'tot' : ''}">${k}${sub ? `<small>${sub}</small>` : ''}</dt><dd class="${i === rows.length - 1 ? 'tot' : ''}">${v}</dd>`).join('')}</dl>`;
+  }
+  /** 옵션 3단 고르기. 세 번째 단에서 재고 0인 조합은 '품절'로 막음. custom이면 추가 금액·재고 대신 '주문 제작' */
+  function optSelHtml(p, custom, mem) {
+    if (!hasOpts(p)) return '';
+    const sel = S().osel; const last = p.axes.length - 1;
+    const cell = (a, i) => {
+      const opts = a.vals.map((v) => {
+        let note = ''; let off = false;
+        /* 마지막 단에서 조합이 정해지면 그 조합의 추가 금액·품절을 보여줌 */
+        if (!custom && i === last && sel.slice(0, i).every(Boolean)) {
+          const c = p.combos.find((x) => x.key === sel.slice(0, i).concat(v).join('|'));
+          if (c) { const ex = usesBiz(p, mem) ? GC.price.bizOptionExtra(c.extra, p.biz) : c.extra; if (ex) note = ` (${ex > 0 ? '+' : '−'}${won(Math.abs(ex))})`; if (c.stock <= 0) { off = true; note += ' · 품절'; } }
+        }
+        return `<option value="${esc(v)}" ${sel[i] === v ? 'selected' : ''} ${off ? 'disabled' : ''}>${esc(v)}${note}</option>`;
+      }).join('');
+      return `<div class="field"><label for="osel${i}">${i + 1}. ${esc(a.name)}</label><select class="select" id="osel${i}" data-change="osel" data-i="${i}"><option value="">${esc(a.name)} 선택</option>${opts}</select></div>`;
+    };
+    return `<div class="osel">${p.axes.map(cell).join('')}<span class="xsmall faint">옵션 ${p.axes.length}단 · 조합 ${p.combos.length}개${custom ? ' · 맞춤은 재고 대신 주문 제작' : ' · 추가 금액은 박스당'}</span></div>`;
+  }
+  /** 추가 구성품: 옵션 아래에서 고르고 수량은 따로. 본 상품을 골라야 담기고, 품절 구성품만 막음 */
+  function addonsHtml(p, custom) {
+    const list = addonsOf(p); if (!list.length) return '';
+    const on = hasMain(p); const q = S().addq;
+    return `<div class="stack-sm"><div class="split"><b class="small">추가 구성품</b><span class="xsmall faint">정해진 가격 · 수량 따로</span></div>
+      ${on ? '' : '<p class="note small">옵션을 끝까지 골라 본 상품을 담으면 추가 구성품도 함께 담을 수 있어요. 추가 구성품만 따로 살 수는 없어요.</p>'}
+      <div>${list.map((a) => { const out = a.stock <= 0; const n = q[a.id] || 0; return `<div class="addon-row${out ? ' is-out' : ''}"><span class="an">${esc(a.name)}<small>${won(a.price)}${out ? ' · <b style="color:var(--stop)">품절</b>' : ` · 남은 재고 ${num(a.stock)}개`}</small></span>
+        ${out ? '<span class="tag">품절</span>' : `<div class="qty sm"><button data-act="addq" data-id="${a.id}" data-d="-1" ${!on || n <= 0 ? 'disabled' : ''} aria-label="${esc(a.name)} 하나 빼기">−</button><input value="${n}" readonly aria-label="${esc(a.name)} 수량"><button data-act="addq" data-id="${a.id}" data-d="1" ${!on || n >= a.stock ? 'disabled' : ''} aria-label="${esc(a.name)} 하나 더하기">+</button></div>`}</div>`; }).join('')}</div>
+      <p class="xsmall faint">추가 구성품은 판매자 할인이 걸리지 않고${custom ? ', 인쇄하지 않는 일반 품목이라 디자인비 50만원 무료 판정에서도 빠져요. 맞춤 상품과 같은 송장으로 맞춤 출고일에 함께 보내요' : ', 본 상품과 같은 묶음으로 함께 출고해요'}. 주문하면 따로 된 줄이라 혼자 취소·반품할 수 있어요.</p></div>`;
+  }
+  /* 일회용품 규제 안내(U-PDP-04, D29): 그 카테고리 최신 문구 · 접힌 상자 · 고친 날짜. 문구가 없으면 상자 없음 */
+  const regKeyOf = (p) => Object.keys(REG_CATS).find((k) => String(p.cat || '').includes(REG_CATS[k].match)) || null;
+  function regBoxHtml(p) {
+    const k = regKeyOf(p); const r = k && S().reg[k];
+    if (!r || !r.text.trim()) return '';
+    return `<details class="regbox"><summary><span>일회용품 규제 안내 <span class="xsmall faint">· ${r.at.getMonth() + 1}/${r.at.getDate()} 고침</span></span></summary><div class="rb">${esc(r.text)}</div></details>`;
+  }
+
   /* ── 지금 차례 ── */
   function guide() {
     const s = S(); const st = app.state('product'); const d = app.state('doc');
@@ -502,6 +687,10 @@
             : dd.dirty ? '[저장(새 버전)]을 누르세요. 연락처·판매 조건 문장이 있으면 검수에서 보완 요청 사유가 돼요'
             : '다음 단계로 가세요. [다른 쇼핑몰 상세 붙여넣기 예시]로 서버 정화도 볼 수 있어요',
           price: pe.length ? '구간 단가가 거꾸로예요. 고치기 전에는 저장되지 않아요' : '구간 단가·MOQ·사업자 전용가와 정산 예정액을 확인하세요',
+          opt: optErrors(s.opt, s.tiers[0].price, s.mode).length ? '옵션 입력을 고치세요. 고치기 전에는 저장되지 않아요'
+            : s.opt.kind === 'combo' && s.opt.rows.length < OPT_MAX_NAMES ? '[옵션명 추가]로 세 번째 옵션(포장)을 넣어 3단 조합을 만들어 보세요'
+            : !s.addons.length ? '[추가 구성품 추가]로 이쑤시개를 등록해 보세요. 한 번 더 누르면 품절(재고 0) 구성품도 들어가요'
+            : '조합별 추가 금액·재고와 추가 구성품을 확인하고 다음 단계로 가세요',
           ship: '배송비 템플릿을 고르세요',
           custom: plateKeepErr(s.cust) ? '판 보관 기간을 관리자 값 이상으로 고치거나 비우세요. 짧게는 저장되지 않아요' : s.cust.template ? '맞춤 MOQ·구간 단가·판비·리드타임·판 보관 기간을 확인하세요' : '인쇄 사양을 확인하고 템플릿·칼선 파일을 올리세요',
           docs: s.docs.test ? '고시정보를 확인하고 [검수 요청] 단계로 가세요' : '식품 접촉 카테고리라 시험성적서를 올려야 검수를 요청할 수 있어요',
@@ -509,24 +698,25 @@
         };
         const rules = {
           basic: [{ k: '상품명', v: '50자 · 최상급 표현·다른 브랜드명 금지' }, { k: '판매 방식 변경', v: '재검수' }],
-          desc: [{ k: '필수', v: '글 50자 이상 또는 이미지 1장 이상' }, { k: '이미지', v: `장당 ${pvc('detail_img_mb')} · 상품당 ${pv('product.detail_image_max')}` }, { k: '긴 이미지', v: `세로 ${pvc('detail_slice_px')}마다 잘라 저장` }, { k: '링크·다른 사이트 이미지', v: '서버가 지움' }, { k: '연락처·QR·판매 조건', v: '보완 요청 사유' }],
+          desc: [{ k: '필수', v: '글 50자 이상 또는 이미지 1장 이상' }, { k: '이미지', v: `장당 ${pv('file.max_size_image')} · 상품당 ${pv('product.detail_image_max')}` }, { k: '긴 이미지', v: `세로 ${pvc('detail_slice_px')}마다 잘라 저장` }, { k: '링크·다른 사이트 이미지', v: '서버가 지움' }, { k: '연락처·QR·판매 조건', v: '보완 요청 사유' }],
           price: [{ k: '구간', v: '최대 5개 · 역전 불가' }, { k: '카테고리 일반 요율', policy: 'commission.default_rate' }, { k: '신규 입점 인하(3개월)', policy: 'commission.new_partner_discount' }, { k: '오입력 경고', v: `${pvc('price_alert_down')} 인하 · ${pvc('price_alert_up')} 인상` }],
+          opt: [{ k: '옵션명', v: `최대 ${OPT_MAX_NAMES}개(3단 조합)` }, { k: '조합', v: `최대 ${pvc('opt_combo_max')}` }, { k: '옵션 추가 금액', v: `기본가의 −${pvc('opt_extra_down')}~+${pvc('opt_extra_up')}` }, { k: '추가 구성품', v: `상품당 최대 ${pv('product.addon_max')} · 정해진 가격 하나` }, { k: '추가 구성품 할인', v: '파트너 할인 안 걸림' }],
           ship: [{ k: '일반 상품 출고 소요일', v: `최대 ${pvc('ship_days_max')}` }, { k: '묶음 배송 단위', v: '파트너+출고지+출고 유형' }],
-          custom: [{ k: '맞춤 요율', policy: 'commission.custom_rate' }, { k: '판 보관 최소 기간(초안)', v: `${pv('production.plate_keep_months')} · 파트너는 늘리기만` }, { k: '제작 리드타임', v: '[인쇄 가능] 확인일부터 영업일' }, { k: '허용 오차', v: '±3% · ±2mm, 더 엄격하게만' }, { k: '템플릿 파일', v: '없으면 맞춤 설정 저장 불가' }],
+          custom: [{ k: '맞춤 요율', policy: 'commission.custom_rate' }, { k: '판 보관 최소 기간(초안)', v: `${pv('production.plate_keep_months')} · 파트너는 늘리기만` }, { k: '제작 리드타임', v: '[인쇄 가능] 확인일부터 영업일' }, { k: '허용 오차', v: `${pv('claim.tolerance')} · 더 엄격하게만` }, { k: '템플릿·칼선 파일', v: `AI·PDF·SVG · 최대 ${pv('file.max_size_original')} · 없으면 저장 불가` }],
           docs: [{ k: '시험성적서 유효기간', v: pvc('doc_valid_months') }, { k: '만료 사전 알림', v: pvc('doc_notice_days') }, { k: '친환경 표시', v: '인증 서류 있을 때만' }],
           submit: [{ k: '검수 처리 목표', v: pvc('review_sla_bd') }, { k: '판매 불가(REJECTED)', v: '최종 · 재요청 불가' }],
         };
         return app.turn('partner', map[s.pstep], { rules: rules[s.pstep] });
       }
       case 'IN_REVIEW': return app.turn('hq', '검수 대기 목록의 수저집을 열어 체크리스트를 확인하고 승인·보완 요청·판매 불가 중 하나를 고르세요', {
-        rules: [{ k: '처리 목표', v: pvc('review_sla_bd') }, { k: '기한', v: s.review.due ? fmtDate(s.review.due) : '-' }, { k: '보완 요청', v: '항목별 코멘트 · 재요청 가능' }, { k: '판매 불가', v: '최종' }],
-        hint: '체크하지 않고 +1일을 누르면 검수 기한 초과 알림이 담당자·팀장에게 가요.' });
+        rules: [{ k: '처리 목표', v: pvc('review_sla_bd') }, { k: '기한', v: s.review.due ? fmtDate(s.review.due) : '-' }, { k: '보완 요청', v: '항목별 코멘트 · 재요청 가능' }, { k: '판매 불가', v: '최종' }, { k: '파트너 [검수 요청 취소]', v: '결과 전까지 · 임시 저장으로' }],
+        hint: '체크하지 않고 +1일을 누르면 검수 기한 초과 알림이 담당자·팀장에게 가요. 파트너 상품 목록의 [검수 요청 취소]를 누르면 임시 저장으로 돌아가 다시 고칠 수 있어요.' });
       case 'NEEDS_FIX': return app.turn('partner', '보완 요청 사유를 고친 뒤 다시 검수를 요청하세요', { rules: [{ k: '지금까지 보완 요청', v: `${s.review.fixCount}회` }, { k: '같은 사유 반복', v: `${pvc('fix_repeat_md')}부터 MD 상담 안내` }] });
       case 'APPROVED': {
         const rv = app.state('rev'); const lv = s.det.liveVer;
-        if (rv === 'EDITING') return app.turn('partner', '상세 설명을 고친 뒤 [수정 검수 요청]을 누르세요. [상세 이미지 올리기]로 로고 안내 이미지를 더해 볼 수 있어요', { rules: [{ k: '고객에게 보이는 버전', v: `v${lv}(승인 전까지 유지)` }, { k: '재검수 범위', v: '바뀐 부분만' }, { k: '열린 수정본', v: '상품당 하나' }, { k: '판매', v: '상품은 판매 중 그대로' }] });
-        if (rv === 'NEEDS_FIX') return app.turn('partner', '본사 보완 요청을 보고 상세 설명을 고친 뒤 다시 [수정 검수 요청]을 누르세요', { rules: [{ k: '고객에게 보이는 버전', v: `v${lv}` }, { k: '상품', v: '판매 중 그대로' }, { k: '다시 요청', v: '같은 수정본으로' }], hint: `보완 사유: ${esc(s.dreview.comment || '-')}` });
-        if (rv === 'IN_REVIEW') return app.turn('hq', '수정본 재검수: 이전 승인 버전과 수정본을 나란히 보고 [수정 승인]·[보완 요청]·[수정 반려] 중 하나를 고르세요', { rules: [{ k: '처리 목표', v: pvc('review_sla_bd') }, { k: '고객 화면', v: `처리 전까지 v${lv}` }, { k: '수정 반려', v: '그 수정만 받지 않음 · 판매 불가와 다름' }, { k: '이미지 속 글자', v: '눈으로 확인(OCR 2차)' }], hint: '어느 쪽으로 처리해도 상품은 판매 중 그대로예요. 판매를 멈춰야 하면 [직권 중지]를 따로 써요.' });
+        if (rv === 'EDITING') return app.turn('partner', '상세 설명을 고친 뒤 [수정 검수 요청]을 누르세요. [상세 이미지 올리기]로 로고 안내 이미지를 더해 볼 수 있어요. 그만두려면 [수정본 버리기]', { rules: [{ k: '고객에게 보이는 버전', v: `v${lv}(승인 전까지 유지)` }, { k: '재검수 범위', v: '바뀐 부분만' }, { k: '열린 수정본', v: '상품당 하나' }, { k: '판매', v: '상품은 판매 중 그대로' }, { k: '수정본 버리기', v: '수정 취소 · 기록은 남음' }] });
+        if (rv === 'NEEDS_FIX') return app.turn('partner', '본사 보완 요청을 보고 상세 설명을 고친 뒤 다시 [수정 검수 요청]을 누르세요. 고치지 않으려면 [수정본 버리기]', { rules: [{ k: '고객에게 보이는 버전', v: `v${lv}` }, { k: '상품', v: '판매 중 그대로' }, { k: '다시 요청', v: '같은 수정본으로' }, { k: '수정본 버리기', v: '수정 취소 · 기록은 남음' }], hint: `보완 사유: ${esc(s.dreview.comment || '-')}` });
+        if (rv === 'IN_REVIEW') return app.turn('hq', '수정본 재검수: 이전 승인 버전과 수정본을 나란히 보고 [수정 승인]·[보완 요청]·[수정 반려] 중 하나를 고르세요', { rules: [{ k: '처리 목표', v: pvc('review_sla_bd') }, { k: '고객 화면', v: `처리 전까지 v${lv}` }, { k: '수정 반려', v: '그 수정만 받지 않음 · 판매 불가와 다름' }, { k: '이미지 속 글자', v: '눈으로 확인(OCR 2차)' }, { k: '파트너 [검수 요청 취소]', v: '수정 중으로 돌아감 · 버리려면 먼저 취소' }], hint: '어느 쪽으로 처리해도 상품은 판매 중 그대로예요. 판매를 멈춰야 하면 [직권 중지]를 따로 써요.' });
         if (rv === 'DECLINED' && !s.rev.custSeen) return app.turn('customer', `수정본이 반려됐어요. 고객 화면에서 대성포장 수저집 상세를 열어 보세요. 반려된 수정본이 아니라 이전 승인 v${lv}이 그대로 보여요`, { rules: [{ k: '보이는 버전', v: `이전 승인 v${lv}` }, { k: '상품 상태', v: '판매 중 그대로' }, { k: '고객에게', v: '검수 상태는 안 보임' }] });
         const r = [{ k: '검색 반영', v: '승인 후 1분 안' }, { k: '동의어', v: '수저집=수저포장지=수저봉투' }, { k: '고객 가격', v: 'VAT 포함 · 사업자는 공급가 병기' }];
         const synTip = s.syn[0].includes('수저봉투') ? '. "수저봉투"로 찾아도 나와요' : '';
@@ -535,14 +725,15 @@
         if (!s.viewed.mem) return app.turn('customer', s.live.mode === 'custom' ? '맞춤 전용 상세를 확인하고, 왼쪽 "고객 화면 보기"에서 회원 유형을 사업자로 바꿔 보세요' : '수량을 바꿔 구간 단가를 보고, 왼쪽 "고객 화면 보기"에서 회원 유형을 사업자로 바꿔 보세요', { rules: [{ k: '현재 구간', v: '표에서 강조' }, ...(s.live.mode !== 'custom' ? [{ k: '최소 주문 수량', v: `${s.live.moq}박스 · 자동 보정` }] : []), { k: '맞춤 최소 수량', v: `${num(s.live.cust.moq)}매` }] });
         if (!s.viewed.desc) return app.turn('customer', '아래로 내려 "상세 설명"의 [상세 설명 펼치기]를 누르고, 이미지를 눌러 크게 보세요', { rules: [{ k: '처음 보이는 높이', v: pvc('detail_fold_px') }, { k: '잘라 저장한 이미지', v: '틈 없이 한 장처럼' }, { k: '넓은 표', v: '표만 가로로 밀기' }, { k: '보이는 버전', v: `승인된 최신 v${lv}` }] });
         if (!s.viewed.search) return app.turn('customer', `검색창에서 초성 ㅅㅈㅈ이나 동의어로도 찾아보세요${synTip}`, { rules: r });
-        return app.done('등록한 상품이 검수를 거쳐 검색·상세에 그대로 보여요.', { next: '예외도 눌러 보세요: 파트너 [상세 설명] 탭에서 판매 중 수정 → 본사 수정본 재검수(바뀐 부분 비교 · 승인·보완 요청·수정 반려) · 파트너 [즉시 할인]을 "사업자가 적용 안 함"으로(사업자가 역전 경고) · 고객 상세의 이미지 못 불러옴(왼쪽 "고객 화면 보기")과 [이 상품 신고하기] · 파트너 [가격 바로 수정]에 0 하나 빠진 가격(오입력 경고) · [판매 중지]↔[판매 재개] · 본사 [직권 중지](파트너가 못 풂) · 시계 +7일을 여러 번 눌러 시험성적서 만료 → 자동 본사 중지 · 고객 검색 "대나무 수저통"(결과 0건).' });
+        if (s.live.mode !== 'custom' && addonsOf(s.live).length && !s.viewed.cart) return app.turn('customer', '상세에서 옵션 3단을 고르고 추가 구성품 수량을 정한 뒤 [장바구니]를 눌러 보세요. 품절 구성품만 막혀요', { rules: [{ k: '추가 구성품', v: '본 상품을 골라야 담김' }, { k: '가격', v: '정해진 가격 × 수량 · 판매자 할인 없음' }, { k: '장바구니', v: '본 상품 줄 아래 붙은 줄' }] });
+        return app.done('등록한 상품이 검수를 거쳐 검색·상세에 그대로 보여요.', { next: '예외도 눌러 보세요: 파트너 [상세 설명] 탭에서 판매 중 수정 → 본사 수정본 재검수(바뀐 부분 비교 · 승인·보완 요청·수정 반려) · 수정본 [검수 요청 취소]·[수정본 버리기] · 파트너 [즉시 할인]을 "사업자가 적용 안 함"으로(사업자가 역전 경고)·맞춤 상품은 "판비 포함" · 고객 상세 [맞춤 제작으로 주문하기](맞춤 옵션·수량 → 방식 선택) · 본사 [카테고리]에서 일회용품 규제 안내 고치기·비우기 · 고객 상세의 이미지 못 불러옴(왼쪽 "고객 화면 보기")과 [이 상품 신고하기] · 파트너 [가격 바로 수정]에 0 하나 빠진 가격(오입력 경고) · [판매 중지]↔[판매 재개] · 본사 [직권 중지](파트너가 못 풂) · 시계 +7일을 여러 번 눌러 시험성적서 만료 → 자동 본사 중지 · 고객 검색 "대나무 수저통"(결과 0건)·품절 한지 수저집.' });
       }
       case 'PAUSED': return app.turn('partner', '파트너가 판매를 멈춰 검색·상세에서 빠졌어요. [판매 재개]로 다시 열 수 있어요', { rules: [{ k: 'PAUSED', v: '파트너가 재개' }, { k: 'SUSPENDED', v: '본사만 해제' }] });
       case 'SUSPENDED':
         if (s.suspend && s.suspend.kind === 'doc' && d === 'EXPIRED') return app.turn('partner', '시험성적서가 만료돼 본사 중지됐어요. 새 시험성적서를 올리세요. 재개는 본사가 해요', { rules: [{ k: '파트너 재개', v: '불가' }, { k: '해제', v: '새 서류 확인 후 본사' }] });
-        return app.turn('hq', s.suspend && s.suspend.kind === 'doc' ? '파트너가 새 시험성적서를 올렸어요. 확인하고 [중지 해제]를 누르세요' : s.appeal ? '파트너 소명을 확인하고 [중지 해제] 여부를 정하세요' : '본사 직권 중지 상태예요. 파트너 화면에서 [소명하기]를 눌러 보세요', { rules: [{ k: '파트너 재개', v: '불가(본사만 해제)' }, { k: '사유 알림', v: '필수' }] });
+        return app.turn('hq', s.suspend && s.suspend.kind === 'doc' ? '파트너가 새 시험성적서를 올렸어요. 확인하고 [중지 해제]를 누르세요' : s.appeal ? '파트너 소명을 확인하고 [중지 해제] 여부를 정하세요' : '본사 직권 중지 상태예요. 파트너 화면에서 [소명하기]를 눌러 보세요', { rules: [{ k: '파트너 재개', v: '불가(본사만 해제)' }, { k: '사유 알림', v: '필수' }, { k: '열린 수정본', v: '본사 중지 중에는 닫지 않음' }] });
       case 'REJECTED': return app.done('판매 불가로 최종 처리됐어요. 같은 상품은 다시 검수를 요청할 수 없어요.', { next: '[처음부터]를 눌러 보완 요청 길로 다시 가 볼 수 있어요.' });
-      case 'ENDED': return app.done('판매를 종료했어요. 주문 이력 때문에 지우지 않고, 필요하면 복사해 새 상품으로 등록해요.', { next: '[처음부터]를 눌러 다시 시작할 수 있어요.' });
+      case 'ENDED': return app.done(`판매를 종료했어요. 주문 이력 때문에 지우지 않고, 필요하면 복사해 새 상품으로 등록해요.${s.rev.hist.some((h) => h.reason === '판매 종료') ? ' 열려 있던 수정본은 사유 ‘판매 종료’로 함께 닫혔어요(수정 취소, 기록만 남음).' : ''}`, { next: '[처음부터]를 눌러 다시 시작할 수 있어요.' });
     }
   }
   let lastScreen = '';
@@ -589,7 +780,7 @@
 
   const VIEWS = {};
   /* ════════ 파트너 센터 ════════ */
-  function stepsFor(m) { return [['basic', '기본 정보'], ['desc', '상세 설명'], ...(m !== 'custom' ? [['price', '가격·구간 단가']] : []), ['ship', '배송비'], ...(m !== 'normal' ? [['custom', '맞춤 설정']] : []), ['docs', '고시·서류'], ['submit', '검수 요청']]; }
+  function stepsFor(m) { return [['basic', '기본 정보'], ['desc', '상세 설명'], ...(m !== 'custom' ? [['price', '가격·구간 단가']] : []), ['opt', '옵션·추가 구성품'], ['ship', '배송비'], ...(m !== 'normal' ? [['custom', '맞춤 설정']] : []), ['docs', '고시·서류'], ['submit', '검수 요청']]; }
   const canEditLive = (st) => !!S().live && ['APPROVED', 'PAUSED'].includes(st);
   VIEWS.partner = (f) => {
     const s = S(); const st = app.state('product');
@@ -606,7 +797,7 @@
     const steps = stepsFor(s.mode);
     if (!steps.some(([k]) => k === s.pstep)) s.pstep = 'basic';
     const idx = steps.findIndex(([k]) => k === s.pstep);
-    const body = { basic: stepBasic, desc: stepDesc, price: stepPrice, ship: stepShip, custom: stepCustom, docs: stepDocs, submit: stepSubmit }[s.pstep](s);
+    const body = { basic: stepBasic, desc: stepDesc, price: stepPrice, opt: stepOpt, ship: stepShip, custom: stepCustom, docs: stepDocs, submit: stepSubmit }[s.pstep](s);
     const fix = st === 'NEEDS_FIX' ? `<div class="note note-warn"><b>본사 보완 요청 ${s.review.fixCount}회째</b> · ${esc(s.review.comment)}${s.review.fixCount >= pc('fix_repeat_md') ? '<br>같은 사유로 여러 번 보완 요청을 받았어요. 담당 MD 상담을 신청할 수 있어요.' : ''}</div>` : '';
     return `${fix}
       <nav class="psteps" aria-label="등록 단계">${steps.map(([k, n], i) => `<button data-act="pstep" data-k="${k}" aria-pressed="${k === s.pstep}" class="${i < idx ? 'done' : ''}">${i + 1}. ${n}</button>`).join('')}</nav>
@@ -629,7 +820,7 @@
         <div class="field"><span class="lbl">원산지</span><span class="input ro">대한민국</span></div>
         <div class="field"><span class="lbl">판매 단위</span><span class="input ro">1박스(1,000매)</span><span class="hint">1매당 단가 = 박스 가격 ÷ 1,000</span></div>
         <div class="field"><span class="lbl">검색 키워드 (${s.keywords.length}/10)</span><div class="togs">${s.keywords.map((k) => `<span class="tag">${esc(k)}</span>`).join('')}</div><span class="hint">동의어(수저집=수저포장지)는 본사 검색 사전이 처리해요</span></div>
-        <div class="field full"><span class="lbl">대표·추가 이미지</span><div class="cluster">${['kraft', 'kraft', 'white', 'kraft'].map((k, i) => `<div class="thumb" style="width:64px">${thumb(i === 2 ? 'white' : 'kraft')}</div>`).join('')}<span class="st st-done">대표 1,200×1,200 · 흰 배경</span></div><span class="hint">대표 1장 + 추가 최대 9장 · JPG·PNG·WEBP 장당 20MB · 연락처·워터마크 금지 · 상세 설명은 다음 단계에서 에디터로 써요</span></div>
+        <div class="field full"><span class="lbl">대표·추가 이미지</span><div class="cluster">${['kraft', 'kraft', 'white', 'kraft'].map((k, i) => `<div class="thumb" style="width:64px">${thumb(i === 2 ? 'white' : 'kraft')}</div>`).join('')}<span class="st st-done">대표 1,200×1,200 · 흰 배경</span></div><span class="hint">대표 1장 + 추가 최대 9장 · JPG·PNG·WEBP 장당 ${pv('file.max_size_image')} · 연락처·워터마크 금지 · 상세 설명은 다음 단계에서 에디터로 써요</span></div>
       </div></div>`;
   }
   /* 상세 설명 작성(P-PRD-09): 등록 양식의 한 단계, 판매 중 수정 화면에서도 같은 에디터 */
@@ -664,7 +855,7 @@
           <div class="seg" role="group" aria-label="미리보기">${[['m', '모바일 360px'], ['pc', 'PC'], ['', '미리보기 닫기']].map(([k, n]) => `<button data-act="detPv" data-k="${k}" aria-pressed="${d.pv === k}">${n}</button>`).join('')}</div>
           <button class="btn btn-ink" data-act="detSave">저장(새 버전)</button></div>
         ${d.pv ? `<div class="pv-frame ${d.pv}">${viewerHtml(makeDoc(s), { pc: d.pv === 'pc' })}</div><p class="xsmall faint">${d.pv === 'pc' ? 'PC: 상세 설명 폭 최대 1,000px 가운데 정렬 · 1,000px 이미지' : '모바일: 640px 이미지'} · 저장 때와 같은 정화 결과로 그려요</p>` : ''}
-        ${d.versions.length ? `<div class="tbl-wrap"><table class="tbl small"><thead><tr><th>버전</th><th>저장</th><th>내용</th><th>상태</th></tr></thead><tbody>${d.versions.map((v) => `<tr class="${v.v === d.liveVer ? 'is-hl' : ''}"><td>v${v.v}</td><td class="nw">${fmtDate(v.at)}</td><td>${esc(v.sum)}</td><td>${v.v === d.liveVer ? '고객에게 보임' : s.rev.declined.includes(v.v) ? '수정 반려(고객에게 안 보임)' : live && v.v > d.liveVer ? '수정본' : v.v < (d.liveVer || 0) ? `보관(주문 연결 없으면 ${pvc('detail_ver_keep')})` : '저장됨'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="xsmall faint">아직 저장한 버전이 없어요. 검수를 요청하면 그 순간 내용이 v1로 저장돼요.</p>'}
+        ${d.versions.length ? `<div class="tbl-wrap"><table class="tbl small"><thead><tr><th>버전</th><th>저장</th><th>내용</th><th>상태</th></tr></thead><tbody>${d.versions.map((v) => `<tr class="${v.v === d.liveVer ? 'is-hl' : ''}"><td>v${v.v}</td><td class="nw">${fmtDate(v.at)}</td><td>${esc(v.sum)}</td><td>${v.v === d.liveVer ? '고객에게 보임' : s.rev.declined.includes(v.v) ? '수정 반려(고객에게 안 보임)' : s.rev.discarded.includes(v.v) ? '수정 취소(고객에게 안 보임 · 기록)' : live && v.v > d.liveVer ? '수정본' : v.v < (d.liveVer || 0) ? `보관(주문 연결 없으면 ${pvc('detail_ver_keep')})` : '저장됨'}</td></tr>`).join('')}</tbody></table></div>` : '<p class="xsmall faint">아직 저장한 버전이 없어요. 검수를 요청하면 그 순간 내용이 v1로 저장돼요.</p>'}
       </div></div>`;
   }
   /* 판매 중인 상품의 수정본(P-PRD-07 · P-PRD-09 · 엔진 PRODUCT_REVISION): 승인 전·보완 요청·수정 반려 동안 이전 승인 버전 노출 */
@@ -672,21 +863,32 @@
   function declinedNote(s, small) {
     return `<div class="note note-stop${small ? ' small' : ''}"><b>수정 반려</b> · 수정본 v${s.rev.declined[0]} · ${esc(s.rev.reason)}<br><span class="small">반려된 수정본은 고객에게 보이지 않고, 상품은 이전 승인 내용(v${s.det.liveVer})으로 계속 판매 중이에요. 판매 불가와 달리 그 수정만 받지 않는다는 뜻이라, 다시 고쳐 새 수정본으로 요청할 수 있어요.</span></div>`;
   }
+  /* 수정본 기록(D27): 반영·수정 반려·수정 취소(버리기·판매 종료) 모두 남음. 수정 취소는 검수 목록에서 빠지고 기록으로만 */
+  const REV_RESULT = { APPLIED: ['반영', 'st-done'], DECLINED: ['수정 반려', 'st-stop'], DISCARDED: ['수정 취소', 'st-warn'] };
+  function revHistHtml(s) {
+    const h = s.rev.hist; if (!h.length) return '';
+    return `<div class="tbl-wrap"><table class="tbl small"><thead><tr><th>수정본</th><th>결과</th><th>시각</th><th>사유·메모</th></tr></thead><tbody>${h.map((x) => `<tr><td class="nw">${x.n}번째${x.ver ? ` · v${x.ver}` : ''}</td><td><span class="st ${REV_RESULT[x.result][1]}">${REV_RESULT[x.result][0]}</span></td><td class="nw">${fmtDate(x.at)}</td><td>${esc(x.reason)}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  function discardNote(s, small) {
+    const x = s.rev.hist.find((h) => h.result === 'DISCARDED'); if (!x) return '';
+    return `<div class="note${small ? ' small' : ''}"><b>수정 취소</b> · 수정본 ${x.n}번째 · ${esc(x.reason)}<br><span class="small">버린 수정본은 고객에게 보이지 않고 본사 검수 목록에서도 빠져요. 판매 중 상품은 이전 승인 내용(v${s.det.liveVer}) 그대로이고, 수정본은 기록으로 남아요.</span></div>`;
+  }
   function descTabHtml(s) {
     const rv = app.state('rev'); const L = s.live.det; const lv = s.det.liveVer;
-    if (!revOpen()) return `${rv === 'DECLINED' ? declinedNote(s) : ''}<div class="note small">지금 고객에게 보이는 상세 설명은 <b>v${lv}</b>예요. 고치면 수정본을 만들어 바뀐 부분만 다시 검수하고, 승인될 때까지 v${lv} 버전이 계속 보여요. 상품마다 열린 수정본은 하나예요.</div>
-      <div class="cluster"><button class="btn btn-primary" data-act="descEdit">${rv === 'DECLINED' ? '새로 수정 시작' : '수정 시작'}</button></div>
+    if (!revOpen()) return `${rv === 'DECLINED' ? declinedNote(s) : ''}${rv === 'DISCARDED' ? discardNote(s) : ''}<div class="note small">지금 고객에게 보이는 상세 설명은 <b>v${lv}</b>예요. 고치면 수정본을 만들어 바뀐 부분만 다시 검수하고, 승인될 때까지 v${lv} 버전이 계속 보여요. 상품마다 열린 수정본은 하나예요.</div>
+      <div class="cluster"><button class="btn btn-primary" data-act="descEdit">${rv === 'DECLINED' || rv === 'DISCARDED' ? '새로 수정 시작' : '수정 시작'}</button></div>
       <p class="xsmall faint">${REV_SCOPE}</p>
-      <div class="dv-mini">${viewerHtml(L, {})}</div>`;
+      <div class="dv-mini">${viewerHtml(L, {})}</div>${revHistHtml(s)}`;
     if (rv === 'IN_REVIEW') {
       const df = docDiff(L, makeDoc(s));
       return `<div class="note small">수정본 <b>v${s.det.ver}</b>을 본사가 재검수하고 있어요(기한 ${fmtDate(s.dreview.due)}). 처리될 때까지 고객에게는 v${lv} 버전이 보여요. 결과는 승인·보완 요청·수정 반려 중 하나예요.</div>
-        <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>바뀐 곳</th><th>구분</th><th>내용</th></tr></thead><tbody>${df.rows.map((r) => `<tr><td class="nw">${r.what}</td><td><span class="st ${r.k === 'add' ? 'st-now' : 'st-stop'}">${r.k === 'add' ? '추가' : '삭제'}</span></td><td>${esc(r.v)}</td></tr>`).join('')}</tbody></table></div>`;
+        <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>바뀐 곳</th><th>구분</th><th>내용</th></tr></thead><tbody>${df.rows.map((r) => `<tr><td class="nw">${r.what}</td><td><span class="st ${r.k === 'add' ? 'st-now' : 'st-stop'}">${r.k === 'add' ? '추가' : '삭제'}</span></td><td>${esc(r.v)}</td></tr>`).join('')}</tbody></table></div>
+        <div class="cluster"><button class="btn" data-act="descCancelReview">검수 요청 취소</button><span class="xsmall faint">수정 중으로 돌아가 더 고치거나 버릴 수 있어요. 검수 중에는 바로 버릴 수 없어요</span></div>${revHistHtml(s)}`;
     }
     const fix = rv === 'NEEDS_FIX' ? `<div class="note note-warn"><b>본사 보완 요청</b> · ${esc(s.dreview.comment)}</div>` : '';
     return `${fix}<div class="note small">판매 중인 상품의 수정본이에요. 검수를 통과할 때까지 고객에게 보이지 않고 <b>v${lv}</b>이 계속 보여요.</div>
       ${editorHtml(s)}
-      <div class="cluster"><button class="btn btn-primary" data-act="descSubmit">수정 검수 요청</button><button class="btn btn-ghost" data-act="descCancel">수정본 버리기</button><span class="xsmall faint">처리 목표 ${pvc('review_sla_bd')}</span></div>`;
+      <div class="cluster"><button class="btn btn-primary" data-act="descSubmit">수정 검수 요청</button><button class="btn btn-ghost" data-act="descDiscard">수정본 버리기</button><span class="xsmall faint">처리 목표 ${pvc('review_sla_bd')} · 버리면 수정 취소로 닫히고 기록은 남아요</span></div>${revHistHtml(s)}`;
   }
   /* 사업자 전용가 입력 부품 — 일반 가격(P-PRD-03)과 맞춤 단가(P-PRD-05)가 같이 씀. o = s 또는 s.cust, c = 맞춤이면 '1' */
   function bizCtl(o, c) {
@@ -709,7 +911,7 @@
   /* 맞춤형 디자인비 판정 미리보기(C-PRICE-01 ③): 실제로 적용된 가격(일반가·사업자가) 기준 */
   function dfeeHtml(basis, biz) {
     const th = GC.Policy.get('design.free_threshold');
-    return `<div class="note small${basis >= th ? '' : ' note-spot'}">${basis >= th ? `<b>맞춤형 디자인비 무료</b> · 맞춤 품목 ${won(basis)}이 기준 ${pv('design.free_threshold')} 이상` : `맞춤형으로 하면 디자인비 ${pv('design.fee')} · <b>맞춤 품목 ${won(th - basis)} 더 담으면 디자인비 무료</b>`}${biz ? '<br><span class="xsmall">사업자가로 사서 무료 기준도 사업자가 금액으로 판단해요</span>' : ''}</div>`;
+    return `<div class="note small${basis >= th ? '' : ' note-spot'}">${basis >= th ? `<b>맞춤형 디자인비 무료</b> · 맞춤 품목 ${won(basis)}이 기준 ${pv('design.free_threshold')} 이상` : `맞춤형으로 하면 디자인비 ${pv('design.fee')} · <b>맞춤 품목 ${won(th - basis)} 더 담으면 디자인비 무료</b>`}<br><span class="xsmall">판매자 할인 뒤 맞춤 품목 금액으로 판단하고, 판비·추가 구성품·배송비는 빼요.${biz ? ' 사업자가로 사서 무료 기준도 사업자가 금액으로 판단해요.' : ''}</span></div>`;
   }
   function stepPrice(s) {
     const pe = priceErrors(); const errRows = new Set(pe.map((e) => e.i)); const base = s.tiers[0];
@@ -742,6 +944,53 @@
         ${bt ? `<p class="xsmall faint">사업자 회원이 사업자가로 사면 판매가·수수료·정산 모두 사업자가 기준이에요(1구간 ${won(bt[0].price)} → 정산 예정 ${won(GC.settle.confirmEvent({ sale: bt[0].price, rate: r.rate }).amount)}).</p>` : ''}
         <p class="xsmall faint">로고를 넣은 주문 항목은 맞춤 요율(${pv('commission.custom_rate')} − 2%p)을 써요. 배송비 정산액은 따로 더해져요.</p></div></div>`;
   }
+  /* 옵션·추가 구성품(P-PRD-02 · 2026-10-15 D24 = C): 조합형 옵션명 최대 3개(조합 최대 100개) + 추가 구성품(고정 단가) */
+  function stepOpt(s) {
+    const o = s.opt; const isC = s.mode === 'custom'; const base = s.tiers[0].price || 0;
+    const oe = optErrors(o, base, s.mode); const combos = optCombos(o); const n = comboCount(o);
+    const lo = -Math.floor((base * pc('opt_extra_down')) / 100); const hi = Math.floor((base * pc('opt_extra_up')) / 100);
+    const rows = o.kind === 'combo' ? o.rows.map((r, i) => `<div class="opt-row">
+        <input class="input" id="oname${i}" data-input="optName" data-i="${i}" value="${esc(r.name)}" placeholder="옵션명" aria-label="${i + 1}번째 옵션명" autocomplete="off">
+        <input class="input ov" id="ovals${i}" data-input="optVals" data-i="${i}" value="${esc(r.vals)}" placeholder="옵션값을 쉼표로 나눠 넣어요" aria-label="${i + 1}번째 옵션값(쉼표로 나눔)" autocomplete="off">
+        ${i > 0 ? `<button class="x-btn" data-act="optDel" data-i="${i}">빼기</button>` : '<span></span>'}</div>`).join('') : '';
+    const tbl = o.kind === 'combo' && combos.length && !isC ? `<div class="tbl-wrap"><table class="tbl small opt-tbl"><thead><tr><th>조합</th><th class="num">추가 금액(박스당)</th><th class="num">재고(박스)</th><th>표시</th></tr></thead><tbody>
+        ${combos.map((c, i) => `<tr class="${c.extra < lo || c.extra > hi ? 'is-err' : ''}"><td>${esc(c.vs.join(' / '))}</td>
+          <td><input class="input" id="cx${i}e" data-input="cxEdit" data-key="${esc(c.key)}" data-f="extra" value="${c.extra}" inputmode="numeric" aria-label="${esc(c.vs.join(' '))} 추가 금액"></td>
+          <td><input class="input" id="cx${i}s" data-input="cxEdit" data-key="${esc(c.key)}" data-f="stock" value="${c.stock}" inputmode="numeric" aria-label="${esc(c.vs.join(' '))} 재고"></td>
+          <td>${c.stock <= 0 ? '<span class="st st-warn">품절</span>' : '<span class="st st-done">판매</span>'}</td></tr>`).join('')}</tbody></table></div>` : '';
+    const ad = s.addons; const max = GC.Policy.get('product.addon_max'); const r = rateN();
+    const adTbl = ad.length ? `<div class="tbl-wrap"><table class="tbl small ad-tbl"><thead><tr><th>이름</th><th class="num">판매가(VAT 포함)</th><th class="num">재고(개)</th><th>표시</th><th></th></tr></thead><tbody>
+        ${ad.map((a) => `<tr><td>${esc(a.name)}</td><td><input class="input" id="ap${a.id}" data-input="adEdit" data-id="${a.id}" data-f="price" value="${a.price}" inputmode="numeric" aria-label="${esc(a.name)} 판매가"></td>
+          <td><input class="input" id="as${a.id}" data-input="adEdit" data-id="${a.id}" data-f="stock" value="${a.stock}" inputmode="numeric" aria-label="${esc(a.name)} 재고"></td>
+          <td>${a.stock <= 0 ? '<span class="st st-warn">품절</span>' : '<span class="st st-done">판매</span>'}</td><td><button class="x-btn" data-act="addonDel" data-id="${a.id}">빼기</button></td></tr>`).join('')}</tbody></table></div>`
+      : '<p class="xsmall faint">아직 등록한 추가 구성품이 없어요. 없어도 검수를 요청할 수 있어요.</p>';
+    const f = s.adForm; const ev = ad[0] ? GC.settle.confirmEvent({ sale: ad[0].price, rate: r.rate }) : null;
+    return `
+      <div class="panel"><div class="panel-h"><h2>옵션</h2><span class="xsmall faint">P-PRD-02 · 옵션값을 넣으면 조합이 자동으로 만들어져요</span></div><div class="panel-b stack">
+        <div><div class="seg" role="group" aria-label="옵션 방식">${[['single', '단일 상품'], ['combo', '조합형']].map(([k, nm]) => `<button data-act="optKind" data-k="${k}" aria-pressed="${o.kind === k}">${nm}</button>`).join('')}</div></div>
+        ${o.kind === 'combo' ? `<div class="stack-sm">${rows}</div>
+          <div class="cluster"><button class="btn btn-sm" data-act="optAdd" ${o.rows.length >= OPT_MAX_NAMES ? 'disabled' : ''}>옵션명 추가 (${o.rows.length}/${OPT_MAX_NAMES})</button><span class="small">조합 <b>${num(n)}개</b> / 최대 ${pvc('opt_combo_max')}</span></div>
+          ${oe.length ? `<ul class="errs">${oe.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>` : ''}
+          ${isC ? '<p class="note small">맞춤 전용 상품은 옵션별 재고·추가 금액을 받지 않고 옵션 구성만 써요. 재고 대신 “주문 제작”으로 표시하고 하루 생산 가능량으로만 제한해요.</p>' : `${tbl}<p class="xsmall faint">추가 금액은 기본가(1구간 ${won(base)})의 −${pvc('opt_extra_down')}~+${pvc('opt_extra_up')}(${won(lo)}~+${won(hi)})만 돼요. 사업자가를 할인율로 넣었으면 추가 금액에도 같은 비율이 빠지고, 숫자로 넣었으면 그대로 더해져요.${s.mode === 'both' ? ' 일반 판매분 재고만 관리하고, 맞춤 주문은 주문 제작이에요.' : ''} 재고가 0이면 품절로 표시되고, 재입고 예정일을 넣으면 고객 화면에 보여요(재입고 알림 신청은 <span class="tag tag-phase">2차</span>).</p>`}`
+          : '<p class="small muted">옵션 없이 한 가지로 팔아요. 아래 추가 구성품은 그대로 붙일 수 있어요.</p>'}
+      </div></div>
+      <div class="panel"><div class="panel-h"><h2>추가 구성품</h2><span class="xsmall faint">P-PRD-02 · ${ad.length}/${pv('product.addon_max')} · 2026-10-15 확정</span></div><div class="panel-b stack">
+        <p class="small muted">본 상품과 함께 고르는 별도 품목이에요(예: 수저집에 이쑤시개). 정해진 가격 하나로 팔고, 추가 구성품만 따로 팔지 않아요.</p>
+        ${adTbl}
+        <div class="pform">
+          <div class="field full"><label for="adName">이름</label><input class="input" id="adName" data-input="adForm" data-f="name" value="${esc(f.name)}" autocomplete="off"></div>
+          <div class="field"><label for="adPrice">판매가(원, VAT 포함)</label><input class="input" id="adPrice" data-input="adForm" data-f="price" value="${f.price}" inputmode="numeric"></div>
+          <div class="field"><label for="adStock">재고(개)</label><input class="input" id="adStock" data-input="adForm" data-f="stock" value="${f.stock}" inputmode="numeric"></div>
+        </div>
+        ${s.adErr.length ? `<ul class="errs">${s.adErr.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>` : ''}
+        <div><button class="btn btn-sm btn-primary" data-act="addonAdd" ${ad.length >= max ? 'disabled' : ''}>추가 구성품 추가</button></div>
+        <ul class="xsmall faint" style="margin:0;padding-left:18px;display:grid;gap:2px">
+          <li>수량 구간·사업자가·맞춤 단가 없이 한 가격이에요. 즉시 할인·파트너 쿠폰은 걸리지 않아요.</li>
+          <li>수수료는 이 카테고리의 일반 요율(${r.rate}%)이에요. 맞춤 상품에 붙어도 맞춤 요율·재주문 인하를 쓰지 않아요.${ev ? ` 예: ${esc(ad[0].name)} ${won(ad[0].price)} → 수수료 ${won(ev.fee)} · 정산 예정 ${won(ev.amount)}` : ''}</li>
+          <li>주문에서는 따로 된 주문 항목이라 각자 취소·반품·정산해요. 본 상품이 출고 전에 취소되면 붙은 추가 구성품도 함께 취소돼요.</li>
+          <li>본 상품과 같은 배송 묶음으로 함께 출고해요. 맞춤 상품에 붙으면 인쇄하지 않고 맞춤 출고일에 같은 송장으로 보내요.</li></ul>
+      </div></div>`;
+  }
   function stepShip(s) {
     return `<div class="panel"><div class="panel-h"><h2>배송비 템플릿</h2><span class="xsmall faint">P-PRD-04 · 템플릿을 고치면 그 뒤 주문부터 적용</span></div><div class="panel-b stack">
       <div class="ws2">${Object.entries(SHIP_TPL).map(([k, t]) => `<button class="app-card opt-card${s.ship === k ? ' is-pick' : ''}" data-act="shipTpl" data-k="${k}">
@@ -761,7 +1010,7 @@
         <div class="field"><span class="lbl">인쇄 영역</span><span class="input ro">${c.area}mm (${c.side})</span></div>
         <div class="field"><span class="lbl">별색(PANTONE) 지정</span><span class="input ro">가능</span></div>
         <div class="field full"><span class="lbl">템플릿·칼선 파일 (필수)</span>
-          ${c.template ? `<div class="dieline">${dieline()}</div><span class="hint">수저집_40x240_칼선.ai · 미리보기 자동 생성 · 인쇄 영역과 일치 · 템플릿 자동 연결 키: 수저집 + 40×240 + ${c.colors}</span>` : `<div><button class="btn btn-ext" data-act="upTemplate">AI·PDF 올리기 (최대 500MB)</button></div><span class="err">템플릿 파일이 없으면 맞춤 설정을 저장할 수 없어요</span>`}</div>
+          ${c.template ? `<div class="dieline">${dieline()}</div><span class="hint">수저집_40x240_칼선.ai · 미리보기 자동 생성 · 인쇄 영역과 일치 · 템플릿 자동 연결 키: 수저집 + 40×240 + ${c.colors}</span>` : `<div><button class="btn btn-ext" data-act="upTemplate">AI·PDF·SVG 올리기 (최대 ${pv('file.max_size_original')})</button></div><span class="err">템플릿 파일이 없으면 맞춤 설정을 저장할 수 없어요</span>`}</div>
         <div class="field full"><span class="lbl">파일 요건</span><span class="input ro">AI·PDF · 300dpi 이상 · 글자 아웃라인 · 재단 여백 3mm (기본값)</span></div>
       </div></div>
       <div class="panel"><div class="panel-h"><h2>맞춤 가격·제작</h2><span class="xsmall faint">단가는 1,000매당 · 판비·디자인비는 단가에 넣지 않아요</span></div><div class="panel-b stack">
@@ -777,7 +1026,7 @@
         <div class="pform">
           <div class="field"><label for="clead">제작 리드타임(영업일)</label><input class="input" id="clead" data-input="cnum" data-f="lead" value="${c.lead}" inputmode="numeric"><span class="hint">[인쇄 가능] 확인일부터 출고까지 · 디자인 확정일 기준이 아니에요</span></div>
           <div class="field"><label for="ccap">하루 생산 가능량(매)</label><input class="input" id="ccap" data-input="cnum" data-f="cap" value="${c.cap}" inputmode="numeric"><span class="hint">넘는 주문은 납기 자동 연장</span></div>
-          <div class="field"><span class="lbl">허용 오차</span><span class="input ro">수량 ±3% · 인쇄 위치 ±2mm</span><span class="hint">더 엄격하게만 바꿀 수 있어요</span></div>
+          <div class="field"><span class="lbl">허용 오차</span><span class="input ro">${pv('claim.tolerance')}</span><span class="hint">기본값(관리자 설정)보다 더 엄격하게만 바꿀 수 있어요 · 고객이 디자인 확정 때 동의해요</span></div>
           <div class="field"><span class="lbl">교정쇄</span><span class="input ro">받지 않음</span></div>
           <div class="field full"><label for="cplatekeep">판(동판) 보관 기간 <span class="tag tag-phase">법률 자문 전 초안</span></label>
             <div class="split" style="justify-content:flex-start;gap:8px"><input class="input${keepErr ? ' is-err' : ''}" id="cplatekeep" data-input="plateKeep" value="${c.plateKeep || ''}" inputmode="numeric" placeholder="${keepMin()}" style="width:90px" aria-label="판 보관 기간(개월)"><span class="small">개월 · 비우면 관리자 값 ${pv('production.plate_keep_months')}${c.plateKeep && !keepErr ? ` · 이 상품은 <b>${c.plateKeep}개월</b>` : ''}</span></div>
@@ -785,7 +1034,7 @@
             <span class="hint">결제 때 이 상품의 기간을 결제 스냅샷에 남기고, 생산을 시작할 때([인쇄 가능] 확인) 그 값을 판에 저장해요. 나중에 이 값이나 관리자 값을 바꿔도 이미 결제한 주문에는 적용하지 않아요.</span></div>
         </div>
         <p class="small">정산 예시 · 맞춤 ${num(c.tiers[0].min * 1000)}매 ${won(c.tiers[0].price * c.tiers[0].min)} + 판비 ${won(c.plate)} → 맞춤 요율 ${r.rate}%(${pv('commission.custom_rate')} − 신규 입점 2%p) 수수료 ${won(ev.fee)} → <b>정산 예정 ${won(ev.amount)}</b></p>
-        <p class="xsmall faint">디자인비는 본사 매출이라 파트너가 받거나 할인할 수 없어요. 사양을 바꿔도 진행 중인 디자인 요청은 요청 시점 사양을 그대로 써요.</p></div></div>`;
+        <p class="xsmall faint">디자인비는 본사 매출이라 파트너가 받거나 할인할 수 없어요. 판비는 상품 금액이라 즉시 할인의 '맞춤 상품 적용 범위'에 판비를 고르면 판비에도 할인이 걸리고, 디자인비 50만원 무료 판정에서는 빠져요. 사양을 바꿔도 진행 중인 디자인 요청은 요청 시점 사양을 그대로 써요.</p></div></div>`;
   }
   function stepDocs(s) {
     const t = s.docs.test;
@@ -810,6 +1059,8 @@
     add('상세 설명(글 50자 이상 또는 이미지 1장 이상)', detOk(), detOk() ? docSum(makeDoc(s)) : '글을 50자 이상 쓰거나 상세 이미지를 1장 이상 올려 주세요');
     if (s.det.imgs.length) { const fl = detFails(); add('상세 이미지 업로드', !fl.length, fl.length ? `업로드 실패한 자리 ${fl.length}곳이 남아 있어요. [다시 올리기]로 올리거나 빼 주세요` : `${s.det.imgs.length}장 처리 완료 · WebP 변환 · QR 없음`); }
     if (m !== 'custom') { const pe = priceErrors(); add('판매가·구간 단가', !pe.length, pe.length ? pe[0].m : `구간 ${s.tiers.length}개 · 역전 없음`); }
+    const oe = optErrors(s.opt, s.tiers[0].price, m);
+    add('옵션·추가 구성품', !oe.length, oe.length ? oe[0] : `${s.opt.kind === 'combo' ? `옵션 ${s.opt.rows.length}단 · 조합 ${comboCount(s.opt)}개` : '단일 상품'} · 추가 구성품 ${s.addons.length}개`);
     add('배송비 템플릿', !!s.ship, s.ship ? SHIP_TPL[s.ship].name : '배송비 템플릿을 골라 주세요');
     if (m !== 'normal') {
       add('맞춤 템플릿·칼선 파일', s.cust.template, s.cust.template ? '미리보기 생성됨' : '템플릿 파일을 올려 주세요');
@@ -830,46 +1081,64 @@
       <div class="cluster"><button class="btn btn-primary" data-act="requestReview">${app.state('product') === 'NEEDS_FIX' ? '다시 검수 요청' : '검수 요청'}</button><span class="xsmall faint">처리 목표 ${pvc('review_sla_bd')}</span></div></div></div>`;
   }
   function descPanel(s, st) {
+    if (st === 'SUSPENDED' && revOpen()) return `<div class="note small">열린 수정본(${GC.sm.stateName('PRODUCT_REVISION', app.state('rev'))}, v${s.det.ver})은 본사 중지 중에는 닫지 않고 그대로 둬요. 중지가 풀리면 이어서 처리해요.</div>`;
     if (!canEditLive(st)) return '';
     const rv = app.state('rev'); const lv = s.det.liveVer;
-    const msg = { EDITING: `<p class="small">수정본 작성 중(저장 v${s.det.ver}) · 고객에게는 v${lv} 버전이 보여요</p>`, IN_REVIEW: `<div class="note small">수정본 v${s.det.ver} 재검수 중 · 처리될 때까지 고객에게는 v${lv} 버전이 보여요</div>`, NEEDS_FIX: `<div class="note note-warn small">수정본 보완 요청 · ${esc(s.dreview.comment)}</div>`, DECLINED: declinedNote(s, true) }[rv] || '';
+    const msg = { EDITING: `<p class="small">수정본 작성 중(저장 v${s.det.ver}) · 고객에게는 v${lv} 버전이 보여요</p>`, IN_REVIEW: `<div class="note small">수정본 v${s.det.ver} 재검수 중 · 처리될 때까지 고객에게는 v${lv} 버전이 보여요</div>`, NEEDS_FIX: `<div class="note note-warn small">수정본 보완 요청 · ${esc(s.dreview.comment)}</div>`, DECLINED: declinedNote(s, true), DISCARDED: discardNote(s, true) }[rv] || '';
     return `<div class="panel"><div class="panel-h"><h2>상세 설명 · 수정본</h2><span class="xsmall faint">P-PRD-07 · P-PRD-09 · 버전 ${s.det.versions.length}개 보관</span></div><div class="panel-b stack-sm">
       <p class="small">고객에게 보이는 버전 <b>v${lv}</b> · ${esc(docSum(s.live.det))}</p>${msg}
       <div><button class="btn btn-sm" data-act="ptab" data-k="desc">${revOpen() ? '수정본 보기' : '상세 설명 수정'}</button></div></div></div>`;
   }
   /* 즉시 할인(P-PRM-01) — 파트너 즉시 할인 화면이 따로 없어 판매 중 가격 패널 옆에 둠(2026-10-14 결정).
    * '사업자가 적용 안 함'이고 어느 구간이든 일반 할인가 < 사업자가면 경고만(저장은 됨, 계산은 그대로, D12=C) */
+  /* 할인 대상 단가표: 맞춤 전용이면 맞춤 단가(1,000매당), 일반+맞춤이면 일반 구간 + 맞춤 구간 */
+  function promoTiers(L) {
+    const n = L.mode === 'custom' ? [] : L.tiers.map((t, i) => ({ t, i, bt: GC.price.bizTiers(L.tiers, bizOf(L)), label: `${i + 1}구간 · ${t.min}박스부터` }));
+    const c = L.mode === 'normal' ? [] : L.cust.tiers.map((t, i) => ({ t, i, bt: GC.price.bizTiers(L.cust.tiers, bizOf(L.cust)), label: `맞춤 ${num(t.min * 1000)}매부터` }));
+    return n.concat(c);
+  }
   function promoPanel(s, L) {
-    const p = s.promo; const sv = s.promoLive; const biz = bizOf(L); const bt = GC.price.bizTiers(L.tiers, biz);
-    const inv = GC.price.bizInversion(L.tiers, biz, promoOf(p)); const invI = new Set(inv.map((x) => x.i)); const pe = promoErrors(p, L.tiers);
-    const rows = L.tiers.map((t, i) => {
-      const na = GC.price.applyInstantUnit(t.price, p);
-      const bz = bt ? (p.applyBiz ? `${won(bt[i].price)} → <b>${won(GC.price.applyInstantUnit(bt[i].price, p))}</b>` : `<b>${won(bt[i].price)}</b> 그대로`) : '<span class="faint">없음</span>';
-      return `<tr class="${invI.has(i) ? 'is-err' : ''}"><td class="nw">${i + 1}구간 · ${t.min}박스부터</td><td class="num">${won(t.price)} → <b>${won(na)}</b></td><td class="num">${bz}</td></tr>`;
+    const p = s.promo; const sv = s.promoLive; const hasC = L.mode !== 'normal'; const isC = L.mode === 'custom';
+    const T = isC ? L.cust.tiers : L.tiers; const biz = isC ? bizOf(L.cust) : bizOf(L); const bt = GC.price.bizTiers(T, biz);
+    const all = promoTiers(L); const anyBt = all.some((x) => x.bt);
+    const inv = promoInv(L, p); const invI = new Set(inv.map((x) => x.i)); const pe = promoErrors(p, all.map((x) => x.t));
+    const rows = all.map((x, k) => {
+      const na = GC.price.applyInstantUnit(x.t.price, p); const b = x.bt && x.bt[x.i];
+      const bz = b ? (p.applyBiz ? `${won(b.price)} → <b>${won(GC.price.applyInstantUnit(b.price, p))}</b>` : `<b>${won(b.price)}</b> 그대로`) : '<span class="faint">없음</span>';
+      const isMainRow = isC || k < L.tiers.length;
+      return `<tr class="${isMainRow && invI.has(x.i) ? 'is-err' : ''}"><td>${x.label}</td><td class="num">${won(x.t.price)} → <b>${won(na)}</b></td><td class="num">${bz}</td></tr>`;
     }).join('');
+    const plate = hasC ? L.cust.plate : 0; const pDisc = GC.price.plateInstantDisc(plate, promoOf(p));
+    const plateRow = hasC ? `<tr><td class="nw">판비(1회)</td><td class="num">${p.plate ? `${won(plate)} → <b>${won(plate - pDisc)}</b>` : `<b>${won(plate)}</b> 그대로`}</td><td class="num"><span class="faint">모두 같음</span></td></tr>` : '';
+    const scopeTxt = (x) => (hasC ? ` · 맞춤 ${x.plate ? '상품 대금 + 판비' : '상품 대금만'}` : '');
     return `
       <div class="panel"><div class="panel-h"><h2>즉시 할인</h2><span class="xsmall faint">P-PRM-01 · 검수 없이 바로 반영 · 할인액은 파트너 부담</span></div><div class="panel-b stack-sm">
-        ${sv ? `<p class="small"><span class="st st-now">진행 중</span> ${discTxt(sv)} 할인 · 사업자가 ${sv.applyBiz ? '적용' : '적용 안 함'} · ${fmtDate(sv.at)}부터 7일(예시)</p>` : '<p class="small muted">진행 중인 즉시 할인이 없어요. 기간 할인은 가격을 바꾸지 말고 여기서 걸어요.</p>'}
+        ${sv ? `<p class="small"><span class="st st-now">진행 중</span> ${discTxt(sv)} 할인 · 사업자가 ${sv.applyBiz ? '적용' : '적용 안 함'}${scopeTxt(sv)} · ${fmtDate(sv.at)}부터 ${sv.days}일</p>` : '<p class="small muted">진행 중인 즉시 할인이 없어요. 기간 할인은 가격을 바꾸지 말고 여기서 걸어요.</p>'}
         <div class="pform">
           <div class="field"><span class="lbl">할인 방식</span><div class="seg" role="group" aria-label="할인 방식">${[['rate', '정률(%)'], ['amount', '정액(원)']].map(([k, n]) => `<button data-act="promoType" data-k="${k}" aria-pressed="${p.type === k}">${n}</button>`).join('')}</div></div>
-          <div class="field"><label for="promoVal">할인 값</label><div class="split" style="justify-content:flex-start;gap:8px"><input class="input${pe.length ? ' is-err' : ''}" id="promoVal" data-input="promoVal" value="${p.value || ''}" inputmode="numeric" style="width:100px"><span class="small">${p.type === 'rate' ? `% · 1%~${pv('promo.instant_discount_max')}` : '원 · 1박스 단가에서 빼요'}</span></div></div>
+          <div class="field"><label for="promoVal">할인 값</label><div class="split" style="justify-content:flex-start;gap:8px"><input class="input${pe.length ? ' is-err' : ''}" id="promoVal" data-input="promoVal" value="${p.value || ''}" inputmode="numeric" style="width:100px"><span class="small">${p.type === 'rate' ? `% · 1%~${pv('promo.instant_discount_max')}` : `원 · ${isC ? '1,000매 단가' : '1박스 단가'}에서 빼요`}</span></div></div>
+          <div class="field"><label for="promoDays">기간</label><div class="split" style="justify-content:flex-start;gap:8px"><input class="input" id="promoDays" data-input="promoDays" value="${p.days || ''}" inputmode="numeric" style="width:70px"><span class="small">일 · 최대 ${pv('promo.instant_discount_max_days')}</span></div></div>
+          <div class="field"><span class="lbl">대상</span><span class="input ro">이 상품(모든 옵션) 1개 · 한 건에 최대 ${pv('promo.instant_discount_max_targets')}</span></div>
           <div class="field full"><span class="lbl">사업자 전용가에도 적용</span><div class="seg" role="group" aria-label="사업자가 적용">${[['1', '사업자가에도 적용'], ['0', '사업자가 적용 안 함']].map(([k, n]) => `<button data-act="promoBiz" data-k="${k}" aria-pressed="${p.applyBiz === (k === '1')}">${n}</button>`).join('')}</div>
-            <span class="hint">${bt ? '기본은 적용이에요. 적용 안 함이면 사업자 회원은 할인 없는 사업자가로 사요' : '이 상품은 사업자가가 없어 사업자 회원도 일반 할인가로 사요'}</span></div>
+            <span class="hint">${anyBt ? '기본은 적용이에요. 적용 안 함이면 사업자 회원은 할인 없는 사업자가로 사요' : '이 상품은 사업자가가 없어 사업자 회원도 일반 할인가로 사요'}</span></div>
+          ${hasC ? `<div class="field full"><span class="lbl">맞춤 상품 적용 범위</span><div class="seg" role="group" aria-label="맞춤 상품 적용 범위">${[['0', '상품 대금만'], ['1', '판비 포함']].map(([k, n]) => `<button data-act="promoPlate" data-k="${k}" aria-pressed="${!!p.plate === (k === '1')}">${n}</button>`).join('')}</div>
+            <span class="hint">맞춤 단가에는 늘 걸리고, 판비는 고른 경우만 걸려요(정률은 판비 × 율 원 단위 내림, 정액은 판비에서 한 번 빼요). 디자인비는 본사 매출이라 고를 수 없고, 추가 구성품에는 할인이 걸리지 않아요.</span></div>` : ''}
         </div>
-        <div class="tbl-wrap"><table class="tbl small promo-tbl"><thead><tr><th>구간</th><th class="num">일반가 → 할인 후</th><th class="num">사업자가${p.applyBiz && bt ? ' → 할인 후' : ''}</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div class="tbl-wrap"><table class="tbl small promo-tbl"><thead><tr><th>구간</th><th class="num">일반가 → 할인 후</th><th class="num">사업자가${p.applyBiz && anyBt ? ' → 할인 후' : ''}</th></tr></thead><tbody>${rows}${plateRow}</tbody></table></div>${hasC ? '<p class="xsmall faint">맞춤 단가는 1,000매당이에요. 판비는 회원 유형과 관계없이 같은 금액이에요.</p>' : ''}
         ${pe.length ? `<ul class="errs">${pe.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>` : ''}
-        ${inv.length ? `<div class="note note-warn small" id="bizInvWarn"><b>${esc(GC.price.BIZ_INVERSION_MSG)}</b><br>역전 구간 ${inv.length}개: ${esc(invText(inv))}<br><span class="xsmall">경고만 하고 저장은 막지 않아요. 계산은 그대로라 사업자 회원은 사업자가 표로 사요(C-PRICE-01). 더 낮은 가격을 자동으로 적용할 의무가 있는지는 법률 자문(L-26) 답에 따라 다시 정해요.</span> <span class="tag tag-phase">법률 자문 전 초안</span></div>` : ''}
-        <div class="cluster"><button class="btn btn-primary" data-act="promoSave">${sv ? '할인 바꾸기' : '할인 저장'}</button>${sv ? '<button class="btn" data-act="promoEnd">할인 끝내기</button>' : ''}<span class="xsmall faint">기간 최대 ${pvc('promo_max_days')} · 진행 중에는 할인을 키우는 변경만 돼요</span></div></div></div>`;
+        ${inv.length ? `<div class="note note-warn small" id="bizInvWarn"><b>${esc(GC.price.BIZ_INVERSION_MSG)}</b><br>역전 구간 ${inv.length}개: ${esc(invText(inv, isC))}<br><span class="xsmall">경고만 하고 저장은 막지 않아요. 계산은 그대로라 사업자 회원은 사업자가 표로 사요(C-PRICE-01). 더 낮은 가격을 자동으로 적용할 의무가 있는지는 법률 자문(L-26) 답에 따라 다시 정해요.</span> <span class="tag tag-phase">법률 자문 전 초안</span></div>` : ''}
+        <div class="cluster"><button class="btn btn-primary" data-act="promoSave">${sv ? '할인 바꾸기' : '할인 저장'}</button>${sv ? '<button class="btn" data-act="promoEnd">할인 끝내기</button>' : ''}<span class="xsmall faint">진행 중에는 할인을 키우거나 기간을 늘리는 변경만 돼요</span></div></div></div>`;
   }
   function listHtml(s, st) {
     const L = s.live || snapshot(); const t1 = L.mode === 'custom' ? `${won(L.cust.tiers[0].price)}/1,000매` : won(L.tiers[0].price);
     const stName = GC.sm.stateName('PRODUCT', st);
     const stCls = { APPROVED: 'st-now', IN_REVIEW: 'st-warn', NEEDS_FIX: 'st-todo', PAUSED: 'st-warn', SUSPENDED: 'st-stop', REJECTED: 'st-stop', ENDED: '' }[st] || '';
     let panel = '';
-    if (st === 'IN_REVIEW') panel = `<div class="note small">본사가 검수하고 있어요. 처리 목표 ${pvc('review_sla_bd')} · 기한 ${fmtDate(s.review.due)}. 결과는 알림톡·이메일로 알려 드려요.</div>`;
+    if (st === 'IN_REVIEW') panel = `<div class="note small">본사가 검수하고 있어요. 처리 목표 ${pvc('review_sla_bd')} · 기한 ${fmtDate(s.review.due)}. 결과는 알림톡·이메일로 알려 드려요.</div>
+      <div class="cluster"><button class="btn" data-act="cancelReview">검수 요청 취소</button><span class="xsmall faint">검수 중에는 고칠 수 없어요. 취소하면 임시 저장으로 돌아가 고친 뒤 다시 요청해요</span></div>`;
     if (st === 'NEEDS_FIX') panel = `<div class="note note-warn"><b>보완 요청</b> · ${esc(s.review.comment)}<div style="margin-top:8px"><button class="btn btn-sm btn-primary" data-act="goFix">고치러 가기</button></div></div>`;
     if (st === 'REJECTED') panel = `<div class="note note-stop"><b>판매 불가(최종)</b> · 사유: ${esc(s.review.rejectReason || '')}<br><span class="small">판매 불가는 최종 상태라 같은 상품으로 다시 검수를 요청할 수 없어요. 보완 요청과 달리 고쳐서 다시 낼 수 없어요.</span></div>`;
-    if (st === 'ENDED') panel = '<div class="note small">판매 종료한 상품은 주문 이력 때문에 지우지 않아요. 다시 팔려면 복사해 새 상품으로 등록해요.</div>';
+    if (st === 'ENDED') panel = `<div class="note small">판매 종료한 상품은 주문 이력 때문에 지우지 않아요. 다시 팔려면 복사해 새 상품으로 등록해요.${s.rev.hist.some((h) => h.reason === '판매 종료') ? ' 열려 있던 수정본은 사유 ‘판매 종료’로 함께 닫았어요(수정 취소).' : ''}</div>${s.rev.hist.length ? `<div class="panel"><div class="panel-h"><h2>수정본 기록</h2><span class="xsmall faint">P-PRD-07 · 닫힌 수정본도 기록으로 남아요</span></div><div class="panel-b">${revHistHtml(s)}</div></div>` : ''}`;
     if (st === 'PAUSED') panel = `<div class="note note-warn small">직접 판매를 멈췄어요. 검색과 상세에서 빠졌어요.</div><div class="cluster"><button class="btn btn-primary" data-act="resume">판매 재개</button><button class="btn btn-danger" data-act="endSale">판매 종료</button></div>`;
     if (st === 'APPROVED') panel = `<div class="cluster"><button class="btn" data-act="pause">판매 중지</button><button class="btn btn-danger" data-act="endSale">판매 종료</button><span class="xsmall faint">판매 중지는 언제든 직접 다시 열 수 있어요</span></div>`;
     if (st === 'SUSPENDED') {
@@ -885,7 +1154,8 @@
           ${L.tiers.map((t, i) => `<tr><td class="nw">${t.min}박스부터</td><td class="num">${won(t.price)}</td><td><input class="input" id="qp${i}" data-input="qp" data-i="${i}" value="${s.qp[i] != null ? s.qp[i] : t.price}" inputmode="numeric"></td></tr>`).join('')}</tbody></table>
         <p class="xsmall faint">직전 가격보다 ${pvc('price_alert_down')} 이상 내리거나 ${pvc('price_alert_up')} 이상 올리면 오입력 경고를 띄우고 본사 모니터링 대상이 돼요. 기간 할인은 가격 대신 즉시 할인으로 걸어요.</p>
         ${L.bizMode === 'rate' ? `<p class="xsmall faint">사업자가는 할인율 ${L.bizRate}% 방식이라 새 단가에 맞춰 함께 바뀌어요.</p>` : L.bizMode === 'amount' ? '<p class="xsmall faint">사업자가(숫자 방식)는 일반가보다 낮아야 해요. 일반가를 사업자가 아래로 내리면 저장되지 않아요. 사업자가를 바꿀 때도 같은 오입력 경고가 떠요.</p>' : ''}
-        <div><button class="btn btn-primary" data-act="applyPrice">바로 반영</button></div></div></div>${promoPanel(s, L)}` : '';
+        <div><button class="btn btn-primary" data-act="applyPrice">바로 반영</button></div></div></div>` : '';
+    const promo = st === 'APPROVED' || st === 'PAUSED' ? promoPanel(s, L) : '';
     const d = s.docs.test; const dst = app.state('doc');
     const left = d ? Math.ceil((d.expires - app.clock.now()) / GC.DAY) : null;
     return `
@@ -893,7 +1163,7 @@
         <tr class="is-hl"><td>${esc(L.name)}</td><td>${MODES[L.mode]}</td><td class="num">${t1}</td><td><span class="st ${stCls}">${stName}</span></td><td>${st === 'APPROVED' ? '노출' : '안 나옴'}</td></tr>
         <tr><td>화이트 수저집 무지 40×240mm</td><td>일반 전용</td><td class="num">26,000원</td><td><span class="st st-now">판매 중</span></td><td>노출</td></tr>
         <tr><td>크라프트 컵홀더 무지</td><td>일반 + 맞춤</td><td class="num">21,000원</td><td><span class="st st-warn">판매 중지</span></td><td>안 나옴</td></tr></tbody></table></div>
-      ${panel}${descPanel(s, st)}${priceEdit}
+      ${panel}${descPanel(s, st)}${priceEdit}${promo}
       <div class="panel"><div class="panel-h"><h2>서류함</h2><span class="xsmall faint">유효기간 알림 ${pvc('doc_notice_days')} 전</span></div><div class="panel-b small">
         ${d ? `${esc(d.file)} · ${docLabel(d)} · <b>${left >= 0 ? `${left}일 남음` : '만료됨'}</b> · ${GC.sm.stateName('CATALOG_DOC', dst)}` : '아직 올린 서류가 없어요.'}</div></div>`;
   }
@@ -904,7 +1174,7 @@
     f.nav({ review: '상품 검수', cat: '카테고리', dict: '검색 사전' }[s.hqTab]);
     f.url({ review: 'admin.sikup.co.kr/products/review', cat: 'admin.sikup.co.kr/categories', dict: 'admin.sikup.co.kr/search/dictionary' }[s.hqTab]);
     const tabs = `<div class="seg" role="group" aria-label="상품 관리 메뉴">${[['review', '상품 검수'], ['cat', '카테고리'], ['dict', '검색 사전']].map(([k, n]) => `<button data-act="hqTab" data-k="${k}" aria-pressed="${s.hqTab === k}">${n}</button>`).join('')}</div>`;
-    f.body.innerHTML = tabs + (s.hqTab === 'review' ? hqReview(s) : s.hqTab === 'cat' ? hqCat() : hqDict(s));
+    f.body.innerHTML = tabs + (s.hqTab === 'review' ? hqReview(s) : s.hqTab === 'cat' ? hqCat(s) : hqDict(s));
   };
   function reviewItems() {
     const s = S(); const h = descHits(); const m = s.mode;
@@ -940,6 +1210,7 @@
         <div class="stack"><b class="small">고객 화면 미리보기(앱)</b><div class="mini">${cardHtml(p, 'member', { click: false })}
           ${p.mode !== 'custom' ? `<table class="tbl small"><tbody>${p.tiers.map((t, i) => `<tr><td>${t.min}박스${p.tiers[i + 1] ? `~${p.tiers[i + 1].min - 1}박스` : ' 이상'}</td><td class="num">${won(t.price)}</td></tr>`).join('')}</tbody></table>` : ''}
           ${p.mode !== 'normal' ? `<span class="xsmall">맞춤: ${num(p.custom.moq)}매부터 · 1,000매당 ${p.custom.tiers.map((t) => won(t.price)).join(' / ')} · 판비 ${won(p.custom.plate)} · [인쇄 가능] 확인일부터 영업일 ${p.custom.lead}일 · 판 보관 ${p.custom.plateKeep || keepMin()}개월</span>` : ''}
+          <span class="xsmall">옵션: ${hasOpts(p) ? `${esc(p.axes.map((a) => a.name).join(' × '))} · 조합 ${p.combos.length}개${p.mode !== 'custom' ? ` · 품절 ${p.combos.filter((c) => c.stock <= 0).length}개` : ''}` : '단일 상품'} · 추가 구성품: ${p.addons.length ? esc(p.addons.map((a) => `${a.name} ${won(a.price)}`).join(', ')) : '없음'}</span>
           <span class="xsmall faint">상세 설명 v${s.det.ver} · ${esc(docSum(makeDoc(s)))}</span></div>
           <div class="dv-mini">${viewerHtml(makeDoc(s), {})}</div>
           <dl class="kv small"><dt>판매 방식</dt><dd>${MODES[s.mode]}</dd><dt>카테고리</dt><dd>${CATEGORY.path}</dd><dt>고시</dt><dd>식품용 기구 양식 · 6항목</dd><dt>배송비</dt><dd>${s.ship ? SHIP_TPL[s.ship].name : '-'}</dd><dt>서류</dt><dd>${s.docs.test ? `<button class="linkish" data-act="viewDoc">시험성적서 PDF 보기</button>` : '없음'}${s.docs.eco ? ' · 환경표지 인증서' : ''}</dd></dl></div>
@@ -993,16 +1264,27 @@
     }
     return rows;
   }
-  function hqCat() {
+  const regDate = (r) => (r && r.at && r.text.trim() ? `${ymd(r.at)} 고침` : '없음');
+  function hqCat(s) {
     const rows = [
-      ['테이블 세팅 › 수저·젓가락 포장 › 수저집', '식품용 기구', '시험성적서', 'Y', '소재 · 규격 · 박스당 수량'],
-      ['테이블 세팅 › 냅킨 › 무형광 냅킨', '생활화학', '-', 'N', '겹수 · 규격'],
-      ['포장 › 컵·컵홀더 › 종이컵', '식품용 기구', '시험성적서', 'Y', '용량 · 박스당 수량'],
-      ['위생 › 장갑 › 위생장갑', '위생용품', '위생용품 신고증', 'N', '소재 · 사이즈'],
+      ['테이블 세팅 › 수저·젓가락 포장 › 수저집', '식품용 기구', '시험성적서', 'Y', '소재 · 규격 · 박스당 수량', 'sujeo'],
+      ['테이블 세팅 › 냅킨 › 무형광 냅킨', '생활화학', '-', 'N', '겹수 · 규격', ''],
+      ['포장 › 컵·컵홀더 › 종이컵', '식품용 기구', '시험성적서', 'Y', '용량 · 박스당 수량', 'cup'],
+      ['위생 › 장갑 › 위생장갑', '위생용품', '위생용품 신고증', 'N', '소재 · 사이즈', ''],
     ];
+    const k = s.regCat; const r = s.reg[k]; const draft = s.regDraft[k] != null ? s.regDraft[k] : r.text; const over = draft.length > REG_MAX;
     return `<h3>카테고리</h3>
-      <div class="tbl-wrap"><table class="tbl small" style="min-width:640px"><thead><tr><th>카테고리(최대 3단계)</th><th>수수료 일반 / 맞춤</th><th>고시 유형</th><th>필수 서류</th><th>맞춤 기본값</th><th>필터 항목</th></tr></thead><tbody>
-        ${rows.map((r, i) => `<tr class="${i === 0 ? 'is-hl' : ''}"><td>${r[0]}</td><td>${pv('commission.default_rate')} / ${pv('commission.custom_rate')}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`).join('')}</tbody></table></div>
+      <div class="tbl-wrap"><table class="tbl small" style="min-width:720px"><thead><tr><th>카테고리(최대 3단계)</th><th>수수료 일반 / 맞춤</th><th>고시 유형</th><th>필수 서류</th><th>맞춤 기본값</th><th>필터 항목</th><th>규제 안내 문구</th></tr></thead><tbody>
+        ${rows.map((x, i) => `<tr class="${i === 0 ? 'is-hl' : ''}"><td>${x[0]}</td><td>${pv('commission.default_rate')} / ${pv('commission.custom_rate')}</td><td>${x[1]}</td><td>${x[2]}</td><td>${x[3]}</td><td>${x[4]}</td><td class="nw">${x[5] ? regDate(s.reg[x[5]]) : '없음'}</td></tr>`).join('')}</tbody></table></div>
+      <div class="panel"><div class="panel-h"><h2>카테고리 속성 · 규제 안내 문구</h2><span class="xsmall faint">A-PRD-02 · U-PDP-04 · 2026-10-15 확정 · 선택 · ${REG_MAX}자</span></div><div class="panel-b stack">
+        <div class="seg" role="group" aria-label="카테고리">${Object.entries(REG_CATS).map(([key, c]) => `<button data-act="regCat" data-k="${key}" aria-pressed="${k === key}">${c.name}</button>`).join('')}</div>
+        <div class="field"><label for="regText">일회용품 규제 안내 (${draft.length}/${REG_MAX}자)</label><textarea class="textarea reg-ta${over ? ' is-err' : ''}" id="regText" data-input="regText" placeholder="비워 두면 이 카테고리 상품 상세에 안내 상자가 나오지 않아요">${esc(draft)}</textarea>
+          ${over ? `<span class="err">${REG_MAX}자를 넘었어요(${draft.length}자)</span>` : '<span class="hint">일회용품 규제처럼 자주 바뀌는 안내를 근거 법령·시행일과 함께 써요. 본사만 쓰고 고치고, 파트너는 고칠 수 없어요.</span>'}</div>
+        <div class="cluster"><button class="btn btn-primary" data-act="regSave">저장</button><span class="small">마지막 고침: <b>${regDate(r)}</b></span>${k === 'sujeo' ? '<span class="tag tag-phase">예시 문구 · 법률 자문 전 초안</span>' : ''}</div>
+        <p class="xsmall faint">저장하면 고친 날짜가 자동으로 남고, 그 카테고리의 모든 상품 상세 '상품정보·인증' 영역에 접힌 상자 '일회용품 규제 안내'로 바로 보여요(고객 화면은 언제나 최신 문구). 비우고 저장하면 상자가 사라져요.</p>
+        ${r.hist.length ? `<div class="tbl-wrap"><table class="tbl small"><thead><tr><th>시각</th><th>고친 사람</th><th>내용</th></tr></thead><tbody>${r.hist.map((h) => `<tr><td class="nw">${fmtDate(h.at)}</td><td class="nw">${esc(h.by)}</td><td>${esc(h.what)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="xsmall faint">변경 이력이 없어요.</p>'}
+        <div class="stack-sm"><b class="small">고객 화면 미리보기</b>${r.text.trim() ? `<div style="max-width:360px">${regBoxHtml({ cat: REG_CATS[k].match })}</div>` : '<p class="small muted">문구가 없어 상품 상세에 상자가 나오지 않아요.</p>'}</div>
+      </div></div>
       <div class="panel"><div class="panel-h"><h2>업종 연결</h2><span class="xsmall faint">업종 공통 코드 10개 · 회원 업종과 같은 코드</span></div><div class="panel-b stack-sm">
         <div class="togs">${INDUSTRIES.map((n) => `<span class="tag${CATEGORY.industries.includes(n) ? ' tag-spot' : ''}">${n}</span>`).join('')}</div>
         <p class="small muted">수저집은 강조한 6개 업종의 "필요한 품목 묶음"에 들어가요. 상품 하나는 품목 카테고리 1개와 업종 여러 개에 속할 수 있어요.</p></div></div>
@@ -1021,8 +1303,56 @@
   /* ════════ 고객 앱 ════════ */
   VIEWS.customer = (f) => {
     const s = S();
-    ({ home: cHome, search: cSearch, results: cResults, pdp: cPdp, zoom: cZoom }[s.cs] || cHome)(f, s);
+    ({ home: cHome, search: cSearch, results: cResults, pdp: cPdp, zoom: cZoom, corder: cCorder, method: cMethod, added: cAdded }[s.cs] || cHome)(f, s);
   };
+  /* 상세 화면에서 보는 상품(왼쪽 "상세 화면 형태"로 판매 방식만 바꿔 보기) */
+  function pdpP() { const s = S(); const p0 = findP(s.pid); return p0 && p0.mine && s.pdpMode ? { ...p0, mode: s.pdpMode } : p0; }
+  /* 맞춤 제작 주문 1단계(U-PDP-03 · D-REQ-01): 맞춤 옵션·수량(맞춤 MOQ) + 추가 구성품 → 다음이 디자인 방식 선택 */
+  function cCorder(f, s) {
+    const p = pdpP(); if (!p || !p.custom) { s.cs = 'pdp'; cPdp(f, s); return; }
+    f.title('맞춤 제작으로 주문하기'); f.tab('카테고리'); f.back();
+    const mem = s.member; const r = customCalc(p, mem, true); const ready = hasMain(p);
+    f.body.innerHTML = `<div class="app-pad">
+      <p class="xsmall faint">1 맞춤 옵션·수량 › 2 디자인 방식 고르기 › 3 요청서 작성</p>
+      <div class="app-card mcard"><span><b class="small">${esc(p.name)}</b><br><span class="xsmall faint">${esc(p.partner)} · ${esc(p.custom.methods)} · ${esc(p.custom.area)} · 최대 ${esc(p.custom.colors)}</span></span><span class="tag tag-spot">맞춤 인쇄</span></div>
+      ${hasOpts(p) ? `<div class="stack-sm"><b class="small">맞춤 옵션</b>${optSelHtml(p, true, mem)}</div>` : ''}
+      <div class="split"><span class="small strong">맞춤 수량</span><div class="qty"><button data-act="cqty" data-d="-1" aria-label="1,000매 빼기">−</button><input id="cqtyIn" data-change="cqtyIn" value="${num(s.cqty * 1000)}" inputmode="numeric" aria-label="맞춤 수량" style="width:84px"><button data-act="cqty" data-d="1" aria-label="1,000매 더하기">+</button></div></div>
+      ${s.cqtyNote ? `<div class="note note-warn small">${s.cqtyNote}</div>` : `<p class="xsmall faint">맞춤 최소 수량 ${num(p.custom.moq)}매 · 재고 대신 주문 제작</p>`}
+      ${addonsHtml(p, true)}
+      <div class="app-card"><b class="small">예상 금액</b>${calcHtml(r, { custom: true })}
+        <p class="xsmall faint">판비와 추가 구성품은 디자인비 50만원 무료 판정에서 빠져요(판정 금액 ${won(r.designFees[0].basis)} · 판매자 할인 뒤 맞춤 품목만). 디자인 방식은 다음 화면에서 골라요.</p></div>
+    </div>`;
+    f.bottom(ready ? '<button class="btn btn-primary btn-lg btn-block" data-act="toMethod">디자인 방식 고르기</button>' : '<button class="btn btn-primary btn-lg btn-block" disabled>맞춤 옵션을 골라 주세요</button>');
+  }
+  /* 2단계 자리: 디자인 방식 선택(D-REQ-01)은 디자인 요청 화면(design.html)에서 이어짐 */
+  function cMethod(f, s) {
+    const p = pdpP(); if (!p || !p.custom) { s.cs = 'pdp'; cPdp(f, s); return; }
+    f.title('디자인 방식 고르기'); f.tab('카테고리'); f.back();
+    const combo = selCombo(p); const r = customCalc(p, s.member, true); const d = r.designFees[0];
+    const cards = [['템플릿형', '무료', '영업일 1일 · 무료 수정 ' + pv('design.free_revisions_template')], ['맞춤형', d.fee ? won(d.fee) : '무료(50만원 이상)', '첫 시안 영업일 2~5일 · 무료 수정 ' + pv('design.free_revisions_custom')], ['자체 파일', '검수 무료', `인쇄 원본 최대 ${pv('file.max_size_original')}`], ['재주문', '이 상품에 확정 디자인이 없어요', '']];
+    f.body.innerHTML = `<div class="app-pad">
+      <p class="xsmall faint">1 맞춤 옵션·수량 › <b>2 디자인 방식 고르기</b> › 3 요청서 작성</p>
+      <div class="app-card"><span class="small"><b>${esc(p.name)}</b>${combo ? ` · ${esc(combo.vs.join(' / '))}` : ''} · ${num(s.cqty * 1000)}매${r.totals.addons ? ` · 추가 구성품 ${won(r.totals.addons)}` : ''}</span></div>
+      ${cards.map(([n, price, sub], i) => `<div class="app-card${i === 3 ? ' is-off' : ''}"><div class="split"><b>${n}</b><span class="small strong">${price}</span></div>${sub ? `<span class="xsmall faint">${sub}</span>` : ''}</div>`).join('')}
+      <p class="note small">방식 선택부터는 디자인 요청 화면에서 이어져요. 고른 맞춤 옵션·수량·추가 구성품은 그대로 넘어가요.</p></div>`;
+    f.bottom('<a class="btn btn-primary btn-lg btn-block" href="design.html">디자인 요청 화면에서 이어 보기</a>');
+  }
+  /* 장바구니 담은 결과(U-PDP-02 → U-ORD-01): 본 상품 줄 아래 붙은 추가 구성품 줄. 장바구니·주문서는 order.html */
+  function cAdded(f, s) {
+    const c = s.cart; if (!c) { s.cs = 'pdp'; cPdp(f, s); return; }
+    f.title('장바구니에 담았어요'); f.tab('카테고리'); f.back();
+    const main = c.r.lines.find((l) => !l.addonOf); const subs = c.r.lines.filter((l) => l.addonOf);
+    f.body.innerHTML = `<div class="app-pad">
+      <div class="note note-spot small">장바구니에 담았어요. 본 상품 아래에 추가 구성품이 붙어 있어요.</div>
+      <div class="app-card">
+        <div class="mcard"><span><b class="small">${esc(c.name)}</b><br><span class="xsmall faint">${c.opt ? esc(c.opt) + ' · ' : ''}${main.qty}박스 · 박스당 ${won(main.discUnit)}</span></span><b class="small">${won(main.afterInstant)}</b></div>
+        ${subs.map((l) => `<div class="add-line"><span>추가 구성품 · ${esc(l.name)} × ${l.qty}</span><span>${won(l.gross)}</span></div>`).join('')}
+      </div>
+      <div class="app-card">${calcHtml(c.r)}</div>
+      <p class="xsmall faint">본 상품을 장바구니에서 빼면 붙은 추가 구성품도 같이 빠져요. 주문하면 추가 구성품은 따로 된 줄이라 혼자 취소·반품할 수 있고, 본 상품이 출고 전에 취소되면 함께 취소돼요. 같은 묶음으로 함께 출고해요.</p>
+      <p class="note small">장바구니·주문서·결제는 주문·결제 화면(order.html)에서 이어져요.</p></div>`;
+    f.bottom('<div class="two"><button class="btn btn-lg" data-act="backPdp">계속 쇼핑하기</button><a class="btn btn-primary btn-lg" href="order.html">장바구니 보기</a></div>');
+  }
   /* 상세 이미지 크게 보기(U-PDP-07) */
   function cZoom(f, s) {
     const p = findP(s.pid); const imgs = p && p.det ? p.det.imgs.filter((i) => i.st === 'ok') : [];
@@ -1129,9 +1459,17 @@
   }
   /* 예상 도착(U-PDP-03, 2026-10-14 B17): 디자인 + 파트너 인쇄 확인 + 리드타임([인쇄 가능] 확인일부터) + 배송. 영업일은 주말만 뺌 */
   function arrivalHtml(lead) {
-    const now = app.clock.now(); const pcb = pc('print_check_bd');
+    const now = app.clock.now(); const pcb = GC.Policy.get('production.print_check_bd');
     const a = GC.addBusinessDays(now, 1 + pcb + lead + 1); const b = GC.addBusinessDays(now, 5 + pcb + lead + 2);
-    return `예상 도착 = 디자인(템플릿 영업일 1일·맞춤 2~5일) + 파트너 인쇄 확인 ${pvc('print_check_bd', `영업일 ${pcb}일`)} + 제작 영업일 ${lead}일([인쇄 가능] 확인일부터) + 배송 1~2일. 오늘 주문하면 <b>${fmtDate(a, false)}~${fmtDate(b, false)}</b>쯤이고, 디자인 확정일에 따라 달라져요.`;
+    return `예상 도착 = 디자인(템플릿 영업일 1일·맞춤 2~5일) + 파트너 인쇄 확인 ${pv('production.print_check_bd', `영업일 ${pcb}일`)} + 제작 영업일 ${lead}일([인쇄 가능] 확인일부터) + 배송 1~2일. 오늘 주문하면 <b>${fmtDate(a, false)}~${fmtDate(b, false)}</b>쯤이고, 디자인 확정일에 따라 달라져요.`;
+  }
+  /* 품절(U-PDP-01 · 2026-10-15 D25): 구매 버튼 끄기 · 재입고 예정일 · 비슷한 상품. 재입고 알림 신청은 2차 */
+  function soldoutHtml(p) {
+    const like = OTHERS.filter((x) => x.id !== p.id && !x.soldout && x.cat === p.cat).slice(0, 2);
+    return `<p><span class="app-price">품절</span> <span class="small muted">· 재입고 예정 ${esc(p.soldout)}</span></p>
+      <div class="note small">지금은 재고가 없어 담을 수 없어요. 재입고 예정일은 판매자가 넣은 날짜예요.</div>
+      <div class="split"><span class="small muted">재입고 알림 받기</span><span class="tag tag-phase">2차</span></div>
+      ${like.length ? `<b class="small">비슷한 상품</b><div class="app-card" style="padding:4px 12px">${like.map((x) => cardHtml(x, S().member)).join('')}</div>` : ''}`;
   }
   function cPdp(f, s) {
     f.title('상품 상세'); f.tab('카테고리'); f.back();
@@ -1141,7 +1479,7 @@
       f.body.innerHTML = `<div class="app-pad"><div class="app-card"><b>판매가 끝난 상품입니다</b><span class="small muted">지금은 살 수 없어요. 같은 카테고리 상품을 보여 드릴게요.</span></div><div class="app-card" style="padding:4px 12px">${same.map((p) => cardHtml(p, s.member)).join('')}</div></div>`;
       return;
     }
-    const p = p0.mine && s.pdpMode ? { ...p0, mode: s.pdpMode } : p0;
+    const p = pdpP();
     const mem = s.member; const biz = usesBiz(p, mem); const isC = p.mode === 'custom'; const hasC = p.mode !== 'normal';
     const tpl = SHIP_TPL[p.ship || 'basic']; const per = p.per || '매';
     let priceSec;
@@ -1152,36 +1490,47 @@
         ${cBiz(p, mem) ? '<p class="small"><span class="tag">사업자</span> 맞춤 사업자가(VAT 포함) · 판비는 누구나 같아요</p>' : mem === 'guest' && p.custom.bizTiers ? '<p class="small"><button class="linkish" data-act="seeBiz">사업자가 보기</button> <span class="faint">· 사업자 인증 회원은 사업자가로 사요</span></p>' : ''}
         <table class="tbl small"><thead><tr><th>맞춤 수량</th><th class="num">1,000매당</th><th class="num">1매당</th></tr></thead><tbody>${ct.map((t, i) => `<tr class="${i === curIdx(ct, s.cqty) ? 'is-hl' : ''}"><td>${num(t.min * 1000)}매부터</td><td class="num">${won(t.price)}</td><td class="num">${fmtPer(t.price / 1000)}원</td></tr>`).join('')}</tbody></table>
         <p class="xsmall faint">판비·디자인비는 빼고 계산한 단가예요.</p>`;
+    } else if (p.soldout) {
+      priceSec = soldoutHtml(p);
     } else {
-      const ins = instantOf(p, mem); const tiers = discTiers(biz ? p.bizTiers : p.tiers, ins); const q = s.qty; const unit = GC.price.tierPrice(tiers, q); const nt = GC.price.nextTier(tiers, q);
-      const goods = unit * q; const shipFee = tpl.base && goods < tpl.freeOver ? tpl.base : 0; const ci = curIdx(tiers, q);
+      const nc = normalCalc(p, mem); const ins = nc.ins; const tiers = discTiers(biz ? p.bizTiers : p.tiers, ins); const q = s.qty;
+      const selT = discTiers(nc.tiers, ins); const nt = GC.price.nextTier(selT, q); const ci = curIdx(tiers, q); const on = hasMain(p);
+      const subs = nc.r ? nc.r.lines.filter((l) => l.addonOf) : [];
       priceSec = `
         <p><span class="app-price">${won(tiers[0].price)}</span>${strikeHtml(tiers[0].price, ins)} <span class="small muted">/ 박스 · 1${per}당 ${fmtPer(minP(tiers) / p.unitCount)}원~</span></p>
         ${biz ? `<p class="small"><span class="tag">사업자</span> 사업자가(VAT 포함) · 공급가 ${won(GC.vatSplit(tiers[0].price).supply)} 별도 표시</p>` : mem === 'guest' ? '<p class="small"><button class="linkish" data-act="seeBiz">사업자가 보기</button> <span class="faint">· 사업자 인증 회원은 사업자가로 사요</span></p>' : '<p class="xsmall faint">일반 회원가 · 모든 가격은 VAT 포함</p>'}
         ${p.instant ? `<p class="xsmall faint">${!ins ? '즉시 할인은 사업자가에 적용하지 않는 설정이에요. 사업자가로 계산해요' : ins.list ? `즉시 할인 ${discTxt(p.instant)} · 할인 전 가격 ${won(ins.list)}은 최근 ${pv('promo.list_price_lookback_days')} 동안 실제 결제된 최저 단가예요` : `즉시 할인 ${discTxt(p.instant)} · 최근 ${pv('promo.list_price_lookback_days')} 안에 결제된 기록이 없어 할인 전 가격 없이 할인가만 보여요`}</p>` : ''}
         <table class="tbl small"><thead><tr><th>수량</th><th class="num">박스당${ins ? '(할인가)' : ''}</th><th class="num">1${per}당</th></tr></thead><tbody>
           ${tiers.map((t, i) => `<tr class="${i === ci ? 'is-hl' : ''}"><td>${t.min}${tiers[i + 1] ? `~${tiers[i + 1].min - 1}` : ''}박스${tiers[i + 1] ? '' : ' 이상'}${i === ci ? ' <span class="tag tag-spot">지금</span>' : ''}</td><td class="num">${won(t.price)}${biz ? `<br><span class="xsmall faint">공급가 ${won(GC.vatSplit(t.price).supply)}</span>` : ''}</td><td class="num">${fmtPer(t.price / p.unitCount)}원</td></tr>`).join('')}</tbody></table>
-        <div class="split"><span class="small strong">수량(박스)</span><div class="qty"><button data-act="qty" data-d="-1" aria-label="한 박스 빼기">−</button><input id="qtyIn" data-change="qtyIn" value="${q}" inputmode="numeric" aria-label="수량"><button data-act="qty" data-d="1" aria-label="한 박스 더하기">+</button></div></div>
+        ${hasOpts(p) ? `<p class="xsmall faint">표는 기본 옵션 가격이에요. 옵션 추가 금액은 박스당 더해지고, 수량 구간은 옵션을 합쳐 셈해요.</p><div class="stack-sm"><b class="small">옵션 선택</b>${optSelHtml(p, false, mem)}</div>` : ''}
+        ${on ? `<div class="sel-line">
+          ${hasOpts(p) ? `<div class="split"><span class="small"><b>${esc(nc.combo.vs.join(' / '))}</b>${nc.extra ? ` <span class="faint">· 박스당 ${nc.extra > 0 ? '+' : '−'}${won(Math.abs(nc.extra))}</span>` : ''}</span><button class="x-btn" data-act="selClear">빼기</button></div>` : ''}
+          <div class="split"><span class="small strong">수량(박스)</span><div class="qty"><button data-act="qty" data-d="-1" aria-label="한 박스 빼기">−</button><input id="qtyIn" data-change="qtyIn" value="${q}" inputmode="numeric" aria-label="수량"><button data-act="qty" data-d="1" aria-label="한 박스 더하기">+</button></div></div>
+          ${subs.map((l) => `<div class="add-line"><span>추가 구성품 · ${esc(l.name)} × ${l.qty}</span><span>${won(l.gross)}</span></div>`).join('')}</div>`
+          : '<p class="note small">옵션을 끝까지 고르면 선택 목록에 담겨요.</p>'}
         ${s.qtyNote ? `<div class="note note-warn small">${s.qtyNote}</div>` : ''}
-        ${nt ? `<div class="note note-spot small"><b>${nt.need}박스 더 담으면 박스당 ${won(nt.saving)} 할인</b> · ${won(nt.price)}로 내려가요</div>` : '<p class="xsmall faint">가장 싼 구간이 적용됐어요</p>'}
-        <dl class="kv small"><dt>상품 금액</dt><dd class="num">${won(unit)} × ${q}박스 = ${won(goods)}</dd><dt>예상 배송비</dt><dd>${shipFee ? `${won(shipFee)} · ${won(tpl.freeOver - goods)} 더 담으면 무료배송` : '무료'}</dd><dt>합계</dt><dd class="num"><b>${won(goods + shipFee)}</b></dd></dl>`;
+        ${on ? (nt ? `<div class="note note-spot small"><b>${nt.need}박스 더 담으면 박스당 ${won(nt.saving)} 할인</b> · ${won(nt.price)}으로 내려가요</div>` : '<p class="xsmall faint">가장 싼 구간이 적용됐어요</p>') : ''}
+        ${addonsHtml(p, false)}
+        ${nc.r ? `<div class="app-card" style="padding:10px 12px">${calcHtml(nc.r)}</div>` : ''}`;
     }
     let logoSec = '';
     if (hasC) {
-      const c = p.custom; const ctiers = cTiersOf(p, mem); const cb = cBiz(p, mem); const cu = GC.price.tierPrice(ctiers, s.cqty); const cnt = GC.price.nextTier(ctiers, s.cqty);
+      const c = p.custom; const ctiers = cTiersOf(p, mem); const cb = cBiz(p, mem); const cnt = GC.price.nextTier(ctiers, s.cqty);
+      const r = customCalc(p, mem, false);
       /* 판 보관 기간은 그 상품의 값(P-PRD-05). 파트너가 늘렸으면 그 값, 비웠으면 관리자 값 */
       const keepTxt = c.plateKeep ? `${c.plateKeep}개월` : pv('production.plate_keep_months');
       logoSec = `<div class="app-sec"><h4>우리 가게 로고 넣기</h4>
-        <dl class="kv"><dt>인쇄</dt><dd>${c.methods} · 최대 ${c.colors}${c.spot ? ' · 별색 가능' : ''}</dd><dt>인쇄 영역</dt><dd>${c.area} (${c.side})</dd><dt>맞춤 수량</dt><dd>${num(c.moq)}매부터 · 1매당 ${fmtPer(minP(ctiers) / 1000)}원~${cb ? ' <span class="tag">사업자가</span>' : ''}</dd><dt>판비</dt><dd>${won(c.plate)} · 판 보관 ${keepTxt} 안에 재주문하면 면제</dd><dt>제작 기간</dt><dd>제작 파트너가 [인쇄 가능]을 확인한 날부터 영업일 ${c.lead}일</dd><dt>허용 오차</dt><dd>수량 ±3% · 위치 ±2mm</dd></dl>
+        <dl class="kv"><dt>인쇄</dt><dd>${c.methods} · 최대 ${c.colors}${c.spot ? ' · 별색 가능' : ''}</dd><dt>인쇄 영역</dt><dd>${c.area} (${c.side})</dd><dt>맞춤 수량</dt><dd>${num(c.moq)}매부터 · 1매당 ${fmtPer(minP(ctiers) / 1000)}원~${cb ? ' <span class="tag">사업자가</span>' : ''}</dd><dt>판비</dt><dd>${won(c.plate)} · 판 보관 ${keepTxt} 안에 재주문하면 면제</dd><dt>제작 기간</dt><dd>제작 파트너가 [인쇄 가능]을 확인한 날부터 영업일 ${c.lead}일</dd><dt>허용 오차</dt><dd>${pv('claim.tolerance')}</dd></dl>
         <div class="split"><span class="small strong">맞춤 수량</span><div class="qty"><button data-act="cqty" data-d="-1" aria-label="1,000매 빼기">−</button><input id="cqtyIn" data-change="cqtyIn" value="${num(s.cqty * 1000)}" inputmode="numeric" aria-label="맞춤 수량" style="width:84px"><button data-act="cqty" data-d="1" aria-label="1,000매 더하기">+</button></div></div>
         ${s.cqtyNote ? `<div class="note note-warn small">${s.cqtyNote}</div>` : ''}
-        <p class="small">맞춤 품목 ${won(cu * s.cqty)} + 판비 ${won(c.plate)} <span class="faint">· 디자인비 별도</span>${cnt ? `<br><b style="color:var(--spot)">${num(cnt.need * 1000)}매 더 담으면 1,000매당 ${won(cnt.saving)} 할인</b>` : ''}</p>
-        ${dfeeHtml(cu * s.cqty, cb)}
+        ${cnt ? `<p class="small"><b style="color:var(--spot)">${num(cnt.need * 1000)}매 더 담으면 1,000매당 ${won(cnt.saving)} 할인</b></p>` : ''}
+        <div class="app-card" style="padding:10px 12px"><b class="small">예상 금액 <span class="xsmall faint">· 판비는 상품 금액 바로 아래 줄</span></b>${calcHtml(r, { custom: true })}</div>
+        ${dfeeHtml(r.designFees[0].basis, cb)}
         <div class="three"><div class="app-card" style="padding:10px"><span class="xsmall faint">템플릿</span><b>무료</b></div><div class="app-card" style="padding:10px"><span class="xsmall faint">맞춤</span><b>${pv('design.fee')}</b></div><div class="app-card" style="padding:10px"><span class="xsmall faint">자체 파일</span><b>검수 무료</b></div></div>
-        <p class="xsmall faint">같은 디자인의 맞춤 품목이 ${pv('design.free_threshold')} 이상이면 맞춤 디자인비가 무료예요.</p>
+        <p class="xsmall faint">같은 디자인의 맞춤 품목이 ${pv('design.free_threshold')} 이상이면 맞춤 디자인비가 무료예요. 판비는 이 판정에서 빠져요.</p>
         <p class="small" id="arrival">${arrivalHtml(c.lead)}</p>
         <p class="note small">판비는 인쇄판 제작비입니다. 인쇄판은 제작 파트너가 보관하며 고객에게 넘겨드리지 않습니다. 보관 기간(${keepTxt}) 안에 식업에서 재주문하면 판비가 면제됩니다. <span class="tag tag-phase">법률 자문 전 초안</span></p>
-        ${!isC ? '<a class="btn btn-block" href="design.html">맞춤 제작으로 주문하기</a>' : ''}</div>`;
+        ${!isC ? '<button class="btn btn-block" data-act="corder">맞춤 제작으로 주문하기</button>' : ''}</div>`;
     }
     const now = app.clock.now(); const shipDue = GC.addBusinessDays(now.getHours() < 14 ? new Date(now.getTime() - GC.DAY) : now, p.shipDays);
     f.body.innerHTML = `
@@ -1191,16 +1540,18 @@
         <p class="app-title">${esc(p.name)}</p><p class="app-sub">${esc(p.partner)} ›</p>
         ${priceSec}</div>
       ${logoSec}
-      <div class="app-sec"><h4>배송</h4><dl class="kv small"><dt>배송비</dt><dd>${tpl.base ? `${won(tpl.base)} · ${won(tpl.freeOver)} 이상 무료` : '착불'}</dd><dt>출고</dt><dd>${isC ? `[인쇄 가능] 확인일부터 영업일 ${p.custom.lead}일` : `오늘 14시 전 결제 시 ${fmtDate(shipDue, false)} 출고`}${hasC && !isC ? `<br><span class="xsmall faint">로고 인쇄 주문은 [인쇄 가능] 확인일부터 영업일 ${p.custom.lead}일</span>` : ''}</dd><dt>묶음 배송</dt><dd>같은 판매자·출고지·출고 유형끼리${hasC ? '<br><span class="xsmall faint">맞춤 제작 상품은 일반 상품과 출고 유형이 달라 따로 묶여요</span>' : ''}</dd></dl></div>
+      <div class="app-sec"><h4>배송</h4><dl class="kv small"><dt>배송비</dt><dd>${tpl.base ? `${won(tpl.base)} · ${won(tpl.freeOver)} 이상 무료` : '착불'}</dd><dt>출고</dt><dd>${isC ? `[인쇄 가능] 확인일부터 영업일 ${p.custom.lead}일` : `오늘 14시 전 결제 시 ${fmtDate(shipDue, false)} 출고`}${hasC && !isC ? `<br><span class="xsmall faint">로고 인쇄 주문은 [인쇄 가능] 확인일부터 영업일 ${p.custom.lead}일</span>` : ''}</dd><dt>묶음 배송</dt><dd>같은 판매자·출고지·출고 유형끼리${hasC ? '<br><span class="xsmall faint">맞춤 제작 상품은 일반 상품과 출고 유형이 달라 따로 묶여요</span>' : ''}${addonsOf(p).length ? '<br><span class="xsmall faint">추가 구성품은 본 상품과 같은 묶음으로 함께 출고해요</span>' : ''}</dd></dl></div>
       ${p.det && (p.det.text || p.det.imgs.some((i) => i.st === 'ok')) ? `<div class="app-sec"><h4>상세 설명</h4>${viewerHtml(p.det, { act: true, fold: !s.dvOpen, miss: s.imgFail })}</div>` : ''}
       <div class="app-sec"><h4>상품정보·인증</h4>
         ${p.foodCert || p.eco ? `<div class="badges">${p.foodCert ? '<span class="tag tag-kraft">식품용 기구 적합(시험성적서)</span>' : ''}${p.eco ? '<span class="tag tag-kraft">환경표지 인증</span>' : ''}</div>` : '<p class="xsmall faint">검수를 통과한 인증 서류가 없어 배지를 달지 않았어요.</p>'}
         <dl class="kv small"><dt>소재</dt><dd>크라프트지 40g/㎡</dd><dt>규격</dt><dd>40×240mm · 1박스 1,000매</dd><dt>제조자·제조국</dt><dd>${esc(p.partner)} · 대한민국</dd><dt>품질보증</dt><dd>소비자분쟁해결기준에 따름</dd></dl>
-        ${p.foodCert ? `<div class="split small"><span>시험성적서 PDF 보기</span>${mem === 'guest' ? '<span class="xsmall faint">다운로드는 로그인 회원만</span>' : '<button class="btn btn-sm">내려받기</button>'}</div>` : ''}</div>
+        ${p.foodCert ? `<div class="split small"><span>시험성적서 PDF 보기</span>${mem === 'guest' ? '<span class="xsmall faint">다운로드는 로그인 회원만</span>' : '<button class="btn btn-sm">내려받기</button>'}</div>` : ''}
+        ${regBoxHtml(p)}</div>
       <div class="app-sec"><div class="split"><h4>상품 문의</h4><button class="btn btn-sm btn-ext" data-act="ask">문의하기</button></div><p class="xsmall faint">판매자 연락처가 아니라 [문의하기]로 받아 운영팀이 판매자에게 확인해요.</p></div>
       <div class="app-sec"><h4>교환·반품</h4><p class="xsmall muted">단순 변심은 받은 날부터 7일 안 · ${tpl.ret}. 맞춤 제작 상품은 생산 시작 뒤 취소·반품이 제한돼요.</p></div>
       <div class="app-sec"><h4>판매자 정보 <span class="tag tag-phase">법률 검토 필요</span></h4><p class="xsmall muted">${p.mine ? PARTNER.info : `${esc(p.partner)} · 사업자 정보 예시`}. 식업은 통신판매중개자이며 거래 당사자가 아닙니다. 상품 문의는 [문의하기]로 받아요.</p></div>`;
-    if (isC) f.bottom(`<a class="btn btn-primary btn-lg btn-block" href="design.html">맞춤 제작으로 주문하기</a>`);
+    if (isC) f.bottom('<button class="btn btn-primary btn-lg btn-block" data-act="corder">맞춤 제작으로 주문하기</button>');
+    else if (p.soldout) f.bottom('<div class="two"><button class="btn btn-lg" disabled>장바구니</button><button class="btn btn-primary btn-lg" disabled>품절</button></div>');
     else f.bottom(`${hasC ? '<p class="xsmall faint" style="text-align:center;margin:0">로고를 넣으려면 위 "우리 가게 로고 넣기"에서 주문해요</p>' : ''}<div class="two"><button class="btn btn-lg" data-act="addCart" data-id="${p.id}">장바구니</button><button class="btn btn-primary btn-lg" data-act="buyNow">바로 구매</button></div>`);
   }
   function setQty(n, p) {
@@ -1275,15 +1626,24 @@
     descEdit() {
       const s = S();
       if (revOpen()) { app.log('warn', '상품마다 열린 수정본은 하나뿐이라 새 수정본을 만들 수 없어요(P-PRD-07)'); app.toast('이미 열린 수정본이 있어요. 상품마다 열린 수정본은 하나예요'); return; }
-      s.rev.n += 1; clearRev();
+      s.rev.n += 1; s.rev.startVer = s.det.ver; clearRev();
       app.setState('rev', 'EDITING', { by: `파트너가 판매 중 상품 수정 시작 · 수정본 ${s.rev.n}번째` });
       s.ptab = 'desc'; s.det.pv = '';
       app.log('rule', `상품 상태는 판매 중(APPROVED) 그대로 두고 수정본을 따로 만들어요 · 수정본은 검수를 통과할 때까지 고객에게 보이지 않고 v${s.det.liveVer} 버전이 계속 보여요`); refresh();
     },
-    async descCancel() {
-      if (!(await app.confirm({ title: '수정본을 버릴까요?', body: `<p class="small">작성하던 수정본을 버리고 지금 판매 중인 내용(v${S().det.liveVer})으로 돌아가요. 저장한 버전 기록은 남아요.</p>`, ok: '수정본 버리기' }))) return;
-      const s = S(); const L = s.live.det; s.desc = L.text; s.det.imgs = JSON.parse(JSON.stringify(L.imgs)); s.det.tpl = L.tpl; s.det.dirty = false;
-      clearRev(); app.log('state', '판매 중 상품 수정본: 파트너가 수정본을 버림 · 열린 수정본 없음 · 판매 중 내용 그대로'); refresh();
+    /* 수정본 [검수 요청 취소](D27): 재검수 중 → 수정 중. 검수 목록에서 빠지고 다시 고치거나 버릴 수 있음 */
+    descCancelReview() {
+      const s = S(); if (!app.go('rev', 'cancel_review', { by: `파트너가 수정본 v${s.det.ver} 검수 요청 취소` })) { refresh(); return; }
+      s.dreview.due = null;
+      app.log('rule', '본사 수정본 재검수 목록에서 빠짐 · 상품은 판매 중 그대로(이전 승인 내용) · 수정 중으로 돌아와 고치거나 [수정본 버리기]로 닫을 수 있어요'); refresh();
+    },
+    /* [수정본 버리기](D27): 수정 중·보완 요청 → 수정 취소(DISCARDED). 판매 중 상품은 이전 승인 내용 그대로, 기록은 남음 */
+    async descDiscard() {
+      if (!(await app.confirm({ title: '수정본을 버릴까요?', body: `<p class="small">작성하던 수정본을 닫고(수정 취소) 지금 판매 중인 내용(v${S().det.liveVer})을 그대로 팔아요. 수정본과 저장한 버전은 기록으로 남고 고객에게는 보이지 않아요.</p>`, ok: '수정본 버리기', danger: true }))) return;
+      const s = S(); const from = app.state('rev');
+      if (!app.go('rev', 'discard', { by: `파트너가 수정본 ${s.rev.n}번째를 버림` })) { refresh(); return; }
+      closeRevision('파트너가 버림' + (from === 'NEEDS_FIX' ? '(보완 요청 중)' : ''));
+      app.log('rule', '수정 취소 = 열린 수정본 없음 · 판매 중 상품은 이전 승인 내용 그대로 · 본사 검수 목록에서 빠지고 기록으로만 남아요'); refresh();
     },
     descSubmit() {
       const s = S();
@@ -1302,6 +1662,7 @@
       const s = S(); const old = s.det.liveVer; app.clock.pass(30 * 60000);
       app.go('rev', 'apply', { by: `수정본 승인 · v${s.det.ver}` });
       s.live.det = makeDoc(s); s.live.desc = s.desc; s.det.liveVer = s.det.ver;
+      s.rev.hist.unshift({ n: s.rev.n, ver: s.det.ver, result: 'APPLIED', reason: '본사 승인 · 고객 화면에 반영', at: app.clock.now() });
       app.notify('NOTI_PARTNER_PRODUCT_REVIEWED', '파트너(대성포장)', ['알림톡', '이메일'], `상세 설명 v${s.det.ver} 수정 승인 · 고객 화면에 반영`);
       app.log('rule', `고객 상세 화면이 v${old} → v${s.det.ver} 버전으로 바뀌었어요 · 이미 주문한 고객은 주문 상세에서 주문할 때 본 v${old} 버전을 그대로 봐요`); refresh();
     },
@@ -1320,6 +1681,7 @@
       app.clock.pass(20 * 60000);
       app.go('rev', 'decline', { by: `수정본 v${ver} 수정 반려` });
       s.rev.declined.unshift(ver); s.rev.reason = sel ? sel.value : '판매 방식과 다른 내용'; s.rev.custSeen = false;
+      s.rev.hist.unshift({ n: s.rev.n, ver, result: 'DECLINED', reason: s.rev.reason, at: app.clock.now() });
       s.desc = L.text; s.det.imgs = JSON.parse(JSON.stringify(L.imgs)); s.det.tpl = L.tpl; s.det.dirty = false;
       app.notify('NOTI_PARTNER_PRODUCT_REVIEWED', '파트너(대성포장)', ['알림톡', '이메일'], `상세 설명 수정 반려 · ${esc(s.rev.reason)} · 이전 내용으로 판매 계속`);
       app.log('rule', `수정 반려 = 그 수정만 받지 않음 · 상품 상태는 ${GC.sm.stateName('PRODUCT', app.state('product'))} 그대로 · 고객 화면은 이전 승인 v${s.det.liveVer} · 반려된 v${ver}은 버전 기록에만 남음(고객에게 안 보임)`);
@@ -1350,28 +1712,60 @@
     num(t) { S()[t.dataset.f] = toNum(t.value); liveRefresh(t.id); },
     cnum(t) { S().cust[t.dataset.f] = toNum(t.value); liveRefresh(t.id); },
     plateKeep(t) { S().cust.plateKeep = toNum(t.value) || null; liveRefresh(t.id); },
+    /* 옵션(P-PRD-02): 단일 / 조합형(옵션명 최대 3개) */
+    optKind(b) { const o = S().opt; if (o.kind === b.dataset.k) return; o.kind = b.dataset.k; app.log('user', `옵션 방식: ${o.kind === 'combo' ? '조합형' : '단일 상품'}`); refresh(); },
+    optAdd() {
+      const s = S(); const o = s.opt; if (o.rows.length >= OPT_MAX_NAMES) { app.toast(`옵션명은 ${OPT_MAX_NAMES}개까지예요`); return; }
+      o.rows.push({ ...OPT_NEXT });
+      app.log('user', `옵션명 추가: ${OPT_NEXT.name}(${OPT_NEXT.vals}) → ${o.rows.length}단 조합 ${comboCount(o)}개 자동 생성`); refresh();
+    },
+    optDel(b) { const o = S().opt; o.rows.splice(Number(b.dataset.i), 1); app.log('user', `옵션명 뺌 → 조합 ${comboCount(o)}개`); refresh(); },
+    optName(t) { S().opt.rows[Number(t.dataset.i)].name = t.value; liveRefresh(t.id); },
+    optVals(t) { S().opt.rows[Number(t.dataset.i)].vals = t.value; liveRefresh(t.id); },
+    cxEdit(t) {
+      const o = S().opt; const k = t.dataset.key; const raw = String(t.value).replace(/[^\d-]/g, ''); const v = Number(raw) || 0;
+      o.cx[k] = { ...(o.cx[k] || {}), [t.dataset.f]: t.dataset.f === 'stock' ? Math.max(0, v) : v }; liveRefresh(t.id);
+    },
+    /* 추가 구성품(P-PRD-02): 이름·판매가·재고, 상품당 최대 product.addon_max */
+    adForm(t) { const f = S().adForm; f[t.dataset.f] = t.dataset.f === 'name' ? t.value : toNum(t.value); },
+    addonAdd() {
+      const s = S(); const e = addonFormErrors(s.adForm, s.addons.length); s.adErr = e;
+      if (e.length) { app.log('warn', `추가 구성품 저장 거부: ${esc(e[0])}`); refresh(); return; }
+      s.adSeq = (s.adSeq || 0) + 1; const a = { id: 'ad' + s.adSeq, name: s.adForm.name.trim(), price: s.adForm.price, stock: s.adForm.stock };
+      s.addons.push(a); s.adForm = { ...ADDON_EX[s.addons.length % ADDON_EX.length] };
+      app.log('user', `추가 구성품 등록: ${esc(a.name)} · ${won(a.price)} · 재고 ${num(a.stock)}개${a.stock <= 0 ? '(품절 표시)' : ''} · 고정 단가(수량 구간·사업자가 없음)`); refresh();
+    },
+    addonDel(b) { const s = S(); const a = s.addons.find((x) => x.id === b.dataset.id); s.addons = s.addons.filter((x) => x.id !== b.dataset.id); s.adErr = []; if (a) app.log('user', `추가 구성품 뺌: ${esc(a.name)}`); refresh(); },
+    adEdit(t) { const a = S().addons.find((x) => x.id === t.dataset.id); if (!a) return; a[t.dataset.f] = toNum(t.value); liveRefresh(t.id); },
     /* 즉시 할인(P-PRM-01) */
     promoType(b) { const p = S().promo; if (p.type === b.dataset.k) return; p.type = b.dataset.k; p.value = p.type === 'rate' ? 10 : 1000; refresh(); },
     promoVal(t) { S().promo.value = toNum(t.value); liveRefresh(t.id); },
+    promoDays(t) { S().promo.days = toNum(t.value); liveRefresh(t.id); },
+    /* 맞춤 상품 적용 범위(P-PRM-01 · C-PRICE-01 ②, D20): 판비 포함이면 판비에도 즉시 할인 */
+    promoPlate(b) {
+      const s = S(); const on = b.dataset.k === '1'; if (!!s.promo.plate === on) return; s.promo.plate = on;
+      const plate = s.live.cust.plate; const d = GC.price.plateInstantDisc(plate, promoOf(s.promo));
+      app.log('user', `즉시 할인 맞춤 상품 적용 범위: ${on ? `상품 대금 + 판비(판비 ${won(plate)} → ${won(plate - d)})` : '상품 대금만(판비 그대로)'} · 디자인비·추가 구성품에는 걸리지 않음`); refresh();
+    },
     promoBiz(b) {
       const s = S(); const on = b.dataset.k === '1'; if (s.promo.applyBiz === on) return; s.promo.applyBiz = on;
-      const inv = GC.price.bizInversion(s.live.tiers, bizOf(s.live), promoOf(s.promo));
+      const inv = promoInv(s.live, s.promo);
       app.log('user', `즉시 할인 설정: ${on ? '사업자가에도 적용' : '사업자가 적용 안 함'}${inv.length ? ` → 역전 구간 ${inv.length}개, 사업자가 역전 경고` : ''}`); refresh();
     },
     promoSave() {
-      const s = S(); const L = s.live; const p = s.promo; const sv = s.promoLive; const pe = promoErrors(p, L.tiers);
+      const s = S(); const L = s.live; const p = s.promo; const sv = s.promoLive; const pe = promoErrors(p, promoTiers(L).map((x) => x.t));
       if (pe.length) { app.log('warn', `즉시 할인 저장 거부: ${esc(pe[0])}`); app.toast(pe[0]); return; }
       if (sv) {
-        if (sv.type === p.type && sv.value === p.value && sv.applyBiz === p.applyBiz) { app.toast('바뀐 내용이 없어요'); return; }
-        if (sv.type !== p.type || p.value < sv.value || (sv.applyBiz && !p.applyBiz)) {
-          app.log('warn', '진행 중인 즉시 할인을 줄이는 변경은 받지 않아요(고객 오인 방지) → 지금 할인을 끝내고 새로 만들어요');
-          app.toast('진행 중에는 할인을 키우는 변경만 돼요. 줄이려면 [할인 끝내기] 뒤 새로 만들어요'); return;
+        if (sv.type === p.type && sv.value === p.value && sv.applyBiz === p.applyBiz && !!sv.plate === !!p.plate && sv.days === p.days) { app.toast('바뀐 내용이 없어요'); return; }
+        if (sv.type !== p.type || p.value < sv.value || (sv.applyBiz && !p.applyBiz) || (sv.plate && !p.plate) || p.days < sv.days) {
+          app.log('warn', '진행 중인 즉시 할인을 줄이거나 기간을 줄이는 변경은 받지 않아요(고객 오인 방지) → 지금 할인을 끝내고 새로 만들어요');
+          app.toast('진행 중에는 할인을 키우거나 기간을 늘리는 변경만 돼요. 줄이려면 [할인 끝내기] 뒤 새로 만들어요'); return;
         }
       }
-      const inv = GC.price.bizInversion(L.tiers, bizOf(L), promoOf(p));
-      s.promoLive = { ...promoOf(p), at: sv ? sv.at : app.clock.now() };
-      app.log('user', `즉시 할인 ${sv ? '변경' : '저장'}: ${discTxt(p)} · 사업자가 ${p.applyBiz ? '적용' : '적용 안 함'} → 검수 없이 바로 반영 · 할인액은 파트너 부담, 수수료는 할인 후 가격으로`);
-      if (inv.length) app.log('warn', `사업자가 역전 경고(저장은 됨): ${esc(invText(inv))} · 사업자 회원은 사업자가 표 그대로(C-PRICE-01) · 자동 적용 의무는 법률 자문 L-26 답에 따라 다시 정함`);
+      const inv = promoInv(L, p);
+      s.promoLive = { ...promoOf(p), days: p.days, at: sv ? sv.at : app.clock.now() };
+      app.log('user', `즉시 할인 ${sv ? '변경' : '저장'}: ${discTxt(p)} · 사업자가 ${p.applyBiz ? '적용' : '적용 안 함'}${L.mode !== 'normal' ? ` · 맞춤 ${p.plate ? '상품 대금 + 판비' : '상품 대금만'}` : ''} · ${p.days}일 → 검수 없이 바로 반영 · 할인액은 파트너 부담, 수수료는 할인 후 가격으로`);
+      if (inv.length) app.log('warn', `사업자가 역전 경고(저장은 됨): ${esc(invText(inv, L.mode === 'custom'))} · 사업자 회원은 사업자가 표 그대로(C-PRICE-01) · 자동 적용 의무는 법률 자문 L-26 답에 따라 다시 정함`);
       app.toast(inv.length ? '저장했어요. 사업자가 역전 경고를 확인해 주세요' : '즉시 할인을 저장했어요'); refresh();
     },
     async promoEnd() {
@@ -1383,7 +1777,7 @@
     cSide(b) { S().cust.side = b.dataset.k; refresh(); },
     cColors(t) { S().cust.colors = t.value; refresh(); },
     async upTemplate() {
-      await app.ext({ service: 'AWS S3 · GuardDuty · convert 작업', what: '템플릿·칼선 파일 올리기', lines: ['수저집_40x240_칼선.ai · 최대 500MB · 서명된 주소로 바로 업로드', '악성코드 검사 → 격리된 변환 작업에서 미리보기 생성', '파일이 깨져 미리보기를 못 만들면 업로드를 반려해요'] });
+      await app.ext({ service: 'AWS S3 · GuardDuty · convert 작업', what: '템플릿·칼선 파일 올리기', lines: [`수저집_40x240_칼선.ai · AI·PDF·SVG 최대 ${GC.Policy.get('file.max_size_original')}MB(file.max_size_original) · 서명된 주소로 바로 업로드`, '악성코드 검사 → 격리된 변환 작업에서 미리보기 생성', '파일이 깨져 미리보기를 못 만들면 업로드를 반려해요'] });
       S().cust.template = true; app.log('rule', '칼선 미리보기 생성 · 인쇄 영역 40×240mm 일치 · 디자인팀 템플릿 라이브러리와 자동 연결'); refresh();
     },
     async upDoc(b) {
@@ -1400,6 +1794,8 @@
     saveDraft() {
       const s = S(); const pe = s.mode !== 'custom' ? priceErrors() : []; const ce = s.mode !== 'normal' ? custErrors() : [];
       if (pe.length || ce.length) { const e = (pe[0] || ce[0]).m; app.log('warn', `임시 저장 거부: ${esc(e)}`); app.toast(pe.length ? '구간 단가를 고쳐야 저장돼요' : ce[0].k === 'plate' ? '판 보관 기간을 관리자 값 이상으로 고쳐야 저장돼요' : '맞춤 단가·리드타임을 고쳐야 저장돼요'); refresh(); return; }
+      const oe = optErrors(s.opt, s.tiers[0].price, s.mode);
+      if (oe.length) { app.log('warn', `임시 저장 거부: ${esc(oe[0])}`); app.toast('옵션 입력을 고쳐야 저장돼요'); refresh(); return; }
       if (s.mode !== 'normal' && !s.cust.template) app.log('rule', '맞춤 설정은 템플릿 파일이 없어 저장하지 않았어요(나머지는 임시 저장)');
       app.log('user', '임시 저장(DRAFT)'); app.toast('임시 저장했어요'); refresh();
     },
@@ -1417,12 +1813,24 @@
       s.ptab = 'list'; refresh();
     },
     goFix() { const s = S(); s.ptab = 'form'; s.pstep = 'desc'; refresh(); },
+    /* 신규 상품 [검수 요청 취소](P-PRD-07 예외, 엔진 PRODUCT cancel_review): 검수 중 → 임시 저장 */
+    cancelReview() {
+      const s = S(); if (!goP('cancel_review', '파트너가 검수 요청 취소')) { refresh(); return; }
+      s.review.due = null; s.review.checks = {}; s.ptab = 'form'; s.pstep = 'basic';
+      app.log('rule', '본사 검수 대기 목록에서 빠짐 · 임시 저장으로 돌아와 고친 뒤 다시 [검수 요청]해요(검수 기한은 다시 요청할 때 새로 잡혀요)'); refresh();
+    },
     /* 파트너: 판매 관리 */
     pause() { goP('pause', '파트너가 판매 중지'); app.log('rule', '검색·상세에서 빠짐 · 파트너가 직접 다시 열 수 있어요'); refresh(); },
     resume() { goP('resume', '파트너가 판매 재개'); app.log('rule', '검색 색인 즉시 반영'); refresh(); },
     async endSale() {
-      if (!(await app.confirm({ title: '판매를 종료할까요?', body: '<p class="small">판매 종료한 상품은 주문 이력 때문에 지우지 않아요. 다시 팔려면 복사해 새 상품으로 등록해야 해요.</p>', ok: '판매 종료', danger: true }))) return;
-      goP('end', '파트너가 판매 종료'); refresh();
+      const open = revOpen();
+      if (!(await app.confirm({ title: '판매를 종료할까요?', body: `<p class="small">판매 종료한 상품은 주문 이력 때문에 지우지 않아요. 다시 팔려면 복사해 새 상품으로 등록해야 해요.</p>${open ? `<p class="small"><b>열린 수정본(${GC.sm.stateName('PRODUCT_REVISION', app.state('rev'))})도 사유 ‘판매 종료’로 함께 닫혀요.</b> 기록은 남아요.</p>` : ''}`, ok: '판매 종료', danger: true }))) return;
+      if (!goP('end', '파트너가 판매 종료')) { refresh(); return; }
+      /* 판매 종료(D27): 열린 수정본(EDITING·IN_REVIEW·NEEDS_FIX)을 사유 '판매 종료'로 함께 닫음. 본사 중지(SUSPENDED) 중엔 판매 종료 자체가 없어 그대로 */
+      if (open && app.go('rev', 'product_ended', { by: '상품 판매 종료로 함께 닫음 · 사유 ‘판매 종료’' })) {
+        closeRevision('판매 종료'); app.log('rule', '열린 수정본을 수정 취소로 닫음 · 본사 재검수 목록에서 빠지고 기록으로만 남아요');
+      }
+      refresh();
     },
     qp(t) { const s = S(); s.qp[Number(t.dataset.i)] = toNum(t.value); },
     async applyPrice() {
@@ -1484,7 +1892,8 @@
       const s = S(); const sel = app.lastFrame.querySelector('#susReason');
       s.suspend = { kind: 'hq', reason: sel ? sel.value : '고객 신고' }; s.appeal = false;
       goP('suspend', '본사 직권 중지');
-      app.notify('코드 미정', '파트너(대성포장)', ['알림톡', '이메일'], `본사 중지 · 사유: ${esc(s.suspend.reason)} · 소명 가능`);
+      app.notify('NOTI_PARTNER_PRODUCT_SUSPENDED', '파트너(대성포장 담당자)', ['알림톡', '이메일', '알림센터'], `본사 중지 · 사유: ${esc(s.suspend.reason)} · 소명 가능`);
+      if (revOpen()) app.log('rule', `열린 수정본(${GC.sm.stateName('PRODUCT_REVISION', app.state('rev'))})은 본사 중지 중에는 닫지 않고 그대로 둬요(D27)`);
       refresh();
     },
     unsuspend() {
@@ -1493,6 +1902,19 @@
       goP('unsuspend', s.suspend && s.suspend.kind === 'doc' ? '새 서류 확인 → 본사 중지 해제' : '소명 확인 → 본사 중지 해제');
       s.suspend = null; s.appeal = false; s.fired = {};
       app.notify('NOTI_PARTNER_PRODUCT_REVIEWED', '파트너(대성포장)', ['알림톡'], '본사 중지 해제 · 판매 중'); refresh();
+    },
+    /* 카테고리 규제 안내 문구(A-PRD-02, D29): 본사가 쓰고 고침 · 저장하면 고친 날짜 자동 · 비우면 상자 없음 */
+    regCat(b) { S().regCat = b.dataset.k; refresh(); },
+    regText(t) { const s = S(); s.regDraft[s.regCat] = t.value; liveRefresh(t.id); },
+    regSave() {
+      const s = S(); const k = s.regCat; const r = s.reg[k]; const text = (s.regDraft[k] != null ? s.regDraft[k] : r.text).trim();
+      if (text.length > REG_MAX) { app.toast(`${REG_MAX}자를 넘었어요. 줄여 주세요`); app.log('warn', `규제 안내 문구 저장 거부: ${text.length}자 > ${REG_MAX}자`); return; }
+      if (text === r.text.trim()) { app.toast('바뀐 내용이 없어요'); return; }
+      const now = app.clock.now(); const what = !text ? '비움 · 상품 상세 상자 내림' : r.text.trim() ? `고침 · ${text.length}자` : `새로 씀 · ${text.length}자`;
+      s.reg[k] = { text, at: text ? now : null, hist: [{ at: now, by: '운영팀 MD 박○○', what }].concat(r.hist) }; delete s.regDraft[k];
+      app.log('user', `카테고리 규제 안내 문구(${esc(REG_CATS[k].name)}): ${what}`);
+      app.log('rule', text ? `고친 날짜 ${ymd(now)} 자동 기록 · 이 카테고리 모든 상품 상세 '상품정보·인증'에 접힌 상자 '일회용품 규제 안내'로 바로 보임(언제나 최신 문구) · 변경 이력 남김` : '문구가 비어 이 카테고리 상품 상세에서 안내 상자가 사라짐 · 변경 이력 남김');
+      app.toast(text ? '저장했어요' : '문구를 비웠어요. 상품 상세에서 상자가 사라져요'); refresh();
     },
     synDel(b) { const s = S(); const g = s.syn[Number(b.dataset.g)]; if (g.length <= 2) { app.toast('같은 말 묶음은 2개 이상이어야 해요'); return; } g.splice(g.indexOf(b.dataset.w), 1); app.log('user', `검색 사전: "${esc(b.dataset.w)}" 뺌 → 다음 검색부터 반영`); refresh(); },
     synAdd(b) { const s = S(); const gi = Number(b.dataset.g); const inp = app.lastFrame.querySelector('#syn' + gi); const w = inp ? inp.value.trim() : ''; if (!w) return; s.syn[gi].push(w); app.log('user', `검색 사전: "${esc(w)}"를 ${esc(s.syn[gi][0])} 묶음에 추가`); refresh(); },
@@ -1513,6 +1935,8 @@
       const s = S(); const id = b.dataset.id;
       if (id !== 'mine') { app.toast('이 프로토타입에서는 대성포장 상품 상세를 자세히 보여 드려요'); }
       s.pid = id; s.cs = 'pdp'; s.qtyNote = ''; s.cqtyNote = ''; s.dvOpen = false; s.qty = id === 'mine' ? 3 : 1; s.cqty = Math.ceil(((findP(id) || {}).custom || { moq: 10000 }).moq / 1000);
+      /* 옵션은 처음 조합(재고 있는 것)을 골라 둔 채 열고, 추가 구성품은 0개에서 시작 */
+      const fp = findP(id); s.addq = {}; s.osel = hasOpts(fp) ? (fp.combos.find((c) => c.stock > 0) || fp.combos[0]).vs.slice() : [];
       if (id === 'mine') s.viewed.pdp = true;
       if (id === 'mine' && app.state('rev') === 'DECLINED' && !s.rev.custSeen) { s.rev.custSeen = true; app.log('rule', `고객 상세 = 이전 승인 v${s.det.liveVer} · 반려된 수정본 v${s.rev.declined[0]}은 보이지 않고 검수 상태도 안 보임`); }
       refresh();
@@ -1522,11 +1946,58 @@
     cqty(b) { setCqty(S().cqty + Number(b.dataset.d), findP(S().pid)); refresh(); },
     cqtyIn(t) { setCqty(Math.round(toNum(t.value) / 1000), findP(S().pid)); refresh(); },
     seeBiz() { const s = S(); app.toast('로그인 + 사업자 인증(국세청)을 마친 것으로 바꿔요'); s.member = 'biz'; s.viewed.mem = true; app.log('user', '고객이 [사업자가 보기] → 사업자 회원 화면'); refresh(); },
-    addCart(b) { const p = findP(b.dataset.id); app.toast('장바구니에 담았어요'); app.log('user', `장바구니 담기: ${esc(p.name)}${p.mine ? ` ${S().qty}박스` : ' 1박스'} · 담은 뒤 가격이 바뀌면 주문서에서 다시 계산`); },
-    buyNow() {
-      const p = findP(S().pid); app.toast('주문서는 주문·결제 화면에서 이어져요'); app.log('user', '[바로 구매] → order.html 주문서로');
-      if (p && p.det) app.log('rule', `결제할 때 그 순간의 상세 설명 버전(지금 v${p.det.ver})을 주문 항목 스냅샷에 남겨요 → 주문 상세 [주문할 때의 상품 정보 보기] · "표시·광고와 다름" 반품의 기준`);
+    addCart(b) {
+      const s = S(); const p = findP(b.dataset.id);
+      /* 목록 카드의 [담기](옵션 없는 상품)는 그 자리에서 담고 끝 */
+      if (s.cs !== 'pdp' || p.id !== s.pid) { app.toast('장바구니에 담았어요'); app.log('user', `장바구니 담기: ${esc(p.name)} 1박스 · 담은 뒤 가격이 바뀌면 주문서에서 다시 계산`); return; }
+      const pp = pdpP(); const nc = normalCalc(pp, s.member);
+      if (!hasMain(pp) || !nc.r) { app.toast('옵션을 끝까지 골라 주세요'); app.log('warn', '옵션을 다 고르지 않아 담을 수 없어요 · 추가 구성품만 따로 살 수도 없어요(U-PDP-02)'); return; }
+      const subs = nc.r.lines.filter((l) => l.addonOf);
+      s.cart = { name: pp.name, opt: nc.combo ? nc.combo.vs.join(' / ') : '', r: nc.r };
+      if (subs.length) s.viewed.cart = true;
+      app.log('user', `장바구니 담기: ${esc(pp.name)}${nc.combo ? `(${esc(nc.combo.vs.join(' / '))})` : ''} ${s.qty}박스${subs.length ? ` + 추가 구성품 ${subs.map((l) => `${esc(l.name)} ${l.qty}개`).join(', ')}` : ''} · 담은 뒤 가격이 바뀌면 주문서에서 다시 계산`);
+      if (subs.length) app.log('rule', `추가 구성품은 본 상품 줄 아래 붙은 줄(addonOf) · 정해진 가격 × 수량 ${won(nc.r.totals.addons)} · 판매자 할인 제외 · 같은 배송 묶음 · 주문하면 따로 된 주문 항목(혼자 취소·반품, 본 상품이 출고 전 취소되면 함께 취소)`);
+      s.cs = 'added'; refresh();
     },
+    buyNow() {
+      const s = S(); const p = pdpP();
+      if (p && !hasMain(p)) { app.toast('옵션을 끝까지 골라 주세요'); return; }
+      app.toast('주문서는 주문·결제 화면에서 이어져요'); app.log('user', '[바로 구매] → order.html 주문서로');
+      if (p && p.det) app.log('rule', `결제할 때 그 순간의 상세 설명 버전(지금 v${p.det.ver})을 주문 항목 스냅샷에 남겨요 → 주문 상세 [주문할 때의 상품 정보 보기] · "표시·광고와 다름" 반품의 기준`);
+      if (s.osel.length && p && hasOpts(p)) app.log('rule', `옵션 조합 ${esc(selCombo(p).vs.join(' / '))}과 추가 구성품을 주문 항목 스냅샷에 남겨요`);
+    },
+    /* 옵션 3단 고르기(U-PDP-02): 앞 단을 바꾸면 뒤 조합이 품절일 수 있어 마지막 단을 다시 확인 */
+    osel(t) {
+      const s = S(); const p = pdpP(); const i = Number(t.dataset.i); s.osel[i] = t.value || null;
+      if (hasOpts(p)) { const last = p.axes.length - 1; const c = selCombo(p); if (c && c.stock <= 0 && s.cs !== 'corder') { s.osel[last] = null; app.toast('이 조합은 품절이에요. 다른 옵션을 골라 주세요'); } }
+      if (!hasMain(p) && Object.keys(s.addq).length) { s.addq = {}; app.log('rule', '본 상품(옵션)이 빠져 붙은 추가 구성품도 같이 빠졌어요'); }
+      if (hasMain(p)) app.log('user', `옵션 선택: ${esc(selCombo(p).vs.join(' / '))}`);
+      refresh();
+    },
+    selClear() {
+      const s = S(); const had = Object.values(s.addq).some((n) => n > 0); s.osel = []; s.addq = {};
+      app.log('user', `선택 목록에서 본 상품을 뺌${had ? ' → 붙은 추가 구성품도 같이 빠짐' : ''} · 추가 구성품만 따로 담을 수 없어요`); refresh();
+    },
+    addq(b) {
+      const s = S(); const p = pdpP(); const a = addonsOf(p).find((x) => x.id === b.dataset.id); if (!a) return;
+      if (!hasMain(p)) { app.toast('옵션을 먼저 골라 주세요'); return; }
+      if (a.stock <= 0) { app.toast('품절된 구성품이에요'); return; }
+      const n = Math.max(0, Math.min(a.stock, (s.addq[a.id] || 0) + Number(b.dataset.d))); s.addq[a.id] = n; refresh();
+    },
+    /* [맞춤 제작으로 주문하기](U-PDP-03 · D-REQ-01): 맞춤 옵션·수량 → 디자인 방식 선택 */
+    corder() {
+      const s = S(); const p = pdpP(); s.cs = 'corder'; s.addq = {};
+      if (hasOpts(p) && !selCombo(p)) s.osel = p.combos[0].vs.slice();
+      app.log('user', '[맞춤 제작으로 주문하기] → 맞춤 옵션·수량 고르기(맞춤 MOQ 적용) · 다음은 디자인 방식 선택'); refresh();
+    },
+    toMethod() {
+      const s = S(); const p = pdpP(); if (!hasMain(p)) { app.toast('맞춤 옵션을 골라 주세요'); return; }
+      const r = customCalc(p, s.member, true);
+      app.log('user', `맞춤 옵션·수량 확정: ${hasOpts(p) ? `${esc(selCombo(p).vs.join(' / '))} · ` : ''}${num(s.cqty * 1000)}매${r.totals.addons ? ` · 추가 구성품 ${won(r.totals.addons)}` : ''} → 디자인 방식 선택(D-REQ-01)`);
+      app.log('rule', `판비 ${won(r.totals.plates)}은 ① 상품 금액 줄(상품 금액 바로 아래)${r.lines[0].plateInstantDisc ? ` · 즉시 할인 '판비 포함'이라 판비 할인 ${won(r.lines[0].plateInstantDisc)}` : ''} · 디자인비 50만원 판정 금액 ${won(r.designFees[0].basis)}(판비·추가 구성품 제외)`);
+      s.cs = 'method'; refresh();
+    },
+    backPdp() { S().cs = 'pdp'; refresh(); },
     /* 고객: 상세 설명 보기(U-PDP-07) */
     dvOpen() { const s = S(); s.dvOpen = true; s.viewed.desc = true; app.log('user', '고객이 [상세 설명 펼치기] · 이미지는 화면에 가까워질 때 불러옴(lazy loading)'); refresh(); },
     dvClose() { S().dvOpen = false; refresh(); },
@@ -1555,7 +2026,7 @@
   document.getElementById('gc-device').addEventListener('click', (e) => {
     if (app.current !== 'customer') return;
     const s = S(); const kind = s.ctx && s.ctx.kind;
-    if (e.target.closest('.phone-top .back')) { if (s.cs === 'zoom') { backToPdp(); return; } s.cs = { pdp: s.ctx ? 'results' : 'home', results: kind === 'q' ? 'search' : 'home', search: 'home' }[s.cs] || 'home'; refresh(); return; }
+    if (e.target.closest('.phone-top .back')) { if (s.cs === 'zoom') { backToPdp(); return; } s.cs = { pdp: s.ctx ? 'results' : 'home', results: kind === 'q' ? 'search' : 'home', search: 'home', corder: 'pdp', method: 'corder', added: 'pdp' }[s.cs] || 'home'; refresh(); return; }
     const tab = e.target.closest('.phone-tabbar span'); if (tab && tab.textContent.trim().startsWith('홈')) { s.cs = 'home'; refresh(); }
   });
 
@@ -1572,7 +2043,7 @@
       const notice = new Date(d.expires.getTime() - pc('doc_notice_days') * GC.DAY);
       if (dst === 'VERIFIED' && now >= notice && now < d.expires) {
         goDoc('notice', `만료 ${pc('doc_notice_days')}일 전`);
-        app.notify('코드 미정', '파트너(대성포장)', ['알림톡', '이메일'], `시험성적서가 ${ymd(d.expires)}에 만료돼요 · 새 서류를 올려 주세요`);
+        app.notify('NOTI_PARTNER_DOC_EXPIRY_NOTICE', '파트너(대성포장 담당자)', ['알림톡', '이메일', '알림센터'], `시험성적서가 ${ymd(d.expires)}에 만료돼요 · 새 서류를 올려 주세요`);
       }
       if (['VERIFIED', 'EXPIRING'].includes(app.state('doc')) && now >= d.expires) {
         goDoc('expire', '유효기간 만료 배치');
@@ -1580,7 +2051,7 @@
         if (['APPROVED', 'PAUSED'].includes(app.state('product'))) {
           s.suspend = { kind: 'doc', reason: `식품용 기구 시험성적서 유효기간 만료(${ymd(d.expires)})` };
           goP('suspend', '서류 만료 배치 → 본사 중지');
-          app.notify('코드 미정', '파트너(대성포장)', ['알림톡', '이메일'], '시험성적서 만료로 판매가 멈췄어요 · 새 서류를 올리면 본사가 풀어요');
+          app.notify('NOTI_PARTNER_PRODUCT_SUSPENDED', '파트너(대성포장 담당자)', ['알림톡', '이메일', '알림센터'], '시험성적서 만료로 판매가 멈췄어요 · 새 서류를 올리면 본사가 풀어요');
         }
       }
     }

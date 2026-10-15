@@ -345,9 +345,16 @@ test('TC-26 확정 후 변경 건의 취소(D18) — 시안 단계여도 확정 
 });
 
 test('TC-27 MVP 주간 정산(C-STL-01 예시 1) — 139,000 + 261,000 + 225,000 + 취소 보상 30,000 = 655,000원', () => {
-  const normal = GC.settle.confirmEvent({ sale: 160000, partnerDisc: 10000, rate: GC.settle.finalRate({ base: 10 }).rate, shipping: 4000 });
+  // 일반 주문은 주문 항목(정산 이벤트)마다 수수료·공급가·VAT를 나눔(2026-10-15 D22): 수저집 9,000 = 8,182 + 818, 냅킨 6,000 = 5,455 + 545
+  const rate10 = GC.settle.finalRate({ base: 10 }).rate;
+  const spoon = GC.settle.confirmEvent({ sale: 100000, partnerDisc: 10000, rate: rate10 });
+  const napkin = GC.settle.confirmEvent({ sale: 60000, rate: rate10, shipping: 4000 }); // 배송비는 냅킨 행
+  assert.deepEqual([spoon.fee, spoon.feeSupply, spoon.feeVat, spoon.amount], [9000, 8182, 818, 81000]);
+  assert.deepEqual([napkin.fee, napkin.feeSupply, napkin.feeVat, napkin.amount], [6000, 5455, 545, 58000]);
+  const normal = { fee: spoon.fee + napkin.fee, feeSupply: spoon.feeSupply + napkin.feeSupply, feeVat: spoon.feeVat + napkin.feeVat, amount: spoon.amount + napkin.amount };
   assert.equal(normal.fee, 15000);
-  assert.equal(normal.feeSupply, 13636);
+  assert.equal(normal.feeSupply, 13637); // 한 줄로 나누면 13,636 — 월 합계로 다시 나누지 않음
+  assert.equal(normal.feeVat, 1363);
   assert.equal(normal.amount, 139000);
   const custom = GC.settle.confirmEvent({ sale: 300000, rate: GC.settle.finalRate({ base: 13 }).rate });
   assert.equal(custom.fee, 39000);
@@ -450,4 +457,137 @@ test('TC-33 새 정책값 키(2026-10-14) — 기본값과 공휴일 생략 결�
   assert.equal(typeof GC.Policy.get('calendar.holidays'), 'string');
   const next = GC.addBusinessDays(new Date(2026, 9, 8, 10, 0), 1); // 목 → 10/9(금, 한글날)도 영업일로 셈
   assert.equal(next.getDate(), 9);
+});
+
+// ───────────── 2026-10-16 S9: S8 결정(D20~D33) ─────────────
+const CUSTOM_ITEM = (extra = {}) => ({ id: 'c', name: '인쇄 수저집', partnerId: 'B', shipKey: 'B-맞춤', qty: 1, tiers: [{ min: 1, price: 300000 }], plateFee: 50000, designGroup: 'D1', ...extra });
+const FREE_SHIP = { 'B-맞춤': { name: '파트너 B 맞춤', type: 'free', base: 0 } };
+
+test('TC-34 판비는 상품 금액(D20) — 판비 범위 즉시 할인·본사 쿠폰 안분, 고객이 낸 판비 = 판비 줄 결제 금액 = 공제 상한', () => {
+  const r = GC.price.calcOrder({
+    items: [CUSTOM_ITEM({ instant: { type: 'rate', value: 10, plate: true } })],
+    designGroups: [{ id: 'D1', type: 'CUSTOM' }], hqCoupon: { name: '장바구니 5,000원', type: 'amount', value: 5000 }, shipping: FREE_SHIP,
+  });
+  const l = r.lines[0];
+  assert.equal(l.instantDisc, 30000);
+  assert.equal(l.plateInstantDisc, 5000); // 판비 50,000 × 10%
+  assert.equal(r.designFees[0].basis, 270000); // 판비는 50만원 판정에서 뺌
+  assert.equal(l.plateHqAlloc, 714); // 5,000 × 45,000 ÷ 315,000 내림, 끝전은 큰 항목(상품)
+  assert.equal(l.hqAlloc, 5000);
+  assert.equal(l.platePaid, 44286);
+  assert.equal(r.totals.customerTotal, 349000); // 300,000 + 50,000 − 35,000 + 39,000 − 5,000
+  assert.deepEqual(r.steps.slice(0, 2).map((s) => s.key), ['tier', 'plate']); // 주문서: 상품 금액 바로 아래 판비
+  // 판비 범위를 고르지 않으면 판비에는 즉시 할인이 안 걸림
+  const noPlate = GC.price.calcOrder({ items: [CUSTOM_ITEM({ instant: { type: 'rate', value: 10 } })], designGroups: [{ id: 'D1', type: 'CUSTOM' }], shipping: FREE_SHIP });
+  assert.equal(noPlate.lines[0].plateInstantDisc, 0);
+  assert.equal(noPlate.lines[0].platePaid, 50000);
+  // 정액 즉시 할인은 판비에서 한 번만 뺌(수량과 무관)
+  const amt = GC.price.calcOrder({ items: [CUSTOM_ITEM({ qty: 2, tiers: [{ min: 1, price: 150000 }], instant: { type: 'amount', value: 10000, plate: true } })], shipping: FREE_SHIP });
+  assert.equal(amt.lines[0].instantDisc, 20000);
+  assert.equal(amt.lines[0].plateInstantDisc, 10000);
+  // 확정 후 취소 판비 공제 상한 = 고객이 낸 판비(44,286) — 실비 50,000을 증빙해도
+  const c = GC.refund.designCancel({ type: 'CUSTOM', stage: 'APPROVED', itemsAmount: 270000 - 4286 + l.platePaid, paidDesignFee: 39000, plateFee: l.platePaid, plateCost: 50000 });
+  assert.equal(c.plateToPartner, 44286);
+});
+
+test('TC-35 본사 쿠폰은 자리마다 1장(D21) — 상품 할인 쿠폰 + 디자인비 쿠폰 함께, 디자인비 쿠폰은 안분 없이 디자인비에만', () => {
+  const base = { items: [CUSTOM_ITEM()], designGroups: [{ id: 'D1', type: 'CUSTOM' }], shipping: FREE_SHIP };
+  const both = GC.price.calcOrder({ ...base, hqCoupon: { name: '신규 가입 10%', type: 'rate', value: 10, max: 10000 }, designCoupon: { name: '첫 디자인 무료', type: 'free' } });
+  assert.equal(both.totals.hqDisc, 10000);
+  assert.equal(both.totals.designCoupon, 39000);
+  assert.equal(both.designFees[0].couponDisc, 39000);
+  assert.equal(both.lines[0].hqAlloc, 10000); // 상품 할인 쿠폰은 디자인비에 안분하지 않음
+  assert.equal(both.totals.customerTotal, 340000); // 300,000 + 50,000 + 39,000 − 10,000 − 39,000
+  // 예전 '디자인비 포함' 설정은 무시
+  const legacy = GC.price.calcOrder({ ...base, hqCoupon: { name: '10%', type: 'rate', value: 10, max: 10000, includeDesignFee: true } });
+  assert.equal(legacy.totals.customerTotal, 379000);
+  assert.equal(legacy.designFees[0].couponDisc, 0);
+  // 50만원 이상이라 디자인비가 이미 무료면 디자인비 쿠폰은 쓰지 않음(쿠폰함에 남김)
+  const free = GC.price.calcOrder({ ...base, items: [CUSTOM_ITEM({ tiers: [{ min: 1, price: 550000 }] })], designCoupon: { name: '첫 디자인 무료', type: 'free' } });
+  assert.equal(free.designFees[0].reason, 'threshold');
+  assert.equal(free.totals.designCoupon, 0);
+  assert.equal(free.totals.designCouponGroup, null);
+});
+
+test('TC-36 추가 구성품(D24) — 판매가 × 수량, 파트너 할인 없음, 본사 쿠폰 안분 대상, 50만원 판정 제외, 본 상품 취소 시 출고 전 것만 함께 취소', () => {
+  const r = GC.price.calcOrder({
+    items: [
+      { id: 'napkin', name: '무형광 냅킨', partnerId: 'A', shipKey: 'A', qty: 2, tiers: [{ min: 1, price: 30000 }], instant: { type: 'rate', value: 10 } },
+      { id: 'wipe', name: '물티슈(추가 구성품)', partnerId: 'A', shipKey: 'A', qty: 3, tiers: [{ min: 1, price: 5000 }], instant: { type: 'rate', value: 10 }, addonOf: 'napkin' },
+    ],
+    partnerCoupons: { A: { name: '파트너 5,000원', type: 'amount', value: 5000, minOrder: 50000 } },
+    hqCoupon: { name: '장바구니 10%', type: 'rate', value: 10, max: 10000 },
+    shipping: { A: { name: '파트너 A', type: 'fixed', base: 3000 } },
+  });
+  const [n, w] = r.lines;
+  assert.equal(w.instantDisc, 0);
+  assert.equal(w.partnerCouponDisc, 0);
+  assert.equal(n.partnerCouponDisc, 5000);
+  assert.deepEqual([n.hqAlloc, w.hqAlloc], [4900, 1500]); // 6,400 = 64,000 × 10%를 49,000 : 15,000으로
+  assert.equal(r.shippingLines.length, 1); // 본 상품과 같은 배송 묶음
+  assert.equal(r.totals.addons, 15000);
+  assert.equal(r.totals.customerTotal, 60600);
+  // 맞춤 항목에 붙어도 디자인비 판정에서 뺌
+  const d = GC.price.calcOrder({ items: [CUSTOM_ITEM({ tiers: [{ min: 1, price: 480000 }] }), { id: 'cup', name: '컵 뚜껑', partnerId: 'B', shipKey: 'B-맞춤', qty: 1, tiers: [{ min: 1, price: 30000 }], addonOf: 'c', designGroup: 'D1' }], designGroups: [{ id: 'D1', type: 'CUSTOM' }], shipping: FREE_SHIP });
+  assert.equal(d.designFees[0].basis, 480000);
+  assert.equal(d.designFees[0].fee, 39000);
+  const items = [{ id: 'napkin' }, { id: 'wipe', addonOf: 'napkin' }];
+  assert.deepEqual(GC.order.addonCascade(items, ['napkin']), { cascade: ['wipe'], toReturn: [] });
+  assert.deepEqual(GC.order.addonCascade(items, ['napkin'], ['wipe']), { cascade: [], toReturn: ['wipe'] });
+  assert.deepEqual(GC.order.addonCascade(items, ['wipe']), { cascade: [], toReturn: [] }); // 추가 구성품만 혼자 취소
+  assert.equal(GC.sm.next('ORDER', 'ACCEPTED', 'parent_canceled'), 'CANCELED');
+  assert.equal(GC.sm.can('ORDER', 'SHIPPED', 'parent_canceled'), false);
+});
+
+test('TC-37 수정본·정산 보류·출고 뒤 취소 이의(D27 · A-STL-02 · D23) — 새 전이', () => {
+  const R = (from, ev) => GC.sm.next('PRODUCT_REVISION', from, ev);
+  assert.equal(R('IN_REVIEW', 'cancel_review'), 'EDITING');
+  assert.equal(R('EDITING', 'discard'), 'DISCARDED');
+  assert.equal(R('NEEDS_FIX', 'discard'), 'DISCARDED');
+  assert.equal(GC.sm.can('PRODUCT_REVISION', 'IN_REVIEW', 'discard'), false); // 검수 중이면 먼저 검수 요청 취소
+  assert.equal(R('IN_REVIEW', 'product_ended'), 'DISCARDED');
+  assert.equal(GC.sm.next('PRODUCT', 'IN_REVIEW', 'cancel_review'), 'DRAFT');
+  assert.equal(GC.sm.next('SETTLEMENT', 'ON_HOLD', 'release_confirmed'), 'CONFIRMED');
+  assert.equal(GC.sm.next('SETTLEMENT', 'ON_HOLD', 'release'), 'SCHEDULED');
+  assert.equal(GC.sm.next('ORDER', 'DELIVERED', 'cancel_objection_return'), 'RETURNED');
+  assert.equal(GC.sm.can('ORDER', 'SHIPPED', 'cancel_objection_return'), false); // 배송 중이면 배송 완료 뒤 회수
+  assert.equal(GC.sm.next('CLAIM_CANCEL', 'CANCEL_APPROVED', 'collected_refund'), 'CLAIM_COMPLETED');
+});
+
+test('TC-38 끝난 클레임 라벨(D30) — 상태는 하나, 완료 결과로 라벨', () => {
+  const r = GC.claim.result;
+  assert.equal(r('CLAIM_RETURN', 'EXCHANGE_SHIPPED', 'delivered', 'REMAKE'), 'REMADE');
+  assert.equal(r('CLAIM_RETURN', 'EXCHANGE_SHIPPED', 'delivered', 'EXCHANGE'), 'EXCHANGED');
+  assert.equal(r('CLAIM_RETURN', 'RETURN_REQUESTED', 'withdraw'), 'WITHDRAWN');
+  assert.equal(r('CLAIM_CANCEL', 'CANCEL_REQUESTED', 'mediation_dismiss'), 'DISMISSED');
+  assert.equal(r('CLAIM_CANCEL', 'CANCEL_REJECTED', 'no_objection'), 'REJECTED');
+  assert.equal(r('CLAIM_CANCEL', 'CANCEL_APPROVED', 'collected_refund'), 'REFUNDED');
+  assert.equal(GC.claim.label('CLAIM_CANCEL', 'CLAIM_COMPLETED', 'DISMISSED'), '취소 기각');
+  assert.equal(GC.claim.label('CLAIM_RETURN', 'CLAIM_COMPLETED', 'REMADE'), '재제작 완료');
+  assert.equal(GC.claim.label('CLAIM_CANCEL', 'CANCEL_REJECTED'), '판매자 거부');
+  for (const id of ['CLAIM_RETURN', 'CLAIM_CANCEL']) { // CLAIM_COMPLETED로 가는 줄은 모두 결과가 있음
+    GC.sm.machine(id).transitions.filter((t) => t.to === 'CLAIM_COMPLETED').forEach((t) => assert.ok(t.result, id + ' ' + t.event));
+  }
+});
+
+test('TC-39 제작 파트너 변경(D33) — 거절·무응답은 공제 없이 전액, 더 싸면 차액 × 결제 비율, 비싸면 본사 보전', () => {
+  const p = GC.refund.partnerChange;
+  assert.deepEqual(p({ choice: 'refund', oldList: 300000, paidTotal: 389000 }), { choice: 'refund', refund: 389000, deduction: 0, hqAdjust: 0, restoreBenefits: true });
+  assert.equal(p({ choice: 'agree', oldList: 300000, newList: 280000, oldPaid: 270000 }).refund, 18000); // 20,000 × 270,000 ÷ 300,000
+  const up = p({ choice: 'agree', oldList: 300000, newList: 320000, oldPaid: 270000 });
+  assert.deepEqual([up.refund, up.hqAdjust], [0, 20000]);
+  assert.equal(GC.sm.next('ORDER_CUSTOM', 'DESIGN_CONFIRMED', 'partner_change_refund'), 'CANCELED');
+  assert.equal(GC.sm.next('DESIGN', 'HANDED_OFF', 'partner_changed'), 'HANDED_OFF');
+  assert.equal(GC.sm.next('DESIGN', 'PROPOSED', 'partner_change_refund'), 'CANCELED');
+  assert.equal(GC.sm.can('DESIGN', 'IN_PRODUCTION', 'partner_change_refund'), false); // [인쇄 가능] 뒤는 대상 아님
+  assert.equal(GC.Policy.get('order.partner_change_reply_days'), 7);
+});
+
+test('TC-40 새 정책값 키(2026-10-15) — 보안·인쇄 확인·즉시 할인 기간·추가 구성품·파일 크기 종류별', () => {
+  const g = (k) => GC.Policy.get(k);
+  assert.deepEqual([g('security.password_min_length'), g('security.login_fail_lock'), g('security.idle_logout_minutes')], [10, 5, 30]);
+  assert.deepEqual([g('production.print_check_bd'), g('promo.instant_discount_max_days'), g('promo.instant_discount_max_targets'), g('product.addon_max')], [1, 90, 500, 20]);
+  assert.deepEqual([g('file.max_size_chat'), g('file.max_size_original'), g('file.max_size_logo'), g('file.max_size_image')], [100, 500, 100, 20]);
+  assert.equal(typeof g('claim.tolerance'), 'string');
+  assert.throws(() => g('file.max_size'), /UNKNOWN_POLICY/); // 값 셋을 담던 예전 키는 없음
 });

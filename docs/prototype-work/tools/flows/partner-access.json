@@ -28,7 +28,7 @@
  {"act":"ship","attr":"data-id=\"GC-2610-1041\""},
  {"act":"ptTab","attr":"data-t=\"info\"","shot":"partner-acc04-info-suspended"},
  {"role":"hq"},
- {"act":"moveCustom","after":300,"shot":"partner-acc05-hq-move"},
+ {"shot":"partner-acc05-hq-orders"},
  {"adv":"86400000"},
  {"role":"partner","shot":"partner-acc06-idle-login"},
  {"act":"ptLogin"},{"act":"ptOtp"},

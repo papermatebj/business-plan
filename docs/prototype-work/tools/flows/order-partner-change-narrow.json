@@ -1,0 +1,9 @@
+[
+ {"click":"#ord-scn [data-scn=\"pc_hi\"]","after":400},
+ {"wait":100,"shot":"order-50-narrow-pc-proposal","full":true},
+ {"act":"pcAgree","after":400},
+ {"wait":100,"shot":"order-51-narrow-pc-agreed"},
+ {"role":"hq","shot":"order-52-narrow-pc-hq","full":true},
+ {"role":"system"},
+ {"role":"partner","shot":"order-53-narrow-pc-partner"}
+]

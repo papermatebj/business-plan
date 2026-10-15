@@ -321,3 +321,24 @@ U-MY-06·요청서는 '고객이 바꿀 수 있는 건 마케팅 알림뿐', C-N
 - 정책값 키 추가: `security.password_min_length`(10자·3종)·`security.login_fail_lock`(5회)·`security.idle_logout_minutes`(30분) — 관리자·파트너 공통(C-SEC-01 '같은 규칙'), `production.print_check_bd`(영업일 1일), `promo.instant_discount_max_days`(90일)·`promo.instant_discount_max_targets`(500개).
 - 알림 코드 추가: 파일 검사 결과(고객 `NOTI_FILE_SCAN_REJECTED`·파트너 `NOTI_PARTNER_FILE_SCAN_REJECTED`·디자이너 `NOTI_INT_FILE_SCAN_REJECTED`), 상품 직권 중지·서류 만료 예고(`NOTI_PARTNER_PRODUCT_SUSPENDED`·`NOTI_PARTNER_DOC_EXPIRY_NOTICE`), 계정 정지·계약 종료(`NOTI_PARTNER_ACCOUNT_SUSPENDED`·`NOTI_PARTNER_TERMINATED`), 인쇄 확인 기한(`NOTI_PARTNER_PRINT_CHECK_DUE`·`NOTI_INT_PRINT_CHECK_LATE`), 사업자 상태 재조회(`NOTI_BIZ_STATUS_CHECK`), 직거래 조사 통지·결과(`NOTI_PARTNER_INVESTIGATION_NOTICE`·`NOTI_PARTNER_INVESTIGATION_RESULT`, 법률 자문 전 초안).
 - 엔진(프로토타입, S9): `PRODUCT_REVISION` IN_REVIEW → EDITING [검수 요청 취소]·`PRODUCT` IN_REVIEW → DRAFT, 정산 보류 해제 → 확정 금액 그대로 다음 지급(명세 A-STL-02대로, ON_HOLD → CONFIRMED).
+
+---
+
+# S9 남은 확인 거리 — D34~D35 (2026-10-16)
+
+> 근거: HANDOFF S9 행 ③(S8 세션 기록의 '남은 확인 거리'). 명세 00장 `#g-dec4`·기획 15장 10-15 표에 행을 더하고 제목을 '2026-10-15~16 추가'로 바꿈(건수 14 → 16).
+
+## D34. 쿠폰·포인트 소멸 알림 기준 — ☑ 2026-10-16
+U-BEN-01은 쿠폰 '만료 7일 전, 마케팅 수신 동의자만', U-BEN-02·A-MKT-02·기획 07장 H·법률 L-25(포인트 약관 질문)는 포인트 '소멸 30일 전', C-NOTI-01은 둘을 한 행 `NOTI_BENEFIT_EXPIRE_SOON` '쿠폰·포인트 소멸 30일 전, 제한 없음'으로 묶음. 법률 L-48은 '쿠폰 소멸 예정 안내'가 광고성인지 묻는 중.
+- **A (추천)** 두 행으로 나눔: 쿠폰 7일 전·마케팅 동의자만(광고성 여부 확인 전) / 포인트 30일 전·정보성.
+- B 둘 다 30일 전·정보성(C-NOTI-01을 따름).
+- C 둘 다 마케팅 동의자만.
+
+결정 (2026-10-16 S9): **A** — C-NOTI-01 행을 `NOTI_COUPON_EXPIRE_SOON`(쿠폰 만료 7일 전, 고객(마케팅 수신 동의자만, 광고성 여부 확인 전), 앱 푸시 ○·이메일 ○·알림센터 ●)과 `NOTI_POINT_EXPIRE_SOON`(포인트 소멸 30일 전, 2차, 정보성, 앱 푸시 ○·이메일 ●·알림센터 ●)으로 나누고 `NOTI_BENEFIT_EXPIRE_SOON`은 없앰. U-BEN-01·U-BEN-02에 코드와 정보성/광고성 구분 문장, C-NOTI-01 규칙 첫 줄('모두 정보성')에 '마케팅 수신 동의자만 행 제외'. 기획 07장 H 포인트 줄에 쿠폰 문장. **판단:** 포인트 행의 이메일을 ○ → ●로(정보성 행은 조건 없는 ○를 쓰지 않으므로, 앱 미설치 회원에게도 앱 밖으로 한 번은 가게).
+
+## D35. 인쇄 원본 형식 — ☑ 2026-10-16
+D-ROOM-03 시안 등록 표 '인쇄 원본 AI·PDF, 최대 500MB'(D-PRD-01 인쇄 패키지·D-OPT-01 원본 파일 판매도 AI·PDF) vs C-FILE-01 '시안 원본 · 인쇄 원본 AI·PDF·PSD·SVG, 500MB'('시안 원본'은 명세 다른 곳에 없음).
+- **A (추천)** C-FILE-01을 AI·PDF로 좁힘.
+- B D-ROOM-03을 넓히고 D-PRD-01·D-OPT-01에 'AI·PDF로 바꿔 전달'.
+
+결정 (2026-10-16 S9): **A** — C-FILE-01 행을 '인쇄 원본(디자이너, D-ROOM-03) · AI · PDF(+ 미리보기 PNG) · 500MB'로, 고객 자체 인쇄 파일 보관 칸 '인쇄 원본과 같음', A-SYS-03 `file.max_size_original` 설명에서 '시안·' 뺌. PSD·SVG는 고객 자체 인쇄 파일·협의 룸 첨부에서만.

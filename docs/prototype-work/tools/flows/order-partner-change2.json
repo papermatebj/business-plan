@@ -1,0 +1,21 @@
+[
+ {"click":"#ord-scn [data-scn=\"pc_lo\"]","after":400},
+ {"adv":"86400000"},{"adv":"86400000"},{"adv":"86400000"},{"adv":"86400000"},{"adv":"86400000"},
+ {"eval":"[document.getElementById('gc-clock').textContent, document.querySelector('#gc-turn .turn-what').textContent]"},
+ {"adv":"86400000"},
+ {"eval":"[document.getElementById('gc-clock').textContent, document.querySelector('#gc-turn .turn-what').textContent, Array.from(document.querySelectorAll('#gc-log li')).slice(0,3).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // ')]"},
+ {"role":"system","shot":"order-46-pc-remind"},
+ {"adv":"86400000"},
+ {"role":"customer","shot":"order-47-pc-auto-refund"},
+ {"eval":"[document.querySelector('#gc-turn .turn-done, #gc-turn .turn-what').textContent, Array.from(document.querySelectorAll('.chip.is-now,.chip.is-branch-now')).map(c=>c.title).join('|'), Array.from(document.querySelectorAll('#gc-log li')).slice(0,8).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // ')]"},
+ {"role":"hq","shot":"order-48-pc-hq-refunded"},
+ {"click":"#gc-reset","after":400},
+ {"adv":"604800000"},
+ {"eval":"[document.getElementById('gc-clock').textContent, document.querySelector('#gc-turn .turn-done, #gc-turn .turn-what').textContent]"},
+ {"adv":"86400000"},
+ {"eval":"[document.getElementById('gc-clock').textContent, document.querySelector('#gc-turn .turn-done, #gc-turn .turn-what').textContent]"},
+ {"click":"#gc-reset","after":400},
+ {"act":"pcRefund","after":400},
+ {"wait":100,"shot":"order-49-pc-refund-choice"},
+ {"eval":"[document.querySelector('#gc-turn .turn-done, #gc-turn .turn-what').textContent, Array.from(document.querySelectorAll('.chip.is-now,.chip.is-branch-now')).map(c=>c.title).join('|')]"}
+]

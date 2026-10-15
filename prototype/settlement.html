@@ -152,15 +152,17 @@
     const cup = mk({ id: 'cup', short: '종이컵', order: 'GC-20261009-0533', item: '종이컵 6.5oz 2박스', sale: 48000, disc: 0, rate: r.normal.rate, claim: true, at: new Date(2026, 9, 11, 11, 30) });
     if (isPro()) {
       return [
-        mk({ id: 'e1', short: '수저집', order: 'GC-20261006-0201', item: '수저집 크라프트 10박스', sale: 100000, disc: 10000, discType: 'instant', discNote: '즉시 할인 10%', rate: r.normal.rate, at: new Date(2026, 9, 8, 14, 20) }),
-        mk({ id: 'e2', short: '냅킨', order: 'GC-20261006-0201', item: '무형광 냅킨 2박스 · 묶음 마지막 확정', sale: 60000, disc: 5000, discType: 'coupon', discNote: '파트너 쿠폰', discPhase: '2차', rate: r.normal.rate, ship: 4000, shipNote: '고객 1,000 + 멤버십 배송비 쿠폰 보전 3,000', shipPhase: '2차', at: new Date(2026, 9, 9, 10, 5) }),
+        mk({ id: 'e1', short: '수저집', order: 'GC-20261006-0201', item: '일반 주문 · 수저집 크라프트 10박스', sale: 100000, disc: 10000, discType: 'instant', discNote: '즉시 할인 10%', rate: r.normal.rate, general: true, at: new Date(2026, 9, 8, 14, 20) }),
+        mk({ id: 'e2', short: '냅킨', order: 'GC-20261006-0201', item: '일반 주문 · 무형광 냅킨 2박스 · 묶음 마지막 확정', sale: 60000, disc: 5000, discType: 'coupon', discNote: '파트너 쿠폰', discPhase: '2차', rate: r.normal.rate, ship: 4000, shipNote: '고객 1,000 + 멤버십 배송비 쿠폰 보전 3,000', shipPhase: '2차', general: true, at: new Date(2026, 9, 9, 10, 5) }),
         mk({ id: 'e3', short: '맞춤 주문', order: 'GC-20261007-0412', item: '맞춤 수저집 인쇄 250,000 + 판비 50,000', sale: 300000, disc: 0, rate: r.custom.rate, big: true, at: new Date(2026, 9, 10, 16, 40) }),
         cup,
       ];
     }
     const cc = cancelComp();
+    /* 일반 주문은 주문 항목마다 정산 이벤트 하나(2026-10-15 D22): 수수료 내림·공급가·VAT를 이벤트마다 나눠 저장. 배송비는 묶음의 마지막 확정 항목(냅킨) 행 */
     return [
-      mk({ id: 'm1', short: '일반 주문', order: 'GC-20261006-0201', item: '일반 주문 · 수저집 크라프트 10박스 + 무형광 냅킨 2박스(묶음 마지막 확정)', sale: 160000, disc: 10000, discType: 'instant', discNote: '즉시 할인', rate: r.normal.rate, ship: 4000, shipNote: '고객이 낸 배송비', at: new Date(2026, 9, 9, 10, 5) }),
+      mk({ id: 'm1', short: '수저집', order: 'GC-20261006-0201', item: '일반 주문 · 수저집 크라프트 10박스', sale: 100000, disc: 10000, discType: 'instant', discNote: '즉시 할인', hqNote: '본사 쿠폰 안분 6,000은 플랫폼 보전', rate: r.normal.rate, general: true, at: new Date(2026, 9, 8, 14, 20) }),
+      mk({ id: 'm1n', short: '냅킨', order: 'GC-20261006-0201', item: '일반 주문 · 무형광 냅킨 2박스 · 묶음 마지막 확정', sale: 60000, disc: 0, hqNote: '본사 쿠폰 안분 4,000은 플랫폼 보전', rate: r.normal.rate, ship: 4000, shipNote: '고객이 낸 배송비', general: true, at: new Date(2026, 9, 9, 10, 5) }),
       mk({ id: 'm2', short: '맞춤 주문', order: 'GC-20261007-0412', item: '맞춤 수저집 인쇄 250,000 + 판비 50,000', sale: 300000, disc: 0, rate: r.custom.rate, big: true, at: new Date(2026, 9, 10, 16, 40) }),
       cup,
       mk({ id: 'm3', short: '같은 판 재주문', order: 'GC-20261008-0455', item: '같은 판 재주문 인쇄 250,000 · 판비 면제', sale: 250000, disc: 0, rate: r.reorder.rate, reorder: true, big: true, at: new Date(2026, 9, 12, 9, 20) }),
@@ -275,7 +277,7 @@
       confirmedAt: null, confirmedBy: null, confirmedOnce: false, partnerSeen: false, partnerPaidSeen: false,
       req: null, selfDenied: false, pgMode: 'ok', lastRun: null, paidAt: null, othersPaid: false,
       payKey: null, payCheck: null, qMode: 'sent',
-      hold: null, acctChange: null, reauthed: false, account: { ...ACCOUNT_OLD },
+      hold: null, released: null, acctChange: null, reauthed: false, account: { ...ACCOUNT_OLD },
       ledgerStep: 0, calc: { base: P('commission.custom_rate'), plan: isPro() ? 'PRO' : 'BASIC', newP: false, re: true, promo: 0 },
       consent: true, taxRetried: false, taxIssuedOct: false,
       recv: { due: null, noticed: false }, hb: { start: null, releaseAt: null, late: false },
@@ -322,7 +324,7 @@
       : [{ k: '판매 수수료', v: '(판매가 − 파트너 할인) × 최종율' }, { k: '같은 판 재주문 인하', policy: 'commission.reorder_discount' }, { k: '취소 보상(수수료 0%)', v: 'min(판 실비, 낸 판비)' }, { k: '본사 쿠폰', v: '플랫폼 보전' }, { k: '본사 청구(MVP)', v: '위약금·분쟁 조정뿐' }]),
     pay: () => [{ k: '지급일', v: lpv('schedule', '금(공휴일이면 앞 영업일)') }, { k: '공휴일(프로토타입은 주말만)', policy: 'calendar.holidays', v: '본사 달력' }, { k: '승인', v: '요청자와 다른 팀장' }, { k: '지급 요청 키(호출 전 저장)', v: '정산서 ID + 회차' }, { k: '계좌 변경 후 정산 보류', policy: 'settlement.account_change_hold_hours' }],
     check: () => [{ k: 'PG 응답 없음', v: '지급 요청 확인 중' }, { k: '다시 보내기', v: 'PG 조회 전엔 안 함' }, { k: '정산서 상태', v: '정산 확정 그대로' }, { k: '다음 지급 목록', v: '자동으로 안 올림' }, { k: '조회로 송금 확인', v: '지급 완료' }, { k: '송금 안 됨 확인', v: '정산 보류 → 같은 키로' }, { k: '조회로도 모르면', v: '재무·개발 알림' }],
-    hold: () => [{ k: '지급 실패', v: '정산 보류 · 재인증 뒤' }, { k: '계좌 변경 후 정산 보류', policy: 'settlement.account_change_hold_hours' }, { k: '정산 보류가 풀리면', v: '다음 주기에 함께 지급' }],
+    hold: () => [{ k: '지급 실패', v: '정산 보류 · 재인증 뒤' }, { k: '계좌 변경 후 정산 보류', policy: 'settlement.account_change_hold_hours' }, { k: '확정 뒤 보류(지급 실패·지급대행 장애·계좌 변경)를 풀면', v: '정산 확정 그대로 · 다음 지급 목록' }, { k: '확정 전 보류를 풀면', v: '정산 예정 · 다시 검증·확정' }],
     paid: () => [{ k: '지급 내역', v: '파트너 센터 공개 + 알림' }, { k: '수수료 세금계산서', v: '다음 달 1일 월 합계' }],
     recv: () => [{ k: '청구서 기준', policy: 'settlement.receivable_limit' }, { k: '또는 연속 미수', v: lpv('recv_weeks') }, { k: '납부 기한', v: lpv('recv_due_days') }, { k: '판매 중지 예고', v: lpv('stop_notice_days') }, ...(isPro() ? [{ k: '플랜료 연속 미수', v: `${lpv('plan_downgrade_cycles')} → 베이직 ${tag('tag-phase', '2차')}` }] : [{ k: 'MVP 미수금 청구', v: '분쟁 조정·위약금' }])],
     hb: () => [{ k: '유보율', policy: 'settlement.final_holdback' }, { k: '유보 기간', v: lpv('holdback_days') }, { k: '그 사이 클레임', v: '유보분에서 차감' }],
@@ -352,7 +354,7 @@
         return app.turn('hq', '대성포장 지급 결과를 몰라요(PG 응답 없음). 다시 보내지 말고 [지급] 메뉴에서 [PG 지급 조회]로 결과를 확인하세요', { rules: R.check(), hint: '조회 결과(체험용)를 "송금 안 됨"이나 "조회 안 됨"으로 바꾸면 다른 갈래를 볼 수 있어요.' });
       }
       if (!s.partnerSeen) return app.turn('partner', '정산서가 공개됐어요. 파트너 센터 [정산서] 메뉴에서 이번 주 항목을 확인하세요', { rules: R.stmt() });
-      if (now < payDayOf(k)) return app.turn('hq', `지급일 ${fmtDate(payDayOf(k), false)}까지 시간을 보내세요(+1일)`, { rules: R.pay(), hint: '갈래: 지금 파트너가 [정산 계좌]에서 계좌를 바꾸면, 바꾼 뒤 24시간 안에 돌아오는 지급은 정산 보류돼요.' });
+      if (now < payDayOf(k)) return app.turn('hq', `지급일 ${fmtDate(payDayOf(k), false)}까지 시간을 보내세요(+1일)`, { rules: R.pay(), hint: s.released ? `${fmtDate(s.released.at)}에 정산 보류(${esc(s.released.label)})를 풀어 정산 확정 금액 ${won(s.released.amount)} 그대로 다음 지급 목록에 올렸어요. 다시 정산 확정하지 않아요.` : '갈래: 지금 파트너가 [정산 계좌]에서 계좌를 바꾸면, 바꾼 뒤 24시간 안에 돌아오는 지급은 정산 보류돼요.' });
       if (!s.req) return app.turn('hq', '[지급] 메뉴에서 지급 목록을 확인하고 [지급 요청]을 누르세요', { rules: R.pay() });
       const rq = ACCTS[s.req.by];
       if (rq.lead) return app.turn('hq', '팀장이 요청하면 다른 팀장이 승인해야 하는데, 이 시나리오의 팀장은 한 명이에요. [요청 취소] 뒤 최정산 계정으로 다시 요청하세요', { rules: R.pay() });
@@ -365,8 +367,9 @@
       const nextPay = fmtDate(payDayOf(nextCycleAfter(now, k + 1)), false);
       if (h.code === 'PAYOUT_FAILED' && !s.reauthed) return app.turn('partner', '지급이 실패했어요(예금주 불일치). [정산 계좌]에서 계좌를 다시 인증하세요', { rules: R.hold() });
       if (h.code === 'ACCOUNT_CHANGED_24H' && within24()) return app.turn('system', `계좌를 바꾼 지 24시간이 지나야 정산 보류가 풀려요. ${fmtDate(new Date(s.acctChange.at.getTime() + holdMs()))}까지 시간을 보내세요(+1일)`, { rules: R.hold() });
-      if (h.code === 'PAYOUT_NOT_SENT') return app.turn('hq', `PG 조회로 송금이 안 된 것을 확인해 정산 보류했어요. 대성포장 정산서에서 [정산 보류 해제]를 누르면 다음 지급일 ${nextPay}에 같은 요청 키로 다시 보내요`, { rules: R.check() });
-      return app.turn('hq', `정산 보류 사유가 풀렸어요. 대성포장 정산서에서 [정산 보류 해제]를 누르면 다음 지급일 ${nextPay}에 함께 지급돼요`, { rules: R.hold() });
+      const keep = '정산 확정 금액 그대로 다음 지급 목록에 올라가고, 다시 정산 확정하지 않아요.';
+      if (h.code === 'PAYOUT_NOT_SENT') return app.turn('hq', `PG 조회로 송금이 안 된 것을 확인해 정산 보류했어요. 대성포장 정산서에서 [정산 보류 해제]를 누르면 다음 지급일 ${nextPay}에 같은 요청 키로 다시 보내요`, { rules: R.check(), hint: keep });
+      return app.turn('hq', `정산 보류 사유가 풀렸어요. 대성포장 정산서에서 [정산 보류 해제]를 누르면 다음 지급일 ${nextPay}에 지급돼요`, { rules: R.hold(), hint: `${keep} 정산 확정 전에 건 보류만 해제하면 정산 예정으로 돌아가 다시 검증·확정해요.` });
     }
     if (st === 'PAID_OUT') {
       if (!s.partnerPaidSeen) return app.turn('partner', '지급 완료 알림이 왔어요. [정산 요약]에서 지급 내역을 확인하세요', { rules: R.paid() });
@@ -458,12 +461,14 @@
     } else if (st === 'CONFIRMED' && s.payCheck) {
       actions = `<div class="note note-warn small"><b>지급 요청 확인 중</b> · 요청 키 ${keyTxt()} · ${fmtDate(s.payCheck.at)} 요청 뒤 PG 응답이 없어 결과를 몰라요. 정산서는 정산 확정 그대로이고, 다시 보내지 않아요.</div><div class="cluster"><button class="btn" data-act="hqTab" data-t="pay">지급 메뉴에서 조회하기</button></div>`;
     } else if (st === 'CONFIRMED') {
-      actions = `<div class="note note-spot small">${fmtDate(s.confirmedAt)} ${s.confirmedBy} 정산 확정 · 파트너 센터에 공개됐고 ${fmtDate(payDayOf(k), false)}에 지급해요. 정산 확정된 정산서는 고칠 수 없고, 오류는 다음 주기 '조정' 이벤트로 처리해요.</div><div class="cluster"><button class="btn" data-act="hqTab" data-t="pay">지급 메뉴 열기</button></div>`;
+      const rel = s.released ? ` ${fmtDate(s.released.at)} 정산 보류(${esc(s.released.label)})를 풀어 확정 금액 그대로 다음 지급 목록에 올렸어요.` : '';
+      actions = `<div class="note note-spot small">${fmtDate(s.confirmedAt)} ${s.confirmedBy} 정산 확정 · 파트너 센터에 공개됐고 ${fmtDate(payDayOf(k), false)}에 지급해요.${rel} 정산 확정된 정산서는 고칠 수 없고, 오류는 다음 주기 '조정' 이벤트로 처리해요.</div><div class="cluster"><button class="btn" data-act="hqTab" data-t="pay">지급 메뉴 열기</button></div>`;
     } else if (st === 'ON_HOLD' && s.hold) {
       const ok = holdReady(); const h = s.hold; const nextPay = fmtDate(payDayOf(nextCycleAfter(now, k + 1)), false);
-      const okTxt = h.code === 'PAYOUT_NOT_SENT' ? `해제하면 다음 지급일 ${nextPay}에 같은 요청 키(${keyTxt()})로 다시 보내요. 첫 송금이 나갔더라도 PG가 같은 키를 알아봐 두 번 보내지 않아요.` : `정산 보류 사유가 풀렸어요. 해제하면 다음 지급일 ${nextPay}에 함께 보내요.`;
-      actions = `<div class="note note-warn small"><b>정산 보류</b> · ${esc(h.label)} <span class="xsmall faint">사유 코드 ${h.code}</span><br>${ok ? okTxt : h.code === 'PAYOUT_FAILED' ? '파트너가 정산 계좌를 다시 인증해야 풀 수 있어요.' : `${fmtDate(new Date(s.acctChange.at.getTime() + holdMs()))}이 지나야 풀 수 있어요.`}</div>
-        <div class="cluster"><button class="btn btn-primary" data-act="release" ${ok ? '' : 'disabled'}>정산 보류 해제</button></div>`;
+      const keep = `확정 금액 ${won(c.res.payout)} 그대로 정산 확정으로 돌아가 다음 지급 목록에 올라가요(다시 정산 확정하지 않아요).`;
+      const okTxt = h.code === 'PAYOUT_NOT_SENT' ? `해제하면 ${keep} 다음 지급일 ${nextPay}에 같은 요청 키(${keyTxt()})로 다시 보내요. 첫 송금이 나갔더라도 PG가 같은 키를 알아봐 두 번 보내지 않아요.` : `정산 보류 사유가 풀렸어요. 해제하면 ${keep} 다음 지급일 ${nextPay}에 보내요.`;
+      actions = `<div class="note note-warn small"><b>정산 보류</b> · ${esc(h.label)} <span class="xsmall faint">사유 코드 ${h.code} · 정산 확정 뒤 보류</span><br>${ok ? okTxt : h.code === 'PAYOUT_FAILED' ? '파트너가 정산 계좌를 다시 인증해야 풀 수 있어요.' : `${fmtDate(new Date(s.acctChange.at.getTime() + holdMs()))}이 지나야 풀 수 있어요.`}</div>
+        <div class="cluster"><button class="btn btn-primary" data-act="release" ${ok ? '' : 'disabled'}>정산 보류 해제</button><span class="xsmall faint">지급 실패·지급대행 장애·계좌 변경처럼 확정 뒤 건 보류는 정산 확정으로, 확정 전 보류는 정산 예정으로 돌아가요</span></div>`;
     } else if (st === 'PAID_OUT') {
       actions = `<div class="note note-spot small">${fmtDate(s.paidAt)} 지급 완료 · ${esc(s.account.mask)} · 지급 내역서를 파트너 센터에 공개했어요.</div>`;
     }
@@ -476,7 +481,15 @@
   }
 
   const phTag = (p) => (p ? ` ${tag('tag-phase', p)}` : '');
-  const feeSplitTxt = (c) => c.inc.filter((e) => e.fee).map((e) => `${e.short} ${won(e.fee)} = 공급가 ${won(e.feeSupply)} + VAT ${won(e.feeVat)}`).join(' · ');
+  /* 수수료 칸: 요율 + 이 이벤트에서 나눠 저장한 공급가·VAT(D22 — 합계를 다시 나누지 않음) */
+  const feeSub = (rateTxt, sp, vt) => `<br><span class="xsmall faint">${rateTxt}</span><br><span class="xsmall faint nw">공급가 ${won(sp)}</span><br><span class="xsmall faint nw">VAT ${won(vt)}</span>`;
+  /* 일반 주문(같은 주문의 항목 여러 개)의 항목별 나눔과 합 — 정산서·세금계산서는 이 합만 씀 */
+  function generalNote(c) {
+    const g = c.inc.filter((e) => e.general); if (g.length < 2) return '';
+    const fee = sum(g, (e) => e.fee), sp = sum(g, (e) => e.feeSupply), vt = sum(g, (e) => e.feeVat); const once = GC.vatSplit(fee);
+    const shipRow = g.find((e) => e.ship);
+    return `일반 주문 ${g[0].order}은 주문 항목마다 정산 이벤트가 따로 생겨 수수료를 항목별로 나눠 저장해요: ${g.map((e) => `${e.short} ${won(e.fee)} = ${won(e.feeSupply)} + ${won(e.feeVat)}`).join(', ')} → 일반 주문 합 ${won(fee)} = 공급가 ${won(sp)} + VAT ${won(vt)}.${once.supply !== sp ? ` 합 ${won(fee)}을 한 번에 나누면 공급가 ${won(once.supply)}로 ${won(Math.abs(once.supply - sp))} 달라져서, 정산서·월 세금계산서는 항목별 저장값의 합만 써요.` : ''}${shipRow ? ` 배송비는 묶음의 마지막 확정 항목인 ${shipRow.short} 행에 붙어요.` : ''}`;
+  }
   function hqStmt(s, c) {
     const r = rates();
     const rows = c.ev.map((e) => {
@@ -486,8 +499,8 @@
           <td class="num">—</td><td class="num">0원<br><span class="xsmall faint">0%</span></td><td class="num">${won(e.amount)}</td></tr>`;
       }
       const rateTxt = e.reorder ? `${r.custom.rate} − ${r.reorder.parts.reDisc} = ${e.rate}%` : `${e.rate}%`;
-      return `<tr class="${held ? 'is-held' : ''}"><td>${e.kind} · ${esc(e.item)}<br><span class="xsmall faint">${e.order} · 판매가 ${won(e.sale)}${e.disc ? ` − ${esc(e.discNote)} ${won(e.disc)}${phTag(e.discPhase)}` : ''}${e.ship ? ` · 배송비 정산 +${won(e.ship)}(${esc(e.shipNote)})${phTag(e.shipPhase)}` : ''}</span>${held ? ` ${tag('tag-warn', '정산 보류 · 클레임 진행')}` : e.claim ? ` ${tag('tag-warn', '정산 보류 후보')}` : ''}</td>
-        <td class="num">${won(e.base)}</td><td class="num">−${won(e.fee)}<br><span class="xsmall faint">${rateTxt}</span></td><td class="num">${held ? `<s>${won(e.amount)}</s>` : won(e.amount)}</td></tr>`;
+      return `<tr class="${held ? 'is-held' : ''}"><td>${e.kind} · ${esc(e.item)}<br><span class="xsmall faint">${e.order} · 판매가 ${won(e.sale)}${e.disc ? ` − ${esc(e.discNote)} ${won(e.disc)}${phTag(e.discPhase)}` : ''}${e.ship ? ` · 배송비 정산 +${won(e.ship)}(${esc(e.shipNote)})${phTag(e.shipPhase)}` : ''}${e.hqNote ? ` · ${esc(e.hqNote)}` : ''}</span>${held ? ` ${tag('tag-warn', '정산 보류 · 클레임 진행')}` : e.claim ? ` ${tag('tag-warn', '정산 보류 후보')}` : ''}</td>
+        <td class="num">${won(e.base)}</td><td class="num">−${won(e.fee)}${feeSub(rateTxt, e.feeSupply, e.feeVat)}</td><td class="num">${held ? `<s>${won(e.amount)}</s>` : won(e.amount)}</td></tr>`;
     }).join('');
     const ded = c.res.deductions.length ? c.res.deductions.map((d) => {
       const ch = c.ch.find((x) => x.type === d.type);
@@ -495,12 +508,13 @@
     }).join('') : '<tr class="is-sub"><td>본사 청구 · 없음<br><span class="xsmall faint">MVP의 본사 청구는 위약금·분쟁 조정뿐이에요</span></td><td></td><td></td><td class="num">0원</td></tr>';
     const foot = isPro()
       ? `최종율 = 기준율 − 프로 플랜 ${pv('commission.plan_discount_pro')}${phTag('2차')} → 일반 ${r.normal.rate}% · 맞춤 ${r.custom.rate}%. 본사 쿠폰 10,000원·포인트 2,000원${phTag('2차')}·멤버십 배송비 쿠폰 3,000원${phTag('2차')}은 플랫폼이 보전해 파트너 몫을 줄이지 않아요. 파트너 쿠폰${phTag('2차')}은 파트너가 부담해요.`
-      : `일반 주문 수수료는 수저집 90,000 × ${r.normal.rate}% = ${won(GC.settle.commission(90000, r.normal.rate))}, 냅킨 60,000 × ${r.normal.rate}% = ${won(GC.settle.commission(60000, r.normal.rate))}을 더한 값이에요. 같은 판 재주문은 판비가 0원이라 맞춤 ${r.custom.rate}%에서 재주문 인하 ${pv('commission.reorder_discount')}를 빼요. 취소 보상은 확정 후 취소에서 공제한 판비 = min(증빙한 판 실비, 고객이 낸 판비)이고 수수료가 없어요. 본사 쿠폰 10,000원은 플랫폼이 보전해 파트너 몫을 줄이지 않아요(MVP 파트너 할인은 즉시 할인뿐).`;
+      : `같은 판 재주문은 판비가 0원이라 맞춤 ${r.custom.rate}%에서 재주문 인하 ${pv('commission.reorder_discount')}를 빼요. 취소 보상은 확정 후 취소에서 공제한 판비 = min(증빙한 판 실비, 고객이 낸 판비)이고 수수료가 없어요. 본사 쿠폰 10,000원(수저집 6,000 · 냅킨 4,000 안분)은 플랫폼이 보전해 파트너 몫을 줄이지 않아요(MVP 파트너 할인은 즉시 할인뿐).`;
     return `<div class="tbl-wrap"><table class="tbl small tbl-ev"><thead><tr><th>정산 이벤트</th><th class="num">수수료 기준가</th><th class="num">수수료</th><th class="num">정산액</th></tr></thead><tbody>${rows}
-      <tr class="is-sum"><td>정산 이벤트 합</td><td></td><td class="num">−${won(c.fee)}</td><td class="num">${won(c.res.eventSum)}</td></tr>
+      <tr class="is-sum"><td>정산 이벤트 합<br><span class="xsmall faint">수수료 공급가·VAT = 이벤트별 저장값의 합</span></td><td></td><td class="num">−${won(c.fee)}<br><span class="xsmall faint nw">공급가 ${won(c.feeSupply)}</span><br><span class="xsmall faint nw">VAT ${won(c.feeVat)}</span></td><td class="num">${won(c.res.eventSum)}</td></tr>
       ${ded}<tr class="is-sub"><td>이월(직전 주기)</td><td></td><td></td><td class="num">${won(c.res.carryIn)}</td></tr>
       <tr class="is-sum"><td>이번 주기 지급액</td><td></td><td></td><td class="num">${won(c.res.payout)}</td></tr></tbody></table></div>
-      <p class="xsmall faint">수수료는 VAT 포함 금액이라 VAT를 또 더하지 않고 나눠 저장해요: ${feeSplitTxt(c)}. ${foot} 디자인비는 본사 매출이라 정산 대상이 아니에요.</p>`;
+      <p class="xsmall faint">수수료는 VAT 포함 금액이라 VAT를 또 더하지 않고, 정산 이벤트(주문 항목)마다 공급가 = round(수수료 ÷ 1.1), VAT = 수수료 − 공급가로 나눠 저장해요. ${generalNote(c)}</p>
+      <p class="xsmall faint">${foot} 디자인비는 본사 매출이라 정산 대상이 아니에요.</p>`;
   }
 
   const SIMS = [
@@ -649,32 +663,35 @@
       <div class="note small">정산 보류 사유: 클레임 진행 · 분쟁 중재 · 계좌 미인증 · 계좌 변경 24시간 · 입점 서류 만료 · 이상 거래 의심 · 지급 실패 · 압류·가압류 통지 ${tag('tag-phase', '법률 검토 필요')}</div>`;
   }
 
-  /* 9월분 발행 내역. 플랜료(2차)·광고비(3차)는 예시 2에서만 */
+  /* 9월분 발행 내역. 플랜료(2차)·광고비(3차)는 예시 2에서만.
+     feeSup = 9월 정산 이벤트마다 나눠 저장한 수수료 공급가의 합(D22). 대성포장은 합계 41,820을 한 번에 나눈 38,018과 1원 다름 */
   const TAX_SEP_ALL = [
-    { p: '대성포장', fee: 41820, plan: 108900, ad: 0 },
-    { p: '한빛위생', fee: 112400, plan: 0, ad: 0 },
-    { p: '새봄인쇄', fee: 9000, plan: 108900, ad: 165000, note: '정산에서 못 뺀 미수분도 청구 기준으로 발행' },
-    { p: '온누리컵', fee: 6300, plan: 0, ad: 0, fail: true },
+    { p: '대성포장', fee: 41820, feeSup: 38019, plan: 108900, ad: 0 },
+    { p: '한빛위생', fee: 112400, feeSup: 102182, plan: 0, ad: 0 },
+    { p: '새봄인쇄', fee: 9000, feeSup: 8182, plan: 108900, ad: 165000, note: '정산에서 못 뺀 미수분도 청구 기준으로 발행' },
+    { p: '온누리컵', fee: 6300, feeSup: 5727, plan: 0, ad: 0, fail: true },
   ];
   const taxSep = () => TAX_SEP_ALL.map((r) => (isPro() ? r : { ...r, plan: 0, ad: 0, note: '' }));
   const CH_TAX_NAME = { PLAN: `프로 플랜 10월 구독료${phTag('2차')}`, AD: `광고비${phTag('3차')}` };
-  const splitTxt = (n) => { const v = GC.vatSplit(n); return `공급가 ${won(v.supply)} · 세액 ${won(v.vat)}`; };
+  /* 공급가·세액 표시. 수수료는 이벤트별 저장값의 합(sup)을 그대로 쓰고, 본사 청구(플랜료·광고비)는 청구 한 건이라 그 건을 나눔 */
+  const splitTxt = (n, sup) => { const v = sup != null ? { supply: sup, vat: n - sup } : GC.vatSplit(n); return `공급가 ${won(v.supply)} · 세액 ${won(v.vat)}`; };
   function hqTax(s) {
     const c = mainCalc();
     const rows = taxSep().map((r) => {
-      const parts = [['수수료', r.fee], [`플랜료${phTag('2차')}`, r.plan], [`광고비${phTag('3차')}`, r.ad]].filter((x) => x[1]);
+      const parts = [['수수료', r.fee, r.feeSup], [`플랜료${phTag('2차')}`, r.plan], [`광고비${phTag('3차')}`, r.ad]].filter((x) => x[1]);
       const failing = r.fail && !s.taxRetried;
-      return `<tr><td><b>${r.p}</b><br>${parts.map(([n, v]) => `<span class="xsmall faint">${n} ${won(v)} (${splitTxt(v)})</span>`).join('<br>')}${r.note ? `<br><span class="xsmall">${r.note}</span>` : ''}</td><td class="num">${won(r.fee + r.plan + r.ad)}</td>
+      return `<tr><td><b>${r.p}</b><br>${parts.map(([n, v, sp]) => `<span class="xsmall faint">${n} ${won(v)} (${splitTxt(v, sp)})</span>`).join('<br>')}${r.note ? `<br><span class="xsmall">${r.note}</span>` : ''}</td><td class="num">${won(r.fee + r.plan + r.ad)}</td>
         <td>${failing ? `<span class="st st-stop">발행 실패</span><br><span class="xsmall faint">상호 변경 확인 필요</span><br><button class="btn btn-sm btn-ext" data-act="retryTax">확인 후 재발행</button>` : '<span class="st st-done">국세청 전송 완료</span>'}</td></tr>`;
     }).join('');
-    const oct = s.confirmedOnce ? [['판매 수수료', c.fee], ...c.ch.map((x) => [CH_TAX_NAME[x.type], x.amount])] : [];
+    const oct = s.confirmedOnce ? [['판매 수수료', c.fee, c.feeSupply], ...c.ch.map((x) => [CH_TAX_NAME[x.type], x.amount])] : [];
+    const octOnce = GC.vatSplit(c.fee).supply;
     return `<div class="panel"><div class="panel-h"><h2>9월분 · ${fmtDate(new Date(2026, 9, 1), false)} 일괄 발행(팝빌)</h2><span class="xsmall faint">본사 → 파트너</span></div><div class="panel-b stack">
       <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>파트너</th><th class="num">합계</th><th>상태</th></tr></thead><tbody>${rows}
         <tr class="is-zero"><td>식업 직영 ${tag('tag-phase', '3차')}</td><td class="num">—</td><td>발행 대상 아님</td></tr></tbody></table></div>
-      <p class="xsmall faint">수수료는 VAT 포함 금액이라 공급가와 세액으로 나눠 적어요. 작성일은 귀속 월 말일, 발행은 다음 달 10일까지예요. 위약금${isPro() ? '·플랜료·광고비' : '(2차부터 플랜료, 3차부터 광고비)'}는 정산에서 뺐는지, 미수로 남았는지와 상관없이 청구 기준으로 발행해요.</p></div></div>
+      <p class="xsmall faint">수수료는 VAT 포함 금액이라 공급가와 세액으로 나눠 적어요. 공급가·세액은 정산 이벤트마다 나눠 저장한 값의 합이고, 월 합계를 다시 나누지 않아요(대성포장 9월 41,820원을 한 번에 나누면 공급가 ${won(GC.vatSplit(41820).supply)}). 작성일은 귀속 월 말일, 발행은 다음 달 10일까지예요. 위약금${isPro() ? '·플랜료·광고비' : '(2차부터 플랜료, 3차부터 광고비)'}는 정산에서 뺐는지, 미수로 남았는지와 상관없이 청구 기준으로 발행해요.</p></div></div>
       <div class="panel"><div class="panel-h"><h2>10월분 · 대성포장 쌓이는 중</h2><span class="xsmall faint">${s.taxIssuedOct ? '11/1 발행됨' : `${fmtDate(NOV1, false)} 발행 예정`}</span></div><div class="panel-b">
-        ${oct.length ? `<table class="tbl small"><tbody>${oct.map(([n, v]) => `<tr><td>${n}<br><span class="xsmall faint">${splitTxt(v)}</span></td><td class="num">${won(v)}</td></tr>`).join('')}</tbody></table>
-          <p class="xsmall faint">수수료 귀속 월은 정산 확정일 기준이에요. 수수료 공급가 ${won(c.feeSupply)}는 항목별 저장값의 합과 같아요.</p>` : '<p class="small muted">정산 확정되면 정산 확정일 기준으로 10월분에 쌓여요.</p>'}</div></div>`;
+        ${oct.length ? `<table class="tbl small"><tbody>${oct.map(([n, v, sp]) => `<tr><td>${n}<br><span class="xsmall faint">${splitTxt(v, sp)}</span></td><td class="num">${won(v)}</td></tr>`).join('')}</tbody></table>
+          <p class="xsmall faint">수수료 귀속 월은 정산 확정일 기준이에요. 판매 수수료 공급가 ${won(c.feeSupply)} · 세액 ${won(c.feeVat)}은 정산 이벤트 ${c.inc.filter((e) => e.fee).length}건의 저장값 합이에요${octOnce !== c.feeSupply ? `(합계 ${won(c.fee)}을 한 번에 나눈 ${won(octOnce)}은 쓰지 않아요)` : ''}.</p>` : '<p class="small muted">정산 확정되면 정산 확정일 기준으로 10월분에 쌓여요.</p>'}</div></div>`;
   }
 
   function hqRecon(s) {
@@ -769,7 +786,7 @@
       ['파트너 상품 쿠폰 할인', '−', -cpn, pro ? '파트너 부담' : 'MVP에는 없음', '2차'],
       ['본사 쿠폰·멤버십 할인', '0', 0, pro ? '본사 쿠폰 10,000 · 포인트 2,000(2차) · 배송비 쿠폰 3,000(2차) — 플랫폼 보전, 참고 표시' : '본사 쿠폰 10,000 — 플랫폼 보전, 참고 표시'],
       ['배송비', '+', sum(inc, (e) => e.ship || 0), pro ? '고객 1,000 + 멤버십 배송비 쿠폰 보전 3,000(2차) · 수수료 없음' : '고객이 낸 배송비 · 수수료 없음'],
-      ['판매 수수료', '−', -c.fee, `VAT 포함 · 공급가 ${won(c.feeSupply)} + VAT ${won(c.feeVat)}`],
+      ['판매 수수료', '−', -c.fee, `VAT 포함 · 공급가 ${won(c.feeSupply)} + VAT ${won(c.feeVat)}(정산 이벤트마다 나눠 저장한 값의 합)`],
       ['반품 배송비', '±', 0, '이번 주기 없음'],
       ['취소 보상(판비 실비)', '+', comp, comp ? `min(증빙 실비 ${won(PLATE.cost)}, 낸 판비 ${won(PLATE.fee)}) · 수수료 0%` : '이번 주기 없음 · 수수료 0%'],
       ['재제작 비용', '+', 0, '이번 주기 없음'],
@@ -790,10 +807,12 @@
     } else {
       const evRow = (e) => (e.comp
         ? `<tr><td>${e.kind} · ${esc(e.item)}<br><span class="xsmall faint">${e.order} · ${compNote(e)}</span></td><td class="num">—</td><td class="num">0원<br><span class="xsmall faint">0%</span></td><td class="num">${won(e.amount)}</td></tr>`
-        : `<tr><td>${e.kind} · ${esc(e.item)}<br><span class="xsmall faint">${e.order}${e.disc ? ` · ${esc(e.discNote)} −${won(e.disc)}${phTag(e.discPhase)}` : ''}${e.ship ? ` · 배송비 +${won(e.ship)}${phTag(e.shipPhase)}` : ''}</span></td><td class="num">${won(e.sale)}</td><td class="num">−${won(e.fee)}<br><span class="xsmall faint">${e.rate}%${e.reorder ? ' · 재주문' : ''}</span></td><td class="num">${won(e.amount)}</td></tr>`);
+        : `<tr><td>${e.kind} · ${esc(e.item)}<br><span class="xsmall faint">${e.order}${e.disc ? ` · ${esc(e.discNote)} −${won(e.disc)}${phTag(e.discPhase)}` : ''}${e.ship ? ` · 배송비 +${won(e.ship)}${phTag(e.shipPhase)}` : ''}</span></td><td class="num">${won(e.sale)}</td><td class="num">−${won(e.fee)}${feeSub(`${e.rate}%${e.reorder ? ' · 재주문' : ''}`, e.feeSupply, e.feeVat)}</td><td class="num">${won(e.amount)}</td></tr>`);
+      const gn = generalNote(c);
       top = `<div class="panel"><div class="panel-h"><h2>10월 2주차 정산서 · ${fmtDate(PERIOD.from, false)}~${fmtDate(PERIOD.to, false)}</h2><span class="cluster">${scnTag()}${stChip(st)}</span></div><div class="panel-b stack">
         <div class="tbl-wrap"><table class="tbl small tbl-ev"><thead><tr><th>정산 이벤트</th><th class="num">판매 금액</th><th class="num">수수료</th><th class="num">정산액</th></tr></thead><tbody>
           ${c.inc.map(evRow).join('')}</tbody></table></div>
+        ${gn ? `<p class="xsmall faint">${gn}</p>` : ''}
         ${ptItems(c)}
         ${s.heldItem ? `<p class="xsmall faint">정산 보류 1건(종이컵 2박스 ${won(sum(c.held, (e) => e.amount))} · 클레임 진행)은 이 정산서에 없고, 클레임이 끝나면 그때 생긴 정산 이벤트로 다음 정산에 들어가요.</p>` : ''}
         <div class="cluster"><button class="btn btn-sm" data-act="dlExcel">엑셀 내려받기</button><button class="btn btn-sm btn-ext" data-act="objection">항목 이의 제기</button></div></div></div>`;
@@ -836,16 +855,17 @@
 
   function ptTax(s) {
     const c = mainCalc();
-    const rows = [['2026-09', '판매 수수료', 41820, '국세청 전송 완료']];
+    const ds9 = TAX_SEP_ALL[0];
+    const rows = [['2026-09', '판매 수수료', ds9.fee, '국세청 전송 완료', ds9.feeSup]];
     if (isPro()) rows.push(['2026-09', `프로 플랜 구독료${phTag('2차')}`, 108900, '국세청 전송 완료']);
     if (s.confirmedOnce) {
       const st = s.taxIssuedOct ? '국세청 전송 완료' : `${fmtDate(NOV1, false)} 발행 예정`;
-      rows.push(['2026-10', '판매 수수료(정산 확정분)', c.fee, st], ...c.ch.map((x) => ['2026-10', CH_TAX_NAME[x.type], x.amount, st]));
+      rows.push(['2026-10', '판매 수수료(정산 확정분)', c.fee, st, c.feeSupply], ...c.ch.map((x) => ['2026-10', CH_TAX_NAME[x.type], x.amount, st]));
     }
     return `<div class="panel"><div class="panel-h"><h2>본사가 발행한 세금계산서</h2><span class="xsmall faint">매월 1일 전월분 · 팝빌</span></div><div class="panel-b stack">
       <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>귀속 월 · 종류</th><th class="num">합계</th><th>상태</th></tr></thead><tbody>
-        ${rows.map(([m, k, v, st]) => { const sp = GC.vatSplit(v); return `<tr><td>${m} · ${k}<br><span class="xsmall faint">공급가 ${won(sp.supply)} · 세액 ${won(sp.vat)}</span></td><td class="num">${won(v)}</td><td>${st.includes('완료') ? `<span class="st st-done">${st}</span> <button class="btn btn-sm btn-ext" data-act="taxPdf">PDF</button>` : `<span class="st">${st}</span>`}</td></tr>`; }).join('')}</tbody></table></div>
-      <p class="xsmall faint">판매 수수료는 VAT 포함 금액이라 공급가와 세액으로 나눠 적어요. 위약금(2차부터 플랜료, 3차부터 광고비)은 정산에서 뺐는지와 상관없이 청구 기준으로 발행해요. 발행 오류가 있으면 수정 세금계산서를 요청하세요.</p>
+        ${rows.map(([m, k, v, st, sup]) => `<tr><td>${m} · ${k}<br><span class="xsmall faint">${splitTxt(v, sup)}</span></td><td class="num">${won(v)}</td><td>${st.includes('완료') ? `<span class="st st-done">${st}</span> <button class="btn btn-sm btn-ext" data-act="taxPdf">PDF</button>` : `<span class="st">${st}</span>`}</td></tr>`).join('')}</tbody></table></div>
+      <p class="xsmall faint">판매 수수료는 VAT 포함 금액이라 공급가와 세액으로 나눠 적어요. 공급가·세액은 정산서의 이벤트별 값을 더한 것이고 월 합계를 다시 나누지 않아요. 위약금(2차부터 플랜료, 3차부터 광고비)은 정산에서 뺐는지와 상관없이 청구 기준으로 발행해요. 발행 오류가 있으면 수정 세금계산서를 요청하세요.</p>
       <label class="check"><input type="checkbox" data-change="consent" ${s.consent ? 'checked' : ''}><span>사업자 고객이 세금계산서를 신청하면 식업이 대성포장 명의로 대신 발행해요(위수탁 발행 동의). 카드 결제 건은 매출전표가 증빙이라 빠져요.</span></label>
       ${s.consent ? '' : '<div class="note note-warn small">동의하지 않으면 고객 신청 건을 직접 발행하고 다음 달 10일까지 [발행 완료]를 표시해야 해요.</div>'}</div></div>`;
   }
@@ -995,7 +1015,7 @@
         if (row) row.query = 'notsent';
         s.payCheck = null; s.pgMode = 'ok';
         app.go('settle', 'payout_fail', { by: 'PG 지급 조회 · 송금 안 됨 확인 → 정산 보류' });
-        s.hold = { code: 'PAYOUT_NOT_SENT', label: '지급 실패 확인 · PG 송금 안 됨' };
+        s.hold = { code: 'PAYOUT_NOT_SENT', label: '지급 실패 확인 · PG 송금 안 됨', afterConfirm: true };
         s.payKey.retry = true;
         app.log('rule', `정산 보류로 돌린 뒤에만 같은 요청 키 ${key}로 다시 요청해요(정산 보류 해제 → 다음 지급일)`);
         app.notify('NOTI_INT_PAYOUT_FAILED', '재무', ['이메일', '관리자 알림', 'Slack'], `대성포장 지급 실패 확인(PG 송금 안 됨 · 요청 키 ${key})`);
@@ -1044,14 +1064,14 @@
       }
       if (dsHeld) {
         app.setState('settle', 'ON_HOLD', { by: '계좌 변경 뒤 24시간 안 지급 → 정산 보류' });
-        s.hold = { code: 'ACCOUNT_CHANGED_24H', label: '정산 계좌 변경 후 24시간 정산 보류' };
+        s.hold = { code: 'ACCOUNT_CHANGED_24H', label: '정산 계좌 변경 후 24시간 정산 보류', afterConfirm: true };
         app.notify('NOTI_PARTNER_SETTLEMENT_ON_HOLD', '대성포장', ['알림톡', '이메일', '알림센터'], '계좌 변경 후 24시간 안 지급이라 정산 보류 · 다음 지급일에 보내요');
       } else if (unknown) {
         s.payCheck = { at: now, amount: mainCalc().res.payout, tries: 0, escalated: false };
         app.log('warn', `대성포장 지급 응답 없음(시간 초과) → 지급 요청 "확인 중" · 정산서는 정산 확정 그대로 · 다시 보내지 않고 다음 지급 목록에도 자동으로 올리지 않아요 <span class="faint xsmall">${key}</span>`);
       } else if (fail) {
         app.go('settle', 'payout_fail', { by: 'PG 지급 실패 · 예금주 불일치' });
-        s.hold = { code: 'PAYOUT_FAILED', label: '지급 실패 · 예금주 불일치' }; s.reauthed = false;
+        s.hold = { code: 'PAYOUT_FAILED', label: '지급 실패 · 예금주 불일치', afterConfirm: true }; s.reauthed = false;
         app.notify('NOTI_PARTNER_PAYOUT_FAILED', '대성포장', ['알림톡', '이메일', '알림센터'], '지급 실패 · 정산 계좌를 확인해 주세요');
         app.notify('NOTI_INT_PAYOUT_FAILED', '재무', ['이메일', '관리자 알림', 'Slack'], '대성포장 지급 실패(예금주 불일치)');
       } else {
@@ -1065,10 +1085,19 @@
     },
     release() {
       const s = S(); if (!holdReady()) { app.toast('아직 정산 보류 사유가 남아 있어요'); return; }
-      const k = nextCycleAfter(app.clock.now(), s.cycle + 1);
-      app.go('settle', 'release', { by: `정산 보류 해제(${ACCTS[s.acct].name}) · 다음 주기 정산에 합류` });
-      s.cycle = k; s.hold = null; s.req = null; s.selfDenied = false; s.partnerSeen = false; s.lastRun = null;
-      app.log('rule', `다음 지급일 ${fmtDate(payDayOf(k), false)} · ${fmtDate(confirmFrom(k), false)}~${fmtDate(new Date(confirmBy(k).getTime() - DAY), false)}에 다시 정산 확정한 뒤 함께 지급${s.payKey && s.payKey.retry ? ` · 같은 요청 키 ${keyTxt()}로 다시 요청` : ''}`);
+      const k = nextCycleAfter(app.clock.now(), s.cycle + 1); const h = s.hold; const amt = mainCalc().res.payout;
+      if (h.afterConfirm) {
+        /* 지급 실패·지급대행 장애·계좌 변경처럼 정산 확정 뒤 건 보류 → 확정 금액 그대로 다음 지급 목록(A-STL-02, ON_HOLD → CONFIRMED) */
+        app.go('settle', 'release_confirmed', { by: `정산 보류 해제(${ACCTS[s.acct].name}) · 정산 확정 금액 ${won(amt)} 그대로 다음 지급 목록` });
+        s.released = { at: app.clock.now(), label: h.label, amount: amt };
+        app.log('rule', `정산 확정 금액 ${won(amt)}을 바꾸지 않고 다음 지급일 ${fmtDate(payDayOf(k), false)} 지급 목록에 올려요 · 다시 정산 확정하지 않아요${s.payKey && s.payKey.retry ? ` · 같은 요청 키 ${keyTxt()}로 다시 요청` : ''}`);
+      } else {
+        /* 확정 전 보류 → 정산 예정으로 돌아가 다시 검증·확정 */
+        app.go('settle', 'release', { by: `정산 보류 해제(${ACCTS[s.acct].name}) · 정산 예정으로 돌아가 다시 검증` });
+        s.partnerSeen = false;
+        app.log('rule', `다음 지급일 ${fmtDate(payDayOf(k), false)} · ${fmtDate(confirmFrom(k), false)}~${fmtDate(new Date(confirmBy(k).getTime() - DAY), false)}에 다시 정산 확정한 뒤 지급`);
+      }
+      s.cycle = k; s.hold = null; s.req = null; s.selfDenied = false; s.lastRun = null;
       refresh();
     },
     async retryTax() { await app.ext({ service: '팝빌', what: '온누리컵 9월분 세금계산서 재발행', lines: ['상호 변경을 파트너에게 확인받은 뒤 바뀐 정보로 발행해요', '국세청 전송 결과를 다시 받아요'] }); S().taxRetried = true; refresh(); },

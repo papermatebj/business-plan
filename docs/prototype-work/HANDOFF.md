@@ -8,6 +8,8 @@
 
 **2026-10-14 S7(부록 B 반영)**: 원본 문서의 부록 B 63건·결정 D1~D19를 프로토타입에 맞춤(목록·결과는 `docs/revision-work/prototype-impact.md` 'S7 결과'). 엔진: 판비 공제 min(`designCancel`의 `plateCost`)·`designStage`(첫 시안 기록·확정 후 변경 건)·`bizInversion`·`GC.claim.*`·`GC.notice.elapsed`, 상태 머신 DESIGN(C-STATE-03대로, start_revision 없음)·ORDER_CUSTOM(EXCHANGED·RETURNED·restore)·CLAIM_RETURN·새 CLAIM_CANCEL·PRODUCT_REVISION, 정책값 새 묶음 '공통 · 영업일·배치'(문자열 값 키는 `text: true`, 보기만). 검사 33개, 흐름 63개(hub 제외). **흐름 일괄 실행**: `cd docs/prototype-work/tools && ls flows/*.json | xargs -P 4 -n 1 bash runone.sh`로 4개씩 병렬(서버는 먼저 띄움)(이름 규칙 그대로: dark → 다크, narrow → 390px, 첫 단어 = 페이지).
 
+**2026-10-16 S9(S8 결정 D20~D35 반영, 재게시 전)**: 엔진에 판비 = 상품 금액(`instant.plate`·`platePaid`), 본사 쿠폰 두 자리(`hqCoupon` 상품 할인 + `designCoupon`, `includeDesignFee` 없앰), 추가 구성품(`addonOf`·`GC.order.addonCascade`), `GC.refund.partnerChange`, 클레임 완료 결과(`result`·`GC.claim.label`), 새 전이(수정본 DISCARDED·정산 보류 → 확정·출고 뒤 취소 이의·파트너 변경), 정책값 키 14개(새 묶음 '공통 · 보안'). 검사 40개. 페이지 10개 고침(MOVED 없앰, order에 '시작 장면' 고르기), 흐름 64 → 82개(hub 제외 81). 결과·판단·남은 확인 거리는 `docs/revision-work/prototype-impact.md` 맨 아래 'S9 결과'. **다음: 전체 흐름 재실행 → 같은 URL로 재게시.**
+
 ---
 아래는 일시 중지 시점(2026-10-13 새벽)의 원래 인수인계 기록입니다.
 

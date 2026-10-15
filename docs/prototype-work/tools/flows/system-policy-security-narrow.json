@@ -1,0 +1,21 @@
+[
+ {"act":"grp","attr":"data-g=\"공통 · 보안\"","shot":"system-sn01-security-designer"},
+ {"act":"role","attr":"data-r=\"최고관리자\""},
+ {"act":"grp","attr":"data-g=\"공통 · 보안\"","shot":"system-sn02-security"},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device table.pol tbody tr')).map(r=>r.querySelector('.code').textContent.split(' ')[0]+'='+r.querySelector('td.num .pv').textContent+(r.querySelector('[data-act=pvEdit]')?' edit':' view'))"},
+ {"act":"pvEdit","attr":"data-k=\"security.login_fail_lock\""},
+ {"type":{"sel":"#pvNew","text":"2"},"after":700},
+ {"act":"pvReasonPreset","idx":1},
+ {"act":"pvSubmit","shot":"system-sn03-range"},
+ {"eval":"document.querySelector('#gc-device .note-stop').textContent"},
+ {"act":"pvCancel"},
+ {"act":"grp","attr":"data-g=\"주문·클레임\""},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device table.pol tbody tr')).filter(r=>/claim.tolerance|order.partner_change_reply_days/.test(r.textContent)).map(r=>r.textContent.replace(/[ \\n]+/g,' ').trim())"},
+ {"act":"grp","attr":"data-g=\"디자인\""},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device table.pol tbody tr')).filter(r=>/file[.]max_size|print_check_bd/.test(r.textContent)).map(r=>r.querySelector('.code').textContent.split(' ')[0]+'='+r.querySelector('td.num .pv').textContent)"},
+ {"act":"grp","attr":"data-g=\"수수료·파트너\""},
+ {"act":"grp","attr":"data-g=\"할인·쿠폰\""},
+ {"eval":"[document.querySelectorAll('#gc-device [data-act=grp]').length, Array.from(document.querySelectorAll('#gc-device td.num, #gc-device td.tv')).filter(e=>/NaN|undefined/.test(e.textContent)).length]"},
+ {"act":"sec","attr":"data-s=\"권한\"","shot":"system-sn04-login-security","full":true},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device .panel')).find(p=>/로그인 보안/.test(p.textContent)).querySelector('dl').textContent.replace(/[ \\n]+/g,' ')"}
+]

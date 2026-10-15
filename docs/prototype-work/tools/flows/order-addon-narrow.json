@@ -1,0 +1,14 @@
+[
+ {"click":"#ord-scn [data-scn=\"addon\"]","after":400},
+ {"wait":100,"shot":"order-54-narrow-addon-cart","full":true},
+ {"check":"cup"},
+ {"act":"toCheckout"},
+ {"check":"agree","shot":"order-55-narrow-addon-checkout"},
+ {"act":"pay","after":400},
+ {"act":"cs","attr":"data-to=\"detail\""},
+ {"act":"openCancel","attr":"data-id=\"spoon\""},
+ {"wait":100,"shot":"order-56-narrow-addon-cascade"},
+ {"act":"doCancel","after":400},
+ {"wait":100,"shot":"order-57-narrow-addon-cascaded"},
+ {"role":"partner","shot":"order-58-narrow-addon-partner","full":true}
+]

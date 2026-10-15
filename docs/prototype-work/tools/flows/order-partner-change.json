@@ -1,0 +1,19 @@
+[
+ {"click":"#ord-scn [data-scn=\"pc_lo\"]","after":400},
+ {"wait":100,"shot":"order-40-pc-proposal"},
+ {"eval":"[document.querySelector('#gc-turn .turn-what').textContent, document.querySelector('#gc-device .claimbox').innerText.split(String.fromCharCode(10)).join(' | '), Array.from(document.querySelectorAll('.chip.is-now,.chip.is-branch-now')).map(c=>c.title).join('|')]"},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device .ladder .lrow')).map(e=>e.innerText.split(String.fromCharCode(10)).join(' ')).join(' | ')"},
+ {"role":"hq","shot":"order-41-pc-hq"},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device .tbl tbody tr')).map(e=>e.innerText.split(String.fromCharCode(10)).join(' ').split(String.fromCharCode(9)).join(' ')).slice(7,9).join(' / ')"},
+ {"role":"customer"},
+ {"act":"pcAgree","after":400},
+ {"wait":100,"shot":"order-42-pc-agreed"},
+ {"eval":"[document.querySelector('#gc-turn .turn-done, #gc-turn .turn-what').textContent, Array.from(document.querySelectorAll('.chip.is-now,.chip.is-branch-now')).map(c=>c.title).join('|'), document.querySelector('#gc-device .claimbox').innerText.split(String.fromCharCode(10)).join(' | ')]"},
+ {"role":"hq","shot":"order-43-pc-hq-agreed"},
+ {"role":"partner","shot":"order-44-pc-partner"},
+ {"click":"#ord-scn [data-scn=\"pc_hi\"]","after":400},
+ {"act":"pcAgree","after":400},
+ {"eval":"document.querySelector('#gc-turn .turn-done, #gc-turn .turn-what').textContent"},
+ {"role":"hq","shot":"order-45-pc-hq-pricier"},
+ {"role":"partner"}
+]

@@ -34,7 +34,7 @@
   .ver { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 13px; padding: 8px; border: 1px solid var(--rule); border-radius: 8px; }
   .ver b { font-size: 15px; }
   .hold-banner { border: 2px solid var(--stop); background: var(--stop-weak); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; }
-  .money-flow .tbl td:last-child { white-space: nowrap; }
+  .money-flow .tbl td.num { white-space: nowrap; }
   .nw { white-space: nowrap; }
   .ptbl { min-width: 560px; }
 </style>
@@ -72,7 +72,7 @@
     domain: 'design',
     title: '맞춤 디자인',
     lede: '사장님이 로고를 넣은 수저집을 주문하면, 본사 디자인팀이 시안을 만들고, 고객이 확정한 파일만 파트너 인쇄소로 넘어갑니다. 고객과 파트너는 서로 직접 만나지 않아요.',
-    meta: '근거: 기능 명세서 D-REQ-01~D-RE-01 · C-PRICE-01 · C-PAY-02 · C-STATE-01~03 · U-MY-01·03 · P-ORD-06 · 기획서 06장 · 2026-10-14 부록 B 결정(D1·D3·D4·D17~D19) 반영',
+    meta: '근거: 기능 명세서 D-REQ-01~D-RE-01 · C-PRICE-01 · C-PAY-02 · C-STATE-01~03 · U-MY-01·03 · P-ORD-06 · 기획서 06장 · 2026-10-14 부록 B 결정(D1·D3·D4·D17~D19) · 2026-10-15~16 결정(D20·D21·D28·D30·D35) 반영',
     actors: [
       { id: 'customer', title: '맞춤 제작', tab: '디자인' },
       { id: 'design' },
@@ -99,24 +99,47 @@
       sla: null, hold: false, after: null, afterChange: false, changeFrom: null, plateCost: null, downloaded: false, shipDue: null, deliveredAt: null,
       hash: null, confirmedVer: null, confirmedHash: null, reviseText: '', reviseNote: '', ownFile: null, logo: false, template: 'band', refunded: null, fixStarted: false,
       asking: false, viewedVer: 0, proposeFrom: null, slaBefore: null, revReqAt: null, restoreDue: false, source: null,
-      remake: null, settled: false, exchangedAt: null, exchangeSettleDue: null,
+      remake: null, settled: false, exchangedAt: null, exchangeSettleDue: null, claims: [],
     });
     app.strips.claim.hidden = true;
     setFlow('normal');
     guide();
   }
   /* 클레임 칩 줄: 확정 후 취소는 CLAIM_CANCEL(CUSTOM_CANCEL), 재제작은 CLAIM_RETURN(REMAKE) */
-  function showClaim(machine, label, note) {
+  function showClaim(machine, label, note, claimType) {
     const c = app.strips.claim;
-    Object.assign(c, { machine, label, note, hidden: false, current: null, lastMainIdx: null });
+    Object.assign(c, { machine, label, note, baseNote: note, claimType, result: null, hidden: false, current: null, lastMainIdx: null });
   }
+  /* 클레임 끝내기(D30): 전이표 줄의 완료 결과(result)를 함께 저장하고, 라벨은 GC.claim.label로 정함(고객·파트너·관리자 같은 값) */
+  function finishClaim(event, by, extra = {}) {
+    const c = app.strips.claim; const from = app.state('claim');
+    const result = GC.claim.result(c.machine, from, event, c.claimType);
+    const to = app.go('claim', event, { by });
+    if (to === 'CLAIM_COMPLETED' && result) {
+      const label = GC.claim.label(c.machine, to, result);
+      c.result = result; c.note = `${c.baseNote} · 완료 결과 ${result}(${label})`;
+      S().claims.push({ type: c.claimType, machine: c.machine, result, label, at: app.clock.now(), ...extra });
+      app.log('rule', `클레임 완료 결과 ${result} 저장 → 고객·파트너·관리자 라벨 '${label}'(C-STATE-02 · 2026-10-15 D30)`);
+    }
+    return to;
+  }
+  const CLAIM_TYPE_NAME = { CUSTOM_CANCEL: '확정 후 취소', REMAKE: '재제작' };
+  const lastClaim = () => { const l = S().claims; return l.length ? l[l.length - 1] : null; };
   const CONFIRMED_D = ['APPROVED', 'HANDED_OFF', 'PREFLIGHT_REJECTED'];
   /* 확정 후 변경으로 다시 시안 단계가 된 건(표시, 상태 아님) */
   const changeCase = () => S().afterChange && ['REVISION', 'PROPOSED', 'ON_HOLD'].includes(app.state('design'));
   const claimOpen = () => { const s = S(); return !!(s.remake && app.state('claim') !== 'CLAIM_COMPLETED'); };
   const plateTxt = (v) => (v > 0 ? `판 만들었음 · 실비 ${won(v)} 증빙` : '판 아직 안 만듦');
-  /* 재제작(REMAKE)은 반품 상태를 쓰지만 고객·파트너에게는 재제작 말로 보여 줌 */
-  const REMAKE_LABEL = { RETURN_REQUESTED: '재제작 요청됨', RETURN_COLLECTING: '회수 중', RETURN_INSPECTING: '확정본 대조 검수 중', RETURN_APPROVED: '재제작 승인', RETURN_REJECTED: '판매자 거부', EXCHANGE_SHIPPED: '재제작품 보내는 중', CLAIM_COMPLETED: '재제작 완료' };
+  /* 재제작(REMAKE)은 반품 상태를 쓰므로 진행 중 단계만 재제작 말로 보여 줌(접수 → 검수 → 승인 → 발송).
+     끝난 클레임은 이 표가 아니라 저장한 완료 결과로 GC.claim.label(재제작 완료·환불 완료 …, D30) */
+  const REMAKE_STEP = { RETURN_REQUESTED: '재제작 요청됨', RETURN_COLLECTING: '회수 중', RETURN_INSPECTING: '확정본 대조 검수 중', RETURN_APPROVED: '재제작 승인', RETURN_REJECTED: '판매자 거부', EXCHANGE_SHIPPED: '재제작품 보내는 중' };
+  /* 고객이 낸 판비 = 판비 줄의 결제 금액(파트너 할인·본사 상품 할인 쿠폰 안분 뒤, 결제 스냅샷, D20) — 확정 후 취소 판비 공제 상한 */
+  const platePaid = () => (S().paid ? S().paid.platePaid : 0);
+  /* 허용 오차(D28): 결제 시점 상품 설정값(이 상품은 기본값 claim.tolerance 그대로). 결제 때 기록해 확정 스냅샷에 저장 */
+  const tolNow = () => String(GC.Policy.get('claim.tolerance')).replace(/\s*\/\s*/, '·').replace(/(^|·)위치/, '$1인쇄 위치');
+  const tolText = () => (S().paid && S().paid.tolerance) || tolNow();
+  const tol = () => pv('claim.tolerance', esc(tolText()));
+  const posTol = () => (tolText().match(/위치\s*(±[\d.]+\s*mm)/) || [])[1] || '';
 
   /* 방식에 따라 상태칩 순서를 바꿔 보여줌(자체 파일은 검수부터, 재주문은 확정부터) */
   function setFlow(kind) {
@@ -139,21 +162,23 @@
   }
   const calc = (type, qty) => GC.price.calcOrder(orderInput(type, qty));
   /* 취소 계산(C-PAY-02 예시 2): 단계는 상태가 아니라 '첫 시안 전달 시각' 기록과 '확정 후 변경 건' 표시로 정함.
-     판비 공제 = 취소 보상 = min(파트너가 증빙한 실비, 낸 판비) */
+     판비 공제 = 취소 보상 = min(파트너가 증빙한 실비, 고객이 낸 판비 = 판비 줄 결제 금액 platePaid, D20) */
   function cancelPreview() {
     const s = S(); const p = s.paid; if (!p) return null;
     return GC.refund.designCancel({
       type: s.type, state: app.state('design'), firstProposed: !!s.firstProposedAt, afterChange: s.afterChange,
       itemsAmount: p.total - p.designFee, paidDesignFee: p.designFee, freeCustom: s.type === 'CUSTOM' && p.designFee === 0,
-      plateFee: p.plate, plateCost: s.plateCost || 0, fixFee: p.fix || 0, fixStarted: s.fixStarted,
+      plateFee: p.platePaid, plateCost: s.plateCost || 0, fixFee: p.fix || 0, fixStarted: s.fixStarted,
     });
   }
+  /* 파트너 정산: 판매가 = 상품 금액 + 판비(① 단계), 파트너 할인 = 즉시 할인(판비 범위를 골랐으면 판비 할인 포함) */
   function settlePreview() {
     const r = calc();
     const line = r.lines[0];
     const rate = GC.settle.finalRate({ base: GC.Policy.get('commission.custom_rate'), reorder: S().type === 'REORDER' });
-    const ev = GC.settle.confirmEvent({ sale: line.gross + line.plateFee, partnerDisc: line.instantDisc, rate: rate.rate });
-    return { rate, ev, line };
+    const partnerDisc = line.instantDisc + line.plateInstantDisc;
+    const ev = GC.settle.confirmEvent({ sale: line.gross + line.plateFee, partnerDisc, rate: rate.rate });
+    return { rate, ev, line, partnerDisc };
   }
 
   /* ── 시안 그림: 수저집 40×240mm (가로로 눕힘) ── */
@@ -201,8 +226,9 @@
     }
     const waitRules = () => [{ k: '무응답 리마인드·보류·취소', v: `${GC.Policy.get('design.no_response_remind_days')}·${GC.Policy.get('design.no_response_hold_days')}·${GC.Policy.get('design.no_response_cancel_days')}일` }, { k: '예고 뒤 본 처리', policy: 'notify.notice_min_hours' }];
     if (s.after) {
-      if (s.plateCost === null) return app.turn('partner', '생산 보류 요청이 왔어요. 판을 이미 만들었는지, 만들었다면 실비를 증빙해 답해 주세요', { hint: '파트너는 영업시간 4시간 안에 답해야 하고, 답이 없으면 운영팀이 전화로 확인해요. 그동안 [인쇄 가능]은 서버가 막아요.', rules: [{ k: '판비 공제', v: 'min(증빙 실비, 낸 판비)' }, { k: '증빙 없음', v: '판비 공제 0원' }] });
-      return app.turn('hq', `고객의 확정 후 ${s.after.kind === 'change' ? '변경' : '취소'} 요청을 중재하세요`, { rules: [{ k: '확정 후 취소 자동 승인', v: '없음(본사 중재)' }, { k: '판비 공제 = 취소 보상', v: 'min(증빙 실비, 낸 판비)' }, { k: '중재 결과', v: '최종 · 기각해도 이의 제기 없음' }] });
+      const pp = { k: '고객이 낸 판비', v: `${won(platePaid())} (판비 줄 결제 금액)` };
+      if (s.plateCost === null) return app.turn('partner', '생산 보류 요청이 왔어요. 판을 이미 만들었는지, 만들었다면 실비를 증빙해 답해 주세요', { hint: '파트너는 영업시간 4시간 안에 답해야 하고, 답이 없으면 운영팀이 전화로 확인해요. 그동안 [인쇄 가능]은 서버가 막아요.', rules: [{ k: '판비 공제', v: 'min(증빙 실비, 고객이 낸 판비)' }, pp, { k: '증빙 없음', v: '판비 공제 0원' }] });
+      return app.turn('hq', `고객의 확정 후 ${s.after.kind === 'change' ? '변경' : '취소'} 요청을 중재하세요`, { rules: [{ k: '확정 후 취소 자동 승인', v: '없음(본사 중재)' }, { k: '판비 공제 = 취소 보상', v: 'min(증빙 실비, 고객이 낸 판비)' }, pp, { k: '중재 결과', v: '최종 · 기각해도 이의 제기 없음' }] });
     }
     if (s.restoreDue) return app.turn('hq', '확정 후 변경 건이 30일 동안 답이 없어요. 운영 확인 목록에서 이전 확정본으로 복원하세요', { hint: '확정 후 변경으로 다시 시안 단계가 된 건은 자동 취소하지 않아요(D-ROOM-07, 2026-10-14 확정).', rules: [{ k: '복원', v: `디자인 요청 → 파트너 전달 · 주문 항목 → 디자인 확정` }, { k: '생산 보류', v: '복원하면 해제' }] });
     if (s.remake && !['CLAIM_COMPLETED'].includes(app.state('claim'))) {
@@ -228,24 +254,26 @@
       case 'FILE_REVIEW': return app.turn('design', s.fixStarted ? '보정본을 확인해 인쇄 미리보기로 등록하세요. 고객이 다시 확정해요' : '해상도·아웃라인·재단 여백을 확인해 통과 또는 반려하세요', { rules: [{ k: '재업로드 무료 재검수', v: '3회' }, { k: '보정 작업', policy: 'design.own_file_fix_fee' }] });
       case 'FILE_REJECTED': return app.turn('customer', '파일 수정이 필요해요. 재업로드·보정·맞춤형 전환 중에 고르세요', { rules: waitRules() });
       case 'APPROVED': return app.turn('design', s.hold && s.afterChange ? '다시 확정한 새 버전으로 인쇄 패키지를 만들어 전달하세요. 전달하면 생산 보류가 풀려요' : '확정본으로 인쇄 패키지를 만들어 파트너에 전달하세요', { hint: '인쇄용으로 정리하다 눈에 보이는 내용이 바뀌면 고객에게 다시 확정받아요.', rules: [{ k: '전달 기한', v: '확정 후 영업시간 4시간' }, { k: '패키지', v: '인쇄 원본·사양서·해시' }] });
-      case 'HANDED_OFF': return app.turn('partner', s.downloaded ? '인쇄 적합성을 확인하고 [인쇄 가능] 또는 [반려]를 누르세요' : '맞춤 제작 큐에서 인쇄 패키지를 내려받으세요', { hint: '[인쇄 가능]을 누르는 순간이 "생산 시작"이에요. 그 뒤로는 고객이 취소할 수 없고 불량만 재제작해요. 그 전에는 고객이 [확정 후 변경 요청]·[취소 요청]을 할 수 있어요.', rules: [{ k: '확인 기한', v: '패키지 받은 뒤 영업일 1일' }, { k: '제작 기간', v: `[인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일` }] });
+      case 'HANDED_OFF': return app.turn('partner', s.downloaded ? '인쇄 적합성을 확인하고 [인쇄 가능] 또는 [반려]를 누르세요' : '맞춤 제작 큐에서 인쇄 패키지를 내려받으세요', { hint: '[인쇄 가능]을 누르는 순간이 "생산 시작"이에요. 그 뒤로는 고객이 취소할 수 없고 불량만 재제작해요. 그 전에는 고객이 [확정 후 변경 요청]·[취소 요청]을 할 수 있어요.', rules: [{ k: '[인쇄 가능]·[반려] 기한', v: `패키지 받은 뒤 ${pv('production.print_check_bd')}` }, { k: '제작 기간', v: `[인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일` }] });
       case 'PREFLIGHT_REJECTED': return app.turn('design', '파트너가 인쇄를 반려했어요. 고쳐서 다시 전달하거나, 보이는 내용이 바뀌면 고객 재확정을 받으세요');
       case 'IN_PRODUCTION': return app.turn('partner', '생산이 끝나면 송장을 등록해 출고하세요', { rules: [{ k: '출고 예정일', v: s.shipDue ? fmtDate(s.shipDue, false) : '-' }] });
       case 'SHIPPED':
         if (it === 'SHIPPED') return app.turn('system', '택배 조회로 배송 완료를 감지해요(시스템 탭에서 실행)');
         if (it === 'DELIVERED') return app.turn('customer', '받은 상품을 확인하고 [구매 확정]을 누르세요. 인쇄가 확정본과 다르면 [재제작 요청]을 누르세요', { hint: '맞춤 제작이라 단순 변심 반품·교환은 안 되고 불량만 재제작해요. 7일이 지나면 자동으로 확정돼요(클레임이 열린 항목은 빼고).', rules: [{ k: '자동 구매 확정', policy: 'order.auto_confirm_days' }, { k: '불량 신청 기한', v: '받은 날부터 3개월 · 안 날부터 30일' }] });
         if (it === 'EXCHANGED') return app.turn('system', `재제작품 배송 완료 ${GC.Policy.get('order.auto_confirm_days')}일 뒤 구매 확정과 같이 정산돼요(+7일)`, { rules: [{ k: 'EXCHANGED', v: '끝 상태(구매 확정으로 바꾸지 않음)' }] });
-        if (it === 'RETURNED') return app.done('재제작 대신 환불했어요. 주문 항목은 반품 완료예요.', { next: '[처음부터]로 다른 길도 가 볼 수 있어요.' });
+        if (it === 'RETURNED') return app.done(`재제작 대신 환불했어요. 주문 항목은 반품 완료, 클레임은 '${claimDoneLabel()}'예요.`, { next: '[처음부터]로 다른 길도 가 볼 수 있어요.' });
         break;
       case 'COMPLETED':
-        if (it === 'EXCHANGED') return app.done(`재제작품을 받았어요. 주문 항목은 '교환·재제작 완료'(끝 상태)예요.${s.remake && s.remake.settledBefore ? ' 이미 구매 확정·정산된 항목이라 새 정산은 없어요.' : ''}`, { next: '재제작품이 또 불량이면 그 물건을 받은 날부터 3개월 안에 다시 [재제작 요청]을 할 수 있어요(2026-10-14 확정). [같은 디자인으로 재주문]도 돼요.' });
-        if (it === 'RETURNED') return app.done('재제작 대신 환불했어요. 주문 항목은 반품 완료예요.', { next: '이미 정산된 항목이면 다음 정산 주기에서 되돌려요(역분개).' });
+        if (it === 'EXCHANGED') return app.done(`재제작품을 받았어요. 주문 항목은 '교환·재제작 완료'(끝 상태), 클레임은 '${claimDoneLabel()}'예요.${s.remake && s.remake.settledBefore ? ' 이미 구매 확정·정산된 항목이라 새 정산은 없어요.' : ''}`, { next: '재제작품이 또 불량이면 그 물건을 받은 날부터 3개월 안에 다시 [재제작 요청]을 할 수 있어요(2026-10-14 확정). [같은 디자인으로 재주문]도 돼요.' });
+        if (it === 'RETURNED') return app.done(`재제작 대신 환불했어요. 주문 항목은 반품 완료, 클레임은 '${claimDoneLabel()}'예요.`, { next: '이미 정산된 항목이면 다음 정산 주기에서 되돌려요(역분개).' });
         return app.done('주문 한 건이 끝났어요. 파트너 정산 대상이 됐어요.', { next: '고객 화면에서 [같은 디자인으로 재주문]을 눌러 보세요. 디자인 단계 없이 바로 파트너에게 넘어가고, 판비가 면제되며 파트너 수수료가 3%p 내려가요. 인쇄 불량이면 [재제작 요청]도 할 수 있어요.' });
       case 'CANCELED': return app.done(`디자인 요청이 취소됐어요.${s.refunded ? ` 환불 ${won(s.refunded.refund)}${s.refunded.deduction ? ` (공제 ${won(s.refunded.deduction)})` : ''}.` : ''}${s.refunded && s.refunded.plateToPartner ? ` 파트너 '취소 보상' ${won(s.refunded.plateToPartner)}.` : ''}`, { next: '[처음부터]를 눌러 다른 길로 다시 가 볼 수 있어요.' });
     }
     app.turn('customer', '주문 상세에서 진행 상황을 확인하세요');
   }
   function refresh() { guide(); app.refresh(); }
+  /* 마지막으로 끝난 클레임의 라벨(완료 결과에서, D30) */
+  function claimDoneLabel() { const c = lastClaim(); return c ? c.label : GC.claim.label('CLAIM_RETURN', 'CLAIM_COMPLETED'); }
 
   /* ── 상태 이동 묶음 ── */
   function goDesign(ev, by) { return app.go('design', ev, { by }); }
@@ -287,7 +315,7 @@
           <dt>맞춤 수량</dt><dd>10,000매부터 · 1매당 ${PRODUCT.tiers[1].price / 1000}원~</dd>
           <dt>판비</dt><dd>${won(PRODUCT.plateFee)} · 재주문 때 면제</dd>
           <dt>제작 기간</dt><dd>파트너 [인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일</dd>
-          <dt>예상 도착</dt><dd>디자인 확정 → 파트너 인쇄 확인(영업일 1일) → 제작 ${PRODUCT.leadDays}일 → 배송 1~2일</dd>
+          <dt>예상 도착</dt><dd>디자인 확정 → 파트너 인쇄 확인(${pv('production.print_check_bd')} 안) → 제작 ${PRODUCT.leadDays}일 → 배송 1~2일</dd>
         </dl>
         <div class="grid3" style="gap:6px">
           <div class="app-card" style="padding:10px"><span class="xsmall faint">템플릿</span><b>무료</b></div>
@@ -370,7 +398,7 @@
             <div class="li"><span>글자 아웃라인</span><span class="st st-warn">확인 불가</span></div>
             <div class="li"><span>색상 모드 CMYK</span><span class="st st-done">통과</span></div></div>
             <p class="xsmall faint">자동 점검은 참고용이고 최종 판단은 디자인팀이 해요. 검수는 무료예요.</p>`
-            : `<button class="btn btn-block btn-ext" data-act="uploadOwn">오늘밥상_수저집.ai 올리기 (최대 500MB)</button>`}
+            : `<button class="btn btn-block btn-ext" data-act="uploadOwn">오늘밥상_수저집.ai 올리기 (최대 ${pv('file.max_size_original')})</button>`}
           ${agree('outline', '글자를 아웃라인 처리했어요')}${agree('rights', '파일의 권리는 제가 보증합니다(제3자 권리 침해 시 고객 책임)')}</div>`;
     }
     f.body.innerHTML = main;
@@ -391,14 +419,16 @@
   }
   function checkout(f, s) {
     f.title('주문서'); f.tab('카테고리'); f.back();
-    const r = calc();
+    const r = calc(); const ln = r.lines[0];
+    const plateShare = ln.plateHqAlloc; // 본사 상품 할인 쿠폰의 판비 줄 안분 몫(D20)
     const agree = (k, html) => `<label class="check"><input type="checkbox" data-change="chk" data-k="${k}" ${s.checks[k] ? 'checked' : ''}><span><span class="req">(필수)</span> ${html}</span></label>`;
     f.body.innerHTML = `
       <div class="app-sec"><h4>${esc(PRODUCT.partner)}</h4>
         <div class="split small"><span>${esc(PRODUCT.name)} · 맞춤 ${(s.qty * 1000).toLocaleString()}매<br><span class="faint">${TYPES[s.type].name}${s.type === 'REORDER' ? ' · 판비 면제' : ''}</span></span><b class="num">${won(r.lines[0].gross)}</b></div></div>
-      <div class="app-sec"><dl class="kv"><dt>배송지</dt><dd>${STORE.branch} (평일 10~15시, 1층 하차)</dd><dt>쿠폰</dt><dd>${s.type === 'REORDER' ? '쓸 수 있는 쿠폰 없음' : '가장 큰 할인 1장 자동 적용'}</dd><dt>증빙</dt><dd>세금계산서 (사업자 기본)</dd></dl></div>
+      <div class="app-sec"><dl class="kv"><dt>배송지</dt><dd>${STORE.branch} (평일 10~15시, 1층 하차)</dd><dt>쿠폰</dt><dd>${s.type === 'REORDER' ? '쓸 수 있는 쿠폰 없음' : '할인이 가장 큰 조합 자동 적용 (상품 할인 쿠폰 1장)'}</dd><dt>증빙</dt><dd>세금계산서 (사업자 기본)</dd></dl></div>
       <div class="app-sec"><h4>결제 금액</h4>${ladderHtml(r)}
-        ${s.type !== 'REORDER' ? `<p class="note small">판비는 인쇄판 제작비입니다. 인쇄판은 제작 파트너가 보관하며 고객에게 넘겨드리지 않습니다.</p>` : '<p class="note note-spot small">같은 판으로 다시 찍어서 판비가 없어요. 파트너가 [인쇄 가능]을 누르기 전에는 바로 취소할 수 있어요(공제 0원).</p><p class="xsmall faint">판 보관 기간이 지나 판비가 다시 붙은 재주문은 취소를 확정 후 취소(본사 중재)로 받아, 판을 만들었으면 판비를 공제해요.</p>'}</div>
+        ${s.type !== 'REORDER' ? `<p class="note small">판비는 인쇄판 제작비입니다. 인쇄판은 제작 파트너가 보관하며 고객에게 넘겨드리지 않습니다.</p>
+          <p class="xsmall faint">판비는 상품 금액이라 상품 금액 바로 아래에 두고, 본사 상품 할인 쿠폰도 금액 비율대로 나눠 걸려요${plateShare ? `(판비 몫 −${won(plateShare)} → 판비 결제 ${won(ln.platePaid)})` : ''}. 디자인비 무료 기준(50만원)에는 판비가 들어가지 않아요.</p>` : '<p class="note note-spot small">같은 판으로 다시 찍어서 판비가 없어요. 파트너가 [인쇄 가능]을 누르기 전에는 바로 취소할 수 있어요(공제 0원).</p><p class="xsmall faint">판 보관 기간이 지나 판비가 다시 붙은 재주문은 취소를 확정 후 취소(본사 중재)로 받아, 판을 만들었으면 판비를 공제해요.</p>'}</div>
       <div class="app-sec"><h4>결제 수단</h4><div class="seg"><button data-act="payMethod" data-m="card" aria-pressed="${s.pay === 'card'}">카드</button><button data-act="payMethod" data-m="easy" aria-pressed="${s.pay === 'easy'}">간편결제</button><button data-act="payMethod" data-m="vbank" aria-pressed="${s.pay === 'vbank'}">가상계좌</button></div>
         ${s.pay === 'vbank' ? '<p class="xsmall faint">가상계좌는 입금이 확인된 뒤에 디자인이 시작돼요. 이 프로토타입에서는 바로 입금된 것으로 처리해요.</p>' : ''}</div>
       <div class="app-sec">
@@ -449,6 +479,10 @@
     const remakeDue = (from) => GC.claim.defectDeadline(from);
     const canRemake = ['DELIVERED', 'CONFIRMED', 'EXCHANGED'].includes(it) && !claimOpen();
     const remakeFrom = it === 'EXCHANGED' ? s.exchangedAt : s.deliveredAt;
+    // 끝난 클레임: 완료 결과 라벨 하나만 + 환불액·사유(요청서 '끝난 클레임', D30)
+    const lc = lastClaim();
+    const doneCard = lc && !s.after && !claimOpen() ? `<div class="app-card"><div class="split"><b class="small">${CLAIM_TYPE_NAME[lc.type]} 요청</b><span class="st nw ${['DISMISSED', 'REJECTED'].includes(lc.result) ? 'st-stop' : 'st-done'}">${esc(lc.label)}</span></div>
+          <p class="xsmall">${esc(lc.note || '')}</p></div>` : '';
     f.body.innerHTML = `
       <div class="app-pad">
         <div class="app-card">
@@ -476,9 +510,10 @@
           ${(it === 'CONFIRMED' || it === 'EXCHANGED') && !claimOpen() ? `<button class="btn btn-primary" data-act="startReorder">같은 디자인으로 재주문</button><p class="xsmall faint">식업에서 재주문하면 불량·오인쇄 때 다시 만들거나 환불해 드려요.</p>` : ''}
           ${canRemake && it !== 'DELIVERED' ? `<div class="split small"><span class="faint">${it === 'EXCHANGED' ? '재제작품' : '받은 상품'}이 불량이면 ${remakeFrom ? fmtDate(remakeDue(remakeFrom), false) : '3개월'}까지(안 날부터 30일)</span><button class="btn btn-sm nw" data-act="remakeReq">재제작 요청</button></div>` : ''}
         </div>
-        ${rm && rc !== 'CLAIM_COMPLETED' ? `<div class="app-card"><div class="split"><b class="small">재제작 요청</b><span class="st st-warn">${esc(REMAKE_LABEL[rc])}</span></div>
-          <dl class="kv small"><dt>사유</dt><dd>로고 위치가 3mm 밀렸어요(허용 ±2mm) · 사진 3장</dd><dt>처리</dt><dd>${{ RETURN_REQUESTED: '판매자가 사진을 확인하고 있어요', RETURN_INSPECTING: '확정본과 대조해 검수하고 있어요', RETURN_APPROVED: '재제작이 승인됐어요. 같은 확정 파일로 다시 만들어요', EXCHANGE_SHIPPED: '재제작품을 보냈어요' }[rc] || ''}</dd></dl>
+        ${rm && rc !== 'CLAIM_COMPLETED' ? `<div class="app-card"><div class="split"><b class="small">재제작 요청</b><span class="st st-warn">${esc(REMAKE_STEP[rc] || GC.claim.label('CLAIM_RETURN', rc))}</span></div>
+          <dl class="kv small"><dt>사유</dt><dd>로고 위치가 3mm 밀렸어요(허용 ${esc(posTol())}) · 사진 3장</dd><dt>처리</dt><dd>${{ RETURN_REQUESTED: '판매자가 사진을 확인하고 있어요', RETURN_INSPECTING: '확정본과 대조해 검수하고 있어요', RETURN_APPROVED: '재제작이 승인됐어요. 같은 확정 파일로 다시 만들어요', EXCHANGE_SHIPPED: '재제작품을 보냈어요' }[rc] || ''}</dd></dl>
           ${rc === 'RETURN_APPROVED' ? `<button class="btn btn-sm btn-ghost" data-act="remakeRefund">재제작 대신 환불받기</button>` : ''}</div>` : ''}
+        ${doneCard}
         ${s.source ? sourceCard(s) : (CONFIRMED_D.includes(d) && !s.afterChange ? `<div class="app-card"><b class="small">확정 확인서</b><span class="small muted">사양 요약과 동의 기록이 담긴 확인서를 이메일로 보냈어요.</span><button class="btn btn-sm btn-ext" data-act="buySource">원본 AI 파일 사기 · ${pv('design.source_file_fee')}</button></div>` : '')}
         ${canCancel ? `<div class="app-card"><b class="small">지금 취소하면</b>
           <div class="split small"><span>환불 예정</span><b class="num">${won(cp.refund)}</b></div>
@@ -487,7 +522,7 @@
           <button class="btn btn-sm btn-danger" data-act="cancelDesign">${cp.reorderFree ? '취소' : '주문 취소'}</button></div>` : ''}
         ${canChange || canCustomCancel ? `<div class="app-card"><b class="small">${s.afterChange ? '변경 중인 주문을 취소하고 싶어요' : '확정 후 바꾸고 싶어요'}</b><span class="xsmall muted">${s.afterChange ? '확정 후 변경으로 다시 시안 단계가 된 건이라 일반 취소가 아니라 확정 후 취소로 받아 본사가 중재해요.' : '파트너가 [인쇄 가능]을 누르기 전까지만 요청할 수 있고, 본사가 중재해요.'}</span>
           <div class="cluster">${canChange ? '<button class="btn btn-sm" data-act="afterReq" data-kind="change">확정 후 변경 요청</button>' : ''}${canCustomCancel ? '<button class="btn btn-sm btn-danger" data-act="afterReq" data-kind="cancel">취소 요청</button>' : ''}</div></div>` : ''}
-        ${s.after ? `<div class="note note-warn small">확정 후 ${s.after.kind === 'change' ? '변경' : '취소'} 요청을 본사가 확인하고 있어요. 그동안 인쇄는 멈춰 있어요.${s.after.kind === 'cancel' ? ` 공제는 디자인비와, 파트너가 판을 만들었다면 판비(최대 ${won(s.paid.plate)})예요.` : ''}<div style="margin-top:6px"><button class="btn btn-sm btn-ghost" data-act="afterWithdraw">요청 철회</button></div></div>` : ''}
+        ${s.after ? `<div class="note note-warn small">확정 후 ${s.after.kind === 'change' ? '변경' : '취소'} 요청을 본사가 확인하고 있어요. 그동안 인쇄는 멈춰 있어요.${s.after.kind === 'cancel' ? ` 공제는 디자인비와, 판매자가 판을 만들었다면 판비(최대 내신 판비 ${won(platePaid())} · 판비 줄 결제 금액)예요.` : ''}<div style="margin-top:6px"><button class="btn btn-sm btn-ghost" data-act="afterWithdraw">요청 철회</button></div></div>` : ''}
         <p class="xsmall faint">대화와 연락처 가림은 <a href="room.html">협의 룸</a> 화면에서 따로 볼 수 있어요.</p>
       </div>`;
   }
@@ -516,7 +551,7 @@
             ${pins.map((p) => `<span class="pin${p.resolved ? ' is-resolved' : ''}" style="left:calc(16px + (100% - 32px) * ${p.x});top:calc(18px + (100% - 36px) * ${p.y})"><span>${p.n}</span></span>`).join('')}
           </div>
         </div>
-        <p class="xsmall faint">사양 · 40×240mm · 크라프트 · 2도(PANTONE 3415C, 블랙) · ${(s.qty * 1000).toLocaleString()}매(±3%)${ver.note ? ` · 이 버전에서 바뀐 것: ${esc(ver.note)}` : ''}</p>
+        <p class="xsmall faint">사양 · 40×240mm · 크라프트 · 2도(PANTONE 3415C, 블랙) · ${(s.qty * 1000).toLocaleString()}매(${tol()})${ver.note ? ` · 이 버전에서 바뀐 것: ${esc(ver.note)}` : ''}</p>
         ${live ? '<p class="small muted">시안 위를 누르면 그 자리에 핀을 찍고 의견을 남길 수 있어요.</p>' : ''}
         ${s.pinDraft ? `<div class="app-card"><b class="small">핀 ${s.pinDraft.n} 의견</b>
           <div class="chips-row">${['로고를 조금 더 크게', '띠 색을 간판색에 맞춰 주세요', '전화번호 대신 인스타 계정 넣어 주세요'].map((t) => `<button class="tag" data-act="pinPreset" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>
@@ -548,7 +583,7 @@
     ['typo', '매장명·문구에 오탈자가 없는지 확인했어요'],
     ['contact', '전화번호·SNS 표기를 확인했어요'],
     ['color', '모니터와 실물 색이 다를 수 있다는 점을 알아요'],
-    ['qty', '수량·사이즈를 확인했어요(수량 ±3% 허용)'],
+    ['qty', () => `수량·사이즈를 확인했어요(허용 오차 ${tol()})`],
     ['nocancel', '확정하면 인쇄가 시작되어 취소·반품이 제한된다는 점에 따로 동의해요'],
   ];
   function approve(f, s) {
@@ -560,9 +595,10 @@
     f.body.innerHTML = `
       <div class="app-pad">
         <div class="app-card"><b>v${ver.v} ${opt}안으로 확정</b><div style="color:var(--ink-3)">${proofSvg(ver.v, opt)}</div>
-          <dl class="kv small"><dt>사양</dt><dd>40×240mm · 크라프트지 · 옵셋 2도</dd><dt>색상</dt><dd>PANTONE 3415C, 블랙</dd><dt>문구</dt><dd>${STORE.name} / ${ver.v >= 2 ? STORE.insta : STORE.phone}</dd><dt>수량</dt><dd>${(s.qty * 1000).toLocaleString()}매 (±3%)</dd><dt>예상 출고</dt><dd>파트너 인쇄 확인 후 영업일 ${PRODUCT.leadDays}일</dd></dl></div>
+          <dl class="kv small"><dt>사양</dt><dd>40×240mm · 크라프트지 · 옵셋 2도</dd><dt>색상</dt><dd>PANTONE 3415C, 블랙</dd><dt>문구</dt><dd>${STORE.name} / ${ver.v >= 2 ? STORE.insta : STORE.phone}</dd><dt>수량</dt><dd>${(s.qty * 1000).toLocaleString()}매 (${tol()})</dd><dt>예상 출고</dt><dd>파트너 인쇄 확인 후 영업일 ${PRODUCT.leadDays}일</dd></dl></div>
         <div class="app-card"><b class="small">모두 체크해야 확정할 수 있어요</b>
-          ${CHECKLIST.map(([k, t]) => `<label class="check"><input type="checkbox" data-change="chk" data-k="ap_${k}" ${s.checks['ap_' + k] ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div>
+          ${CHECKLIST.map(([k, t]) => `<label class="check"><input type="checkbox" data-change="chk" data-k="ap_${k}" ${s.checks['ap_' + k] ? 'checked' : ''}><span>${val(t)}</span></label>`).join('')}
+          <p class="xsmall faint">허용 오차는 결제 때의 상품 설정값이에요. 확정 기록에 함께 남아, 나중에 불량인지 판단하는 기준이 돼요.</p></div>
         <label class="check"><input type="checkbox" data-change="chk" data-k="ap_portfolio" ${s.checks.ap_portfolio ? 'checked' : ''}><span><span class="opt">(선택)</span> 이 디자인을 식업 브랜딩 사례에 써도 좋아요</span></label>
       </div>`;
     f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="doApprove" ${all ? '' : 'disabled'}>확정하기</button>`);
@@ -583,10 +619,10 @@
   function snapshotRows() {
     const s = S(); const ver = s.versions[s.versions.length - 1];
     return [
-      ['상품', `${PRODUCT.name} (결제 시점 사양)`], ['수량', `${(s.qty * 1000).toLocaleString()}매 ±3%`], ['인쇄', '옵셋 · 2도 · 앞면'],
+      ['상품', `${PRODUCT.name} (결제 시점 사양)`], ['수량·허용 오차', `${(s.qty * 1000).toLocaleString()}매 · ${tolText()} (결제 시점 상품 설정값)`], ['인쇄', '옵셋 · 2도 · 앞면'],
       ['색상', 'PANTONE 3415C, 블랙'], ['문구 전문', `${STORE.name} / ${ver && ver.v >= 2 ? STORE.insta : STORE.phone}`],
       ['확정 시안', ver ? `v${ver.v} ${s.approvedOpt || ver.opts[0]}안` : '-'], ['인쇄 원본 해시', s.hash ? s.hash.slice(0, 24) + '…' : '계산 중'],
-      ['동의', '오탈자·연락처·색상 차이·수량·취소 제한(약관 v1.0)'], ['포트폴리오', s.checks.ap_portfolio ? '동의' : '동의 안 함'],
+      ['동의', '오탈자·연락처·색상 차이·수량과 허용 오차·취소 제한(약관 v1.0)'], ['포트폴리오', s.checks.ap_portfolio ? '동의' : '동의 안 함'],
       ['확정 시각·IP', `${s.approvedAt ? fmtDate(s.approvedAt) : '-'} · 211.***.***.20`],
     ];
   }
@@ -636,7 +672,12 @@
       }
       if (d === 'ASSIGNED') actions.push(`<button class="btn btn-primary" data-act="startWork">작업 시작</button><p class="xsmall faint">[작업 시작] 전에는 시안 등록 버튼이 꺼져 있어요.</p>`);
       if (d === 'IN_PROGRESS' || d === 'REVISION') {
-        actions.push(`<div class="stack-sm small"><label class="check"><input type="checkbox" checked disabled><span>인쇄 영역·재단선 확인</span></label><label class="check"><input type="checkbox" checked disabled><span>오탈자 1차 확인</span></label><label class="check"><input type="checkbox" checked disabled><span>목업 첨부 · 인쇄 원본(AI) 첨부</span></label></div>
+        actions.push(`<table class="tbl small"><thead><tr><th>올릴 파일</th><th>형식 · 크기</th></tr></thead><tbody>
+            <tr><td class="nw">시안</td><td>PNG·JPG · 긴 변 2,000px+</td></tr>
+            <tr><td class="nw">목업</td><td>PNG·JPG (권장)</td></tr>
+            <tr><td class="nw">인쇄 원본</td><td><b>AI·PDF만</b> · 최대 ${pv('file.max_size_original')}</td></tr></tbody></table>
+          <p class="xsmall faint">인쇄 원본은 고객 비공개·해시 저장이고, PSD·SVG는 받지 않아요(협의 룸 첨부·고객 자체 파일에서만, 2026-10-16 확정). 원본이 없으면 고객 확정 버튼이 꺼져요.</p>
+          <div class="stack-sm small"><label class="check"><input type="checkbox" checked disabled><span>인쇄 영역·재단선 확인</span></label><label class="check"><input type="checkbox" checked disabled><span>오탈자 1차 확인</span></label><label class="check"><input type="checkbox" checked disabled><span>목업 첨부 · 인쇄 원본(AI·PDF) 첨부</span></label></div>
           <div class="cluster"><button class="btn btn-primary btn-ext" data-act="propose" ${s.asking ? 'disabled' : ''}>${d === 'REVISION' ? '수정본' : '시안'} v${ver.length + 1} 등록${ver.length === 0 ? ' (A·B 2안)' : ''}</button>
           ${d === 'IN_PROGRESS' && !s.asking ? '<button class="btn" data-act="askQ">고객에게 질문 남기기</button>' : ''}</div>
           ${s.asking ? '<p class="xsmall faint">"고객 답변 대기" 표시를 붙였어요. 답을 기다리는 동안 SLA가 멈추고, 답이 없으면 리마인드·보류 규칙이 돌아요.</p>' : d === 'REVISION' ? '<p class="xsmall faint">수정 요청을 받으면 따로 시작 버튼 없이 새 버전을 등록해요(REVISION → PROPOSED).</p>' : ''}`);
@@ -645,7 +686,7 @@
         actions.push(`<button class="btn btn-ghost" data-act="withdrawProposal">방금 올린 v${ver.length} 회수(고객이 보기 전 · 등록 10분 안)</button><p class="xsmall faint">회수하면 등록 전 상태로 돌아가요. 첫 버전을 회수하면 첫 시안 전달로 보지 않아요.</p>`);
       }
       if (d === 'FILE_REVIEW') actions.push(s.fixStarted ? `<button class="btn btn-primary" data-act="filePass">보정본 등록 · 고객 재확정 요청</button>` : `<div class="cluster"><button class="btn btn-primary" data-act="filePass">검수 통과 · 인쇄 미리보기 등록</button><button class="btn btn-danger" data-act="fileReject">반려 (해상도 부족)</button></div>`);
-      if (d === 'APPROVED') actions.push(`<table class="tbl small"><tbody><tr><td>인쇄 원본</td><td>오늘밥상_수저집_v${ver.length}.ai · 해시 ${esc((s.hash || '').slice(0, 12))}…</td></tr><tr><td>사양서</td><td>확정 스냅샷으로 자동 생성(PDF)</td></tr><tr><td>요청 출고일</td><td>파트너 [인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일 (내일 확인하면 ${fmtDate(GC.addBusinessDays(GC.addBusinessDays(app.clock.now(), 1), PRODUCT.leadDays), false)})</td></tr></tbody></table>
+      if (d === 'APPROVED') actions.push(`<table class="tbl small"><tbody><tr><td>인쇄 원본</td><td>오늘밥상_수저집_v${ver.length}.ai · 해시 ${esc((s.hash || '').slice(0, 12))}…</td></tr><tr><td>사양서</td><td>확정 스냅샷으로 자동 생성(PDF)</td></tr><tr><td>요청 출고일</td><td>파트너 [인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일 (확인 기한 ${pv('production.print_check_bd')} 끝에 확인하면 ${fmtDate(GC.addBusinessDays(GC.addBusinessDays(app.clock.now(), GC.Policy.get('production.print_check_bd')), PRODUCT.leadDays), false)})</td></tr></tbody></table>
         <div class="cluster"><button class="btn btn-primary" data-act="handOff" ${s.after ? 'disabled' : ''}>파트너에 전달</button><button class="btn" data-act="reconfirm" ${s.after ? 'disabled' : ''}>인쇄용 정리본이 확정 시안과 달라짐 · 고객 재확정</button></div>`);
       if (d === 'PREFLIGHT_REJECTED') actions.push(`<div class="note note-stop small">파트너 반려 사유: 별색 레이어가 분리되지 않았어요.</div><div class="cluster"><button class="btn btn-primary" data-act="reHandOff" ${s.after ? 'disabled' : ''}>레이어 정리해서 다시 전달</button>${s.type === 'OWN_FILE' ? '<button class="btn" data-act="backToFile">고객 파일 선택지로 되돌리기</button>' : '<button class="btn" data-act="needReconfirm">보이는 내용이 바뀜 · 고객 재확정</button>'}</div>`);
       if (s.hold) actions.push(`<div class="hold-banner">생산 보류 중이에요. ${s.after ? `고객이 확정 후 ${s.after.kind === 'change' ? '변경' : '취소'}을 요청했고 본사가 중재하고 있어요.` : '확정 후 변경 건이라 새 버전을 다시 전달할 때까지 보류를 켜 둬요.'}</div>`);
@@ -673,10 +714,10 @@
     const sp = settlePreview();
     let detail = '';
     const plateAsk = s.after && s.plateCost === null ? `<div class="cluster" style="margin-top:8px"><button class="btn btn-sm" data-act="plate" data-v="0">판 아직 안 만듦</button><button class="btn btn-sm btn-ext" data-act="plate" data-v="30000">판 만들었음 · 실비 30,000원 증빙</button><button class="btn btn-sm btn-ext" data-act="plate" data-v="70000">판 만들었음 · 실비 70,000원 증빙</button></div>
-      <p class="xsmall faint" style="margin-top:6px">판비 공제 = 취소 보상 = min(증빙한 실비, 고객이 낸 판비 ${won(s.paid.plate)}). 실비가 더 커도 낸 판비까지만이고, 증빙이 없으면 0원이에요.</p>` : s.after ? `<p class="small" style="margin-top:6px">답변: ${plateTxt(s.plateCost)}</p>` : '';
+      <p class="xsmall faint" style="margin-top:6px">판비 공제 = 취소 보상 = min(증빙한 실비, 고객이 낸 판비 ${won(platePaid())}). 고객이 낸 판비는 판비 줄 결제 금액(판비 ${won(s.paid.plate)}에서 파트너 할인·본사 쿠폰 안분을 뺀 값, 결제 스냅샷)이에요. 실비가 더 커도 이 금액까지만이고, 증빙이 없으면 0원이에요.</p>` : s.after ? `<p class="small" style="margin-top:6px">답변: ${plateTxt(s.plateCost)}</p>` : '';
     if (remakeOpen) {
-      detail = `<div class="panel"><div class="panel-h"><h2>재제작 요청 · 인쇄 불량(REMAKE)</h2><span class="st st-warn">${esc(REMAKE_LABEL[rc])}</span></div><div class="panel-b stack-sm">
-        <dl class="kv small"><dt>고객 사유</dt><dd>로고 위치가 3mm 밀렸어요(허용 ±2mm) · 사진 3장</dd><dt>대조 기준</dt><dd>확정 스냅샷 v${s.confirmedVer || s.versions.length} · 인쇄 원본 해시 ${esc((s.hash || '').slice(0, 12))}…</dd>
+      detail = `<div class="panel"><div class="panel-h"><h2>재제작 요청 · 인쇄 불량(REMAKE)</h2><span class="st st-warn">${esc(REMAKE_STEP[rc] || GC.sm.stateName('CLAIM_RETURN', rc))}</span></div><div class="panel-b stack-sm">
+        <dl class="kv small"><dt>고객 사유</dt><dd>로고 위치가 3mm 밀렸어요(허용 ${esc(posTol())}) · 사진 3장</dd><dt>대조 기준</dt><dd>확정 스냅샷 v${s.confirmedVer || s.versions.length} · 인쇄 원본 해시 ${esc((s.hash || '').slice(0, 12))}… · 허용 오차 ${tol()}</dd>
           <dt>받은 날</dt><dd>${s.remake.from === 'EXCHANGED' ? `재제작품 ${fmtDate(s.exchangedAt, false)}` : fmtDate(s.deliveredAt, false)} · 기한 ${fmtDate(GC.claim.defectDeadline(s.remake.from === 'EXCHANGED' ? s.exchangedAt : s.deliveredAt), false)}</dd>
           ${s.remake.inspectDue ? `<dt>검수 기한</dt><dd>${fmtDate(s.remake.inspectDue)} · 넘기면 재제작 승인으로 봐요(환불 아님)</dd>` : ''}</dl>
         <div class="cluster">
@@ -696,7 +737,7 @@
           ${plateAsk}</div>` : ''}
         <table class="tbl small"><thead><tr><th>인쇄 패키지</th><th>내용</th></tr></thead><tbody>
           <tr><td>인쇄 원본</td><td>AI · 아웃라인 · 재단 여백 3mm · 별색 레이어 분리</td></tr>
-          <tr><td>사양서</td><td>옵셋 2도 · PANTONE 3415C, 블랙 · ${(s.qty * 1000).toLocaleString()}매 ±3% · 문구 전문</td></tr>
+          <tr><td>사양서</td><td>옵셋 2도 · PANTONE 3415C, 블랙 · ${(s.qty * 1000).toLocaleString()}매 · 허용 오차 ${tol()}(확정 스냅샷) · 문구 전문</td></tr>
           <tr><td>패키지 해시</td><td>${esc((s.hash || '').slice(0, 16))}…</td></tr>
           <tr><td>머리말</td><td>식업 주문 전용 · GC-20261012-${s.round === 1 ? '0412' : '0977'}</td></tr></tbody></table>
         <div class="cluster">
@@ -704,7 +745,7 @@
           <button class="btn btn-primary" data-act="printable" ${!s.downloaded ? 'disabled' : ''} ${s.hold ? 'aria-disabled="true"' : ''}>인쇄 가능</button>
           <button class="btn btn-danger" data-act="preflightReject" ${!s.downloaded || s.hold ? 'disabled' : ''}>반려</button>
         </div>
-        ${s.hold ? '<p class="xsmall" style="color:var(--stop)">생산 보류 중이라 [인쇄 가능]을 눌러도 서버가 거부해요.</p>' : `<p class="xsmall faint">[인쇄 가능]을 누르면 출고 예정일이 ${fmtDate(GC.addBusinessDays(app.clock.now(), PRODUCT.leadDays), false)}로 정해지고, 이때부터 고객은 취소할 수 없어요.</p>`}`;
+        ${s.hold ? '<p class="xsmall" style="color:var(--stop)">생산 보류 중이라 [인쇄 가능]을 눌러도 서버가 거부해요.</p>' : `<p class="xsmall faint">[인쇄 가능]·[반려]는 패키지 받은 뒤 ${pv('production.print_check_bd')} 안에 눌러 주세요. [인쇄 가능]을 누르면 출고 예정일이 ${fmtDate(GC.addBusinessDays(app.clock.now(), PRODUCT.leadDays), false)}로 정해지고, 이때부터 고객은 취소할 수 없어요.</p>`}`;
     } else if (d === 'PREFLIGHT_REJECTED') {
       detail = `<div class="note note-warn small">반려했어요. 디자인팀이 고쳐서 다시 보내면 새 버전으로 확인해요. 예전 파일은 잠겨요.</div>${s.hold && s.after ? `<div class="hold-banner"><b>생산 보류 요청${s.after.kind === 'cancel' ? ' · 취소 중재 중' : ''}</b> · 판을 이미 만들었는지 답해 주세요. ${plateAsk}</div>` : ''}`;
     } else if (d === 'IN_PRODUCTION') {
@@ -716,24 +757,29 @@
     }
     const lockTag = s.after && s.after.kind === 'cancel' ? ' <span class="tag tag-stop">취소 중재 중</span>' : s.hold ? ' <span class="tag tag-stop">생산 보류</span>' : '';
     const comp = d === 'CANCELED' && s.refunded && s.refunded.plateToPartner;
+    // 끝난 클레임: 고객과 같은 완료 결과 라벨(D30)
+    const lcp = lastClaim();
+    const claimNote = lcp && !s.after && !remakeOpen ? `<div class="note small">${CLAIM_TYPE_NAME[lcp.type]} 클레임 · 완료 결과 <b>${esc(lcp.label)}</b> (${lcp.result}) · ${fmtDate(lcp.at)}${lcp.partnerNote ? ` · ${esc(lcp.partnerNote)}` : ''}</div>` : '';
     f.body.innerHTML = `
       <h3>맞춤 제작 주문</h3>
       <div class="seg" role="group" aria-label="맞춤 제작 큐">${tabs.map(([n, on]) => `<button aria-pressed="${on}">${n}${on ? ' 1' : ''}</button>`).join('')}</div>
       <p class="xsmall faint">앞의 다섯 탭은 디자인 요청 상태, '재제작' 탭은 클레임 상태 기준이에요(P-ORD-06).</p>
       <div class="tbl-wrap"><table class="tbl ptbl"><thead><tr><th>주문번호</th><th>품목</th><th class="num">수량</th><th>상태</th><th>유형</th></tr></thead>
         <tbody><tr class="is-hl"><td>GC-20261012-${s.round === 1 ? '0412' : '0977'}</td><td>${esc(PRODUCT.name)}</td><td class="num">${(s.qty * 1000).toLocaleString()}매</td><td><span class="st st-now">${GC.sm.stateName('ORDER_CUSTOM', it)}</span>${lockTag}${remakeOpen ? ' <span class="tag tag-warn">재제작</span>' : ''}</td><td>${TYPES[s.type].name}</td></tr></tbody></table></div>
+      ${claimNote}
       ${detail}
       <div class="panel"><div class="panel-h"><h2>이 주문의 정산 ${comp ? '' : '예정'}</h2><span class="xsmall faint">${comp ? '클레임 완료 정산 이벤트' : '구매 확정 뒤 주간 정산'}</span></div><div class="panel-b">
         ${comp ? `<table class="tbl small"><tbody>
           <tr><td>취소 보상(판비 공제분)</td><td class="num">${won(s.refunded.plateToPartner)}</td></tr>
           <tr><td>판매 수수료</td><td class="num">0원 (0%)</td></tr>
           <tr class="is-sum"><td>정산액</td><td class="num">${won(s.refunded.plateToPartner)}</td></tr></tbody></table>
-          <p class="xsmall faint">고객이 낸 판비 ${won(s.paid.plate)}와 증빙한 실비 ${won(s.plateCost)} 중 작은 금액이에요.</p>` : `<table class="tbl small"><tbody>
-          <tr><td>판매가(상품 + 판비)</td><td class="num">${won(sp.line.gross + sp.line.plateFee)}</td></tr>
-          <tr><td>파트너 즉시 할인</td><td class="num">−${won(sp.line.instantDisc)}</td></tr>
+          <p class="xsmall faint">고객이 낸 판비 ${won(platePaid())}(판비 줄 결제 금액)와 증빙한 실비 ${won(s.plateCost)} 중 작은 금액이에요.</p>` : `<table class="tbl small"><tbody>
+          <tr><td>상품 금액</td><td class="num">${won(sp.line.gross)}</td></tr>
+          <tr><td>판비 (상품 금액 · 1회)</td><td class="num">${won(sp.line.plateFee)}</td></tr>
+          <tr><td>파트너 즉시 할인</td><td class="num">−${won(sp.partnerDisc)}</td></tr>
           <tr><td>판매 수수료 ${sp.rate.rate}%${s.type === 'REORDER' ? ' (맞춤 13% − 재주문 3%p)' : ' (맞춤 요율)'}</td><td class="num">−${won(sp.ev.fee)}</td></tr>
           <tr class="is-sum"><td>정산 예정액</td><td class="num">${won(sp.ev.amount)}</td></tr></tbody></table>
-        <p class="xsmall faint">본사 쿠폰과 디자인비는 본사 몫이라 파트너 정산에 영향이 없어요.</p>`}</div></div>`;
+        <p class="xsmall faint">본사 쿠폰(판비 줄에 안분된 몫 포함)과 디자인비는 본사 몫이라 파트너 정산에 영향이 없어요.</p>`}</div></div>`;
   };
 
   /* ── 본사 운영 화면 ── */
@@ -746,7 +792,7 @@
       const cp = cancelPreview(); const cancel = s.after.kind === 'cancel';
       med = `<div class="panel"><div class="panel-h"><h2>확정 후 ${cancel ? '취소(CUSTOM_CANCEL)' : '변경'} 요청 · DR-24118</h2><span class="tag tag-stop">생산 보류 켜짐</span></div><div class="panel-b stack">
         <dl class="kv small"><dt>고객 사유</dt><dd>${cancel ? '매장 오픈이 미뤄져서 취소하고 싶어요' : '인스타 계정 철자를 바꾸고 싶어요'}</dd>${s.afterChange && cancel ? '<dt>건의 성격</dt><dd>확정 후 변경으로 다시 시안 단계가 된 건 → 일반 취소가 아니라 확정 후 취소(2026-10-14 확정)</dd>' : ''}
-          <dt>파트너 답변</dt><dd>${s.plateCost === null ? '<span class="st st-warn">기다리는 중</span>' : plateTxt(s.plateCost)}</dd><dt>공제 동의</dt><dd>요청할 때 받음(판비는 최대 낸 판비 ${won(s.paid.plate)})</dd><dt>판단 근거</dt><dd>확정 스냅샷 · 동의 기록 · 협의 룸 대화</dd></dl>
+          <dt>파트너 답변</dt><dd>${s.plateCost === null ? '<span class="st st-warn">기다리는 중</span>' : plateTxt(s.plateCost)}</dd><dt>공제 동의</dt><dd>요청할 때 받음(판비는 최대 고객이 낸 판비 ${won(platePaid())} · 판비 줄 결제 금액)</dd><dt>판단 근거</dt><dd>확정 스냅샷 · 동의 기록 · 협의 룸 대화</dd></dl>
         ${cancel ? `<table class="tbl small"><tbody><tr><td>환불 대상 금액</td><td class="num">${won(cp.total)}</td></tr>${cp.lines.map((l) => `<tr><td>공제 · ${esc(l.label)}</td><td class="num">−${won(l.amount)}</td></tr>`).join('')}<tr class="is-sum"><td>고객 환불</td><td class="num">${won(cp.refund)}</td></tr>${cp.plateToPartner ? `<tr><td>파트너 '취소 보상'(수수료 0%)</td><td class="num">${won(cp.plateToPartner)}</td></tr>` : ''}</tbody></table>` : '<p class="small">승인하면 기존 인쇄 패키지를 무효로 하고 파트너 다운로드 링크를 회수해요. 디자인 요청은 수정 단계로 돌아가고, 수정 횟수 1회를 써요. 새 버전은 고객이 다시 확정해야 하고, 그 버전을 다시 전달할 때까지 생산 보류를 켜 둬요.</p>'}
         <div class="cluster"><button class="btn btn-primary" data-act="mediate" data-r="ok" ${s.plateCost === null ? 'disabled' : ''}>${cancel ? '취소 승인' : '변경 승인'}</button><button class="btn" data-act="mediate" data-r="no">기각</button></div>
         <p class="xsmall faint">${s.plateCost === null ? '파트너가 판 제작 여부를 답하면 판단할 수 있어요. ' : ''}중재 결과는 최종이에요. ${cancel ? '기각하면 클레임이 바로 끝나고 이의 제기는 없어요.' : ''}</p></div></div>`;
@@ -758,14 +804,21 @@
         <p class="small">복원하면 이전 확정 버전·인쇄 원본 해시·사양 스냅샷을 다시 유효로 하고 그 패키지를 파트너에게 다시 전달해요. 디자인 요청은 '파트너 전달', 주문 항목은 '디자인 확정'이 되고 생산 보류가 풀려요.</p>
         <button class="btn btn-primary" data-act="restore">이전 확정본 복원</button></div></div>`;
     }
+    const ln = r.lines[0];
+    const claimRows = s.claims.map((c) => `<tr><td>${CLAIM_TYPE_NAME[c.type]}<br><span class="xsmall faint">${c.type}</span></td><td><span class="st ${['DISMISSED', 'REJECTED'].includes(c.result) ? 'st-stop' : 'st-done'}">${esc(c.label)}</span></td><td class="small nw">${c.result}</td><td class="small nw">${fmtDate(c.at)}</td></tr>`).join('');
     f.body.innerHTML = `<h3>분쟁 중재</h3>${med}
+      ${claimRows ? `<div class="panel"><div class="panel-h"><h2>이 주문의 끝난 클레임</h2><span class="xsmall faint">라벨은 완료 결과로(D30)</span></div><div class="panel-b">
+        <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>유형</th><th>라벨(고객·파트너 같음)</th><th>완료 결과(result)</th><th>완료 시각</th></tr></thead><tbody>${claimRows}</tbody></table></div></div></div>` : ''}
       <div class="panel money-flow"><div class="panel-h"><h2>이 주문의 돈 흐름</h2><span class="xsmall faint">결제 ${won(s.paid.total)}</span></div><div class="panel-b">
-        <table class="tbl small"><thead><tr><th>항목</th><th class="num">금액</th><th>누구 몫·부담</th></tr></thead><tbody>
-          <tr><td>상품 대금 + 판비</td><td class="num">${won(r.totals.gross + r.totals.plates)}</td><td>파트너 매출(맞춤 수수료 차감)</td></tr>
-          <tr><td>파트너 즉시 할인</td><td class="num">−${won(r.totals.instantDisc)}</td><td>파트너 부담</td></tr>
+        <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>항목</th><th class="num">금액</th><th>누구 몫·부담</th></tr></thead><tbody>
+          <tr><td>상품 금액</td><td class="num">${won(r.totals.gross)}</td><td>파트너 매출(맞춤 수수료 차감)</td></tr>
+          <tr><td>판비</td><td class="num">${won(r.totals.plates)}</td><td>파트너 매출 · 상품 금액 바로 아래 줄 · 50만원 판정 제외</td></tr>
+          <tr><td>파트너 즉시 할인</td><td class="num">−${won(r.totals.instantDisc)}</td><td>파트너 부담${ln.plateInstantDisc ? ` · 판비 몫 ${won(ln.plateInstantDisc)} 포함` : ' · 판비에는 안 걸림(판비 범위 미선택)'}</td></tr>
           <tr><td>디자인비</td><td class="num">${won(r.totals.designFee)}</td><td>본사 매출 · 정산 대상 아님</td></tr>
-          <tr><td>본사 쿠폰</td><td class="num">−${won(r.totals.hqDisc)}</td><td>본사 부담 · 파트너 몫 안 줄어듦</td></tr>
-          <tr><td>증빙</td><td colspan="2">파트너 명의 세금계산서(상품·판비) + 본사 명의(디자인비) 따로 발행</td></tr></tbody></table></div></div>`;
+          <tr><td>본사 상품 할인 쿠폰</td><td class="num">−${won(r.totals.hqDisc)}</td><td>본사 부담 · 판비 줄 안분 ${won(ln.plateHqAlloc)} 포함 · 파트너 몫 안 줄어듦</td></tr>
+          ${r.totals.designCoupon ? `<tr><td>디자인비 쿠폰</td><td class="num">−${won(r.totals.designCoupon)}</td><td>본사 부담 · 디자인비에만</td></tr>` : ''}
+          <tr><td><b>고객이 낸 판비</b>(판비 줄 결제 금액)</td><td class="num">${won(ln.platePaid)}</td><td>결제 스냅샷 · 확정 후 취소 판비 공제 상한</td></tr>
+          <tr><td>증빙</td><td colspan="2">파트너 명의 세금계산서(상품·판비) + 본사 명의(디자인비) 따로 발행</td></tr></tbody></table></div></div></div>`;
   };
 
   /* ── 시스템 화면 ── */
@@ -806,7 +859,7 @@
     toRequest() { S().cs = S().type === 'REORDER' ? 'reorder' : 'request'; app.log('user', `디자인 방식: ${TYPES[S().type].name}`); refresh(); },
     tpl(b) { S().template = b.dataset.k; refresh(); },
     async uploadLogo() { await app.ext({ service: 'AWS S3 · GuardDuty', what: '로고 파일 업로드와 악성코드 검사', lines: ['서명된 주소로 브라우저에서 바로 업로드', '검사를 통과해야 디자이너가 열 수 있어요', 'AI 파일은 격리된 변환 작업에서 미리보기 생성'] }); S().logo = true; refresh(); },
-    async uploadOwn() { await app.ext({ service: 'AWS S3 · GuardDuty · convert 작업', what: '인쇄 파일 업로드와 자동 점검', lines: ['최대 500MB, 이어 올리기 지원', '악성코드 검사 → 미리보기 변환(DB·결제 권한 없는 격리 작업)'] }); S().ownFile = true; refresh(); },
+    async uploadOwn() { await app.ext({ service: 'AWS S3 · GuardDuty · convert 작업', what: '인쇄 파일 업로드와 자동 점검', lines: [`최대 ${GC.Policy.get('file.max_size_original')}MB(file.max_size_original), 이어 올리기 지원`, '악성코드 검사 → 미리보기 변환(DB·결제 권한 없는 격리 작업)'] }); S().ownFile = true; refresh(); },
     async dlTemplate() { await app.ext({ service: 'AWS S3', what: '칼선 템플릿 내려받기', lines: ['5분짜리 서명 주소로만 내려받아요'] }); },
     chk(t) { S().checks[t.dataset.k] = t.checked; refresh(); },
     toCheckout() {
@@ -818,10 +871,12 @@
     async pay() {
       const s = S(); const r = calc();
       await app.ext({ service: '토스페이먼츠', what: '결제창 호출', lines: [`결제 금액 ${won(r.totals.pay)}`, '서버가 금액을 다시 계산해 화면 금액과 같을 때만 결제창을 열어요', '결과는 리다이렉트로 받고 PG 조회로 한 번 더 확인해요'], result: '결제가 승인된 것으로 처리해요' });
-      const fee = r.designFees[0].fee;
-      s.paid = { at: app.clock.now(), total: r.totals.pay, designFee: fee, plate: r.totals.plates };
+      const fee = r.designFees[0].fee; const ln = r.lines[0];
+      // 결제 스냅샷: 판비(목록 금액)·고객이 낸 판비(판비 줄 결제 금액, D20)·허용 오차(결제 시점 상품 설정값, D28)
+      s.paid = { at: app.clock.now(), total: r.totals.pay, designFee: fee, plate: r.totals.plates, platePaid: ln.platePaid, tolerance: tolNow() };
       s.paidCalc = r;
-      app.log('money', `결제 ${won(r.totals.pay)} = 파트너 몫 ${won(r.totals.gross + r.totals.plates - r.totals.instantDisc)} + 디자인비 ${won(fee)} − 본사 쿠폰 ${won(r.totals.hqDisc)}`);
+      app.log('money', `결제 ${won(r.totals.pay)} = 파트너 몫 ${won(r.totals.gross + r.totals.plates - r.totals.instantDisc)} + 디자인비 ${won(fee)} − 본사 상품 할인 쿠폰 ${won(r.totals.hqDisc)}`);
+      if (r.totals.plates) app.log('rule', `고객이 낸 판비 = 판비 ${won(ln.plateFee)}${ln.plateInstantDisc ? ` − 즉시 할인 ${won(ln.plateInstantDisc)}` : ''} − 본사 쿠폰 안분 ${won(ln.plateHqAlloc)} = ${won(ln.platePaid)} (판비 줄 결제 금액 · 결제 스냅샷 · 확정 후 취소 판비 공제 상한)`);
       app.setState('item', 'PAID', { by: '카드 승인' });
       app.notify('NOTI_ORDER_PAID', '고객', ['알림톡', '푸시'], '주문·결제 완료');
       if (s.type === 'REORDER') {
@@ -861,7 +916,7 @@
     startWork() { app.clock.pass(20 * 60000); goDesign('start', `${S().designer.name}이 작업 시작`); refresh(); },
     async propose() {
       const s = S();
-      await app.ext({ service: 'AWS S3 · convert 작업', what: `시안 v${s.versions.length + 1} 파일 올리기`, lines: ['시안 이미지(워터마크 자동), 목업, 인쇄 원본(고객 비공개)', '인쇄 원본은 해시를 저장해 나중에 전달 파일과 대조해요'] });
+      await app.ext({ service: 'AWS S3 · convert 작업', what: `시안 v${s.versions.length + 1} 파일 올리기`, lines: ['시안 이미지(워터마크 자동), 목업, 인쇄 원본(고객 비공개)', `인쇄 원본은 AI·PDF만, 최대 ${GC.Policy.get('file.max_size_original')}MB(file.max_size_original) · PSD·SVG는 서버가 거절해요`, '인쇄 원본은 해시를 저장해 나중에 전달 파일과 대조해요'] });
       const v = s.versions.length + 1;
       app.clock.pass(v === 1 ? 26 * 3600000 : 5 * 3600000);
       if (s.cs === 'done') s.cs = 'progress';
@@ -1041,7 +1096,7 @@
       const s = S();
       s.history = true; s.round = 2; s.type = 'REORDER'; s.cs = 'reorder'; s.checks = {};
       Object.assign(s, { paid: null, downloaded: false, after: null, hold: false, afterChange: false, plateCost: null, refunded: null, shipDue: null, deliveredAt: null,
-        remake: null, settled: false, exchangedAt: null, exchangeSettleDue: null, source: null, restoreDue: false, waitSince: null, notices: {} });
+        remake: null, settled: false, exchangedAt: null, exchangeSettleDue: null, source: null, restoreDue: false, waitSince: null, notices: {}, claims: [] });
       ['design', 'item', 'claim'].forEach((k) => { app.strips[k].current = null; app.strips[k].lastMainIdx = null; });
       app.strips.claim.hidden = true;
       app.log('user', '고객이 [같은 디자인으로 재주문]을 눌렀어요');
@@ -1066,7 +1121,7 @@
       const designPart = cp.lines.filter((l) => !/판비/.test(l.label)).reduce((a, l) => a + l.amount, 0);
       const body = kind === 'change'
         ? `<p class="small">요청하는 즉시 파트너 인쇄가 멈추고 본사가 중재해요. 승인되면 수정 횟수 1회를 쓰고(없으면 ${pv('design.extra_revision_fee')}), 새 버전을 다시 확정해야 해요. 파트너가 판을 이미 만들었고 바뀐 내용이 판에 들어가면 새 판비를 안내해요.</p>`
-        : `<p class="small">요청하는 즉시 파트너 인쇄가 멈추고 본사가 중재해요(자동 승인 없음).</p><table class="tbl small"><tbody><tr><td>디자인비 공제</td><td class="num">${won(designPart)}</td></tr><tr><td>판비 공제</td><td class="num">최대 ${won(s.paid.plate)}</td></tr></tbody></table><p class="xsmall faint">판비는 파트너가 판 제작 실비를 증빙했을 때만, 실비와 낸 판비 중 작은 금액을 공제해요. 이 공제 기준에 동의해야 요청돼요.</p>`;
+        : `<p class="small">요청하는 즉시 판매자 인쇄가 멈추고 본사가 중재해요(자동 승인 없음).</p><table class="tbl small"><tbody><tr><td>디자인비 공제</td><td class="num">${won(designPart)}</td></tr><tr><td>판비 공제</td><td class="num">최대 ${won(platePaid())}</td></tr></tbody></table><p class="xsmall faint">판비는 판매자가 판 제작 실비를 증빙했을 때만, 실비와 내신 판비(판비 줄 결제 금액 ${won(platePaid())} · 쿠폰 나눔 반영) 중 작은 금액을 공제해요. 이 공제 기준에 동의해야 요청돼요.</p>`;
       const ok = await app.confirm({ title: kind === 'change' ? '확정한 디자인을 바꿀까요?' : (s.afterChange ? '변경 중인 주문을 취소할까요?' : '확정한 주문을 취소할까요?'), body, ok: kind === 'change' ? '요청하기' : '공제 기준에 동의하고 요청하기', cancel: '그대로 두기' });
       if (!ok) return;
       s.after = { kind, at: app.clock.now() };
@@ -1074,7 +1129,7 @@
       if (!s.hold) { s.hold = true; app.log('rule', '생산 보류 플래그 켬 → 파트너 [인쇄 가능]을 서버가 막아요'); }
       else app.log('rule', '확정 후 변경 건이라 이미 켜진 생산 보류를 그대로 둬요');
       if (kind === 'cancel') {
-        showClaim('CLAIM_CANCEL', '확정 후 취소 클레임', 'claim_type CUSTOM_CANCEL · 자동 승인 없음 · 본사 중재 · C-STATE-02');
+        showClaim('CLAIM_CANCEL', '확정 후 취소 클레임', 'claim_type CUSTOM_CANCEL · 자동 승인 없음 · 본사 중재 · C-STATE-02', 'CUSTOM_CANCEL');
         app.setState('claim', 'CANCEL_REQUESTED', { by: `고객 [취소 요청]${s.afterChange ? ' · 확정 후 변경 건' : ''} · 공제 기준 동의` });
       }
       if (s.plateCost === null && d === 'APPROVED') { s.plateCost = 0; app.log('rule', '아직 파트너에 전달하기 전이라 판 제작이 없어요 → 판비 공제 없음'); }
@@ -1085,7 +1140,7 @@
     /* 고객이 중재 결과 전에 요청 철회 */
     afterWithdraw() {
       const s = S(); const a = s.after;
-      if (a.kind === 'cancel') app.go('claim', 'withdraw', { by: '고객이 확정 후 취소 요청 철회' });
+      if (a.kind === 'cancel') finishClaim('withdraw', '고객이 확정 후 취소 요청 철회', { note: `요청을 거두셨어요. 확정본대로 제작을 이어가요.`, partnerNote: s.afterChange ? '고객 철회 · 확정 후 변경 건이라 생산 보류는 새 버전 전달까지 유지' : '고객 철회 · 생산 보류 해제' });
       s.after = null;
       if (!s.afterChange) { s.hold = false; app.log('rule', '요청 철회 → 생산 보류 해제'); }
       else app.log('rule', '확정 후 변경 건이라 생산 보류는 새 버전을 전달할 때까지 그대로예요');
@@ -1097,7 +1152,8 @@
       if (v > 0) await app.ext({ service: 'AWS S3', what: '판 제작 증빙 올리기', lines: ['작업 기록·사진·실비 내역이 있어야 판비를 공제해요', `증빙한 실비 ${won(v)}`] });
       s.plateCost = v;
       app.log('user', `파트너 답변: ${plateTxt(v)}`);
-      if (v > 0) app.log('rule', `판비 공제 = min(실비 ${won(v)}, 낸 판비 ${won(s.paid.plate)}) = ${won(Math.min(v, s.paid.plate))}${v > s.paid.plate ? ' · 실비가 더 커도 낸 판비까지만' : ''}`);
+      const pp = platePaid();
+      if (v > 0) app.log('rule', `판비 공제 = min(실비 ${won(v)}, 고객이 낸 판비 ${won(pp)}) = ${won(Math.min(v, pp))}${v > pp ? ' · 실비가 더 커도 고객이 낸 판비(판비 줄 결제 금액)까지만' : ''}`);
       refresh();
     },
     async mediate(b) {
@@ -1119,7 +1175,9 @@
         refresh(); return;
       }
       if (!accept) {
-        app.go('claim', 'mediation_dismiss', { by: '본사 중재 · 확정 후 취소 기각(최종, 이의 제기 없음)' });
+        finishClaim('mediation_dismiss', '본사 중재 · 확정 후 취소 기각(최종, 이의 제기 없음)', {
+          note: '사유: 확정 기록·동의 내용과 판매자 답변을 본사가 확인해 기각했어요. 확정본대로 제작하고, 중재 결과는 최종이에요.',
+          partnerNote: s.afterChange ? '본사 기각 · 확정 후 변경 건이라 생산 보류는 새 버전 전달까지 유지' : '본사 기각 · 생산 보류 해제, 확정본대로 진행' });
         s.after = null; s.hold = s.afterChange;
         app.log('user', `본사 중재: 취소 기각 · ${s.afterChange ? '확정 후 변경 건이라 생산 보류는 새 버전 전달까지 유지' : '생산 보류 해제'}`);
         app.notify('NOTI_MEDIATION_DECIDED', '고객', ['알림톡', '이메일'], '취소 요청 기각 · 중재 결과는 최종');
@@ -1131,7 +1189,7 @@
       s.refunded = cp; s.hold = false; s.after = null; s.afterChange = false;
       goDesign('custom_cancel_approved', '본사 중재로 확정 후 취소');
       goItem('custom_cancel_approved');
-      app.go('claim', 'refund', { by: '환불 완료' });
+      finishClaim('refund', '환불 완료', { note: `환불 ${won(cp.refund)}${cp.deduction ? `(공제 ${won(cp.deduction)})` : ''} · 결제한 수단으로 돌려드렸어요.`, partnerNote: cp.plateToPartner ? `취소 보상 ${won(cp.plateToPartner)}(수수료 0%)` : '취소 보상 없음' });
       app.log('money', `환불 ${won(cp.refund)} · 공제 ${won(cp.deduction)}${cp.plateToPartner ? ` (판비 ${won(cp.plateToPartner)}은 파트너 '취소 보상' 정산 이벤트)` : ''}`);
       app.notify('NOTI_PARTNER_MEDIATION_DECIDED', '파트너', ['알림톡'], `확정 후 취소 승인${cp.plateToPartner ? ` · 취소 보상 ${won(cp.plateToPartner)}` : ''}`);
       refresh();
@@ -1172,11 +1230,11 @@
     /* ── 재제작(REMAKE, C-STATE-02): 디자인 요청 상태는 그대로, 클레임으로만 움직임 ── */
     async remakeReq() {
       const s = S(); const it = app.state('item');
-      const ok = await app.confirm({ title: '재제작을 요청할까요?', body: '<p class="small">확정본과 다른 인쇄나 허용 오차(수량 ±3%, 위치 ±2mm)를 넘는 불량만 받아요. 사진이 필수이고, 사진으로 충분하면 회수를 생략해요.</p><p class="small">기본은 같은 확정 파일로 다시 만들어 드리고, 원하면 환불을 고를 수 있어요.</p>', ok: '사진 올리고 요청하기' });
+      const ok = await app.confirm({ title: '재제작을 요청할까요?', body: `<p class="small">확정본과 다른 인쇄나 허용 오차(${tol()} · 결제 시점 상품 설정값)를 넘는 불량만 받아요. 이 허용 오차는 확정할 때 동의한 값으로 확정 기록에 저장돼 있어요.</p><p class="small">사진이 필수이고, 사진으로 충분하면 회수를 생략해요. 기본은 같은 확정 파일로 다시 만들어 드리고, 원하면 환불을 고를 수 있어요.</p>`, ok: '사진 올리고 요청하기' });
       if (!ok) return;
       await app.ext({ service: 'AWS S3 · GuardDuty', what: '불량 사진 3장 올리기', lines: ['최대 10장 · 악성코드 검사를 통과해야 파트너·디자인팀이 열어요'] });
       s.remake = { at: app.clock.now(), from: it, settledBefore: s.settled, inspectDue: null };
-      showClaim('CLAIM_RETURN', '재제작 클레임', 'claim_type REMAKE · 디자인 요청 상태는 바뀌지 않아요 · C-STATE-02');
+      showClaim('CLAIM_RETURN', '재제작 클레임', 'claim_type REMAKE · 디자인 요청 상태는 바뀌지 않아요 · C-STATE-02', 'REMAKE');
       app.setState('claim', 'RETURN_REQUESTED', { by: `고객 재제작 요청${it === 'EXCHANGED' ? '(재제작품이 또 불량, 그 물건 받은 날부터 기한)' : ''} · 사진 3장` });
       if (it === 'DELIVERED') app.log('rule', '클레임이 열린 항목은 자동 구매 확정에서 빠져요');
       app.notify('NOTI_PARTNER_CLAIM_NEW', '대성포장', ['알림톡', '이메일'], '재제작 요청 · 사진 확인');
@@ -1201,7 +1259,7 @@
       const ok = await app.confirm({ title: '재제작 대신 환불받을까요?', body: `<p>상품 대금·판비 ${won(amt)}을 환불해요.</p><p class="small">파트너 귀책 불량이라 할인 회수가 없어요. 디자인비는 귀책 판정(A-ORD-02)에 따라 따로 정해요.</p>`, ok: '환불받기' });
       if (!ok) return;
       await app.ext({ service: '토스페이먼츠', what: '결제 취소(판매자별 부분 취소)', lines: [`환불 ${won(amt)}`, '요청 키(클레임 ID + 회차)를 먼저 저장'] });
-      app.go('claim', 'refund', { by: '고객이 재제작 대신 환불 선택 · 환불 완료' });
+      finishClaim('refund', '고객이 재제작 대신 환불 선택 · 환불 완료', { note: `상품 대금·판비 ${won(amt)}을 결제한 수단으로 돌려드렸어요.`, partnerNote: s.settled ? '이미 정산된 항목이라 다음 정산 주기에 역분개' : '정산 전이라 정산 대상에서 빠짐' });
       goItem('remake_refund');
       if (s.settled) app.log('money', '이미 정산된 항목이라 다음 정산 주기에 역분개(마이너스 이벤트)해요');
       if (app.state('design') === 'SHIPPED') goDesign('complete', '연결 항목이 모두 반품 → 마지막 클레임이 끝날 때 완료');
@@ -1211,7 +1269,7 @@
       const s = S();
       await app.ext({ service: '스윗트래커', what: '재제작품 배송 완료 확인', lines: ['택배사가 기록한 배송 완료 시각을 그대로 써요'] });
       app.clock.pass(26 * 3600000);
-      app.go('claim', 'delivered', { by: '재제작품 배송 완료' });
+      finishClaim('delivered', '재제작품 배송 완료', { note: `같은 확정 파일로 다시 만든 재제작품을 ${fmtDate(app.clock.now(), false)}에 받았어요.`, partnerNote: s.remake.settledBefore ? '이미 정산된 항목이라 새 정산 없음' : '재제작품 배송 완료 7일 뒤 정산' });
       goItem('remake_delivered');
       s.exchangedAt = app.clock.now();
       const rs = GC.claim.remakeSettlement({ settledBefore: s.remake.settledBefore, deliveredAt: s.exchangedAt });
@@ -1228,7 +1286,7 @@
     goDesign('complete', '연결된 주문 항목이 모두 구매 확정');
     const sp = settlePreview();
     s.settled = true;
-    app.log('money', `정산 이벤트 생성: 구매 확정 ${won(sp.ev.amount)} (판매가 ${won(sp.line.gross + sp.line.plateFee)} − 할인 ${won(sp.line.instantDisc)} − 수수료 ${sp.rate.rate}% ${won(sp.ev.fee)})`);
+    app.log('money', `정산 이벤트 생성: 구매 확정 ${won(sp.ev.amount)} (상품 금액 ${won(sp.line.gross)} + 판비 ${won(sp.line.plateFee)} − 파트너 할인 ${won(sp.partnerDisc)} − 수수료 ${sp.rate.rate}% ${won(sp.ev.fee)})`);
     app.log('user', by);
     refresh();
   }

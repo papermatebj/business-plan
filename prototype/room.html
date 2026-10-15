@@ -79,9 +79,17 @@
     recallMin: 5, // 전송 취소 가능 시간(분) D-ROOM-02
     violDesign: 3, violCustomer: 5, // 반복 위반 운영 알림 D-ROOM-06
     reinquiryDays: 90, // 완료·취소 후 재문의 기간 D-ROOM-01
-    attachMaxMb: 100, // 룸 첨부 최대 크기 C-FILE-01
     openHour: 9, closeHour: 18, // 운영시간(평일)
     partnerReplyBd: 1, // 생산 협의 파트너 답변 기한(영업일) D-PRD-03
+  };
+  /* 파일 크기 한도는 엔진 정책값(C-FILE-01 · 2026-10-15 종류별 키). 룸 첨부 = file.max_size_chat, 디자이너 인쇄 원본 = file.max_size_original(AI·PDF만, 2026-10-16) */
+  const chatMax = () => GC.Policy.get('file.max_size_chat');
+  const CHAT_FMT = 'AI·PDF·PSD·PNG·JPG·SVG';
+  /* 발견·검사 불가 파일을 올린 사람에게 다시 올려 달라고 알리는 코드(C-FILE-01 · C-NOTI-01) */
+  const SCAN_NOTI = {
+    customer: { code: 'NOTI_FILE_SCAN_REJECTED', to: '고객(올린 사람)', ch: ['알림톡', '푸시', '알림센터'] },
+    design: { code: 'NOTI_INT_FILE_SCAN_REJECTED', to: '올린 디자이너', ch: ['관리자 알림센터'] },
+    partner: { code: 'NOTI_PARTNER_FILE_SCAN_REJECTED', to: '파트너(올린 사람)', ch: ['알림센터', '이메일(화면을 떠났을 때)'] },
   };
   const cpv = (text, label) => `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(label)} — 엔진 정책값 목록에 아직 없어 이 페이지 상수로 둠">${text}</span>`;
 
@@ -145,7 +153,7 @@
   const CFILES = [
     { id: 'svg', name: '오늘밥상_로고.svg', size: '48KB', mb: 0.05, type: 'SVG', outcome: 'ok', note: 'PNG 미리보기만' },
     { id: 'jpg', name: '간판사진.jpg', size: '3.2MB', mb: 3.2, type: 'JPG', outcome: 'ok', note: '이미지' },
-    { id: 'psd', name: '메뉴판_원본.psd', size: '140MB', mb: 140, type: 'PSD', outcome: 'toobig', note: '100MB 초과' },
+    { id: 'psd', name: '메뉴판_원본.psd', size: '140MB', mb: 140, type: 'PSD', outcome: 'toobig', note: '용량 초과 예시' },
     { id: 'bad', name: '견적서.pdf', size: '1.1MB', mb: 1.1, type: 'PDF', outcome: 'malware', note: '악성코드 예시' },
     { id: 'lock', name: '단가표_암호.pdf', size: '2.0MB', mb: 2, type: 'PDF', outcome: 'unscannable', note: '암호 걸린 PDF' },
     { id: 'slow', name: '간판_원본.ai', size: '38MB', mb: 38, type: 'AI', outcome: 'fail', note: '검사 엔진 오류 예시' },
@@ -332,12 +340,14 @@
         m.file.status = 'quarantine';
         addMsg({ ch, from: 'system', kind: 'sys', tone: 'stop', onlyFor: from, html: `${esc(spec.name)}에서 악성코드가 발견돼 격리했어요. 디자이너에게는 보이지 않아요. 다른 파일로 다시 올려 주세요.` });
         app.log('warn', `GuardDuty: ${esc(spec.name)} 악성코드 발견 → 격리 · 올린 사람에게만 안내`);
+        scanRejected(from, `${esc(spec.name)} 악성코드 발견 · 격리 · 다시 올려 주세요`);
         refresh(); return;
       }
       if (spec.outcome === 'unscannable') {
         m.file.status = 'unscannable';
         addMsg({ ch, from: 'system', kind: 'sys', tone: 'warn', onlyFor: from, html: `${esc(spec.name)} 파일은 암호가 걸려 있어 검사할 수 없어요. 암호를 풀거나 나눠서 다시 올려 주세요. 디자이너에게는 보이지 않아요.` });
         app.log('warn', `GuardDuty: ${esc(spec.name)} 검사 불가(암호 걸린 PDF) → 격리 · '발견이 아니면 통과'로 보지 않아요 · 올린 사람에게 다시 올려 달라고 안내`);
+        scanRejected(from, `${esc(spec.name)} 검사 불가 · 암호를 풀거나 나눠서 다시 올려 주세요`);
         refresh(); return;
       }
       if (spec.outcome === 'fail') {
@@ -363,6 +373,10 @@
       }, 1000);
     }, 800);
     return m;
+  }
+  function scanRejected(from, text) {
+    const n = SCAN_NOTI[from]; if (!n) return;
+    app.notify(n.code, n.to, n.ch, `${text}${from === 'customer' ? ' <span class="faint">(룸 안에서 바로 읽으면 알림톡은 보내지 않아요, C-NOTI-02)</span>' : ''}`);
   }
   function fileHtml(m, viewer) {
     const f = m.file; const ops = viewer === 'hq';
@@ -476,8 +490,9 @@
       hours: { k: '운영시간(밖이면 자동 응답)', v: cpv('평일 09~18시', '운영시간') },
       wait: { k: '무응답 리마인드·보류·취소', v: `${RM}·${HD}·${CD}일` },
       notice: { k: '예고 뒤 보류·취소까지', policy: 'notify.notice_min_hours' },
-      attach: { k: '첨부 최대 크기', v: cpv(`${RP.attachMaxMb}MB`, '룸 첨부 최대 크기') },
-      types: { k: '첨부 형식', v: 'AI·PDF·PSD·이미지·SVG' },
+      attach: { k: '첨부 최대 크기', policy: 'file.max_size_chat' },
+      types: { k: '첨부 형식', v: CHAT_FMT },
+      original: { k: '인쇄 원본(고객 비공개)', v: `AI·PDF만 · 최대 ${pv('file.max_size_original')}` },
       reinq: { k: '완료·취소 후 재문의', v: cpv(`${RP.reinquiryDays}일`, '재문의 기간') },
       keep: { k: '룸 기록 보관', v: '분쟁 3년 · 계약·확정 5년' },
       partner: { k: '파트너 답변 기한', v: cpv(`영업일 ${RP.partnerReplyBd}일`, '파트너 답변 기한') },
@@ -489,10 +504,10 @@
     }
     if (st === 'ON_HOLD') return app.turn('customer', `${HD}일 동안 답이 없어 보류됐어요. 룸에 메시지를 보내거나 [진행 재개]를 누르면 보류 전 상태로 돌아가요`, { hint: s.fired.cn ? `자동 취소 예고를 보냈어요. ${fmtDate(dueAt('cn', CD))} 이후에 자동 취소돼요(+1일).` : `그대로 두면 ${CD - 1}일째 자동 취소 예고가 가고, 예고 뒤 ${GC.Policy.get('notify.notice_min_hours')}시간이 지나야 취소돼요(+7일·+1일).`, rules: [R.wait, R.notice, { k: '보류 중', v: 'SLA 멈춤 · 업무량 제외' }, { k: '확정 후 변경 건', v: '자동 취소 대신 본사 복원' }] });
     if (st === 'BEFORE_ASSIGN') {
-      if (!f.upload0) return app.turn('customer', '배정 전에는 자료만 올릴 수 있어요. 입력 칸 왼쪽 [＋]로 로고 파일을 올려 보세요', { hint: '100MB가 넘는 파일, 악성코드가 나온 파일, 암호 걸린 PDF(검사 불가), 검사 실패 파일(확인 중)을 고르면 막히는 모습도 볼 수 있어요.', rules: [R.types, R.attach, { k: '디자이너에게 보이는 시점', v: '악성코드 검사 통과 뒤' }, { k: '검사 시간 초과(재검사 1회)', policy: 'file.scan_timeout_minutes' }, { k: 'SVG', v: 'PNG 미리보기로만' }] });
+      if (!f.upload0) return app.turn('customer', '배정 전에는 자료만 올릴 수 있어요. 입력 칸 왼쪽 [＋]로 로고 파일을 올려 보세요', { hint: `${GC.num(chatMax())}MB가 넘는 파일, 악성코드가 나온 파일, 암호 걸린 PDF(검사 불가), 검사 실패 파일(확인 중)을 고르면 막히는 모습도 볼 수 있어요.`, rules: [R.types, R.attach, { k: '디자이너에게 보이는 시점', v: '악성코드 검사 통과 뒤' }, { k: '검사 시간 초과(재검사 1회)', policy: 'file.scan_timeout_minutes' }, { k: 'SVG', v: 'PNG 미리보기로만' }] });
       return app.turn('design', '팀장이 담당 디자이너를 배정하세요. 배정되면 소개 카드가 룸에 올라가요', { rules: [{ k: '배정 기한', policy: 'design.sla.assign_hours' }, { k: '표시 이름', v: '실명 대신 활동명 가능' }, R.hours] });
     }
-    if (np === 0) return app.turn('design', '[시안 v1 올리기]를 누르세요. 목업 PDF는 검사·변환을 거쳐 미리보기가 생겨요', { rules: [{ k: '첫 시안 기한', policy: 'design.sla.first_draft_days' }, R.attach] });
+    if (np === 0) return app.turn('design', '[시안 v1 올리기]를 누르세요. 목업 PDF는 검사·변환을 거쳐 미리보기가 생겨요', { hint: '인쇄 원본은 AI·PDF만 받아요. PSD·SVG로 작업했으면 AI나 PDF로 저장해 올려요.', rules: [{ k: '첫 시안 기한', policy: 'design.sla.first_draft_days' }, R.original, R.attach] });
     if (st === 'OPEN') {
       if (np === 1) {
         if (!f.prdq) return app.turn('design', '[생산 협의] 탭에서 파트너에게 사양 질문 양식 “별색 가능한가요?”를 보내세요', { hint: '이 채널은 고객에게 보이지 않아요. 파트너에게는 요청 번호와 매장명만 보여요.', rules: [R.partner, { k: '파트너에게 보이는 고객 정보', v: '요청 번호·매장명만' }, R.digest] });
@@ -560,7 +575,7 @@
     if (st === 'READ_ONLY') return `<p class="small muted">완료 후 ${RP.reinquiryDays}일이 지나 읽기 전용이에요. 같은 디자인은 주문 상세의 [재주문]으로, 문의는 고객센터로 남겨 주세요.</p>`;
     const before = st === 'BEFORE_ASSIGN';
     const top = s.attachOpen
-      ? `<div class="attach-list"><span class="xsmall faint">올릴 파일 고르기 · AI·PDF·PSD·PNG·JPG·SVG, 최대 ${cpv(`${RP.attachMaxMb}MB`, '룸 첨부 최대 크기')}</span>${CFILES.map((x) => `<button class="btn btn-ext" data-act="attach" data-id="${x.id}"><span>${esc(x.name)}</span><span class="xsmall faint">${x.size} · ${x.note}</span></button>`).join('')}</div>`
+      ? `<div class="attach-list"><span class="xsmall faint">올릴 파일 고르기 · ${CHAT_FMT}, 최대 ${pv('file.max_size_chat')}</span>${CFILES.map((x) => `<button class="btn btn-ext" data-act="attach" data-id="${x.id}"><span>${esc(x.name)}</span><span class="xsmall faint">${x.size} · ${x.mb > chatMax() ? `${GC.num(chatMax())}MB 초과` : esc(x.note)}</span></button>`).join('')}</div>`
       : `<div class="ex-row"><span class="lbl">예시</span>${(st === 'DONE' ? [6, 1] : [0, 1, 2, 3, 4, 5]).map((i) => `<button class="btn btn-sm" data-act="exC" data-i="${i}" ${before ? 'disabled' : ''}>${esc(EX_C[i].label)}</button>`).join('')}</div>`;
     return `${top}<div class="composer"><button class="btn btn-sm" data-act="attachToggle" aria-label="파일 첨부" aria-expanded="${s.attachOpen}">＋</button>
       <input class="input" id="cMsg" data-input="draftC" data-send="sendC" value="${esc(s.draft.customer)}" placeholder="${before ? '배정되면 대화할 수 있어요 · 지금은 자료만' : st === 'DONE' ? '재문의 입력' : '메시지 입력'}" ${before ? 'disabled' : ''} aria-label="메시지">
@@ -741,13 +756,13 @@
     attachToggle() { S().attachOpen = !S().attachOpen; refresh(); },
     async attach(b) {
       const s = S(); const fx = CFILES.find((x) => x.id === b.dataset.id); s.attachOpen = false;
-      if (fx.mb > RP.attachMaxMb) {
-        await app.ext({ service: 'AWS S3', what: '업로드 주소 요청 · 크기 확인', lines: [`${esc(fx.name)} · ${fx.size}`, `presigned POST의 content-length-range 조건(최대 ${RP.attachMaxMb}MB)으로 S3가 거절해요`], result: '업로드가 거절된 것으로 처리해요' });
-        addMsg({ ch: 'room', from: 'system', kind: 'sys', tone: 'warn', onlyFor: 'customer', html: `${esc(fx.name)}(${fx.size})은 올릴 수 없어요. 협의 룸 첨부는 ${RP.attachMaxMb}MB까지예요. 용량을 줄이거나 PDF로 저장해 다시 올려 주세요.` });
+      if (fx.mb > chatMax()) {
+        await app.ext({ service: 'AWS S3', what: '업로드 주소 요청 · 크기 확인', lines: [`${esc(fx.name)} · ${fx.size}`, `presigned POST의 content-length-range 조건(최대 ${pv('file.max_size_chat')})으로 S3가 거절해요`], result: '업로드가 거절된 것으로 처리해요' });
+        addMsg({ ch: 'room', from: 'system', kind: 'sys', tone: 'warn', onlyFor: 'customer', html: `${esc(fx.name)}(${fx.size})은 올릴 수 없어요. 협의 룸 첨부는 ${GC.num(chatMax())}MB까지예요. 용량을 줄이거나 PDF로 저장해 다시 올려 주세요.` });
         app.log('warn', `첨부 크기 초과(${fx.size}) → S3가 업로드 거절`);
         refresh(); return;
       }
-      await app.ext({ service: 'AWS S3 · GuardDuty · convert 작업', what: '첨부 파일 올리기', lines: [`${esc(fx.name)} · ${fx.size}`, '서버가 권한·형식을 확인하고 10분짜리 업로드 주소(presigned POST)를 줘요', '올린 뒤 확장자·MIME·파일 서명 확인 → 악성코드 검사', fx.type === 'SVG' ? 'SVG는 화면에 직접 띄우지 않고 PNG 미리보기만 만들어요' : '통과하면 격리된 convert 작업이 미리보기를 만들어요'], result: { malware: '검사에서 악성코드가 나온 것으로 처리해요', unscannable: '암호가 걸려 검사할 수 없다는 결과로 처리해요', fail: '검사 엔진 오류로 실패하고, 재검사도 실패한 것으로 처리해요' }[fx.outcome] || '검사를 통과한 것으로 처리해요' });
+      await app.ext({ service: 'AWS S3 · GuardDuty · convert 작업', what: '첨부 파일 올리기', lines: [`${esc(fx.name)} · ${fx.size}`, `서버가 권한·형식(${CHAT_FMT})을 확인하고 10분짜리 업로드 주소(presigned POST)를 줘요`, '올린 뒤 확장자·MIME·파일 서명 확인 → 악성코드 검사', fx.type === 'SVG' ? 'SVG는 화면에 직접 띄우지 않고 PNG 미리보기만 만들어요' : '통과하면 격리된 convert 작업이 미리보기를 만들어요'], result: { malware: '검사에서 악성코드가 나온 것으로 처리해요', unscannable: '암호가 걸려 검사할 수 없다는 결과로 처리해요', fail: '검사 엔진 오류로 실패하고, 재검사도 실패한 것으로 처리해요' }[fx.outcome] || '검사를 통과한 것으로 처리해요' });
       app.clock.pass(MIN);
       if (app.state('room') === 'BEFORE_ASSIGN') s.f.upload0 = true;
       addFile('customer', 'room', fx);
@@ -841,7 +856,7 @@
     },
     async propose() {
       const s = S(); const v = s.proofs.length + 1;
-      await app.ext({ service: 'AWS S3 · GuardDuty · convert 작업', what: `시안 v${v}와 목업 PDF 올리기`, lines: ['브라우저에서 S3로 바로 올리기(presigned POST)', '악성코드 검사 → 격리된 convert 작업이 PDF를 PNG 미리보기로', '시안 이미지는 워터마크 자동 · 인쇄 원본은 고객 비공개'] });
+      await app.ext({ service: 'AWS S3 · GuardDuty · convert 작업', what: `시안 v${v}와 목업 PDF 올리기`, lines: ['브라우저에서 S3로 바로 올리기(presigned POST)', '악성코드 검사 → 격리된 convert 작업이 PDF를 PNG 미리보기로', '시안 이미지는 워터마크 자동', `인쇄 원본은 AI·PDF만 · 최대 ${pv('file.max_size_original')} · 고객 비공개 · 해시 저장(D-ROOM-03)`] });
       app.clock.pass(v === 1 ? 90 * MIN : 120 * MIN);
       s.proofs.push({ v, at: app.clock.now(), note: v === 1 ? '요청서 반영 · 로고 크게 · 상단 띠 3415C' : `전화번호 → 인스타 계정 ${STORE.insta}` });
       addMsg({ ch: 'room', from: 'design', kind: 'proof', v });

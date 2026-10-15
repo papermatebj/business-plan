@@ -1,0 +1,232 @@
+[
+ {
+  "act": "pmode",
+  "attr": "data-k=\"both\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"desc\""
+ },
+ {
+  "act": "cleanDesc"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"opt\""
+ },
+ {
+  "act": "optAdd"
+ },
+ {
+  "act": "addonAdd"
+ },
+ {
+  "act": "addonAdd"
+ },
+ {
+  "eval": "document.querySelector('#gc-device').innerText.includes('조합 8개') && document.querySelectorAll('#gc-device .ad-tbl tbody tr').length === 2"
+ },
+ {
+  "eval": "document.querySelector('#gc-device .opt-tbl').scrollIntoView({block:'start'})",
+  "shot": "catalog-ad-02-opt-addon"
+ },
+ {
+  "eval": "document.querySelector('#gc-device .ad-tbl').scrollIntoView({block:'center'})"
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"ship\""
+ },
+ {
+  "act": "shipTpl",
+  "attr": "data-k=\"basic\""
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"custom\""
+ },
+ {
+  "act": "upTemplate",
+  "after": 400
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"docs\""
+ },
+ {
+  "act": "upDoc",
+  "attr": "data-k=\"test\"",
+  "after": 400
+ },
+ {
+  "act": "pstep",
+  "attr": "data-k=\"submit\""
+ },
+ {
+  "act": "requestReview"
+ },
+ {
+  "role": "hq"
+ },
+ {
+  "check": "rv_cat"
+ },
+ {
+  "check": "rv_word"
+ },
+ {
+  "check": "rv_doc"
+ },
+ {
+  "check": "rv_img"
+ },
+ {
+  "check": "rv_tpl"
+ },
+ {
+  "check": "rv_mode"
+ },
+ {
+  "check": "rv_desc"
+ },
+ {
+  "act": "approve"
+ },
+ {
+  "role": "partner"
+ },
+ {
+  "act": "promoPlate",
+  "attr": "data-k=\"1\""
+ },
+ {
+  "act": "promoSave",
+  "after": 300
+ },
+ {
+  "eval": "document.querySelector('#gc-device [data-act=\"promoPlate\"]').scrollIntoView({block:'center'})",
+  "shot": "catalog-ad-04-promo-plate"
+ },
+ {
+  "eval": "document.querySelector('#gc-device').innerText.includes('50,000원 → 45,000원')"
+ },
+ {
+  "role": "customer"
+ },
+ {
+  "act": "cs",
+  "attr": "data-to=\"search\""
+ },
+ {
+  "type": {
+   "sel": "#q",
+   "text": "수저집"
+  },
+  "after": 300
+ },
+ {
+  "act": "doSearch"
+ },
+ {
+  "act": "openP",
+  "attr": "data-id=\"mine\""
+ },
+ {
+  "eval": "(()=>{const e=document.querySelector('#osel1');e.value='블랙';e.dispatchEvent(new Event('change',{bubbles:true}));})()",
+  "after": 300
+ },
+ {
+  "eval": "(()=>{const e=document.querySelector('#osel0');e.value='두꺼운 50g';e.dispatchEvent(new Event('change',{bubbles:true}));})()",
+  "after": 300
+ },
+ {
+  "eval": "document.querySelector('#osel2 option[value=\"벌크\"]').disabled && document.querySelector('#osel2 option[value=\"벌크\"]').textContent.includes('품절')"
+ },
+ {
+  "eval": "(()=>{const e=document.querySelector('#osel2');e.value='100매 묶음';e.dispatchEvent(new Event('change',{bubbles:true}));})()",
+  "after": 300
+ },
+ {
+  "eval": "document.querySelector('#gc-device .sel-line').innerText.includes('두꺼운 50g / 블랙 / 100매 묶음')"
+ },
+ {
+  "act": "addq",
+  "attr": "data-d=\"1\"",
+  "idx": 0
+ },
+ {
+  "act": "addq",
+  "attr": "data-d=\"1\"",
+  "idx": 0
+ },
+ {
+  "eval": "document.querySelector('#gc-device .osel').scrollIntoView({block:'start'})",
+  "shot": "catalog-ad-05-pdp-options-addon"
+ },
+ {
+  "eval": "(()=>{const t=document.querySelector('#gc-device .calc').innerText;return t.includes('추가 구성품 12,000원 포함') && t.includes('추가 구성품 제외');})()"
+ },
+ {
+  "act": "selClear"
+ },
+ {
+  "eval": "!document.querySelector('#gc-device .sel-line') && [...document.querySelectorAll('#gc-device [data-act=\"addq\"]')].every(b=>b.disabled)"
+ },
+ {
+  "eval": "document.querySelector('#gc-device .osel').scrollIntoView({block:'start'})"
+ },
+ {
+  "eval": "(()=>{const e=document.querySelector('#osel0');e.value='기본 40g';e.dispatchEvent(new Event('change',{bubbles:true}));})()",
+  "after": 300
+ },
+ {
+  "eval": "(()=>{const e=document.querySelector('#osel1');e.value='크라프트';e.dispatchEvent(new Event('change',{bubbles:true}));})()",
+  "after": 300
+ },
+ {
+  "eval": "(()=>{const e=document.querySelector('#osel2');e.value='100매 묶음';e.dispatchEvent(new Event('change',{bubbles:true}));})()",
+  "after": 300
+ },
+ {
+  "act": "addq",
+  "attr": "data-d=\"1\"",
+  "idx": 0
+ },
+ {
+  "act": "addq",
+  "attr": "data-d=\"1\"",
+  "idx": 0
+ },
+ {
+  "act": "addCart",
+  "attr": "data-id=\"mine\"",
+  "shot": "catalog-ad-07-added"
+ },
+ {
+  "eval": "(()=>{const t=document.querySelector('#gc-device').innerText;return t.includes('추가 구성품 · 이쑤시개 개별포장 1,000개 × 2') && t.includes('98,400원');})()"
+ },
+ {
+  "click": "#gc-device .phone-top .back"
+ },
+ {
+  "act": "corder"
+ },
+ {
+  "act": "addq",
+  "attr": "data-d=\"1\"",
+  "idx": 0
+ },
+ {
+  "eval": "(()=>{const dts=[...document.querySelectorAll('#gc-device .calc dt')].map(d=>d.firstChild.textContent.trim());return dts.slice(0,3).join('|');})()"
+ },
+ {
+  "eval": "(()=>{const t=document.querySelector('#gc-device .calc').innerText;return t.includes('판비 5,000원 포함') && t.includes('360,000원');})()"
+ },
+ {
+  "eval": "document.querySelector('#gc-device .calc').scrollIntoView({block:'center'})",
+  "shot": "catalog-ad-08-corder"
+ },
+ {
+  "act": "toMethod"
+ }
+]
