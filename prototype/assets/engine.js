@@ -58,6 +58,10 @@
     { key: 'claim.objection_days', def: 3, unit: '일', group: '주문·클레임·CS', label: '파트너 거부 후 이의 제기 기한' },
     { key: 'claim.tolerance', def: '수량 ±3% / 위치 ±2mm', unit: '', text: true, group: '주문·클레임·CS', label: '불량 판정 허용 오차(상품마다 더 엄격하게만, 확정 때 동의)' },
     { key: 'order.partner_change_reply_days', def: 7, unit: '일', group: '주문·클레임·CS', label: '제작 파트너 변경 제안에 답할 기한(무응답이면 전액 환불)' },
+    // 2026-10-16 취소·환불(D57·D58·D59)
+    { key: 'order.overdue_grace_bd', def: 1, unit: '영업일', group: '주문·클레임·CS', label: '출고 지연 판정 유예(약속 출고일·출고 예정일 뒤 이 기간까지 송장이 없으면 일반은 [바로 취소], 맞춤은 [취소 요청])' },
+    { key: 'claim.refund_due_bd', def: 3, unit: '영업일', group: '주문·클레임·CS', label: '환불 기한(법정 — 반품은 회수 완료 뒤, 취소는 승인·확정 뒤부터)', draft: true },
+    { key: 'claim.refund_delay_rate', def: 15, unit: '%', group: '주문·클레임·CS', label: '환불 지연배상금 연 이율(법정 값이라 낮추지 않음)', draft: true },
     // 정산
     { key: 'settlement.payout_min', def: 1000, unit: '원', group: '정산', label: '이 금액 미만이면 다음 주기로 이월' },
     { key: 'settlement.account_change_hold_hours', def: 24, unit: '시간', group: '정산', label: '정산 계좌 변경 후 첫 지급 보류' },
@@ -512,6 +516,14 @@
     const kids = list.filter((it) => it.addonOf && full.includes(it.addonOf) && !req.some((r) => r.id === it.id));
     return { cascade: kids.filter((k) => !shippedIds.includes(k.id)).map((k) => k.id), toReturn: kids.filter((k) => shippedIds.includes(k.id)).map((k) => k.id), partialParents };
   }
+  /** 출고 지연 판정 시각(P-ORD-03 · 2026-10-16 D58·D59): 약속 출고일(맞춤은 출고 예정일, 지연 안내·기각 때 받은 새 예정일이 있으면 그 날)
+   *  + order.overdue_grace_bd 영업일, 그날 끝. 출고일이 정해질 때 계산해 저장 */
+  function overdueAt(promisedAt) {
+    const d = addBusinessDays(promisedAt, Policy.get('order.overdue_grace_bd'));
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+  }
+  /** 송장이 없고 판정 시각을 넘겼으면 출고 지연 — 일반 상품·추가 구성품은 [바로 취소](무단 지연 기록), 맞춤 제작은 [취소 요청](DELAY_CANCEL) */
+  function isOverdue({ promisedAt, now, shipped = false }) { return !shipped && +new Date(now) > +overdueAt(promisedAt); }
   function designFeeText(d) {
     if (d.type !== 'CUSTOM') return '템플릿·자체 파일·재주문은 디자인비 없음';
     if (d.reason === 'threshold') return `맞춤 품목 ${won(d.basis)} → 무료(기준 ${won(Policy.get('design.free_threshold'))})`;
@@ -520,41 +532,104 @@
     return `맞춤 품목 ${won(d.shortfall)} 더 담으면 디자인비 무료`;
   }
 
-  /* ───────────── 취소·부분 취소 환불 (C-PAY-02) ───────────── */
+  /* ───────────── 취소·부분 취소 환불 (C-PAY-02, 2026-10-16 D53) ───────────── */
+  /** 항목의 결제 금액(결제 스냅샷의 줄 결제 금액) = 파트너 할인·본사 상품 할인 쿠폰 안분 뒤 상품 대금 + 판비 */
+  const linePaid = (l) => l.afterPartner + l.plateAfterPartner - l.hqAlloc;
+  /** 맞춤 항목의 디자인비 몫(품목별 — 첫 품목 design.fee, 추가 품목 design.multi_item_fee, 디자인비 쿠폰 안분을 뺀 낸 금액).
+   *  50만원 무료는 0원, 멤버십 이용권은 첫 품목만 0원(추가 품목은 그대로 냄, D60) */
+  function designShare(designFees, id) {
+    const d = designFees.find((x) => x.itemIds.includes(id));
+    if (!d || d.type !== 'CUSTOM') return 0;
+    const i = d.itemIds.indexOf(id);
+    const list = i === 0 ? Policy.get('design.fee') : Policy.get('design.multi_item_fee');
+    if (d.reason === 'paid') return list - (d.couponAlloc[i] || 0);
+    if (d.reason === 'voucher') return i === 0 ? 0 : list;
+    if (d.reason === 'locked') return d.itemCount ? Math.floor(d.fee / d.itemCount) : 0;
+    return 0;
+  }
   /**
-   * 결제 시점 스냅샷(input)으로 남은 항목을 다시 계산하고, 결제 잔액과의 차이를 환불합니다.
-   * paid = { pg, points }, refunded = { pg, points }, cancelIds = [itemId], deduction = 공제액
-   * mode = 'before_ship'(출고 전 취소: 0원 이하면 막음) | 'return'(반품: 0원 환불 + 차액 동의)
+   * 취소·반품하는 항목에 낸 금액을 그대로 돌려줍니다. 남은 항목은 다시 계산하지 않습니다(구간 단가·쿠폰 최소 주문·조건부 무료배송·50만원 무료를 다시 보지 않고 할인을 회수하지 않음).
+   * input = 결제 시점 스냅샷(결제 때 수량 그대로), paid = { pg, points }, refunded = { pg, points }
+   * cancel = [{ id, qty? }] (qty 없으면 남은 수량 전부) — 예전처럼 cancelIds = [id]도 받음
+   * alreadyCanceled = { [id]: 이미 취소·반품한 수량 }, deduction = 공제액(디자인 단계 공제·판비 공제·고객 부담 반품 배송비)
+   * mode = 'before_ship'(출고 전 취소: 남은 수량의 구간 단가가 바뀌면 막음 — 전체 취소 후 재주문 안내) | 'return'(반품: 막지 않음)
+   * restoreDesignCoupon = 디자인비 쿠폰을 쓴 묶음이 모두 취소될 때 첫 시안 전이라 쿠폰을 돌려줄지(디자인 단계 규칙은 호출하는 쪽이 정함)
+   * → { blocked, reason?, last, refund, pointRefund, pgRefund, itemsRefund, designRefund, shipRefund, deduction, lines, couponsRestored, shortfall?, balance, remainingTotal }
    */
-  function partialCancel({ input, paid, refunded = { pg: 0, points: 0 }, cancelIds, deduction = 0, mode = 'before_ship' }) {
+  function partialCancel({ input, paid, refunded = { pg: 0, points: 0 }, cancel, cancelIds, alreadyCanceled = {}, deduction = 0, mode = 'before_ship', restoreDesignCoupon = false }) {
     const original = calcOrder(input);
-    const remainingItems = input.items.filter((it) => !cancelIds.includes(it.id));
+    const req = (cancel || (cancelIds || []).map((id) => ({ id }))).map((c) => (typeof c === 'string' ? { id: c } : c));
     const balPoints = paid.points - refunded.points;
     const balPg = paid.pg - refunded.pg;
     const balance = balPoints + balPg;
-    if (remainingItems.length === 0) {
+    const before = (id) => alreadyCanceled[id] || 0;
+    const lines = []; const blockedBy = [];
+    req.forEach(({ id, qty }) => {
+      const l = original.lines.find((x) => x.id === id);
+      if (!l) return;
+      const left = l.qty - before(id);
+      const q = qty == null ? left : Math.min(qty, left);
+      if (q <= 0) return;
+      const all = q >= left;
+      const it = (input.items || []).find((x) => x.id === id);
+      // 출고 전 부분 취소로 남은 수량의 구간 단가가 바뀌면 막음(같은 구간이면 그대로) — 반품은 막지 않음
+      if (!all && mode === 'before_ship' && it && it.tiers && !l.addonOf && tierPrice(it.tiers, left) !== tierPrice(it.tiers, left - q)) blockedBy.push({ id, left, after: left - q });
+      const paidAll = linePaid(l);
+      const gone = Math.floor((paidAll * before(id)) / l.qty);
+      const amount = all ? paidAll - gone : Math.floor((paidAll * q) / l.qty); // 끝전은 남는 항목에 — 마지막 수량 때 함께
+      lines.push({ id, qty: q, all, amount, designShare: all && before(id) === 0 ? designShare(original.designFees, id) : 0 });
+    });
+    if (blockedBy.length) return { blocked: true, reason: 'TIER_CHANGE', blockedBy, balance, refund: 0, pointRefund: 0, pgRefund: 0, lines };
+    const goneAfter = (id) => before(id) + (lines.find((x) => x.id === id && x.all) ? original.lines.find((x) => x.id === id).qty : 0);
+    const fullyGone = (l) => goneAfter(l.id) >= l.qty;
+    const fullyGoneBefore = (l) => before(l.id) >= l.qty;
+    const remaining = original.lines.filter((l) => !fullyGone(l));
+    // 배송비: 다시 계산하지 않음. 출고 전에 배송 묶음의 항목이 모두 취소되면 낸 배송비를 돌려줌(반품 배송비는 C-PRICE-03)
+    let shipRefund = 0; const couponsRestored = [];
+    original.shippingLines.forEach((s) => {
+      const gl = original.lines.filter((l) => l.shipKey === s.shipKey);
+      if (gl.every(fullyGone) && !gl.every(fullyGoneBefore)) {
+        if (mode === 'before_ship') shipRefund += s.fee;
+        if (s.coupon > 0) couponsRestored.push({ kind: 'ship', shipKey: s.shipKey, name: (input.shipCoupons || {})[s.shipKey] ? input.shipCoupons[s.shipKey].name : '배송비 쿠폰' });
+      }
+    });
+    // 쿠폰: 그 항목에만 걸린 쿠폰은 돌려주고, 여러 항목에 나눠 걸린 쿠폰은 걸린 항목이 모두 취소·반품될 때 돌려줌(최소 주문이 깨져도 회수 안 함)
+    const covered = (pred) => original.lines.filter(pred);
+    const hqCov = covered((l) => l.hqAlloc > 0);
+    if (hqCov.length && hqCov.every(fullyGone) && !hqCov.every(fullyGoneBefore)) couponsRestored.push({ kind: 'hq', name: input.hqCoupon.name });
+    original.partnerCouponLines.forEach((pc) => {
+      const cov = covered((l) => l.partnerId === pc.partnerId && (l.partnerCouponDisc + l.platePartnerCouponDisc) > 0);
+      if (cov.length && cov.every(fullyGone) && !cov.every(fullyGoneBefore)) couponsRestored.push({ kind: 'partner', partnerId: pc.partnerId, name: pc.name });
+    });
+    const dcg = original.totals.designCouponGroup;
+    if (dcg && restoreDesignCoupon) {
+      const cov = covered((l) => l.designGroup === dcg);
+      if (cov.every(fullyGone) && !cov.every(fullyGoneBefore)) couponsRestored.push({ kind: 'design', name: input.designCoupon.name });
+    }
+    const itemsRefund = lines.reduce((a, x) => a + x.amount, 0);
+    const designRefund = lines.reduce((a, x) => a + x.designShare, 0);
+    const base = { blocked: false, balance, itemsRefund, designRefund, shipRefund, deduction, lines, couponsRestored };
+    if (remaining.length === 0) { // 남은 항목이 없는 마지막 취소: 계산 없이 잔액 전부
       const refund = Math.max(0, balance - deduction);
       const pgRefund = Math.max(0, balPg - deduction);
-      return { last: true, remainingTotal: 0, balance, refund, pointRefund: refund - pgRefund, pgRefund, blocked: false, recalc: null };
+      return { ...base, last: true, remainingTotal: 0, refund, pointRefund: refund - pgRefund, pgRefund };
     }
-    // 디자인비는 부분 취소로 기준 아래가 돼도 다시 받지 않음 → 결제 때 정한 금액을 고정
-    const lockedGroups = (input.designGroups || [])
-      .filter((g) => remainingItems.some((it) => it.designGroup === g.id))
-      .map((g) => ({ ...g, lockedFee: original.designFees.find((d) => d.groupId === g.id).fee }));
-    // 디자인비 쿠폰도 다시 보지 않음(50만원 무료와 같음, 2026-10-16 D51) → 원래 쓴 묶음에 최소 주문 없이 고정. 그 묶음이 모두 취소됐으면 쓰지 않음
-    const dcGroup = original.totals.designCouponGroup;
-    const designCoupon = input.designCoupon && dcGroup && lockedGroups.some((g) => g.id === dcGroup)
-      ? { ...input.designCoupon, minOrder: 0, groupId: dcGroup } : null;
-    const rest = { ...input, items: remainingItems, designGroups: lockedGroups, designCoupon, points: 0 };
-    const recalc = calcOrder(rest);
-    const remainingTotal = recalc.totals.customerTotal;
-    const refund = balance - remainingTotal - deduction;
-    if (refund <= 0) {
-      if (mode === 'before_ship') return { blocked: true, reason: 'PARTIAL_CANCEL_BLOCKED', remainingTotal, balance, refund, recalc };
-      return { blocked: false, zeroRefund: true, shortfall: -refund, refund: 0, pointRefund: 0, pgRefund: 0, remainingTotal, balance, recalc };
-    }
+    const net = itemsRefund + designRefund + shipRefund - deduction;
+    if (net < 0) return { ...base, last: false, refund: 0, pointRefund: 0, pgRefund: 0, shortfall: -net, remainingTotal: balance }; // 고객 부담 반품 배송비가 더 크면 모자란 만큼 추가 결제
+    const refund = Math.min(net, balance);
     const pointRefund = balance > 0 ? floor10((refund * balPoints) / balance) : 0;
-    return { blocked: false, remainingTotal, balance, refund, pointRefund, pgRefund: refund - pointRefund, recalc };
+    return { ...base, last: false, refund, pointRefund, pgRefund: refund - pointRefund, remainingTotal: balance - refund };
+  }
+  /** 환불 기한(C-PAY-02 · 2026-10-16 D57, 법률 자문 전 초안): 시작(반품은 회수 완료, 취소는 승인·확정) + claim.refund_due_bd 영업일, 그날 끝까지. 시작 때 계산해 저장 */
+  function refundDueAt(startAt) {
+    const d = addBusinessDays(startAt, Policy.get('claim.refund_due_bd'));
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+  }
+  /** 지연배상금 = 환불액 × 연 이율 × 지연 일수 ÷ 365, 원 단위 내림. 지연 일수 = 기한 다음 날 ~ 환불을 마친 날(달력일) − 고객 사정으로 늦은 일수 */
+  function refundDelayComp({ amount, dueAt, doneAt, excludeDays = 0, rate = Policy.get('claim.refund_delay_rate') }) {
+    const day0 = (d) => { const x = new Date(d); return Date.UTC(x.getFullYear(), x.getMonth(), x.getDate()); };
+    const days = Math.max(0, Math.round((day0(doneAt) - day0(dueAt)) / DAY) - excludeDays);
+    return { days, rate, comp: Math.floor((amount * rate * days) / 36500) };
   }
 
   /**
@@ -562,7 +637,7 @@
    *   BEFORE_PROPOSAL '첫 시안 전달 시각' 기록 없음 → 전액 환불
    *   AFTER_PROPOSAL  기록 있음, 확정 전 → 디자인비 공제 (맞춤형 전환으로 REQUESTED에 돌아가도 기록이 있으면 여기)
    *   APPROVED        확정 뒤 ~ [인쇄 가능] 전, 그리고 확정 후 변경으로 다시 시안 단계가 된 건(afterChange, D18)
-   *   PRODUCTION      [인쇄 가능] 뒤 → 취소 불가(불량만 재제작)
+   *   PRODUCTION      [인쇄 가능] 뒤 → 고객 사정 취소 불가(불량만 재제작). 생산 지연이면 productionDelay로 DELAY_CANCEL(2026-10-16 D59)
    */
   const DESIGN_CONFIRMED_STATES = ['APPROVED', 'HANDED_OFF', 'PREFLIGHT_REJECTED'];
   const DESIGN_PRODUCTION_STATES = ['IN_PRODUCTION', 'SHIPPED', 'COMPLETED'];
@@ -577,21 +652,24 @@
    * type: 'CUSTOM' | 'TEMPLATE' | 'OWN_FILE' | 'REORDER'
    * itemsAmount = 상품 대금 + 낸 판비, plateFee = 고객이 낸 판비(판비 줄의 결제 금액 = calcOrder lines[].platePaid, 2026-10-15 D20 · 판비 면제 재주문은 0),
    * plateCost = 파트너가 증빙한 판 제작 실비(증빙 없으면 0) → 판비 공제 = 취소 보상 = min(plateCost, plateFee)
-   * claimType: 'CANCEL'(바로 처리) | 'CUSTOM_CANCEL'(확정 후 취소 · 본사 중재 · 자동 승인 없음) | null(취소 불가)
+   * claimType: 'CANCEL'(바로 처리) | 'CUSTOM_CANCEL'(확정 후 취소 · 본사 중재 · 기본 승인 · 자동 승인 없음) | 'DELAY_CANCEL'(생산 지연 취소 · 본사 중재 · 공제 없음) | null(취소 불가)
+   * productionDelay = [인쇄 가능] 뒤 출고 예정일 다음 영업일까지 송장이 없음(P-ORD-03) → 승인하면 파트너 귀책 전액 환불,
+   *   돌려준 디자인비는 파트너 부담(designFeeToPartner — '중재 판정' 정산 이벤트 −, 2026-10-16 D59)
+   * freeCustom은 2026-10-16 D54로 쓰지 않음(무료 디자인 39,000원 공제를 없앰 — 넘겨도 무시)
    */
-  function designCancel({ type, stage, state, firstProposed = false, afterChange = false, itemsAmount, paidDesignFee = 0, freeCustom = false, plateFee = 0, plateCost = 0, fixFee = 0, fixStarted = false }) {
+  function designCancel({ type, stage, state, firstProposed = false, afterChange = false, itemsAmount, paidDesignFee = 0, plateFee = 0, plateCost = 0, fixFee = 0, fixStarted = false, productionDelay = false }) {
     const st = stage || designStage({ state, firstProposed, afterChange });
     const total = itemsAmount + paidDesignFee + fixFee;
+    if (st === 'PRODUCTION' && productionDelay) return { stage: st, allowed: true, claimType: 'DELAY_CANCEL', mediation: true, deduction: 0, refund: total, total, lines: [], plateToPartner: 0, restoreBenefits: true, designFeeToPartner: paidDesignFee, note: '생산 지연 — 본사가 확인해 승인하면 낸 금액 전부를 돌려드려요.' };
     if (st === 'PRODUCTION') return { stage: st, allowed: false, claimType: null, mediation: false, deduction: 0, refund: 0, total, lines: [], plateToPartner: 0, note: '생산이 시작돼 취소할 수 없어요. 불량이면 재제작을 요청할 수 있어요.' };
     const lines = [];
     let designDeduct = 0;
     if (st !== 'BEFORE_PROPOSAL') {
-      // 낸 디자인비(디자인비 쿠폰으로 깎인 몫은 빼고 넘김 — 쿠폰 몫은 공제하지 않고 본사 부담, 쿠폰으로 전액 무료면 0원, 2026-10-16 D41).
-      // freeCustom = 50만원 무료·멤버십 이용권으로 무료가 된 맞춤형만(쿠폰 무료는 false) → design.fee 공제
-      if (type === 'CUSTOM') designDeduct = paidDesignFee > 0 ? paidDesignFee : (freeCustom ? Policy.get('design.fee') : 0);
+      // 실제로 낸 디자인비만 공제(디자인비 쿠폰 할인 뒤 금액 — 50만원 무료·멤버십 이용권·디자인비 쿠폰으로 무료였으면 0원, 2026-10-16 D54)
+      if (type === 'CUSTOM') designDeduct = paidDesignFee;
       if (type === 'OWN_FILE' && fixStarted) designDeduct = fixFee;
     }
-    if (designDeduct) lines.push({ label: type === 'OWN_FILE' ? '이미 시작한 보정 작업비' : (paidDesignFee > 0 ? '낸 디자인비(쿠폰으로 깎인 몫은 공제 안 함)' : '50만원·멤버십으로 무료가 된 맞춤 디자인비'), amount: designDeduct });
+    if (designDeduct) lines.push({ label: type === 'OWN_FILE' ? '이미 시작한 보정 작업비' : '낸 디자인비(쿠폰으로 깎인 몫은 공제 안 함)', amount: designDeduct });
     // 확정 뒤: 판비 0원 재주문만 바로 취소(공제 0원). 판비를 낸 재주문·확정 후 변경 건을 포함한 나머지는 확정 후 취소(본사 중재)
     const reorderFree = type === 'REORDER' && plateFee === 0;
     const custom = st === 'APPROVED' && !reorderFree;
@@ -601,7 +679,7 @@
       lines.push({ label: `판비 공제 = min(증빙한 판 제작 실비 ${won(plateCost)}, 고객이 낸 판비 ${won(plateFee)})`, amount: plateDeduct });
     }
     const deduction = Math.min(total, designDeduct + plateDeduct); // 공제액은 환불 대상 금액을 넘지 않음
-    return { stage: st, allowed: true, claimType: custom ? 'CUSTOM_CANCEL' : 'CANCEL', mediation: custom, reorderFree, deduction, refund: total - deduction, total, lines,
+    return { stage: st, allowed: true, claimType: custom ? 'CUSTOM_CANCEL' : 'CANCEL', mediation: custom, defaultApprove: custom, reorderFree, deduction, refund: total - deduction, total, lines,
       plateToPartner: Math.max(0, deduction - designDeduct) }; // '취소 보상' 정산 이벤트(수수료 0%)
   }
   /**
@@ -678,10 +756,11 @@
   }
 
   /* ───────────── 클레임 기한·이의 제기·재제작 정산 (C-STATE-01·02, 2026-10-14 D4·D8·D17) ───────────── */
-  /** 이의 제기 가능: 파트너 거부(취소 거부·반품/재제작 거부)만, 거부 통지 후 claim.objection_days 안. 확정 후 취소 기각은 본사 중재 결과라 없음 */
+  /** 이의 제기 가능: 파트너 거부(취소 거부·반품/재제작 거부 — 반품 검수에서 거부된 수량 포함)만, 거부 통지 후 claim.objection_days 안.
+   *  확정 후 취소·생산 지연 취소 기각은 본사 중재 결과라 없음 */
   function canObject({ claimType, state, rejectedAt = null, now = null }) {
     if (!['CANCEL_REJECTED', 'RETURN_REJECTED'].includes(state)) return false;
-    if (claimType === 'CUSTOM_CANCEL') return false;
+    if (claimType === 'CUSTOM_CANCEL' || claimType === 'DELAY_CANCEL') return false;
     if (rejectedAt && now) return +new Date(now) < +new Date(rejectedAt) + Policy.get('claim.objection_days') * DAY;
     return true;
   }
@@ -703,7 +782,18 @@
     return (t.resultByType && claimType && t.resultByType[claimType]) || t.result;
   }
   /** 진행 중 고객 라벨은 클레임 유형으로(C-STATE-02, 2026-10-16 맞춤). 반품·교환·재제작은 같은 회수·검수 상태를 쓰므로 */
-  const CLAIM_OPEN_LABEL = { CANCEL: '취소 요청 중', CUSTOM_CANCEL: '취소 중재 중', RETURN: '반품 진행 중', EXCHANGE: '교환 진행 중', REMAKE: '재제작 진행 중' };
+  const CLAIM_OPEN_LABEL = { CANCEL: '취소 요청 중', CUSTOM_CANCEL: '취소 중재 중', DELAY_CANCEL: '취소 중재 중', RETURN: '반품 진행 중', EXCHANGE: '교환 진행 중', REMAKE: '재제작 진행 중' };
+  /** 반품 사유와 귀책(C-STATE-02 · C-PRICE-03). '늦게 받음(출고 지연)'은 약속 출고일(지연 안내 때는 새 예정일)을 넘겨 출고된 일반 상품·추가 구성품만(2026-10-16 D58 ①, 법률 L-61 전 초안) */
+  const RETURN_REASONS = [
+    { code: 'CHANGE_MIND', label: '단순 변심', fault: 'customer', days: 7 },
+    { code: 'DEFECT', label: '불량·오배송·표시와 다름', fault: 'partner', photo: true },
+    { code: 'LATE', label: '늦게 받음(출고 지연)', fault: 'partner', days: 7, lateOnly: true },
+  ];
+  /** 늦게 출고됐나: 송장 등록일이 약속 출고일(새 예정일)보다 뒤인 날 */
+  function shippedLate({ promisedAt, shippedAt }) {
+    const p = new Date(promisedAt); const s = new Date(shippedAt);
+    return Date.UTC(s.getFullYear(), s.getMonth(), s.getDate()) > Date.UTC(p.getFullYear(), p.getMonth(), p.getDate());
+  }
   const CLAIM_REJECTED_STATES = ['CANCEL_REJECTED', 'RETURN_REJECTED'];
   /** 고객 라벨: 끝났으면 완료 결과 라벨, 거부면 '판매자 거부', 승인 뒤 환불을 기다리는 동안은 '취소 승인'·'반품 승인'(반품 유형만),
    *  그 밖의 진행 중이면 claimType이 있을 때 유형별 라벨(없으면 상태의 customer 라벨) */
@@ -839,6 +929,7 @@
       { from: ['PAID', 'ACCEPTED'], event: 'stockout_cancel', to: 'CANCELED', actor: 'partner', label: '품절 취소(전액 환불)' },
       { from: 'ACCEPTED', event: 'ship', to: 'SHIPPED', actor: 'partner', label: '송장 등록' },
       { from: 'ACCEPTED', event: 'cancel_approved', to: 'CANCELED', actor: 'partner', label: '취소 요청 승인(1영업일 넘기면 자동)' },
+      { from: 'ACCEPTED', event: 'delay_cancel', to: 'CANCELED', actor: 'customer', label: '출고 지연 뒤 고객 [바로 취소] — 지연 안내 뒤, 또는 안내 없이 약속 출고일 다음 영업일까지 송장 없음(무단 지연 기록) · 파트너 승인 없이 즉시, 송장 등록 전까지(2026-10-16 D58)' },
       { from: ['PAID', 'ACCEPTED'], event: 'parent_canceled', to: 'CANCELED', actor: 'system', label: '추가 구성품: 본 상품의 남은 수량이 모두 취소돼 출고 전이라 함께 취소(같은 사유)' },
       { from: ['PAID', 'ACCEPTED'], event: 'partner_change_cancel', to: 'CANCELED', actor: 'system', label: '추가 구성품: 붙은 맞춤 항목의 제작 파트너가 바뀌거나 환불돼 함께 취소 — 공제 없이 결제 금액 그대로 환불(2026-10-16 D38)' },
       { from: 'SHIPPED', event: 'deliver', to: 'DELIVERED', actor: 'system', label: '배송 완료(택배 조회)' },
@@ -884,8 +975,10 @@
       { from: 'DESIGN_CONFIRMED', event: 'custom_cancel_approved', to: 'CANCELED', actor: 'hq', label: '확정 후 취소(본사 중재, 판비를 낸 재주문 포함)' },
       { from: ['DESIGNING', 'DESIGN_CONFIRMED'], event: 'partner_change_refund', to: 'CANCELED', actor: 'customer', label: '제작 파트너 변경 제안에 [전액 환불] 또는 기한 무응답(예고 뒤 24시간) → 디자인비까지 전액 환불' },
       { from: 'IN_PRODUCTION', event: 'ship', to: 'SHIPPED', actor: 'partner', label: '송장 등록' },
+      { from: 'IN_PRODUCTION', event: 'delay_cancel_approved', to: 'CANCELED', actor: 'hq', label: '생산 지연 취소(DELAY_CANCEL) 본사 중재 승인 — 출고 예정일 다음 영업일까지 송장 없음 · 파트너 귀책 전액 환불, 인쇄물·판 폐기, 연결 보장 자동 해제(2026-10-16 D59)' },
       { from: 'SHIPPED', event: 'deliver', to: 'DELIVERED', actor: 'system', label: '배송 완료' },
       { from: 'DELIVERED', event: 'confirm', to: 'CONFIRMED', actor: 'customer', label: '구매 확정(7일 뒤 자동)' },
+      { from: 'DELIVERED', event: 'delay_cancel_collected', to: 'RETURNED', actor: 'hq', label: '생산 지연 취소 요청 중 출고된 건을 본사가 승인 → 플랫폼 회수 뒤 검수 없이 환불(회수 배송비 파트너, 2026-10-16)' },
       { from: ['DELIVERED', 'CONFIRMED', 'EXCHANGED'], event: 'remake_delivered', to: 'EXCHANGED', actor: 'system', label: '재제작품 배송 완료(7일 뒤 정산, 이미 정산된 항목은 새 정산 없음)' },
       { from: ['DELIVERED', 'CONFIRMED', 'EXCHANGED'], event: 'remake_refund', to: 'RETURNED', actor: 'system', label: '재제작 대신 환불 완료(정산됐으면 다음 주기 역분개)' },
     ],
@@ -940,6 +1033,7 @@
       { from: 'PREFLIGHT_REJECTED', event: 'need_reconfirm', to: 'PROPOSED', actor: 'design', label: '보이는 내용이 바뀌어 새 버전·고객 재확정' },
       { from: 'PREFLIGHT_REJECTED', event: 'back_to_file', to: 'FILE_REJECTED', actor: 'design', label: '자체 파일은 고객 선택지 흐름으로' },
       { from: 'IN_PRODUCTION', event: 'ship', to: 'SHIPPED', actor: 'partner', label: '송장 등록' },
+      { from: 'IN_PRODUCTION', event: 'delay_cancel_approved', to: 'CANCELED', actor: 'hq', label: '생산 지연 취소 중재 승인(공제 없이 전액 환불 · 인쇄물·판 폐기 · 연결 보장 자동 해제, 2026-10-16 D59). 요청 중에는 생산 보류 없이 ‘취소 중재 중’ 표시만' },
       { from: 'SHIPPED', event: 'complete', to: 'COMPLETED', actor: 'system', label: '연결 항목이 모두 구매 확정(반품·분할 취소는 빼고, 재제작 EXCHANGED는 7일 뒤 확정으로 봄)' },
       // 보류(고객 무응답, 예고 뒤 24시간 지나야 본 처리)
       { from: ['PROPOSED', 'FILE_REJECTED', 'IN_PROGRESS', 'REVISION'], event: 'hold', to: 'ON_HOLD', actor: 'system', label: '14일 무응답 보류(보류 전 상태 저장 · SLA 멈춤)' },
@@ -980,6 +1074,7 @@
       { from: 'RETURN_COLLECTING', event: 'collected', to: 'RETURN_INSPECTING', actor: 'system', label: '회수 완료' },
       { from: 'RETURN_INSPECTING', event: 'approve', to: 'RETURN_APPROVED', actor: 'partner', label: '검수 통과(2영업일 넘기면 자동 승인 — 교환은 교환 승인·출고 독촉, 재제작은 환불이 아니라 재제작 승인)' },
       { from: 'RETURN_INSPECTING', event: 'reject', to: 'RETURN_REJECTED', actor: 'partner', label: '검수 불가 · 거부(사유·사진 필수)' },
+      { from: 'RETURN_INSPECTING', event: 'partial_approve', to: 'RETURN_APPROVED', actor: 'partner', label: '일부 수량만 통과 — 항목 분할: 멀쩡한 수량 승인(그 수량에 낸 금액 환불), 사용·훼손된 수량은 나뉜 항목으로 RETURN_REJECTED(사유·사진). 금액을 깎는 부분 환불 없음(2026-10-16 D56)' },
       { from: 'RETURN_APPROVED', event: 'refund', to: 'CLAIM_COMPLETED', actor: 'system', label: '환불 완료(재제작은 고객이 환불을 고른 경우, 교환품 출고 2영업일 초과·품절이면 고객 동의 뒤 반품 전환 — claim_type RETURN)', result: 'REFUNDED' },
       { from: 'RETURN_APPROVED', event: 'reship', to: 'EXCHANGE_SHIPPED', actor: 'partner', label: '교환품·재제작품 송장 등록' },
       { from: 'EXCHANGE_SHIPPED', event: 'delivered', to: 'CLAIM_COMPLETED', actor: 'system', label: '배송 완료(주문 항목 EXCHANGED)', result: 'EXCHANGED', resultByType: { REMAKE: 'REMADE' } },
@@ -988,7 +1083,8 @@
       { from: 'RETURN_REJECTED', event: 'no_objection', to: 'CLAIM_COMPLETED', actor: 'system', label: '3일 동안 이의 없음 → 거부 확정', result: 'REJECTED' },
     ],
   });
-  /* 취소 클레임 (C-STATE-02). claim_type CANCEL(일반) · CUSTOM_CANCEL(확정 후 취소: 자동 승인 없음·본사 중재·이의 제기 없음).
+  /* 취소 클레임 (C-STATE-02). claim_type CANCEL(일반) · CUSTOM_CANCEL(확정 후 취소: 자동 승인 없음·본사 중재·기본 승인·이의 제기 없음)
+     · DELAY_CANCEL(생산 지연 취소: 자동 승인 없음·본사 중재·공제 없음·생산 계속·이의 제기 없음, 2026-10-16 D59).
      같은 상태 이름을 쓰고 유형에 따라 쓸 수 있는 이벤트가 다름(label에 표시) */
   define('CLAIM_CANCEL', {
     name: '취소 클레임',
@@ -1005,8 +1101,8 @@
       { from: 'CANCEL_REQUESTED', event: 'approve', to: 'CANCEL_APPROVED', actor: 'partner', label: '파트너 취소 승인(CANCEL)' },
       { from: 'CANCEL_REQUESTED', event: 'auto_approve', to: 'CANCEL_APPROVED', actor: 'system', label: '1영업일 미처리 자동 승인(CANCEL · 송장 없는 건만)' },
       { from: 'CANCEL_REQUESTED', event: 'reject', to: 'CANCEL_REJECTED', actor: 'partner', label: '파트너 거부 · 이미 출고(송장 필수) → 반품 안내(CANCEL)' },
-      { from: 'CANCEL_REQUESTED', event: 'mediation_approve', to: 'CANCEL_APPROVED', actor: 'hq', label: '확정 후 취소 중재 승인(CUSTOM_CANCEL · 디자인비 + 판 증빙 시 판비 공제)' },
-      { from: 'CANCEL_REQUESTED', event: 'mediation_dismiss', to: 'CLAIM_COMPLETED', actor: 'hq', label: '확정 후 취소 기각 → 바로 완료(CUSTOM_CANCEL · 본사 중재 결과라 이의 제기 없음)', result: 'DISMISSED' },
+      { from: 'CANCEL_REQUESTED', event: 'mediation_approve', to: 'CANCEL_APPROVED', actor: 'hq', label: '중재 승인 — CUSTOM_CANCEL: 기본 승인, 낸 디자인비 + 판 증빙 시 판비 공제 · DELAY_CANCEL: 파트너 귀책, 공제 없이 전액(돌려준 디자인비는 파트너 정산 차감)' },
+      { from: 'CANCEL_REQUESTED', event: 'mediation_dismiss', to: 'CLAIM_COMPLETED', actor: 'hq', label: '기각 → 바로 완료(CUSTOM_CANCEL·DELAY_CANCEL · 본사 중재 결과라 이의 제기 없음. DELAY_CANCEL은 출고 독촉·새 예정일 — 그 날도 넘기면 다시 요청 가능)', result: 'DISMISSED' },
       { from: 'CANCEL_REQUESTED', event: 'withdraw', to: 'CLAIM_COMPLETED', actor: 'customer', label: '고객이 요청 철회(중재 결과 전)', result: 'WITHDRAWN' },
       { from: 'CANCEL_APPROVED', event: 'refund', to: 'CLAIM_COMPLETED', actor: 'system', label: '환불 완료', result: 'REFUNDED' },
       { from: 'CANCEL_APPROVED', event: 'collected_refund', to: 'CLAIM_COMPLETED', actor: 'system', label: '출고 뒤 취소 이의 인정 건: 플랫폼 회수 완료 뒤 파트너 검수 없이 환불(주문 항목 RETURNED, 2026-10-15 D23)', result: 'REFUNDED' },
@@ -1112,10 +1208,10 @@
   return {
     Policy, won, signedWon, num, floor10, fmtDate, fmtTime, DAY, HOUR, addBusinessDays, addBusinessHours, isBizDay, vatSplit,
     price: { tierPrice, nextTier, applyInstantUnit, allocate, couponDiscount, calcOrder, bizTiers, pickTiers, bizOptionExtra, bizErrors, bizInversion, BIZ_INVERSION_MSG, listPrice, plateInstantDisc, designCouponDiscount, optionExtraRange, priceChangeAlert, priceChangeCheck },
-    refund: { partialCancel, designCancel, designStage, partnerChange },
-    order: { addonCascade },
+    refund: { partialCancel, designCancel, designStage, partnerChange, linePaid, designShare, dueAt: refundDueAt, delayComp: refundDelayComp },
+    order: { addonCascade, overdueAt, isOverdue },
     settle: { finalRate, commission, confirmEvent, payout, CHARGE_NAME },
-    claim: { canObject, defectDeadline, remakeSettlement, RESULT_LABEL: CLAIM_RESULT_LABEL, OPEN_LABEL: CLAIM_OPEN_LABEL, result: claimResult, label: claimLabel, step: claimStep },
+    claim: { canObject, defectDeadline, remakeSettlement, RESULT_LABEL: CLAIM_RESULT_LABEL, OPEN_LABEL: CLAIM_OPEN_LABEL, RETURN_REASONS, shippedLate, result: claimResult, label: claimLabel, step: claimStep },
     notice: { elapsed: noticeElapsed },
     membership: { annualRefund },
     mask,

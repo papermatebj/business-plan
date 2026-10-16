@@ -85,37 +85,43 @@ test('TC-06 구간 단가 안내 — 3박스면 2박스 더 담을 때 박스당
   assert.equal(GC.price.nextTier(tiers, 12), null);
 });
 
-test('TC-07 부분 취소 두 번(냅킨 → 수저집) — 45,000원(660P + 44,340원) 뒤 잔액 전부', () => {
+test('TC-07 부분 취소 두 번(냅킨 → 수저집, D53) — 냅킨에 낸 51,207원(750P + 50,457원) 뒤 잔액 전부, 쿠폰은 걸린 항목이 모두 취소될 때', () => {
   const input = exampleInput();
   const first = GC.refund.partialCancel({ input, paid: { pg: 134000, points: 2000 }, cancelIds: ['napkin'] });
   assert.equal(first.blocked, false);
-  assert.equal(first.remainingTotal, 91000);
-  assert.equal(first.refund, 45000);
-  assert.equal(first.pointRefund, 660);
-  assert.equal(first.pgRefund, 44340);
-  const second = GC.refund.partialCancel({ input, paid: { pg: 134000, points: 2000 }, refunded: { pg: 44340, points: 660 }, cancelIds: ['napkin', 'spoon'] });
-  assert.equal(second.refund, 91000);
-  assert.equal(second.pointRefund, 1340);
-  assert.equal(second.pgRefund, 89660);
+  assert.equal(first.itemsRefund, 51207); // 60,000 − 냅킨 쿠폰 5,000 − 본사 쿠폰 안분 3,793 · 남은 수저집은 다시 계산하지 않음
+  assert.equal(first.shipRefund, 0); // 배송 묶음에 수저집이 남음
+  assert.equal(first.refund, 51207);
+  assert.equal(first.pointRefund, 750);
+  assert.equal(first.pgRefund, 50457);
+  assert.deepEqual(first.couponsRestored.map((c) => c.kind), ['partner']); // 냅킨에만 걸린 쿠폰
+  const second = GC.refund.partialCancel({ input, paid: { pg: 134000, points: 2000 }, refunded: { pg: 50457, points: 750 }, cancelIds: ['spoon'], alreadyCanceled: { napkin: 2 } });
+  assert.equal(second.last, true);
+  assert.equal(second.refund, 84793);
+  assert.equal(second.pointRefund, 1250);
+  assert.equal(second.pgRefund, 83543);
+  assert.deepEqual(second.couponsRestored.map((c) => c.kind).sort(), ['hq', 'ship']); // 본사 쿠폰(걸린 두 항목 모두 취소) · 멤버십 배송비 쿠폰(묶음 전부)
 });
 
-test('TC-08 환불액이 0원 이하 — 출고 전 부분 취소는 막고, 반품은 0원 환불 + 차액 7,200원', () => {
-  const input = {
-    items: [
-      { id: 'a', name: '수저집 9박스', partnerId: 'A', shipKey: 'A', qty: 9, tiers: SPOON_TIERS, instant: { type: 'rate', value: 10 } },
-      { id: 'b', name: '수저집 1박스(분할)', partnerId: 'A', shipKey: 'A', qty: 1, tiers: SPOON_TIERS, instant: { type: 'rate', value: 10 } },
-    ],
-    shipping: { A: { name: 'A', type: 'free', base: 0 } },
-  };
-  // 결제 시점: 10박스 구간 단가 → 9,000 × 10 = 90,000 (분할 항목은 같은 단가로 결제된 상태를 재현)
-  const paid = { pg: 90000, points: 0 };
-  const tierInput = { ...input, items: input.items.map((it) => ({ ...it, tiers: [{ min: 1, price: 12000 }, { min: 9, price: 12000 }] })) };
-  const before = GC.refund.partialCancel({ input: tierInput, paid, cancelIds: ['b'] });
-  assert.equal(before.remainingTotal, 97200);
-  assert.equal(before.blocked, true);
-  const ret = GC.refund.partialCancel({ input: tierInput, paid, cancelIds: ['b'], mode: 'return' });
-  assert.equal(ret.zeroRefund, true);
-  assert.equal(ret.shortfall, 7200);
+test('TC-08 수량 구간이 바뀌는 부분 취소(C-PAY-02 예시 3, D53) — 출고 전은 막고, 같은 구간은 낸 금액, 반품은 막지 않고 낸 금액', () => {
+  const item = (qty) => ({ id: 'sp', name: '수저집', partnerId: 'A', shipKey: 'A', qty, tiers: SPOON_TIERS, instant: { type: 'rate', value: 10 } });
+  const ship = { A: { name: 'A', type: 'free', base: 0 } };
+  const ten = { items: [item(10)], shipping: ship }; // 10박스 이상 10,000 − 10% → 9,000 × 10 = 90,000
+  assert.equal(GC.price.calcOrder(ten).totals.customerTotal, 90000);
+  const before = GC.refund.partialCancel({ input: ten, paid: { pg: 90000, points: 0 }, cancel: [{ id: 'sp', qty: 1 }] });
+  assert.equal(before.blocked, true); // 남는 9박스가 5~9박스 구간 → 전체 취소 후 재주문 안내
+  assert.equal(before.reason, 'TIER_CHANGE');
+  const twenty = { items: [item(20)], shipping: ship };
+  const same = GC.refund.partialCancel({ input: twenty, paid: { pg: 180000, points: 0 }, cancel: [{ id: 'sp', qty: 5 }] });
+  assert.deepEqual([same.blocked, same.refund], [false, 45000]); // 15박스도 같은 구간 → 5박스 몫
+  const ret = GC.refund.partialCancel({ input: ten, paid: { pg: 90000, points: 0 }, cancel: [{ id: 'sp', qty: 1 }], mode: 'return', deduction: 3000 });
+  assert.deepEqual([ret.blocked, ret.refund, ret.shortfall], [false, 6000, undefined]); // 1박스 9,000 − 고객 부담 반품 배송비 3,000, 남은 9박스 단가 그대로
+  const ret2 = GC.refund.partialCancel({ input: ten, paid: { pg: 90000, points: 0 }, cancel: [{ id: 'sp', qty: 9 }], alreadyCanceled: { sp: 1 }, mode: 'return' });
+  assert.equal(ret2.last, true); // 남은 수량 전부 → 잔액 전부(끝전 포함)
+  // 반품 배송비가 환불액보다 크면 모자란 만큼 추가 결제
+  const cheap = { items: [{ id: 'w', name: '물티슈', partnerId: 'A', shipKey: 'A', qty: 10, tiers: [{ min: 1, price: 500 }] }, item(10)], shipping: ship };
+  const sh = GC.refund.partialCancel({ input: cheap, paid: { pg: 95000, points: 0 }, cancel: [{ id: 'w', qty: 2 }], mode: 'return', deduction: 3000 });
+  assert.deepEqual([sh.refund, sh.shortfall], [0, 2000]);
 });
 
 test('TC-09 디자인 단계별 취소(C-PAY-02 예시 2) — 판비 공제 = min(증빙 실비, 낸 판비)', () => {
@@ -132,10 +138,11 @@ test('TC-09 디자인 단계별 취소(C-PAY-02 예시 2) — 판비 공제 = mi
   assert.equal(ap.mediation, true);
   assert.equal(ap.claimType, 'CUSTOM_CANCEL');
   assert.equal(GC.refund.designCancel({ ...paid, stage: 'PRODUCTION' }).allowed, false);
+  // 무료 디자인(50만원 이상): 낸 디자인비가 0원이라 공제 0원(2026-10-16 D54 — 39,000원 공제 없앰, freeCustom은 무시)
   const free = { type: 'CUSTOM', itemsAmount: 600000, paidDesignFee: 0, freeCustom: true, plateFee: 50000 };
-  assert.equal(GC.refund.designCancel({ ...free, stage: 'AFTER_PROPOSAL' }).refund, 561000);
-  assert.equal(GC.refund.designCancel({ ...free, stage: 'APPROVED', plateCost: 50000 }).refund, 511000);
-  assert.equal(GC.refund.designCancel({ ...free, stage: 'APPROVED', plateCost: 30000 }).refund, 531000);
+  assert.equal(GC.refund.designCancel({ ...free, stage: 'AFTER_PROPOSAL' }).refund, 600000);
+  assert.equal(GC.refund.designCancel({ ...free, stage: 'APPROVED', plateCost: 50000 }).refund, 550000);
+  assert.equal(GC.refund.designCancel({ ...free, stage: 'APPROVED', plateCost: 30000 }).refund, 570000);
   assert.equal(GC.refund.designCancel({ type: 'TEMPLATE', itemsAmount: 300000, stage: 'AFTER_PROPOSAL' }).refund, 300000);
   // 템플릿형 확정 뒤: 디자인비 공제 0원, 판비 공제만(확정 후 취소)
   const tpl = GC.refund.designCancel({ type: 'TEMPLATE', itemsAmount: 300000, plateFee: 50000, stage: 'APPROVED', plateCost: 50000 });
@@ -619,7 +626,7 @@ test('TC-41 S10 결정(2026-10-16) — 디자인비 쿠폰 정액·정률·안�
   const dc = (o) => GC.refund.designCancel({ type: 'CUSTOM', stage: 'AFTER_PROPOSAL', itemsAmount: 350000, ...o });
   assert.equal(dc({ paidDesignFee: 0, freeCustom: false }).deduction, 0); // 쿠폰으로 전액 무료 → 공제 0원
   assert.deepEqual([dc({ paidDesignFee: 29000 }).deduction, dc({ paidDesignFee: 29000 }).refund], [29000, 350000]); // 일부 할인 → 낸 디자인비만
-  assert.equal(dc({ paidDesignFee: 0, freeCustom: true }).deduction, 39000); // 50만원·멤버십 무료는 그대로 39,000원
+  assert.equal(dc({ paidDesignFee: 0, freeCustom: true }).deduction, 0); // 50만원·멤버십 무료도 낸 디자인비가 없어 0원(2026-10-16 D54)
   // 본 상품 일부만 취소하면 구성품은 그대로, 남은 수량을 다 취소하면 함께
   const items = [{ id: 'napkin', qty: 4 }, { id: 'wipe', addonOf: 'napkin', qty: 2 }];
   assert.deepEqual(GC.order.addonCascade(items, [{ id: 'napkin', qty: 2 }]), { cascade: [], toReturn: [], partialParents: ['napkin'] });
@@ -692,6 +699,50 @@ test('TC-43 부분 취소 때 디자인비 쿠폰은 다시 보지 않음(D51 ·
   const o = GC.price.calcOrder(input);
   assert.deepEqual([o.totals.designFee, o.totals.designCoupon, o.totals.customerTotal], [58000, 10000, 398000]);
   const r = GC.refund.partialCancel({ input, paid: { pg: o.totals.pay, points: 0 }, cancelIds: ['c2'] });
-  assert.equal(r.refund, 150000); // 쿠폰 할인 10,000원을 거둬 가지 않음
-  assert.equal(r.recalc.totals.designCoupon, 10000);
+  // 컵홀더에 낸 금액 150,000 + 그 품목의 디자인비 몫(19,000 − 쿠폰 안분 3,275 = 15,725) — 쿠폰 할인 10,000원을 거둬 가지 않고 남은 수저집 디자인비도 다시 보지 않음(D53)
+  assert.deepEqual([r.itemsRefund, r.designRefund, r.refund], [150000, 15725, 165725]);
+  assert.equal(r.couponsRestored.length, 0); // 쿠폰을 쓴 묶음에 수저집이 남음
+});
+
+test('TC-44 취소·환불 D53~D60(2026-10-16) — 첫 시안 뒤 공제는 낸 디자인비만, 생산 지연 취소, 환불 기한·지연배상금, 출고 지연, 반품 사유, 새 전이·키', () => {
+  // D54·D60: 멤버십 이용권 묶음(품목 2개)은 추가 품목 디자인비 19,000원만 내고, 디자인비 쿠폰은 쓰지 않음, 첫 시안 뒤 공제는 낸 19,000원
+  const vin = { items: [CUSTOM_ITEM({ tiers: [{ min: 1, price: 200000 }], plateFee: 0 }), CUSTOM_ITEM({ id: 'c2', name: '인쇄 컵홀더', tiers: [{ min: 1, price: 100000 }], plateFee: 0 })],
+    designGroups: [{ id: 'D1', type: 'CUSTOM', voucher: true }], shipping: FREE_SHIP, designCoupon: { name: '첫 디자인 무료', type: 'free' } };
+  const vo = GC.price.calcOrder(vin);
+  assert.deepEqual([vo.designFees[0].fee, vo.totals.designCoupon], [19000, 0]);
+  assert.deepEqual([GC.refund.designShare(vo.designFees, 'c'), GC.refund.designShare(vo.designFees, 'c2')], [0, 19000]);
+  assert.equal(GC.refund.designCancel({ type: 'CUSTOM', stage: 'AFTER_PROPOSAL', itemsAmount: 300000, paidDesignFee: 19000 }).deduction, 19000);
+  // D55: 확정 후 취소는 본사 중재·기본 승인
+  const ap = GC.refund.designCancel({ type: 'CUSTOM', stage: 'APPROVED', itemsAmount: 300000, paidDesignFee: 39000, plateFee: 50000, plateCost: 30000 });
+  assert.deepEqual([ap.claimType, ap.mediation, ap.defaultApprove, ap.refund], ['CUSTOM_CANCEL', true, true, 270000]);
+  // D59: 생산 지연이면 [인쇄 가능] 뒤에도 DELAY_CANCEL — 공제 없이 전액, 돌려준 디자인비는 파트너 부담
+  const dl = GC.refund.designCancel({ type: 'CUSTOM', stage: 'PRODUCTION', itemsAmount: 300000, paidDesignFee: 39000, productionDelay: true });
+  assert.deepEqual([dl.allowed, dl.claimType, dl.deduction, dl.refund, dl.designFeeToPartner, dl.restoreBenefits], [true, 'DELAY_CANCEL', 0, 339000, 39000, true]);
+  assert.equal(GC.refund.designCancel({ type: 'CUSTOM', stage: 'PRODUCTION', itemsAmount: 300000 }).allowed, false);
+  assert.equal(GC.claim.label('CLAIM_CANCEL', 'CANCEL_REQUESTED', null, 'DELAY_CANCEL'), '취소 중재 중');
+  assert.equal(GC.claim.canObject({ claimType: 'DELAY_CANCEL', state: 'CANCEL_REJECTED' }), false);
+  assert.equal(GC.sm.next('ORDER_CUSTOM', 'IN_PRODUCTION', 'delay_cancel_approved'), 'CANCELED');
+  assert.equal(GC.sm.next('DESIGN', 'IN_PRODUCTION', 'delay_cancel_approved'), 'CANCELED');
+  assert.equal(GC.sm.next('ORDER_CUSTOM', 'DELIVERED', 'delay_cancel_collected'), 'RETURNED');
+  assert.equal(GC.claim.result('CLAIM_CANCEL', 'CANCEL_REQUESTED', 'mediation_dismiss', 'DELAY_CANCEL'), 'DISMISSED');
+  // D58: 출고 지연 뒤 고객 바로 취소, 판정 = 약속 출고일 + 1영업일 끝
+  assert.equal(GC.sm.next('ORDER', 'ACCEPTED', 'delay_cancel'), 'CANCELED');
+  const promised = new Date(2026, 9, 16, 18, 0); // 금요일
+  assert.equal(GC.fmtDate(GC.order.overdueAt(promised), false).slice(0, 10), GC.fmtDate(new Date(2026, 9, 19), false).slice(0, 10)); // 다음 영업일 = 월요일
+  assert.equal(GC.order.isOverdue({ promisedAt: promised, now: new Date(2026, 9, 19, 23, 0) }), false);
+  assert.equal(GC.order.isOverdue({ promisedAt: promised, now: new Date(2026, 9, 20, 0, 1) }), true);
+  assert.equal(GC.order.isOverdue({ promisedAt: promised, now: new Date(2026, 9, 20, 0, 1), shipped: true }), false);
+  assert.deepEqual(GC.claim.RETURN_REASONS.map((r) => [r.code, r.fault]), [['CHANGE_MIND', 'customer'], ['DEFECT', 'partner'], ['LATE', 'partner']]);
+  assert.equal(GC.claim.shippedLate({ promisedAt: promised, shippedAt: new Date(2026, 9, 19, 10) }), true);
+  assert.equal(GC.claim.shippedLate({ promisedAt: promised, shippedAt: new Date(2026, 9, 16, 20) }), false);
+  // D56: 검수 일부 승인 전이
+  assert.equal(GC.sm.next('CLAIM_RETURN', 'RETURN_INSPECTING', 'partial_approve'), 'RETURN_APPROVED');
+  // D57: 환불 기한(회수 완료 + 3영업일 끝)과 지연배상금 = 환불액 × 15% × 지연 일수 ÷ 365
+  const due = GC.refund.dueAt(new Date(2026, 9, 16, 15, 0)); // 금 → 수요일 끝
+  assert.equal(due.getDate(), 21);
+  assert.deepEqual(GC.refund.delayComp({ amount: 300000, dueAt: due, doneAt: new Date(2026, 9, 26, 11, 0) }), { days: 5, rate: 15, comp: 616 }); // 300,000 × 15 × 5 ÷ 36,500 = 616.4
+  assert.equal(GC.refund.delayComp({ amount: 300000, dueAt: due, doneAt: new Date(2026, 9, 26), excludeDays: 2 }).days, 3); // 고객 사정(계좌 입력 대기) 제외
+  assert.equal(GC.refund.delayComp({ amount: 300000, dueAt: due, doneAt: new Date(2026, 9, 21, 20) }).comp, 0); // 기한 안
+  const g = (k) => GC.Policy.get(k);
+  assert.deepEqual([g('order.overdue_grace_bd'), g('claim.refund_due_bd'), g('claim.refund_delay_rate')], [1, 3, 15]);
 });
