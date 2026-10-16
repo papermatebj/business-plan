@@ -1,0 +1,16 @@
+[
+ {"click":"#ord-scn [data-scn=\"late\"]","after":400},
+ {"adv":"86400000"},
+ {"role":"customer","shot":"order-87-narrow-overdue-detail","el":"#gc-device"},
+ {"act":"openCancel","attr":"data-id=\"spoon\""},
+ {"act":"sheetQty","attr":"data-set=\"1\""},
+ {"wait":100,"shot":"order-88-narrow-overdue-blocked","el":"#gc-device"},
+ {"eval":"(()=>{ const t=document.querySelector('#gc-device .note-stop').innerText; if(!t.includes('전체 취소 후 남길 수량으로 다시 주문해 주세요')) throw new Error('구간 단가 차단 안내 없음: '+t); if(!document.querySelector('#gc-device [data-act=\"doCancel\"]').disabled) throw new Error('차단인데 취소 버튼이 켜져 있음'); return t; })()"},
+ {"act":"sheetQty","attr":"data-set=\"10\""},
+ {"wait":100,"shot":"order-89-narrow-overdue-cancel","el":"#gc-device"},
+ {"eval":"(()=>{ const amt=document.querySelector('#gc-device .refund-big').textContent; if(amt!=='83,793원') throw new Error('수저집 10박스 바로 취소 환불 기대 83,793원(냅킨 남음 · 배송비 그대로): '+amt); return [amt, document.querySelector('#gc-device .calc-line').innerText.split(String.fromCharCode(10)).join(' | ')]; })()"},
+ {"act":"doCancel","after":400},
+ {"role":"partner","shot":"order-90-narrow-overdue-partner","full":true},
+ {"role":"hq","shot":"order-91-narrow-overdue-hq","full":true},
+ {"eval":"(()=>{ const t=Array.from(document.querySelectorAll('#gc-device .panel h2')).map(h=>h.textContent).join(','); if(!t.includes('모니터링')) throw new Error('본사 모니터링 패널 없음: '+t); return t; })()"}
+]

@@ -1,0 +1,22 @@
+[
+ {"click":"#ord-scn [data-scn=\"inspect\"]","after":400},
+ {"role":"partner"},
+ {"act":"rejectReturn","after":400},
+ {"role":"customer"},
+ {"act":"objection"},
+ {"eval":"(()=>{ const t=document.querySelector('#gc-turn .turn-what').textContent; if(!t.includes('고객 이의를 판정')) throw new Error('이의 뒤 차례는 본사 중재: '+t); return [t, Array.from(document.querySelectorAll('#gc-rules .rule-row')).map(e=>e.innerText.split(String.fromCharCode(10)).join(': ')).join(' | ')]; })()"},
+ {"adv":"86400000"},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,4).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('NOTI_INT_REFUND_DUE')) throw new Error('환불 기한 전날 재무 알림 없음: '+log); return log; })()"},
+ {"adv":"86400000"},{"adv":"86400000"},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,4).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('NOTI_INT_REFUND_OVER')) throw new Error('환불 기한 넘김 재무 알림 없음: '+log); return log; })()"},
+ {"role":"system","shot":"order-82-refund-delay-system"},
+ {"role":"hq","shot":"order-83-refund-delay-mediation"},
+ {"eval":"(()=>{ const t=document.querySelector('#gc-device .panel .kv').innerText.split(String.fromCharCode(10)).join(' | '); if(!t.includes('지연배상금')||!t.includes('19원')||!t.includes('판매자 부담')) throw new Error('중재 화면에 지연배상금 19원·판매자 부담 미리보기 없음: '+t); return t; })()"},
+ {"act":"mediate","attr":"data-r=\"customer\"","after":400},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,16).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); ['47,207원','NOTI_REFUND_DELAY_PAID','지연배상금 19원','중재 판정'].forEach((k)=>{ if(!log.includes(k)) throw new Error(k+' 기록 없음: '+log); }); return log; })()"},
+ {"role":"customer","shot":"order-84-refund-delay-customer"},
+ {"eval":"(()=>{ const t=document.querySelector('#gc-device').innerText.split(String.fromCharCode(10)).join(' '); if(!t.includes('지연배상금 19원')) throw new Error('고객 화면에 지연배상금 없음'); return Array.from(document.querySelectorAll('#gc-device .claimbox')).map(e=>e.innerText.split(String.fromCharCode(10)).join(' | ')).join(' // '); })()"},
+ {"role":"partner","shot":"order-85-refund-delay-partner"},
+ {"eval":"(()=>{ const t=Array.from(document.querySelectorAll('#gc-device .panel')).pop().innerText.split(String.fromCharCode(10)).join(' ').split(String.fromCharCode(9)).join(' '); if(!t.includes('중재 판정')||!t.includes('−19원')) throw new Error('파트너 정산에 중재 판정 −19원 없음: '+t); return t; })()"},
+ {"role":"hq","shot":"order-86-refund-delay-hq"}
+]

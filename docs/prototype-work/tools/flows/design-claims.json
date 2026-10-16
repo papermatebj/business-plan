@@ -32,6 +32,7 @@
 {"role": "partner"},
 {"act": "plate", "attr": "data-v=\"70000\""},
 {"role": "hq", "shot": "dcl-04-hq-mediation"},
+{"act": "medPreset", "idx": 1},
 {"act": "mediate", "attr": "data-r=\"no\""},
 {"eval": "document.querySelector('#gc-strips').innerText.replace(/\\s+/g,' ').match(/확정 후 취소 클레임[^곁]*/)[0]"},
 {"role": "customer", "shot": "dcl-05-customer-dismissed"},

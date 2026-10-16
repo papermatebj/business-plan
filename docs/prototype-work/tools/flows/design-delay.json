@@ -1,0 +1,177 @@
+[
+{
+"act": "toMethod"
+},
+{
+"act": "toRequest"
+},
+{
+"check": "rights"
+},
+{
+"check": "stage"
+},
+{
+"check": "own"
+},
+{
+"act": "toCheckout"
+},
+{
+"check": "co_stage"
+},
+{
+"check": "co_plate"
+},
+{
+"act": "pay",
+"after": 500
+},
+{
+"role": "design"
+},
+{
+"act": "assign"
+},
+{
+"act": "startWork"
+},
+{
+"act": "propose",
+"after": 500
+},
+{
+"role": "customer"
+},
+{
+"act": "cs",
+"attr": "data-to=\"proposal\""
+},
+{
+"act": "cs",
+"attr": "data-to=\"approve\""
+},
+{
+"check": "ap_typo"
+},
+{
+"check": "ap_contact"
+},
+{
+"check": "ap_color"
+},
+{
+"check": "ap_qty"
+},
+{
+"check": "ap_nocancel"
+},
+{
+"eval": "(()=>{const el=document.querySelector('#gc-device [data-k=ap_nocancel]');el.scrollIntoView({block:'center'});return el.closest('label').innerText})()",
+"shot": "ddl-01-approve-consent",
+"after": 200
+},
+{
+"act": "doApprove",
+"after": 600
+},
+{
+"role": "design"
+},
+{
+"act": "handOff"
+},
+{
+"role": "partner"
+},
+{
+"act": "download"
+},
+{
+"act": "printable"
+},
+{
+"role": "system",
+"shot": "ddl-02-system-judge"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+},
+{
+"adv": "604800000"
+},
+{
+"adv": "604800000"
+},
+{
+"role": "customer"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .app-card')].find(c=>/늦어지고/.test(c.innerText));if(!c)return 'no card';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ')})()",
+"after": 200,
+"shot": "ddl-03-customer-overdue"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+},
+{
+"act": "delayReq"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .app-card')].find(c=>/생산 지연 취소 요청/.test(c.innerText));if(!c)return 'no card';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ')})()",
+"after": 200
+},
+{
+"role": "partner",
+"shot": "ddl-04-partner-mediating"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+},
+{
+"act": "delayProgress",
+"after": 400
+},
+{
+"role": "hq",
+"shot": "ddl-05-hq-delay",
+"full": true
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+},
+{
+"act": "mediate",
+"attr": "data-r=\"ok\"",
+"after": 500
+},
+{
+"role": "partner",
+"shot": "ddl-06-partner-canceled",
+"full": true
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+},
+{
+"act": "discardDone",
+"after": 400
+},
+{
+"role": "customer"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .app-card')].find(c=>/생산 지연 취소/.test(c.innerText));if(!c)return 'no card';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ')})()",
+"after": 200,
+"shot": "ddl-07-customer-done"
+},
+{
+"eval": "Array.from(document.querySelectorAll('#gc-log li')).slice(0,10).map(l=>l.textContent.replace(/\\s+/g,' ').trim().slice(0,200))"
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+}
+]

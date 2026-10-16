@@ -18,6 +18,10 @@
   .flags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
   .sum-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
   @media (max-width: 720px) { .sum-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  /* 다온인쇄 중재 판정 (a)·(b) 설명 카드: 넓으면 두 칸, 좁으면 한 칸 */
+  .sum-grid.med-grid { grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
+  .med-grid .scard .lb { font-weight: 600; color: var(--ink); }
+  .seg.med-seg button { flex: 1 1 auto; }
   .scard { border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px; display: grid; gap: 2px; background: var(--sheet); align-content: start; }
   .scard .lb { font-size: 12px; color: var(--ink-2); }
   .scard .am { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -138,6 +142,12 @@
     han: { id: 'han', name: '한재무', role: '정산·재무 · 팀장 플래그', lead: true },
   };
   const LATE_CLAIM = 28000, LATE_CLAIM_DAY = 40;
+  /* 중재 판정 정산(C-STL-01 '중재 판정' 이벤트 · 2026-10-16 D57·D59) — 다온인쇄(맞춤 인쇄 파트너) 갈래 예시.
+     (a) 생산 지연 취소(DELAY_CANCEL) 승인: 고객에게 돌려준 디자인비를 파트너 부담 · (b) 반품 거부가 중재에서 뒤집혀 늦어진 환불의 지연배상금 */
+  const MED_DELAY = { order: 'GC-20260921-0288', item: '맞춤 컵홀더 인쇄 250,000 + 판비 50,000', print: 250000, plate: 50000, at: new Date(2026, 9, 8, 14, 10) };
+  const MED_LATE = { order: 'GC-20260914-0151', item: '종이 도시락 용기 20박스 반품(파트너 검수 거부 → 고객 이의 → 중재에서 고객 인정)', amount: 480000, collectedAt: new Date(2026, 8, 28, 15, 0), doneAt: new Date(2026, 9, 8, 10, 40) };
+  /* 체험 조절(실제 화면에는 없음): 이번 주 다른 정산 이벤트 · 고객이 낸 디자인비. 집계 표·지급 목록은 늘 기본값(real · paid)으로 계산 */
+  const MED_WEEKS = { real: { label: '이번 주 그대로', item: '일반 주문 · 종이 도시락 용기 2박스', sale: 30000, custom: false }, rich: { label: '구매 확정이 많은 주라면', item: '맞춤 주문 · 수저집 인쇄 250,000 + 판비 50,000', sale: 300000, custom: true } };
 
   function rates() {
     const plan = isPro() ? 'PRO' : 'BASIC';
@@ -206,6 +216,21 @@
     const fin = otherCalc('BR').payout; const held = Math.floor((fin * P('settlement.final_holdback')) / 100);
     return { fin, held, now: fin - held, release: held - (S().hb.late ? LATE_CLAIM : 0) };
   }
+  /* 다온인쇄 중재 판정: week = 'real' | 'rich', feePaid = 고객이 디자인비를 냈는지(50만원 무료·이용권이면 0원 → 파트너 부담도 0원, D54) */
+  function medCalc(week = 'real', feePaid = true) {
+    const w = MED_WEEKS[week];
+    const dc = GC.refund.designCancel({ type: 'CUSTOM', stage: 'PRODUCTION', productionDelay: true, itemsAmount: MED_DELAY.print + MED_DELAY.plate, paidDesignFee: feePaid ? P('design.fee') : 0 });
+    // 비교: 같은 항목을 제작 파트너 변경 [전액 환불]로 돌려주면 고객 환불은 같지만 원래 파트너 정산에서 자동으로 빼지 않음(D59 ⑤)
+    const pc = GC.refund.partnerChange({ choice: 'refund', oldList: MED_DELAY.print, oldPlate: MED_DELAY.plate, paidTotal: dc.total });
+    const dueAt = GC.refund.dueAt(MED_LATE.collectedAt);
+    const lc = GC.refund.delayComp({ amount: MED_LATE.amount, dueAt, doneAt: MED_LATE.doneAt });
+    const rate = GC.settle.finalRate({ base: P(w.custom ? 'commission.custom_rate' : 'commission.default_rate') }).rate;
+    const ev = GC.settle.confirmEvent({ sale: w.sale, rate });
+    const med = dc.designFeeToPartner + lc.comp;
+    // 명세는 '중재 판정' 이벤트(−)로 빼고 모자라면 미수금(분쟁 조정)으로 넘긴다고 함 → 분쟁 조정과 같은 차감 순서·한도로 계산(엔진 payout)
+    const res = GC.settle.payout({ events: [ev.amount], charges: med ? [{ type: 'DISPUTE', amount: med }] : [] });
+    return { w, dc, pc, dueAt, lc, rate, ev, med, res, taken: sum(res.deductions, (d) => d.amount), recv: sum(res.receivables, (r) => r.amount) };
+  }
   const LEDGER = [
     { label: '+1주', events: [{ t: '구매 확정', a: 60000 }, { t: '확정 후 불량 반품 역분개', a: -20000 }], charges: [{ type: 'AD', amount: 55000 }] },
     { label: '+2주', events: [{ t: '구매 확정', a: 15000 }, { t: '반품 역분개', a: -27000 }], charges: [] },
@@ -225,7 +250,7 @@
     domain: 'settlement',
     title: '정산·지급',
     lede: '구매 확정 같은 정산 이벤트를 한 주씩 모아 화요일 0시, 그날 자동 구매 확정 배치가 끝난 뒤에 마감하고(그 뒤 기록된 이벤트는 다음 주기), 수~목에 본사가 정산 확정한 뒤 금요일에 PG 지급대행으로 파트너에게 보냅니다. 파트너가 받는 돈은 "정산 이벤트 합 − 본사 청구 + 이월" 하나의 식으로만 계산해요.',
-    meta: '근거: 기능 명세서 C-STL-01·02 · A-STL-01~03 · P-STL-01·02 · C-PAY-02 · A-SYS-01 · P-ONB-04 · C-NOTI-01 · 기획서 B(입점·수수료·정산)',
+    meta: '근거: 기능 명세서 C-STL-01·02 · A-STL-01~03 · P-STL-01·02 · C-PAY-02 · A-ORD-02 · A-SYS-01 · P-ONB-03·04 · C-NOTI-01 · 기획서 B(입점·수수료·정산) · 2026-10-16 D57(지연배상금)·D59(생산 지연 취소, 돌려준 디자인비는 파트너 부담)',
     actors: [
       { id: 'hq', nav: ['정산 집계', '지급', '세금계산서', '대사'], navOn: '정산 집계', url: 'admin.sikup.co.kr/settlement', place: '통합 관리자 · 정산·재무 담당' },
       { id: 'partner', nav: ['주문', '상품', '정산 요약', '정산서', '세금계산서', '정산 계좌'], navOn: '정산 요약', url: 'partner.sikup.co.kr/settlement', place: '파트너 센터 · 대성포장' },
@@ -235,6 +260,7 @@
       { id: 'settle', machine: 'SETTLEMENT', label: '대성포장 주간 정산', note: '10월 2주차(10/6~10/12) 정산서 단위 · A-STL-01' },
       { id: 'recv', machine: 'SETTLEMENT_RECEIVABLE', label: '새봄인쇄 미수금', note: '갈래 · 30만원 초과 → 청구서 14일 → 판매 중지 · C-STL-02', hidden: true },
       { id: 'hb', machine: 'SETTLEMENT_HOLDBACK', label: '바른용기 계약 종료 유보', note: '갈래 · 최종 정산액 30% 90일 유보 · A-STL-02', hidden: true },
+      { id: 'med', machine: 'CLAIM_CANCEL', label: '다온인쇄 생산 지연 취소(DELAY_CANCEL)', note: '갈래 · 본사 중재 승인 → 전액 환불 → 정산은 중재 판정 이벤트 · A-ORD-02 · C-STL-01', hidden: true },
     ],
     render: (actor, f) => VIEWS[actor](f),
     onReset: init,
@@ -281,9 +307,11 @@
       ledgerStep: 0, calc: { base: P('commission.custom_rate'), plan: isPro() ? 'PRO' : 'BASIC', newP: false, re: true, promo: 0 },
       consent: true, taxRetried: false, taxIssuedOct: false,
       recv: { due: null, noticed: false }, hb: { start: null, releaseAt: null, late: false },
+      med: { week: 'real', feePaid: true, compared: false },
     });
-    app.strips.recv.hidden = true; app.strips.hb.hidden = true;
+    app.strips.recv.hidden = true; app.strips.hb.hidden = true; app.strips.med.hidden = true;
     app.setState('recv', 'ACCRUING', { log: false });
+    app.setState('med', 'CLAIM_COMPLETED', { log: false }); // 10/8 본사 중재 승인 → 전액 환불까지 끝난 건
     guide();
   }
 
@@ -328,6 +356,7 @@
     paid: () => [{ k: '지급 내역', v: '파트너 센터 공개 + 알림' }, { k: '수수료 세금계산서', v: '다음 달 1일 월 합계' }],
     recv: () => [{ k: '청구서 기준', policy: 'settlement.receivable_limit' }, { k: '또는 연속 미수', v: lpv('recv_weeks') }, { k: '납부 기한', v: lpv('recv_due_days') }, { k: '판매 중지 예고', v: lpv('stop_notice_days') }, ...(isPro() ? [{ k: '플랜료 연속 미수', v: `${lpv('plan_downgrade_cycles')} → 베이직 ${tag('tag-phase', '2차')}` }] : [{ k: 'MVP 미수금 청구', v: '분쟁 조정·위약금' }])],
     hb: () => [{ k: '유보율', policy: 'settlement.final_holdback' }, { k: '유보 기간', v: lpv('holdback_days') }, { k: '그 사이 클레임', v: '유보분에서 차감' }],
+    med: () => [{ k: '중재 판정 이벤트(수수료 없음)', v: '파트너 부담 −' }, { k: '생산 지연 취소 승인', v: '돌려준 디자인비' }, { k: `환불 기한(회수 완료·승인 뒤) ${tag('tag-phase', '법률 자문 전 초안')}`, policy: 'claim.refund_due_bd' }, { k: `지연배상금 연 이율 ${tag('tag-phase', '법률 자문 전 초안')}`, policy: 'claim.refund_delay_rate' }, { k: '정산액이 모자라면', v: '미수금(분쟁 조정)' }, { k: '청구서 기준', policy: 'settlement.receivable_limit' }, { k: '제작 파트너 변경 전액 환불', v: '자동 차감 없음' }],
   };
 
   /* ── 지금 차례 ── */
@@ -335,7 +364,15 @@
     const s = S();
     if (s.branch === 'SB') return guideRecv();
     if (s.branch === 'BR') return guideHb();
+    if (s.branch === 'DO') return guideMed();
     return guideMain();
+  }
+  function guideMed() {
+    const s = S(); const back = '대성포장을 고르면 기본 흐름 안내로 돌아가요.';
+    if (!s.closed) return app.turn('system', '화요일 0시 마감 배치 때 다온인쇄 정산서를 만들어요. [+1일]로 시간을 보내세요', { rules: R.med(), hint: back });
+    const d = medCalc();
+    if (!s.med.compared) return app.turn('hq', `다온인쇄 정산서의 중재 판정 2건(−${won(d.med)})을 확인하세요. 체험 조절에서 "구매 확정이 많은 주라면"이나 "디자인비 무료"로 바꿔 차감·미수금이 어떻게 달라지는지 비교해요`, { rules: R.med(), hint: `이번 주 정산액 ${won(d.ev.amount)}보다 중재 판정이 커서 ${won(d.taken)}만 빼고 ${won(d.recv)}은 미수금(분쟁 조정)으로 넘겨요. ${back}` });
+    return app.done(`다온인쇄 중재 판정 정산을 봤어요. 이번 주 지급 ${won(d.res.payout)} · 미수금(분쟁 조정) ${won(d.recv)}은 다음 주기에 먼저 빼요.`, { next: back });
   }
   function guideMain() {
     const s = S(); const st = app.state('settle'); const now = app.clock.now(); const k = s.cycle; const a = ACCTS[s.acct];
@@ -432,8 +469,9 @@
       row('ON', '온누리컵', on.eventSum, 0, 0, '<span class="st">0원 · 이월</span>', [tag('tag-warn', '마이너스 정산'), s.recon && !s.recon.resolved ? tag('tag-stop', '대사 불일치') : ''].filter(Boolean)),
       row('BR', '바른용기', br.fin, 0, br.now, stChip(oState), [tag('tag-kraft', `갈래 · ${P('settlement.final_holdback')}% 유보`)]),
       row('SB', '새봄인쇄', sb.eventSum, sum(sb.deductions, (d) => d.amount), 0, '<span class="st st-warn">0원 · 미수</span>', [tag('tag-stop', `갈래 · 미수금 ${won(sum(sb.receivables, (r) => r.amount))}`)]),
+      (() => { const d = medCalc(); return row('DO', '다온인쇄', d.res.eventSum, d.taken, d.res.payout, d.res.payout ? stChip(oState) : '<span class="st st-warn">0원 · 미수</span>', [tag('tag-stop', `갈래 · 중재 판정 −${won(d.med)}`), d.recv ? tag('tag-warn', `미수금 ${won(d.recv)}`) : ''].filter(Boolean)); })(),
     ].join('');
-    const detail = { DS: dsDetail, HB: hbDetail, ON: onDetail, BR: brDetail, SB: sbDetail, GC: gcDetail }[s.focus](s, st);
+    const detail = { DS: dsDetail, HB: hbDetail, ON: onDetail, BR: brDetail, SB: sbDetail, DO: doDetail, GC: gcDetail }[s.focus](s, st);
     return `<div class="panel"><div class="panel-h"><h2>10월 2주차 정산 배치 · ${fmtDate(CLOSE_AT)} 마감</h2><span class="xsmall faint">행을 누르면 상세</span></div><div class="panel-b stack">
       <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>파트너 · 상태</th><th class="num">이벤트 합</th><th class="num">청구 차감</th><th class="num">지급 예정</th></tr></thead><tbody>${rows}
         <tr class="row-pick${s.focus === 'GC' ? ' is-hl' : ''}" data-act="pick" data-p="GC"><td colspan="4" class="faint">식업 직영 · 정산 배치 제외(별도 원장) ${tag('tag-phase', '3차')}</td></tr></tbody></table></div></div></div>
@@ -607,6 +645,39 @@
       <div class="cluster">${['INVOICED', 'SALES_STOPPED'].includes(rs) ? '<button class="btn btn-primary btn-ext" data-act="payRecv">가상계좌 입금 확인</button>' : ''}${rs === 'INVOICED' ? '<button class="btn" data-act="toRecvDue">납부 기한까지 시간 보내기</button>' : ''}<button class="btn btn-ghost" data-act="pick" data-p="DS">대성포장으로 돌아가기</button></div></div></div>`;
   }
 
+  /* 다온인쇄 · 중재 판정 정산(C-STL-01 · C-STL-02 · A-ORD-02 · C-PAY-02, 2026-10-16 D57·D59) */
+  function doDetail(s) {
+    const m = s.med; const d = medCalc(m.week, m.feePaid); const dc = d.dc; const lc = d.lc;
+    const seg = (act, cur, opts) => `<div class="seg seg-sm med-seg" role="group">${opts.map(([k, n]) => `<button data-act="${act}" data-v="${k}" aria-pressed="${cur === k}">${n}</button>`).join('')}</div>`;
+    const draft = tag('tag-phase', '법률 자문 전 초안');
+    const tax = tag('tag-warn', '세무 확인 필요');
+    const rows = [
+      `<tr><td>구매 확정 · ${esc(d.w.item)}<br><span class="xsmall faint">판매가 ${won(d.w.sale)} · 수수료 ${d.rate}% ${won(d.ev.fee)}</span></td><td class="num">${won(d.ev.amount)}</td></tr>`,
+      `<tr class="is-zero"><td>생산 지연 취소된 항목 · ${MED_DELAY.order} ${esc(MED_DELAY.item)}<br><span class="xsmall faint">구매 확정이 없어 정산 이벤트가 생기지 않아요. 인쇄물·판은 파트너가 폐기하고, 그 손실은 대금을 받지 못하는 것으로 파트너가 져요</span></td><td class="num">—</td></tr>`,
+      `<tr><td>중재 판정 · 생산 지연 취소 · 고객에게 돌려준 디자인비 ${tax}<br><span class="xsmall faint">${MED_DELAY.order} · ${fmtDate(MED_DELAY.at)} 본사 중재 승인 · 수수료 없음${dc.designFeeToPartner ? '' : ' · 고객이 낸 디자인비가 없어 돌려준 디자인비도 0원'}</span></td><td class="num">${dc.designFeeToPartner ? '−' + won(dc.designFeeToPartner) : '0원'}</td></tr>`,
+      `<tr><td>중재 판정 · 늦어진 환불의 지연배상금 ${draft}<br><span class="xsmall faint">${MED_LATE.order} · 파트너 거부가 중재에서 뒤집혀 늦어짐 → 파트너 부담 · 수수료 없음</span></td><td class="num">−${won(lc.comp)}</td></tr>`,
+    ].join('');
+    return `<div class="panel"><div class="panel-h"><h2>다온인쇄 · 중재 판정 정산</h2><span class="cluster">${tag('tag-kraft', '갈래 · 중재 판정')}${d.res.payout ? stChip('SCHEDULED') : '<span class="st st-warn">0원 · 미수</span>'}</span></div><div class="panel-b stack">
+      <p class="small">본사 중재(A-ORD-02)에서 파트너가 비용을 부담하기로 판정한 금액은 ‘중재 판정’ 정산 이벤트(−)로 그 파트너 정산에서 빼요. 수수료는 없고, 이번 주 정산액이 모자라면 남은 몫은 미수금(분쟁 조정)으로 넘겨 다음 주기에 먼저 빼요.</p>
+      <div class="note note-ext small"><b>체험 조절</b> · 실제 화면에는 없는 조절판이에요. 위 집계 표는 늘 "이번 주 그대로 · 디자인비를 낸 주문"으로 계산해요.
+        <div class="cluster" style="margin-top:8px">${seg('medWeek', m.week, Object.entries(MED_WEEKS).map(([k, w]) => [k, `${w.label} · ${won(medCalc(k, m.feePaid).ev.amount)}`]))}${seg('medFee', m.feePaid ? 'paid' : 'free', [['paid', `고객이 낸 디자인비 ${won(P('design.fee'))}`], ['free', '디자인비 무료(50만원·이용권)']])}</div></div>
+      <div class="tbl-wrap"><table class="tbl small tbl-ev"><thead><tr><th>정산 이벤트</th><th class="num">정산액</th></tr></thead><tbody>${rows}
+        <tr class="is-sum"><td>구매 확정 합 (그 주 정산액)</td><td class="num">${won(d.res.base)}</td></tr>
+        <tr class="is-sub"><td>중재 판정 합(파트너 부담) ${won(d.med)} 중 이번 주에 뺀 금액<br><span class="xsmall faint">차감 순서는 이월 다음 분쟁 조정 자리 · 한도 = 그 주 정산액</span></td><td class="num">${d.taken ? '−' + won(d.taken) : '0원'}</td></tr>
+        <tr class="is-sum"><td>이번 주기 지급액</td><td class="num">${won(d.res.payout)}</td></tr>
+        <tr class="is-sub"><td>미수금(분쟁 조정)으로 넘김<br><span class="xsmall faint">${d.recv ? `기준 ${won(P('settlement.receivable_limit'))} 이하라 청구서 없이 다음 주기에 먼저 빼요` : '정산액 안에서 모두 뺐어요'}</span></td><td class="num">${won(d.recv)}</td></tr></tbody></table></div>
+      <div class="note note-warn small"><b>확인 필요</b> · 명세 C-STL-01은 이 금액을 ‘중재 판정’ 정산 이벤트(−)로 적고, 모자라면 미수금(분쟁 조정)으로 넘긴다고 해요. 그런데 지급액 식에서 정산 이벤트(−)가 정산액보다 크면 미수금이 아니라 마이너스 이월이 되고, 미수금은 본사 청구에서만 생겨요. 이 화면은 명세 문장대로 미수금으로 넘기는 쪽(분쟁 조정과 같은 차감 순서·한도)으로 계산했어요.</div>
+      <div class="sum-grid med-grid">
+        <div class="scard"><span class="lb">(a) 생산 지연 취소(DELAY_CANCEL) 승인 · P-ORD-03 · D59</span>
+          <dl class="kv small"><dt>고객 환불</dt><dd>${won(dc.refund)} · 공제 없이 낸 금액 전부 · 이용권·쿠폰 되살림</dd><dt>그중 디자인비</dt><dd>${won(dc.designFeeToPartner)} · 본사 매출을 돌려준 것이라 파트너가 부담(중재 판정 −)</dd><dt>인쇄 대금·판비</dt><dd>${won(MED_DELAY.print + MED_DELAY.plate)} · 구매 확정이 없어 정산 이벤트 없음</dd>
+            <dt>근거</dt><dd>입점 계약 초안(P-ONB-03) ‘파트너 귀책 생산 지연 취소 때 돌려준 디자인비는 파트너 부담’ ${draft}</dd><dt>세금계산서</dt><dd>디자인비를 파트너에게 청구하는 처리(본사 청구로 볼지) ${tax}</dd></dl>
+          <p class="xsmall faint">비교: 제작 파트너 변경으로 [전액 환불]하면(D59 ⑤) 고객 환불은 같은 ${won(d.pc.totalRefund)}이지만 돌려준 디자인비를 원래 파트너 정산에서 자동으로 빼지 않아요. 본사가 일단 부담하고 원래 파트너 청구는 입점 계약을 따라요(판매 중지·정지·계약 종료가 늘 파트너 잘못은 아니라서).</p></div>
+        <div class="scard"><span class="lb">(b) 환불 지연배상금 · C-PAY-02 · D57 ${draft}</span>
+          <dl class="kv small"><dt>회수 완료</dt><dd>${fmtDate(MED_LATE.collectedAt)}</dd><dt>환불 기한</dt><dd>${fmtDate(d.dueAt, false)} 끝(회수 완료 + ${pv('claim.refund_due_bd')} · 시작 때 저장)</dd><dt>환불 마침</dt><dd>${fmtDate(MED_LATE.doneAt)} · 중재에서 고객 인정 뒤 PG 취소 성공</dd>
+            <dt>지연배상금</dt><dd>${won(MED_LATE.amount)} × 연 ${pv('claim.refund_delay_rate')} × ${lc.days}일 ÷ 365 = <b>${won(lc.comp)}</b>(원 단위 내림)</dd><dt>지급</dt><dd>카드 환불은 승인 금액을 넘을 수 없어 고객 환불 계좌로 따로 송금 · 고객 알림 NOTI_REFUND_DELAY_PAID</dd><dt>부담</dt><dd>늦게 만든 쪽 · 파트너 거부가 뒤집힌 건이라 파트너(PG·시스템 장애·본사 지연이면 본사)</dd></dl>
+          <p class="xsmall faint">지연 일수는 기한 다음 날부터 환불을 마친 날까지의 달력일이고, 환불 계좌 입력을 기다린 날처럼 고객 사정으로 늦은 기간은 빼요.</p></div></div>
+      <div class="cluster"><button class="btn btn-ghost" data-act="pick" data-p="DS">대성포장으로 돌아가기</button></div></div></div>`;
+  }
   function payoutList(s) {
     const st = app.state('settle'); const c = mainCalc(); const w = within24();
     const chk = !!s.payCheck;
@@ -643,7 +714,7 @@
       ${list.map((r) => `<tr${r.id === 'DS' ? ' class="is-hl"' : ''}><td><b>${r.name}</b><br><span class="xsmall faint">${esc(r.acct)}</span></td><td class="num">${r.hold ? `<s>${won(r.amount)}</s>` : won(r.amount)}</td><td>${r.note}</td></tr>`).join('')}
       ${app.state('hb') === 'RELEASED' ? `<tr><td><b>바른용기</b><br><span class="xsmall faint">${esc(OTHERS.BR.acct)}</span></td><td class="num">${won(brCalc().release)}</td><td><span class="xsmall">유보분 · 자동 등록</span></td></tr>` : ''}
       <tr class="is-sum"><td>이번에 보낼 합계</td><td class="num">${won(total)}</td><td></td></tr></tbody></table></div>
-      <p class="xsmall faint">지급액이 0원이라 목록에 없는 곳: 온누리컵(이월 −12,000원) · 새봄인쇄(미수금). 정산 계좌는 관리자 화면에서 마스킹으로만 보이고 고칠 수 없어요.</p></div></div>`;
+      <p class="xsmall faint">지급액이 0원이라 목록에 없는 곳: 온누리컵(이월 −12,000원) · 새봄인쇄(미수금) · 다온인쇄(중재 판정 차감 뒤 미수금). 정산 계좌는 관리자 화면에서 마스킹으로만 보이고 고칠 수 없어요.</p></div></div>`;
     const canReq = st === 'CONFIRMED' && isPayDay && !s.req && !s.payCheck;
     const reqHtml = `<div class="panel"><div class="panel-h"><h2>1. 지급 요청</h2><span class="xsmall faint">정산 담당</span></div><div class="panel-b stack">
       ${s.req ? `<dl class="kv small"><dt>요청자</dt><dd>${ACCTS[s.req.by].name}</dd><dt>요청 시각</dt><dd>${fmtDate(s.req.at)}</dd><dt>요청 금액</dt><dd>${won(total)} · ${go.length}곳</dd></dl><div class="cluster"><button class="btn btn-sm btn-ghost" data-act="cancelReq">요청 취소</button></div>`
@@ -894,6 +965,7 @@
       ['계좌 변경 정산 보류', `변경 + ${P('settlement.account_change_hold_hours')}시간`, s.acctChange ? (within24() ? `<span class="sla sla-warn">${fmtDate(new Date(s.acctChange.at.getTime() + holdMs()))}까지</span>` : '<span class="sla sla-ok">지남</span>') : '없음'],
       ['대사 불일치 알림', `${L('recon_escalate_days')}일 넘게 안 풀리면 팀장`, s.recon ? (s.recon.resolved ? '해결' : `<span class="sla sla-warn">${Math.floor((now - s.recon.at) / DAY)}일째</span>`) : '대사 전'],
       ['미수금 청구', `${won(P('settlement.receivable_limit'))} 초과 또는 ${L('recv_weeks')}주 연속 → 청구서 ${L('recv_due_days')}일 → 판매 중지`, s.recv.due ? `${GC.sm.stateName('SETTLEMENT_RECEIVABLE', rs)} · 기한 ${fmtDate(s.recv.due, false)}` : GC.sm.stateName('SETTLEMENT_RECEIVABLE', rs)],
+      ['환불 기한 감시 <span class="tag tag-phase">법률 자문 전 초안</span>', `환불할 일이 생길 때 기한 저장(반품은 회수 완료, 취소는 승인·확정 + ${pv('claim.refund_due_bd')}) · 기한 전날·넘김 때 재무 알림 NOTI_INT_REFUND_DUE · NOTI_INT_REFUND_OVER · 넘기면 지연배상금(연 ${pv('claim.refund_delay_rate')}) 자동 계산 · 부담은 늦게 만든 쪽`, (() => { const d = medCalc(); return `다온인쇄 반품 1건 · 기한 ${fmtDate(d.dueAt, false)} 넘김 · ${d.lc.days}일 · ${won(d.lc.comp)}(파트너 부담)`; })()],
       ['계약 종료 유보', `최종 정산액 ${P('settlement.final_holdback')}% · ${L('holdback_days')}일`, hs ? `${GC.sm.stateName('SETTLEMENT_HOLDBACK', hs)}${s.hb.releaseAt ? ` · ${fmtDate(s.hb.releaseAt, false)}` : ''}` : '마감 전'],
       ['월간 세금계산서', '매월 1일 전월분 · 팝빌', s.taxIssuedOct ? '<span class="sla sla-ok">11/1 발행됨</span>' : `다음 ${fmtDate(NOV1, false)}`],
     ];
@@ -945,11 +1017,19 @@
     ptTab(b) { S().ptTab = b.dataset.t; refresh(); },
     pick(b) {
       const s = S(); const p = b.dataset.p;
-      s.focus = p; s.branch = p === 'SB' || p === 'BR' ? p : null; s.hqTab = 'agg';
+      s.focus = p; s.branch = ['SB', 'BR', 'DO'].includes(p) ? p : null; s.hqTab = 'agg';
       if (p === 'SB') app.strips.recv.hidden = false;
       if (p === 'BR') app.strips.hb.hidden = false;
+      if (p === 'DO' && app.strips.med.hidden) {
+        app.strips.med.hidden = false;
+        const d = medCalc();
+        app.log('rule', `다온인쇄 생산 지연 취소(DELAY_CANCEL): ${fmtDate(MED_DELAY.at)} 본사 중재 승인 → 공제 없이 ${won(d.dc.refund)} 환불 · 돌려준 디자인비 ${won(d.dc.designFeeToPartner)}은 파트너 부담(중재 판정 −) · 구매 확정이 없어 그 항목의 구매 확정 이벤트 없음`);
+        app.log('money', `다온인쇄 중재 판정 −${won(d.med)}(디자인비 ${won(d.dc.designFeeToPartner)} + 지연배상금 ${won(d.lc.comp)}) · 정산액 ${won(d.res.base)}에서 ${won(d.taken)} 차감 · 미수금(분쟁 조정) ${won(d.recv)}`);
+      }
       refresh();
     },
+    medWeek(b) { const s = S(); s.med.week = b.dataset.v; s.med.compared = true; const d = medCalc(s.med.week, s.med.feePaid); app.log('user', `체험: ${MED_WEEKS[s.med.week].label} · 다온인쇄 지급 ${won(d.res.payout)} · 미수금 ${won(d.recv)}`); refresh(); },
+    medFee(b) { const s = S(); s.med.feePaid = b.dataset.v === 'paid'; s.med.compared = true; const d = medCalc(s.med.week, s.med.feePaid); app.log('user', `체험: ${s.med.feePaid ? '고객이 디자인비를 낸 주문' : '디자인비가 무료였던 주문'} · 돌려준 디자인비(파트너 부담) ${won(d.dc.designFeeToPartner)}`); refresh(); },
     dsSub(b) { S().dsSub = b.dataset.t; refresh(); },
     sim(b) { S().sim = b.dataset.v; refresh(); },
     holdItem() {

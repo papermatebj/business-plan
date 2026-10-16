@@ -1,0 +1,14 @@
+[
+ {"click":"#ord-scn [data-scn=\"inspect\"]","after":400},
+ {"role":"partner","shot":"order-92-dark-inspect-partner"},
+ {"act":"partialReturn","after":400},
+ {"role":"customer","shot":"order-93-dark-inspect-customer"},
+ {"act":"objection"},
+ {"adv":"86400000"},{"adv":"86400000"},{"adv":"86400000"},
+ {"role":"hq","shot":"order-94-dark-inspect-mediation"},
+ {"eval":"(()=>{ const t=document.querySelector('#gc-device .panel .kv').innerText.split(String.fromCharCode(10)).join(' | '); if(!t.includes('거부한 1박스도')) throw new Error('수량별 중재 안내 없음: '+t); return t; })()"},
+ {"act":"mediate","attr":"data-r=\"customer\"","after":400},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,16).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('25,604원')||!log.includes('NOTI_REFUND_DELAY_PAID')) throw new Error('거부 수량 인정 환불 25,604원·지연배상금 기록 없음: '+log); return log; })()"},
+ {"role":"customer","shot":"order-95-dark-inspect-done"},
+ {"role":"partner","shot":"order-96-dark-inspect-partner-done"}
+]

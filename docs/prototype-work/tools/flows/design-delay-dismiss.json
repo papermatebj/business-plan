@@ -1,0 +1,218 @@
+[
+{
+"act": "toMethod"
+},
+{
+"act": "toRequest"
+},
+{
+"check": "rights"
+},
+{
+"check": "stage"
+},
+{
+"check": "own"
+},
+{
+"act": "toCheckout"
+},
+{
+"check": "co_stage"
+},
+{
+"check": "co_plate"
+},
+{
+"act": "pay",
+"after": 500
+},
+{
+"role": "design"
+},
+{
+"act": "assign"
+},
+{
+"act": "startWork"
+},
+{
+"act": "propose",
+"after": 500
+},
+{
+"role": "customer"
+},
+{
+"act": "cs",
+"attr": "data-to=\"proposal\""
+},
+{
+"act": "cs",
+"attr": "data-to=\"approve\""
+},
+{
+"check": "ap_typo"
+},
+{
+"check": "ap_contact"
+},
+{
+"check": "ap_color"
+},
+{
+"check": "ap_qty"
+},
+{
+"check": "ap_nocancel"
+},
+{
+"act": "doApprove",
+"after": 600
+},
+{
+"role": "design"
+},
+{
+"act": "handOff"
+},
+{
+"role": "partner"
+},
+{
+"act": "download"
+},
+{
+"act": "printable"
+},
+{
+"adv": "604800000"
+},
+{
+"adv": "604800000"
+},
+{
+"role": "customer"
+},
+{
+"act": "delayReq"
+},
+{
+"role": "partner"
+},
+{
+"act": "delayProgress",
+"after": 400
+},
+{
+"role": "hq"
+},
+{
+"eval": "document.querySelector('#gc-device [data-act=mediate][data-r=no]').disabled"
+},
+{
+"act": "medPreset",
+"idx": 1
+},
+{
+"eval": "document.querySelector('#gc-device [data-act=mediate][data-r=no]').disabled"
+},
+{
+"act": "mediate",
+"attr": "data-r=\"no\"",
+"after": 400
+},
+{
+"role": "customer"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .app-card')].find(c=>/생산 지연 취소 요청/.test(c.innerText));if(!c)return 'no card';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ')})()",
+"after": 200,
+"shot": "ddl-11-customer-dismissed"
+},
+{
+"role": "partner",
+"shot": "ddl-12-partner-new-due"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+},
+{
+"adv": "86400000"
+},
+{
+"adv": "86400000"
+},
+{
+"adv": "86400000"
+},
+{
+"adv": "86400000"
+},
+{
+"adv": "86400000"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+},
+{
+"role": "customer"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .app-card')].find(c=>/늦어지고/.test(c.innerText));if(!c)return 'no card';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ')})()",
+"after": 200,
+"shot": "ddl-13-customer-reopened"
+},
+{
+"act": "delayReq"
+},
+{
+"role": "partner"
+},
+{
+"act": "ship",
+"after": 400
+},
+{
+"role": "hq",
+"shot": "ddl-14-hq-shipped",
+"full": true
+},
+{
+"act": "mediate",
+"attr": "data-r=\"ok\"",
+"after": 500
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+},
+{
+"role": "system"
+},
+{
+"act": "trackDelivery",
+"after": 600
+},
+{
+"role": "partner",
+"shot": "ddl-15-partner-collected",
+"full": true
+},
+{
+"role": "hq"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .panel')].find(c=>/끝난 클레임/.test(c.innerText));if(!c)return 'none';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ').slice(0,400)})()",
+"after": 200,
+"shot": "ddl-16-hq-claims"
+},
+{
+"eval": "Array.from(document.querySelectorAll('#gc-log li')).slice(0,10).map(l=>l.textContent.replace(/\\s+/g,' ').trim().slice(0,200))"
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+}
+]

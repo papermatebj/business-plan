@@ -1,0 +1,17 @@
+[
+ {"role": "system"},
+ {"act": "runClose", "after": 300},
+ {"eval": "(()=>{const t=document.querySelector('#gc-device').innerText;if(!t.includes('NOTI_INT_REFUND_DUE')||!t.includes('NOTI_INT_REFUND_OVER')||!t.includes('10/1(목) 넘김 · 7일 · 1,380원'))throw new Error('환불 기한 감시 행');return 'system ok'})()", "shot": "settlement-d01-system"},
+ {"role": "hq"},
+ {"eval": "(()=>{const r=[...document.querySelectorAll('#gc-device tr[data-p=DO]')].map(x=>x.innerText.replace(/\\s+/g,' '))[0]||'';if(!r.includes('다온인쇄')||!r.includes('27,000원')||!r.includes('−27,000원')||!r.includes('중재 판정 −40,380원')||!r.includes('미수금 13,380원'))throw new Error('집계 행 '+r);return r})()"},
+ {"act": "pick", "attr": "data-p=\"DO\"", "after": 300, "shot": "settlement-d02-med", "full": true},
+ {"eval": "(()=>{const d=document.querySelector('#gc-device');const t=d.innerText.replace(/[ \\t]+/g,' ');const turn=document.querySelector('#gc-turn .turn-what').textContent;const need=['중재 판정 · 생산 지연 취소 · 고객에게 돌려준 디자인비','−39,000원','중재 판정 · 늦어진 환불의 지연배상금','−1,380원','구매 확정이 없어 정산 이벤트가 생기지 않아요','미수금(분쟁 조정)으로 넘김','13,380원','세무 확인 필요','법률 자문 전 초안','P-ONB-03','339,000원','자동으로 빼지 않아요','10/1(목) 끝','480,000원 × 연','7일 ÷ 365','NOTI_REFUND_DELAY_PAID','확인 필요'];const miss=need.filter(x=>!t.includes(x));const chips=[...document.querySelectorAll('.chip.is-now')].map(c=>c.title).join('|');if(miss.length||!turn.includes('중재 판정 2건(−40,380원)')||!chips.includes('CLAIM_COMPLETED'))throw new Error('중재 판정 상세 '+JSON.stringify({miss,turn,chips}));return {turn,chips}})()"},
+ {"eval": "(()=>{const l=document.querySelector('#gc-log').innerText;if(!l.includes('구매 확정 이벤트 없음')||!l.includes('미수금(분쟁 조정) 13,380원'))throw new Error('기록');return 'log ok'})()"},
+ {"act": "medWeek", "attr": "data-v=\"rich\"", "shot": "settlement-d03-rich"},
+ {"eval": "(()=>{const rows=[...document.querySelectorAll('#gc-device .tbl-ev tr')].map(x=>x.innerText.replace(/\\s+/g,' '));const pay=rows.find(x=>x.startsWith('이번 주기 지급액'))||'';const rv=rows.find(x=>x.startsWith('미수금(분쟁 조정)'))||'';if(!pay.includes('220,620원')||!rv.includes('0원'))throw new Error('넉넉한 주 '+pay+' / '+rv);return {pay,rv}})()"},
+ {"act": "medFee", "attr": "data-v=\"free\""},
+ {"eval": "(()=>{const rows=[...document.querySelectorAll('#gc-device .tbl-ev tr')].map(x=>x.innerText.replace(/\\s+/g,' '));const pay=rows.find(x=>x.startsWith('이번 주기 지급액'))||'';const dz=rows.find(x=>x.includes('고객에게 돌려준 디자인비'))||'';const t=document.querySelector('#gc-device').innerText;if(!pay.includes('259,620원')||!dz.includes('0원')||!t.includes('300,000원 · 공제 없이'))throw new Error('디자인비 무료 '+pay+' / '+dz);return {pay,dz}})()"},
+ {"eval": "(()=>{const t=(document.querySelector('#gc-turn .turn-done')||{}).textContent||'';if(!t.includes('다온인쇄 중재 판정 정산을 봤어요'))throw new Error('끝 문구 '+t);return t})()", "shot": "settlement-d04-free"},
+ {"act": "pick", "attr": "data-p=\"DS\""},
+ {"eval": "(()=>{const t=document.querySelector('#gc-turn .turn-what').textContent;if(!t.includes('이상 건'))throw new Error('기본 흐름 복귀 '+t);return t})()"}
+]

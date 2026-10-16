@@ -103,6 +103,10 @@
   /* 파트너 주문 담당자: 제안 거둠·이어서 제작(NOTI_PARTNER_CHANGE_WITHDRAWN) · [인쇄 가능] 확인 기한 리마인드(NOTI_PARTNER_PRINT_CHECK_DUE) — C-NOTI-01 표 */
   const CH_PT_WD = ['알림톡', 'SMS 대체', '이메일', '알림센터'];
   const CH_PT_DUE = ['알림톡', 'SMS 대체', '알림센터'];
+  /* 출고 기한 넘김·생산 지연 취소(P-ORD-03·04 · C-NOTI-01 표, 2026-10-16): 고객 NOTI_SHIP_OVERDUE·NOTI_PRODUCTION_OVERDUE · 파트너 NOTI_PARTNER_SHIP_OVERDUE(= CH_PT_DUE)
+     · 파트너 클레임 NOTI_PARTNER_CLAIM_NEW · 중재 결과 고객 NOTI_MEDIATION_DECIDED(= CH_CUST)·파트너 NOTI_PARTNER_MEDIATION_DECIDED(= CH_PT_WD) */
+  const CH_CUST_LATE = ['알림톡', 'SMS 대체', '앱 푸시', '알림센터'];
+  const CH_PT_CLAIM = ['알림톡', 'SMS 대체', '알림센터'];
   function lpv(k, text) {
     const m = LOCAL[k];
     return `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(m.label)} — 엔진에 아직 없는 값이라 이 페이지 상수로 둠">${text != null ? text : GC.num(m.v) + m.unit}</span>`;
@@ -200,22 +204,36 @@
      정지가 풀려 변경 제안을 거두면 그때를 다시 전달한 때로 보고 새로 셈(D46) */
   const printDue = (o) => (o.handedAt ? GC.addBusinessDays(o.handedAt, P(PRINT_BD)) : null);
   const printWaiting = (o) => o.kind === 'custom' && o.st === 'DESIGN_CONFIRMED' && o.design === 'HANDED_OFF' && !!o.handedAt && !o.movedAway;
+  /* 출고 기한(P-ORD-03 · 2026-10-16 D58·D59): 약속 출고일(일반, 결제 후 영업일 2일)·출고 예정일(맞춤, [인쇄 가능] + 리드타임) 다음 영업일 끝
+     (GC.order.overdueAt = + order.overdue_grace_bd)까지 송장이 없으면 일반은 '출고 지연'(무단 지연 기록 · 고객 [바로 취소]), 맞춤은 '생산 지연'(고객 [취소 요청] → DELAY_CANCEL 본사 중재).
+     판정 시각은 출고일이 정해질 때 계산해 저장(o.overdueAt). 붙은 추가 구성품은 본 항목을 따름 */
+  const DUE_ST = { normal: 'ACCEPTED', custom: 'IN_PRODUCTION' };
+  const dueLive = (o) => !!o.overdueAt && DUE_ST[o.kind] === o.st && !o.movedAway;
+  const isLate = (o) => dueLive(o) && !!o.overdue;
+  const dcOpen = (o) => !!(o.dc && !o.dc.result); // 생산 지연 취소(DELAY_CANCEL) 요청이 열려 있음 — 생산은 계속(보류 없음)
+  const dueName = (o) => (o.kind === 'custom' ? '출고 예정일' : '약속 출고일');
+  const withDue = (o, due, from) => Object.assign(o, { due, overdueAt: GC.order.overdueAt(due), overdue: null, dueFrom: from });
   /* 체험용 주문: 2단계 인증 뒤 검수를 마친 상품에 들어온 주문이라고 가정 (P-ORD-01). 맞춤 주문은 맞춤 인쇄 파트너만 */
   function seedOrders(now, custom) {
     const t = now.getTime();
-    return [
-      { id: 'GC-2610-1041', kind: 'normal', item: '크라프트 수저집 40×240mm · 10박스', st: 'ACCEPTED', who: { name: '홍길동', phone: '010-2345-1234', addr: '서울 강남구 테헤란로 123 1층 오늘밥상' } },
+    const list = [
+      { id: 'GC-2610-1041', kind: 'normal', item: '크라프트 수저집 40×240mm · 10박스', st: 'ACCEPTED', paid: 280000, dueSeed: GC.addBusinessDays(now, 1), who: { name: '홍길동', phone: '010-2345-1234', addr: '서울 강남구 테헤란로 123 1층 오늘밥상' } },
       /* list·plate = 할인 전 상품 대금·판비, paid = 상품 대금·판비 줄 결제 금액 합(D36 결제 비율의 분자), paidTotal = 그 항목에 낸 전부(디자인비 포함) */
       /* handedAt = 본사가 인쇄 패키지를 전달한 때(D47 기한 시작점) */
-      custom && { id: 'GC-2610-1038', kind: 'custom', item: '로고 수저집 40×240mm 5,000매 · 별색 1도', st: 'DESIGN_CONFIRMED', design: 'HANDED_OFF', handedAt: new Date(t - 2 * HOUR), list: 150000, plate: 30000, paid: 172500, paidTotal: 172500, benefit: '멤버십 무료 이용권', paidNote: '상품 142,500원(파트너 즉시 할인 5%) + 판비 30,000원 · 디자인비 0원(멤버십 무료 이용권)', who: { name: '김서연', phone: '010-3381-5521', addr: '서울 마포구 ○○로 45 카페 소금' } },
+      custom && { id: 'GC-2610-1038', kind: 'custom', item: '로고 수저집 40×240mm 5,000매 · 별색 1도', st: 'DESIGN_CONFIRMED', design: 'HANDED_OFF', handedAt: new Date(t - 2 * HOUR), lead: 7, list: 150000, plate: 30000, paid: 172500, paidTotal: 172500, benefit: '멤버십 무료 이용권', paidNote: '상품 142,500원(파트너 즉시 할인 5%) + 판비 30,000원 · 디자인비 0원(멤버십 무료 이용권)', who: { name: '김서연', phone: '010-3381-5521', addr: '서울 마포구 ○○로 45 카페 소금' } },
       /* 맞춤 항목에 붙은 추가 구성품(D49): 본 항목 [인쇄 가능] 전이라 결제 완료 · 따로 [발주 확인] 없음 */
       custom && { id: 'GC-2610-1038-A1', kind: 'addon', parent: 'GC-2610-1038', item: '종이 이쑤시개 1박스', st: 'PAID', paid: 12000, who: { name: '김서연', phone: '010-3381-5521', addr: '서울 마포구 ○○로 45 카페 소금' } },
       custom && { id: 'GC-2610-1045', kind: 'custom', item: '로고 컵홀더 2,000개 · 1도', st: 'DESIGNING', design: 'PROPOSED', list: 96000, plate: 20000, paid: 116000, paidTotal: 155000, paidNote: '상품 96,000원 + 판비 20,000원 + 디자인비 39,000원', who: { name: '최유진', phone: '010-4471-2209', addr: '서울 송파구 ○○로 77 베이커리 온' } },
-      custom && { id: 'GC-2610-1029', kind: 'custom', item: '로고 수저집 40×240mm 3,000매 · 1도', st: 'IN_PRODUCTION', design: 'IN_PRODUCTION', who: { name: '정하늘', phone: '010-6624-1180', addr: '경기 고양시 ○○로 31 국밥집 한솥' } },
+      /* 생산 중 맞춤 항목: [인쇄 가능] 뒤 리드타임 영업일 7일 → 출고 예정일이 영업일 2일 남음(체험용) */
+      custom && { id: 'GC-2610-1029', kind: 'custom', item: '로고 수저집 40×240mm 3,000매 · 1도', st: 'IN_PRODUCTION', design: 'IN_PRODUCTION', lead: 7, dueSeed: GC.addBusinessDays(now, 2), list: 84000, plate: 30000, paid: 114000, designFee: 39000, paidTotal: 153000, paidNote: '상품 84,000원 + 판비 30,000원 + 디자인비 39,000원', who: { name: '정하늘', phone: '010-6624-1180', addr: '경기 고양시 ○○로 31 국밥집 한솥' } },
       { id: 'GC-2610-1033', kind: 'normal', item: '종이 포장 용기 750ml · 4박스', st: 'SHIPPED', shippedAt: new Date(t - 6 * HOUR), who: { name: '박민수', phone: '010-9012-9083', addr: '경기 성남시 분당구 ○○로 8 분식나라' } },
       { id: 'GC-2610-0987', kind: 'normal', item: '테이크아웃 봉투 · 6박스', st: 'DELIVERED', deliveredAt: new Date(t - 5 * DAY), who: { name: '이정은', phone: '010-5521-7730', addr: '서울 중구 ○○길 12 한그릇' } },
     ].filter(Boolean);
+    list.forEach((o) => { if (o.dueSeed) { withDue(o, o.dueSeed, 'seed'); delete o.dueSeed; } });
+    return list;
   }
+  /* 생산 지연 취소 승인 금액(C-PAY-02 · D59): 공제 없이 낸 금액 전부, 돌려준 디자인비는 파트너 부담 */
+  const dcMoney = (o) => GC.refund.designCancel({ type: 'CUSTOM', state: 'IN_PRODUCTION', itemsAmount: (o.paidTotal || 0) - (o.designFee || 0), paidDesignFee: o.designFee || 0, plateFee: o.plate || 0, productionDelay: true });
 
   /* ── 파트너 계정 상태(엔진에 없음 → 이 페이지에서 정의, P-ONB-03·04 · A-PTN-02) ── */
   GC.sm.define('PARTNER_ACCOUNT', {
@@ -238,7 +256,7 @@
     domain: 'partner',
     title: '파트너 입점·계약',
     lede: '제조사·인쇄소가 입점을 신청하면 MD가 서류와 품질을 심사하고, 맞춤 인쇄 파트너는 인쇄 샘플까지 확인합니다. 승인 뒤 전자 계약에서 직거래 금지·판 소유권·디자인 저작권 조항에 하나씩 동의해야 계정이 열려요.',
-    meta: '근거: 기능 명세서 P-ONB-01~05 · A-PTN-01·02(계정 상태별 열람) · A-ORD-01(제작 파트너 변경) · C-STATE-01·03 · P-ORD-01·06([인쇄 가능] 확인 기한) · C-SEC-01 · C-NOTI-01 · A-SYS-03 정책값 · 기획서 07장 B·J(입점 계약 보호 조항 초안)',
+    meta: '근거: 기능 명세서 P-ONB-01~05 · A-PTN-01·02(계정 상태별 열람) · A-ORD-01(제작 파트너 변경) · C-STATE-01~03 · P-ORD-01·06([인쇄 가능] 확인 기한) · P-ORD-03·04(출고 기한 넘김·무단 지연·생산 지연 취소, 2026-10-16 D58·D59) · A-ORD-02 · C-SEC-01 · C-NOTI-01 · A-SYS-03 정책값 · 기획서 07장 B·J(입점 계약 보호 조항 초안)',
     actors: [
       { id: 'partner', nav: ['입점 신청'], url: 'partner.sikup.co.kr/apply', place: '파트너 센터 · 대성포장 담당자' },
       { id: 'hq', name: '본사 MD·운영', nav: ['입점 심사', '파트너 관리', '수수료율'], url: 'admin.sikup.co.kr/partners', place: '통합 관리자 · MD·운영팀' },
@@ -362,6 +380,15 @@
       if (!s.inv.replied && !lapsed) return turn('partner', '직거래 조사 통지를 받았어요. 소명 기한 안에 [소명 자료 제출]을 누르세요', { rules, hint: '소명하지 않고 +7일을 보내면 기한이 지나 운영팀이 바로 판단해요.' });
       return turn('hq', '증빙을 확인하고 위반이면 [위반 판단·위약금 청구]를, 증빙이 없으면 [혐의 없음 종결]을 누르세요', { rules });
     }
+    /* 생산 지연 취소(DELAY_CANCEL, P-ORD-03·04 · A-ORD-02 · D59): 열린 요청 → 파트너가 출고 가능 시점·진행 올림 → 본사 판정. 폐기 확인까지 */
+    const dcO = ac && s.orders.find(dcOpen);
+    if (dcO) {
+      const R = [{ k: '생산 지연 취소', v: '자동 승인 없음 · 본사 중재' }, { k: '그동안', v: '생산 계속 · 송장 등록 막지 않음' }, { k: '승인하면', v: '공제 없이 전액 환불' }, { k: '돌려준 디자인비', v: "파트너 부담('중재 판정' −)" }, { k: '기각하면', v: '출고 독촉 · 새 출고 예정일' }];
+      if (!dcO.dc.progress && dcO.st === 'IN_PRODUCTION') return turn('partner', `${dcO.id} 고객이 생산 지연으로 취소를 요청했어요(취소 중재 중). [주문]에서 [출고 가능 시점·진행 올리기]를 누르세요. 생산은 멈추지 않아요`, { rules: R, hint: '요청 중에도 [송장 등록]은 막지 않아요. 본사가 승인하면 회수한 뒤 환불하고(회수 배송비 파트너), 기각하면 그대로 배송돼요.' });
+      return turn('hq', `${dcO.id} 생산 지연 취소 요청을 판정할 차례예요. [파트너 관리]의 '대성포장 주문'에서 체험 버튼 [승인]·[기각]으로 대신 눌러 보세요`, { rules: R, hint: '파트너가 올린 출고 가능 시점·생산 진행과 고객 사정을 보고 정하고, 결과는 양측에 알리고 최종이에요(이의 제기 없음). 본사 분쟁 중재 화면 전체는 맞춤 디자인 페이지에 있어요.' });
+    }
+    const discO = ac && s.orders.find((o) => o.cancelWhy === 'delay' && !o.discarded);
+    if (discO) return turn('partner', `${discO.id} 생산 지연 취소가 승인됐어요. 이미 만든 인쇄물·판을 폐기하고 [주문]에서 [폐기 확인 올리기]를 누르세요`, { rules: [{ k: '인쇄물·판', v: '회사 저작권 디자인 · 폐기' }, { k: '손실', v: '파트너(대금 없음)' }, { k: '돌려준 디자인비', v: `${won(discO.dc.money.designFeeToPartner)} 정산 차감` }, { k: '모자라면', v: '미수금(분쟁 조정)' }] });
     /* 정지·계약 종료 뒤 남은 주문 (A-PTN-02 계정 상태별 열람) */
     if (RESTRICTED(ac)) {
       const nm = GC.sm.stateName('PARTNER_ACCOUNT', ac);
@@ -377,7 +404,8 @@
       /* D48: 휴업·폐업으로 정지된 파트너가 재조회에서 다시 계속사업자 → 자동 해제 없이 담당 MD가 확인 뒤 [정지 해제] */
       if (ac === 'SUSPENDED' && s.bizResumed) return turn('hq', `국세청 재조회에서 대성포장이 다시 계속사업자로 확인됐어요. 자동으로 풀지 않아요. 담당 MD가 미수금·서류 같은 다른 정지 사유가 없는지 확인한 뒤 [파트너 관리]에서 [정지 해제]를 누르세요`, { rules: [{ k: '자동 해제', v: '안 함 · MD에게 알림만' }, { k: '확인', v: '미수금·서류·직거래 조사' }, { k: '해제 사유(기본)', v: BIZ_OK }, { k: '해제하면', v: '대표자 알림 · 제안 거둠' }], hint: '다른 정지 사유가 있으면 해제 사유를 바꾸거나 그 사유가 풀릴 때까지 정지를 유지해요.' });
       if (fresh.length) return turn('hq', `[인쇄 가능] 전 맞춤 항목 ${fresh.length}건은 대성포장이 인쇄 패키지를 받을 수 없어 만들 수 없어요. [파트너 관리]의 '제작 파트너 변경'에서 같은 사양 상품을 고르고 [고객에게 제안]을 누르세요`, { rules: chgRules, hint: '이미 [인쇄 가능]을 누른 생산 중 항목은 옮기지 않고 대성포장이 마저 만들어 출고해요.' });
-      if (toShip.length) return turn('partner', `${nm} 중이에요. 남은 주문 ${toShip.length}건은 [주문]에서 [송장 등록]으로 마저 출고하세요. 엑셀·인쇄 패키지는 받을 수 없어요`, { rules, hint: `고객 배송 정보는 목록에서 가려지고 [배송 정보 보기]로 한 건씩만 열려요.${toShip.some((o) => o.kind === 'custom') ? ' 생산 중인 맞춤 항목은 [인쇄 가능] 뒤라 다른 파트너로 옮기지 않아요.' : ''}` });
+      const lateN = toShip.filter(isLate).length;
+      if (toShip.length) return turn('partner', `${nm} 중이에요. 남은 주문 ${toShip.length}건은 [주문]에서 [송장 등록]으로 마저 출고하세요.${lateN ? ` 그중 ${lateN}건은 출고 기한을 넘겨 고객에게 취소 길이 열렸어요.` : ''} 엑셀·인쇄 패키지는 받을 수 없어요`, { rules: lateN ? rules.concat([{ k: '출고 기한 넘김', v: '일반 [바로 취소] · 맞춤 [취소 요청]' }]) : rules, hint: `고객 배송 정보는 목록에서 가려지고 [배송 정보 보기]로 한 건씩만 열려요.${toShip.some((o) => o.kind === 'custom') ? ' 생산 중인 맞춤 항목은 [인쇄 가능] 뒤라 다른 파트너로 옮기지 않아요.' : ''}` });
       if (waiting.length) return turn('hq', `고객 답변을 기다려요(제작 파트너 변경 제안 ${waiting.length}건). 고객 화면은 주문 페이지에 있어요. 여기서는 결과 칸의 [고객 동의]·[고객 전액 환불]로 대신 눌러 보거나 +1일로 기한을 보내세요`, { rules: chgRules, hint: `+1일을 6번 누르면 기한 하루 전 다시 알림, 7번째에 무응답 전액 환불이 일어나요.${ac === 'SUSPENDED' ? ' 그 전에 [정지 해제]를 누르면 답하지 않은 제안은 거두고 대성포장이 이어서 만들어요.' : ''}` });
       if (rem.length) return turn('system', `배송 중인 주문 ${rem.length}건이 남았어요. +1일로 배송 완료를 보내세요. 모두 배송 완료되면 고객 정보를 바로 가려요`, { rules });
       if (s.claim && !s.claim.done) {
@@ -407,6 +435,12 @@
         const b0 = back[0]; const due = printDue(b0);
         return turn('partner', `정지가 풀려 ${back.map((o) => o.id).join(', ')}의 제작 파트너 변경 제안을 거뒀어요. [주문]에서 [인쇄 패키지 받기]를 누르고 확인 기한 안에 [인쇄 가능]을 눌러 이어서 만드세요`, { rules: [{ k: '거둔 제안', v: '표시 내림 · 기한 멈춤' }, { k: '인쇄 확인 기한', v: due ? fmtDate(due) : pv(PRINT_BD) }, { k: '기한 시작(다시 전달)', v: `거둔 때 · ${pv(PRINT_BD)}` }, { k: '붙은 구성품', v: '함께 발주 확인' }, { k: '동의·환불된 건', v: '그대로' }], hint: '+1일로 기한을 넘기면 파트너 리마인드와 운영팀 지연 알림이 가요(지연은 기록만, 평가 반영은 2차).' });
       }
+      /* 출고 기한 넘김(P-ORD-03 · D58·D59): 일반은 무단 지연 기록 + 고객 [바로 취소], 맞춤은 고객 [취소 요청] */
+      const lateRules = [{ k: '판정', v: '출고일 다음 영업일 끝까지 송장 없음' }, { k: '유예', policy: 'order.overdue_grace_bd' }, { k: '일반 상품', v: '무단 지연 기록 · 고객 [바로 취소]' }, { k: '맞춤 제작', v: '고객 [취소 요청] · 본사 중재' }, { k: '평가·페널티', v: 'MVP는 기록만 · 2차' }];
+      const late = s.orders.filter(isLate);
+      if (late.length) return turn('partner', `출고 기한을 넘긴 주문이 ${late.length}건 있어요(${late.map((o) => o.id).join(', ')}). [주문]에서 송장을 등록해 출고하세요`, { rules: lateRules, hint: '[주문]의 체험 버튼으로 고객의 [바로 취소](일반)·[취소 요청](맞춤)을 대신 눌러 볼 수 있어요. 늦게 출고된 일반 상품은 고객이 ‘늦게 받음’ 사유로 반품할 수 있고 반품 배송비는 파트너가 내요.' });
+      const pushed = s.orders.find((o) => dueLive(o) && o.dueFrom === 'dismiss');
+      if (pushed) return turn('partner', `본사가 ${pushed.id} 생산 지연 취소를 기각하고 출고를 독촉했어요. 새 출고 예정일(${fmtDate(pushed.due, false)})까지 [송장 등록]으로 출고하세요`, { rules: lateRules.slice(0, 2).concat([{ k: '새 예정일도 넘기면', v: '고객 [취소 요청] 다시 열림' }]), hint: '+1일로 새 예정일 다음 영업일 끝을 넘기면 고객의 [취소 요청]이 다시 열려요(D59 ③).' });
       return done('입점이 끝났어요. 대성포장 계정이 판매 가능 상태이고 상품 등록·주문·정산 메뉴가 열렸어요.', { next: `본사 화면의 [수수료율]에서 적용 요율을 미리 보고, [파트너 관리]에서 직거래 위약금 예시·본사 정지·계약 종료를 눌러 보세요.${s.custom ? ' 정지·종료하면 [인쇄 가능] 전 맞춤 항목의 제작 파트너 변경(제안 → 고객 동의·전액 환불)을 볼 수 있어요.' : ''} 파트너 화면에서는 [주문]의 엑셀·인쇄 패키지 받기, [휴점], 로그인 보안의 [로그아웃]을 눌러 볼 수 있어요.` });
     }
     switch (st) {
@@ -443,6 +477,7 @@
       <tr><td>같은 판 재주문</td><td class="num">−${pv('commission.reorder_discount')}</td><td>수수료 부록 · 재주문 단가는 같은 수량 구간 현재 판매가 이하 ${draftTag}</td></tr>
       <tr><td>최종 요율 하한</td><td class="num">${pv('commission.floor')}</td><td>인하를 합쳐도 이 아래로 내려가지 않아요</td></tr>
       <tr><td>정산 주기</td><td>주 1회</td><td>화요일 마감 · 금요일 지급 · 구매 확정 후 10일 안 지급 목표</td></tr>
+      <tr><td>출고 기한</td><td>출고일 + ${pv('order.overdue_grace_bd')}</td><td>약속 출고일(맞춤은 출고 예정일) 다음 영업일이 끝날 때까지 송장이 없으면 고객에게 알려요. 일반 상품은 무단 지연으로 기록하고 고객이 바로 취소할 수 있고, 맞춤 제작은 고객이 취소를 요청하면 본사가 판단해요(승인되면 공제 없이 전액 환불, 돌려준 디자인비는 파트너 부담) ${draftTag}</td></tr>
       <tr><td>평가·페널티</td><td>기록만</td><td>출고 지연·품절 취소·클레임율 기준으로 경고·노출 제한·계약 해지 <span class="tag tag-phase">적용 2차</span></td></tr>
       <tr><td>계약 종료</td><td class="num">${pv('settlement.final_holdback')}</td><td>최종 정산액을 ${lpv('holdback_days')} 유보한 뒤 지급</td></tr>
       <tr><td>계약 변경</td><td>${lpv('notice_days')} 전 고지</td><td>파트너에게 불리한 변경은 다시 동의받아요</td></tr>
@@ -460,6 +495,24 @@
     const from = chgWithdrawn(o) ? '변경 제안을 거둔 때(다시 전달한 때로 봄)' : '인쇄 패키지가 전달된 때';
     return `<span class="cluster">${slaShort(due, '확인 기한')}${o.printLate ? '<span class="tag tag-warn">지연 기록</span>' : ''}</span>
       <span class="xsmall faint">${from} ${fmtDate(o.handedAt)}부터 ${pv(PRINT_BD)} 안에 [인쇄 가능]을 누르면 생산이 시작돼요. 내려받기를 미뤄도 기한은 그대로예요</span>`;
+  }
+  /* 주문 줄의 출고 기한(P-ORD-03): 출고일과 저장한 판정 시각 */
+  function dueHtml(o) {
+    if (!dueLive(o)) return '';
+    return `<span class="cluster">${o.overdue ? `<span class="sla sla-over" style="white-space:nowrap">출고 기한 지남</span>` : slaShort(o.overdueAt, '출고 기한')}</span>
+      <span class="xsmall faint">${dueName(o)} ${fmtDate(o.due, false)}${o.dueFrom === 'dismiss' ? '(취소 기각 때 받은 새 예정일)' : o.kind === 'custom' ? `([인쇄 가능] 확인일부터 영업일 ${o.lead || 7}일)` : '(결제 후 영업일 2일)'} · 다음 영업일 끝(${fmtDate(o.overdueAt)})까지 송장이 ${o.overdue ? `없어 ${o.kind === 'custom' ? '생산 지연' : '출고 지연'}이 됐어요` : `없으면 ${o.kind === 'custom' ? '생산 지연' : '출고 지연'}이에요`}</span>`;
+  }
+  /* 기한을 넘긴 뒤: 고객에게 열린 길과 체험 버튼(고객 화면은 주문·맞춤 디자인 페이지) */
+  function lateHtml(o) {
+    if (dcOpen(o)) {
+      const pr = o.dc.progress;
+      return `<span class="xsmall">고객이 생산 지연으로 취소를 요청했어요. 본사가 판단하고 생산 보류는 없어요. 계속 만들면서 출고 가능 시점과 생산 진행(사진·기록)을 올려 주세요.${pr ? ` 올림: 출고 가능 <b>${fmtDate(pr.eta, false)}</b> · ${esc(pr.note)}.` : ''} 요청 중에도 송장 등록은 막지 않아요(승인되면 회수 뒤 환불, 회수 배송비 파트너).</span>`;
+    }
+    if (dueLive(o) && o.dueFrom === 'dismiss' && !o.overdue) return '<span class="xsmall">본사가 생산 지연 취소를 기각하고 출고를 독촉했어요. 새 출고 예정일까지 송장을 등록하세요. 그 다음 영업일 끝까지도 없으면 고객 [취소 요청]이 다시 열려요.</span>';
+    if (!isLate(o)) return '';
+    return o.kind === 'custom'
+      ? `<span class="xsmall">출고 예정일을 넘겨 고객에게 알리고 [취소 요청]을 열었어요. 요청이 오면 본사가 판단하고, 승인되면 공제 없이 전액 환불·돌려준 디자인비는 파트너 부담이에요.</span><div class="demo chg-demo"><span class="demo-h">체험 · 고객</span><button class="btn btn-sm" data-act="custDelayReq" data-id="${o.id}">취소 요청</button></div>`
+      : `<span class="xsmall">안내 없이 약속 출고일을 넘겨 무단 지연으로 기록했어요(MVP는 기록만 · 페널티 2차). 고객에게 알리고 [바로 취소]를 열었어요(파트너 승인 없이, 송장 등록 전까지).</span><div class="demo chg-demo"><span class="demo-h">체험 · 고객</span><button class="btn btn-sm" data-act="custCancelNow" data-id="${o.id}">바로 취소</button></div>`;
   }
   const dLeft = (due) => { const d = due - app.clock.now(); const cls = d < 0 ? 'sla-over' : d < 3 * DAY ? 'sla-warn' : 'sla-ok'; return `<span class="sla ${cls}">${d < 0 ? '지남' : `D-${Math.ceil(d / DAY)}`}</span>`; };
 
@@ -623,8 +676,8 @@
       body: '회사가 저작권을 가진 확정 디자인을 플랫폼 밖에서 인쇄·복제·변형하면 계약 위반이자 저작권 침해예요. 인쇄 패키지 다운로드 기록(계정·시각·해시)을 계약 기록과 함께 보관하고, 계약이 끝나면 내려받은 디자인 파일을 지우고 삭제 확인서를 내요.' },
     { k: 'privacy', title: '고객 개인정보 처리 위탁', agree: '고객 개인정보를 주문 처리에만 쓰는 데 동의해요',
       body: () => `주문 처리에 필요한 고객 배송 정보만 받아요. 배송 완료 후 ${lpv('ship_info_days')} 동안만 볼 수 있고(클레임이 열려 있으면 끝날 때까지), 다른 목적으로 쓰거나 고객에게 따로 연락하지 않아요.` },
-    { k: 'quality', title: '맞춤 제작 품질 기준', agree: '맞춤 제작 품질 기준에 동의해요',
-      body: () => `확정 스냅샷(사양·색상·문구)대로 만들어요. 허용 오차는 결제 시점의 상품 설정값(기본 ${pv('claim.tolerance')})까지이고, 오인쇄·불량은 파트너 비용으로 다시 만들어요. 인쇄 패키지가 전달된 때부터 ${pv(PRINT_BD)} 안에 [인쇄 가능]을 누르고(내려받은 때가 아니라 전달된 때부터 세요), 누른 때부터 생산 책임이 시작돼요.` },
+    { k: 'quality', draft: true, title: '맞춤 제작 품질 기준·생산 지연', agree: '맞춤 제작 품질 기준과 생산 지연 때의 부담에 동의해요',
+      body: () => `확정 스냅샷(사양·색상·문구)대로 만들어요. 허용 오차는 결제 시점의 상품 설정값(기본 ${pv('claim.tolerance')})까지이고, 오인쇄·불량은 파트너 비용으로 다시 만들어요. 인쇄 패키지가 전달된 때부터 ${pv(PRINT_BD)} 안에 [인쇄 가능]을 누르고(내려받은 때가 아니라 전달된 때부터 세요), 누른 때부터 생산 책임이 시작돼요. 출고 예정일 다음 영업일까지 출고하지 못해 고객의 생산 지연 취소를 본사가 승인하면, 고객에게 돌려준 디자인비를 파트너 정산에서 빼고 이미 만든 인쇄물·판은 폐기해요.` },
   ];
   function partnerContract(f, s) {
     f.nav('계약'); f.url('partner.sikup.co.kr/contract');
@@ -748,7 +801,8 @@
       const who = v === 'full' ? `${esc(o.who.name)} · ${o.who.phone}<br><span class="xsmall faint">${esc(o.who.addr)}</span>${isClaim ? '<br><span class="tag tag-warn">교환 클레임 · 이 건만</span>' : ''}`
         : v === 'one' ? `<span class="xsmall faint">목록에서는 가려요</span><br><button class="btn btn-sm" data-act="shipView" data-id="${o.id}">배송 정보 보기</button>`
         : `${maskName(o.who.name)} · ${maskPhone(o.who.phone)}<br><span class="xsmall faint">상세 주소 가림</span>`;
-      const proposing = chgPending(o) ? '<span class="tag tag-warn">제작 파트너 변경 제안 중</span>' : chgWithdrawn(o) && !o.movedAway && !ORDER_END.includes(o.st) ? '<span class="tag">변경 제안 거둠</span>' : '';
+      const proposing = (chgPending(o) ? '<span class="tag tag-warn">제작 파트너 변경 제안 중</span>' : chgWithdrawn(o) && !o.movedAway && !ORDER_END.includes(o.st) ? '<span class="tag">변경 제안 거둠</span>' : '')
+        + (dcOpen(o) ? `<span class="tag tag-warn">${esc(GC.claim.label('CLAIM_CANCEL', o.dc.st, null, 'DELAY_CANCEL'))}</span>` : isLate(o) ? `<span class="tag tag-warn">${o.kind === 'custom' ? '생산 지연' : '출고 지연 · 무단 지연 기록'}</span>` : '');
       const parent = o.kind === 'addon' ? findOrder(o.parent) : null;
       let act = '';
       if (parent) {
@@ -757,11 +811,14 @@
           : o.st === 'PAID' ? '따로 [발주 확인]이 없어요. 본 항목 [인쇄 가능] 때 함께 발주 확인되고, 그 전에는 고객이 바로 취소할 수 있어요' : '본 항목 [인쇄 가능] 때 함께 발주 확인됐어요. 본 상품과 같은 송장으로 함께 출고해요'}</span>`;
         else if (o.st === 'SHIPPED') act = '<span class="xsmall faint">본 상품과 같은 송장 · 다음 날 배송 완료</span>';
       } else if (o.movedAway) act = '<div class="cluster"><button class="btn btn-sm" disabled>인쇄 패키지 받기</button></div><span class="xsmall faint">고객이 제작 파트너 변경에 동의해 이 항목은 이제 다른 파트너가 만들어요. 인쇄 패키지는 더 받을 수 없어요(서버가 막음).</span>';
-      else if (o.st === 'ACCEPTED' || o.st === 'IN_PRODUCTION') act = `<div><button class="btn btn-sm btn-primary" data-act="ship" data-id="${o.id}">송장 등록</button></div>${R && o.kind === 'custom' ? '<span class="xsmall faint">[인쇄 가능] 뒤라 다른 파트너로 옮기지 않아요. 마저 만들어 출고해요.</span>' : ''}`;
+      else if (o.st === 'ACCEPTED' || o.st === 'IN_PRODUCTION') act = `${dueHtml(o)}${lateHtml(o)}<div class="cluster">${dcOpen(o) && !o.dc.progress ? `<button class="btn btn-sm btn-ext" data-act="dcProgress" data-id="${o.id}">출고 가능 시점·진행 올리기</button>` : ''}<button class="btn btn-sm btn-primary" data-act="ship" data-id="${o.id}">송장 등록</button></div>${R && o.kind === 'custom' ? '<span class="xsmall faint">[인쇄 가능] 뒤라 다른 파트너로 옮기지 않아요. 마저 만들어 출고해요.</span>' : ''}`;
       else if (o.st === 'DESIGNING') act = `<span class="xsmall faint">${R ? '정지·종료 중이라 운영팀이 고객에게 다른 파트너 상품을 제안해요' : '고객이 디자인을 확정하면 인쇄 패키지가 와요'}</span>`;
       else if (o.st === 'DESIGN_CONFIRMED') act = R || chgPending(o) ? `<div class="cluster"><button class="btn btn-sm" disabled>인쇄 패키지 받기</button><button class="btn btn-sm" disabled>인쇄 가능</button></div><span class="xsmall stop-txt">${R ? '정지·종료 뒤에는 새 생산을 시작할 수 없어요' : '제작 파트너 변경 제안 중이라 생산을 시작할 수 없어요'}</span>${ac === 'SUSPENDED' && o.handedAt ? '<span class="xsmall faint">정지 중에는 [인쇄 가능] 확인 기한 알림을 보내지 않아요</span>' : ''}`
         : `${printDueHtml(o)}<div class="cluster">${s.pkg[o.id] ? '<span class="st st-done">패키지 받음</span>' : `<button class="btn btn-sm btn-ext" data-act="pkg" data-id="${o.id}">인쇄 패키지 받기</button>`}<button class="btn btn-sm btn-primary" data-act="printable" data-id="${o.id}" ${s.pkg[o.id] ? '' : 'disabled'}>인쇄 가능</button></div>`;
-      else if (o.st === 'SHIPPED') act = '<span class="xsmall faint">택배 조회 중 · 다음 날 배송 완료</span>';
+      else if (o.st === 'SHIPPED' || (o.st === 'DELIVERED' && dcOpen(o))) act = `<span class="xsmall faint">${o.st === 'SHIPPED' ? '택배 조회 중 · 다음 날 배송 완료' : '배송 완료'}</span>${dcOpen(o) ? '<span class="xsmall">생산 지연 취소 요청 중에 출고했어요(막지 않음). 본사가 승인하면 회수한 뒤 검수 없이 환불하고 회수 배송비는 파트너가 내요. 기각하면 그대로 배송돼요.</span>' : ''}`;
+      else if (o.cancelWhy === 'overdue') act = '<span class="xsmall faint">출고 기한을 넘겨 고객이 [바로 취소]했어요(파트너 승인 없음 · 전액 환불). 무단 지연 기록은 남아요(MVP는 기록만).</span>';
+      else if (o.cancelWhy === 'delay') act = `<span class="xsmall">생산 지연 취소가 승인돼 취소됐어요(파트너 귀책). 돌려준 디자인비 ${won(o.dc.money.designFeeToPartner)}은 이번 정산에서 빼요('중재 판정'). 이미 만든 인쇄물·판은 회사 저작권 디자인이라 폐기해요.</span>
+        ${o.discarded ? `<span class="st st-done">폐기 확인 올림 · ${fmtDate(o.discarded)}</span>` : `<div><button class="btn btn-sm btn-ext" data-act="ptDiscard" data-id="${o.id}">폐기 확인 올리기</button></div>`}`;
       else if (isClaim) act = s.claim.stage === 'OPEN' ? '<div><button class="btn btn-sm btn-primary" data-act="claimShip">교환품 송장 등록</button></div>' : '<span class="xsmall faint">교환품 배송 중</span>';
       else if (o.chg && o.chg.result === 'refunded') act = `<span class="xsmall faint">제작 파트너 변경 제안에 ${o.chg.by === 'expired' ? '답이 없어' : '고객이 전액 환불을 골라'} 취소됐어요(파트너 귀책)</span>`;
       const stCell = o.movedAway ? '<span class="tag">다른 파트너로 변경됨</span>' : `<span class="st ${stc(o)}">${stLabel(o)}</span>`;
@@ -781,14 +838,19 @@
   function ptSettle(s, ac) {
     const acName = GC.sm.stateName('PARTNER_ACCOUNT', ac);
     const masked = accessCur(s, ac) === 'DONE' && s.orders.length ? '<p class="xsmall faint">남은 주문이 모두 배송 완료돼 정산 내역의 고객 정보도 가려서 보여요.</p>' : '';
+    /* 생산 지연 취소 승인 → 돌려준 디자인비를 '중재 판정' 정산 이벤트(−)로 뺌(C-STL-01 · D59 ①) */
+    const ded = s.orders.filter((o) => o.cancelWhy === 'delay');
+    const dedPanel = ded.length ? `<div class="panel"><div class="panel-h"><h2>이번 주 정산에서 빼는 것</h2><span class="xsmall faint">중재 판정 정산 이벤트</span></div><div class="panel-b">
+        <table class="tbl small"><tbody>${ded.map((o) => `<tr><td>${o.id} 생산 지연 취소 · 고객에게 돌려준 디자인비(파트너 부담)</td><td class="num">−${won(o.dc.money.designFeeToPartner)}</td></tr>`).join('')}</tbody></table>
+        <p class="xsmall faint" style="margin-top:8px">그 주 정산 이벤트에서 빼고, 정산액이 모자라면 미수금(분쟁 조정)으로 넘겨 다음 정산에서 먼저 빼요. 이 항목은 구매 확정이 없어 상품 대금 정산도 없어요(인쇄물·판 손실은 파트너). ${draftTag}</p></div></div>` : '';
     if (ac !== 'TERMINATED' || !s.term) {
       return `<div class="split"><h3>정산</h3><span class="st ${acCls(ac)}">${acName}</span></div>
-        <div class="note small">정산 화면은 휴점·본사 정지·계약 종료 중에도 열려 있어요. 주 1회(화요일 마감 · 금요일 지급) 정산 흐름은 정산 페이지에서 자세히 볼 수 있어요.</div>${masked}
+        <div class="note small">정산 화면은 휴점·본사 정지·계약 종료 중에도 열려 있어요. 주 1회(화요일 마감 · 금요일 지급) 정산 흐름은 정산 페이지에서 자세히 볼 수 있어요.</div>${masked}${dedPanel}
         <div><a class="btn" href="settlement.html">정산 페이지 열기</a></div>`;
     }
     const t = s.term;
     return `<div class="split"><h3>정산</h3><span class="st st-stop">계약 종료</span></div>
-      <div class="note note-stop small">계약이 종료됐어요(${esc(t.reason)}). 남은 주문 처리와 정산 화면은 계속 열려 있고, 주문 엑셀·인쇄 패키지는 받을 수 없어요.</div>${masked}
+      <div class="note note-stop small">계약이 종료됐어요(${esc(t.reason)}). 남은 주문 처리와 정산 화면은 계속 열려 있고, 주문 엑셀·인쇄 패키지는 받을 수 없어요.</div>${masked}${dedPanel}
       <div class="panel"><div class="panel-h"><h2>최종 정산</h2></div><div class="panel-b"><table class="tbl small"><tbody>
         <tr><td>최종 정산액</td><td class="num">${won(t.final)}</td></tr>
         <tr><td>지금 지급</td><td class="num">${won(t.final - t.hold)}</td></tr>
@@ -952,13 +1014,31 @@
     if (!s.orders.length) return '';
     const R = RESTRICTED(ac); const rem = remaining(s); const cur = accessCur(s, ac);
     const hqSt = (o) => (o.movedAway ? `${stLabel(o)} · <b>${esc(o.partner)}</b>로 변경`
-      : `${stLabel(o)}${chgPending(o) ? ' · <span class="tag tag-warn">제작 파트너 변경 제안 중</span>' : chgWithdrawn(o) && !ORDER_END.includes(o.st) ? ' · <span class="tag">변경 제안 거둠</span>' : ''}${o.cancelWhy === 'partner_change' ? ' · 제작 파트너 변경으로 함께 취소' : ''}${printWaiting(o) && !R && !chgPending(o) ? ` · [인쇄 가능] ${slaShort(printDue(o), '기한')}${o.printLate ? ' <span class="tag tag-warn">지연 기록</span>' : ''}` : ''}${o.kind === 'addon' && o.st === 'PAID' ? ' · 본 항목 [인쇄 가능] 때 함께 발주 확인' : ''}`);
+      : `${stLabel(o)}${chgPending(o) ? ' · <span class="tag tag-warn">제작 파트너 변경 제안 중</span>' : chgWithdrawn(o) && !ORDER_END.includes(o.st) ? ' · <span class="tag">변경 제안 거둠</span>' : ''}${o.cancelWhy === 'partner_change' ? ' · 제작 파트너 변경으로 함께 취소' : ''}${dcOpen(o) ? ' · <span class="tag tag-warn">취소 중재 중</span>' : isLate(o) ? ` · <span class="tag tag-warn">${o.kind === 'custom' ? '생산 지연' : '출고 지연 · 무단 지연'}</span>` : ''}${o.cancelWhy === 'overdue' ? ' · 출고 지연으로 고객 바로 취소' : o.cancelWhy === 'delay' ? ' · 생산 지연 취소 승인' : ''}${printWaiting(o) && !R && !chgPending(o) ? ` · [인쇄 가능] ${slaShort(printDue(o), '기한')}${o.printLate ? ' <span class="tag tag-warn">지연 기록</span>' : ''}` : ''}${o.kind === 'addon' && o.st === 'PAID' ? ' · 본 항목 [인쇄 가능] 때 함께 발주 확인' : ''}`);
     const itemCell = (o) => (o.kind === 'addon' ? `${esc(o.item)} <span class="xsmall faint">추가 구성품 · ${o.parent}에 붙음</span>` : esc(o.item));
     return `<div class="panel"><div class="panel-h"><h2>대성포장 주문</h2><span class="xsmall faint">남은 ${rem.length}건 · A-ORD-01</span></div><div class="panel-b stack">
       <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>주문</th><th>상품</th><th>상태</th></tr></thead><tbody>
         ${s.orders.map((o) => `<tr${ORDER_END.includes(o.st) || o.movedAway ? '' : ' class="is-hl"'}><td class="nw">${o.id}</td><td>${itemCell(o)}</td><td>${hqSt(o)}${s.claim && !s.claim.done && s.claim.id === o.id ? ' · 교환 클레임' : ''}</td></tr>`).join('')}</tbody></table></div>
       ${cur === 'DONE' && !s.claim ? '<div class="cluster"><button class="btn" data-act="openClaim">교환 클레임 열기 · 체험</button><span class="xsmall faint">배송 완료된 주문에 고객이 교환을 신청했다고 가정해요</span></div>' : ''}
+      ${dcBox(s)}
+      ${s.orders.some((o) => o.overdueAt) ? `<p class="xsmall faint">출고 기한을 넘긴 건은 운영 모니터링 목록(A-ORD-01)에 올라요. 일반 상품은 안내 없이 넘기면 무단 지연으로 기록하고(MVP는 기록만 · 페널티 2차), 맞춤 제작의 생산 지연 취소 요청은 분쟁 중재(A-ORD-02)로 들어와요. 천재지변·택배 파업처럼 본사가 일괄 공지한 지연과 인쇄 반려(디자인팀 원인)는 지연으로 보지 않아요.</p>` : ''}
       ${!R ? '<p class="xsmall faint">본사 정지·계약 종료가 되면 이 주문들은 파트너가 마저 처리하고, [인쇄 가능] 전 맞춤 항목은 같은 사양의 다른 파트너 상품을 고객에게 제안해요(제작 파트너 변경).</p>' : ''}</div></div>`;
+  }
+  /* 생산 지연 취소(DELAY_CANCEL) 판정 체험(A-ORD-02 · D59). 본사 분쟁 중재 화면 전체는 맞춤 디자인 페이지 */
+  function dcBox(s) {
+    const list = s.orders.filter(dcOpen); if (!list.length) return '';
+    return `<div class="chg-list">${list.map((o) => {
+      const m = dcMoney(o); const pr = o.dc.progress; const shipped = o.st !== 'IN_PRODUCTION';
+      const hist = (o.dcHist || []).map((h) => `${fmtDate(h.at, false)} ${GC.claim.RESULT_LABEL[h.result] || h.result}`).join(' · ');
+      return `<div class="chg-item is-wait"><div><b class="nw">${o.id}</b> <span class="small">${esc(o.item)}</span> <span class="tag tag-warn">생산 지연 취소 · 취소 중재 중</span><br><span class="xsmall faint">${esc(o.paidNote || '')}</span></div>
+        <dl class="kv chg-kv"><dt>출고 예정일</dt><dd>${fmtDate(o.due, false)}${o.dueFrom === 'dismiss' ? '(지난 기각 때 받은 새 예정일)' : ''} · 판정 ${fmtDate(o.overdueAt)} 넘김 · 요청 ${fmtDate(o.dc.at)}</dd>
+          ${hist ? `<dt>지난 요청</dt><dd>${hist}</dd>` : ''}
+          <dt>파트너 답변</dt><dd>${pr ? `출고 가능 <b>${fmtDate(pr.eta, false)}</b> · ${esc(pr.note)}` : shipped ? '출고 가능 시점 대신 송장을 등록했어요(요청 중 출고)' : '<span class="st st-warn">출고 가능 시점·진행 기다리는 중</span>'}</dd>
+          <dt>승인하면</dt><dd>공제 없이 <b>${won(m.refund)}</b> 환불(디자인비·판비 포함) · 쿠폰·이용권 되살림 · 돌려준 디자인비 <b>${won(m.designFeeToPartner)}</b> 대성포장 정산에서 차감('중재 판정') · 인쇄물·판 폐기 · 재주문 연결 보장 자동 해제</dd>
+          <dt>기각하면</dt><dd>${shipped ? '그대로 배송' : '출고 독촉 · 파트너가 올린 출고 가능 시점을 새 출고 예정일로 저장 · 그날 다음 영업일까지도 송장이 없으면 다시 요청 가능'}</dd>
+          <dt>결과</dt><dd><div class="demo chg-demo"><span class="demo-h">체험 · 본사 판정</span>${shipped ? '' : `<button class="btn btn-sm" data-act="dcApprove" data-id="${o.id}">승인</button>`}<button class="btn btn-sm" data-act="dcDismiss" data-id="${o.id}" ${pr || shipped ? '' : 'disabled'}>기각</button></div>
+            <span class="xsmall faint">${shipped ? '요청 중 출고된 건을 승인하면 배송 완료 뒤 플랫폼이 회수해 검수 없이 환불해요(회수 배송비 파트너). 그 갈래는 <a href="design.html">맞춤 디자인 페이지</a>에서 볼 수 있어요. ' : pr ? '' : '기각은 파트너가 출고 가능 시점을 올린 뒤에 할 수 있어요. '}결과는 양측에 알리고 최종이에요(이의 제기 없음).</span></dd></dl></div>`;
+    }).join('')}</div>`;
   }
   /* 제작 파트너 변경(A-ORD-01 ①~⑦ · D33 · D36~D40): 운영 제안 → 고객 [변경 동의]·[전액 환불] → 무응답 환불 · 정지가 풀리면 제안 거둠 */
   /* 금액(D36): 상품 대금 + 판비 합계(할인 전)로 비교 · oldPaid = 상품 대금·판비 줄 결제 금액 합 · 붙은 구성품(D38)은 어느 쪽이든 전액 */
@@ -1127,6 +1207,9 @@
     /* [인쇄 가능] 확인 기한 감시(D47·D46): 넘기면 파트너 리마인드 + 운영 알림 · 정지 중에는 보내지 않음 */
     s.orders.filter(printWaiting).forEach((o) => rows.push([`[인쇄 가능] 확인 기한 · ${o.id}`, `패키지 전달 ${fmtDate(o.handedAt)} + ${pv(PRINT_BD)} · 넘기면 파트너 리마인드·운영팀 알림(지연은 기록만)`,
       RESTRICTED(ac) || chgPending(o) ? '<span class="sla sla-warn">정지 중 · 알림 멈춤</span>' : o.printLate ? '<span class="sla sla-over">지연 · 알림 보냄</span>' : slaShort(printDue(o), '기한')]));
+    /* 출고 기한 감시(P-ORD-03 · D58·D59): 저장한 판정 시각을 넘기면 고객·파트너 알림 · 일반은 무단 지연 기록 + 고객 [바로 취소], 맞춤은 고객 [취소 요청] */
+    s.orders.filter(dueLive).forEach((o) => rows.push([`${o.kind === 'custom' ? '생산' : '출고'} 지연 판정 · ${o.id}`, `${dueName(o)} ${fmtDate(o.due, false)} + ${pv('order.overdue_grace_bd')} 끝 = ${fmtDate(o.overdueAt)} · 송장이 없으면 고객·파트너 알림, ${o.kind === 'custom' ? '고객 [취소 요청](본사 중재)' : '무단 지연 기록 · 고객 [바로 취소]'} · 운영 모니터링 목록`,
+      o.overdue ? '<span class="sla sla-over">지연 · 알림 보냄</span>' : slaShort(o.overdueAt, '판정')]));
     if (s.inv && !s.inv.decided) rows.push(['직거래 소명 기한', fmtDate(s.inv.due), dLeft(s.inv.due)]);
     if (s.term && !s.term.released) rows.push(['계약 종료 유보금 지급', `${won(s.term.hold)} · ${fmtLong(s.term.release)}`, dLeft(s.term.release)]);
     if (ac && s.mfa) rows.push(['파트너 센터 자동 로그아웃', `${pv(IDLE_MIN)} 동안 쓰지 않으면 로그아웃 · 다시 들어올 때 비밀번호 + OTP`, s.sec.out ? '<span class="sla sla-over">로그아웃됨</span>' : '<span class="sla sla-ok">로그인 중</span>']);
@@ -1338,6 +1421,9 @@
       orderGo(o, 'printable', '파트너 [인쇄 가능] = 생산 시작');
       if (GC.sm.can('DESIGN', o.design, 'printable')) designGo(o, 'printable', '파트너 [인쇄 가능]');
       if (due) app.log(late ? 'warn' : 'rule', late ? `[인쇄 가능] 확인 기한(${fmtDate(due)})을 넘겨 눌렀어요 → 지연으로 기록만(평가·페널티 반영은 2차)` : `[인쇄 가능] 확인 기한(${fmtDate(due)}) 안에 확인했어요 · 이때부터 생산 책임 시작`);
+      /* 출고 예정일 = [인쇄 가능] + 리드타임 · 생산 지연 판정 시각을 이때 계산해 저장(P-ORD-03·06) */
+      withDue(o, GC.addBusinessDays(app.clock.now(), o.lead || 7), 'printable');
+      app.log('rule', `${o.id} 출고 예정일 ${fmtDate(o.due, false)}([인쇄 가능] + 영업일 ${o.lead || 7}일) · 생산 지연 판정 ${fmtDate(o.overdueAt)}(+ ${P('order.overdue_grace_bd')}영업일 끝)까지 송장이 없으면 고객 [취소 요청]이 열려요`);
       /* D49: 맞춤 항목에 붙은 추가 구성품은 본 항목 [인쇄 가능] 때 시스템이 함께 발주 확인(PAID → ACCEPTED) */
       addonsOf(o).filter((x) => GC.sm.can('ORDER', x.st, 'parent_printable')).forEach((x) => orderGo(x, 'parent_printable', `본 항목 ${o.id} [인쇄 가능] 때 시스템이 함께 발주 확인 · 약속 출고일은 본 항목을 따름`));
       refresh();
@@ -1345,10 +1431,81 @@
     ship(b) {
       const s = S(); const o = findOrder(b.dataset.id); const ac = app.state('acct');
       if (!GC.sm.can(omc(o), o.st, 'ship')) return;
+      const wasLate = o.due && GC.claim.shippedLate({ promisedAt: o.due, shippedAt: app.clock.now() });
       orderGo(o, 'ship', '송장 등록 · CJ대한통운 6012-3345-8871'); o.shippedAt = app.clock.now(); s.shipOpen = null;
+      if (wasLate) app.log('rule', o.kind === 'custom' ? `${o.id}: 출고 예정일(${fmtDate(o.due, false)})을 넘겨 출고 → 생산 지연으로 기록(MVP는 기록만)` : `${o.id}: 약속 출고일(${fmtDate(o.due, false)})을 넘겨 출고 → 고객이 받은 날부터 7일 안에 '늦게 받음(출고 지연)' 사유로 반품할 수 있고 반품 배송비는 파트너(D58 ①, 법률 자문 전 초안)`);
+      if (dcOpen(o)) app.log('rule', `${o.id}: 생산 지연 취소 요청 중 송장 등록 — 막지 않아요. 요청은 그대로 두고 본사가 판정: 승인하면 배송 완료 뒤 플랫폼이 회수해 검수 없이 환불(회수 배송비 파트너), 기각하면 그대로 배송`);
       liveAddons(o).forEach((x) => { if (GC.sm.can('ORDER', x.st, 'ship')) { orderGo(x, 'ship', `본 상품 ${o.id}과 같은 송장(붙은 추가 구성품)`); x.shippedAt = o.shippedAt; } });
       app.notify('NOTI_SHIPPED', '고객', ['알림톡', '푸시'], `${o.id} 배송 시작`);
       if (RESTRICTED(ac)) app.log('rule', `${GC.sm.stateName('PARTNER_ACCOUNT', ac)} 중에도 남은 주문 출고는 할 수 있어요`);
+      refresh();
+    },
+    /* ── 출고 기한 넘김·생산 지연 취소(P-ORD-03·04 · A-ORD-02 · 2026-10-16 D58·D59) ── */
+    /* 체험 · 고객 [바로 취소](일반 상품 무단 지연): 파트너 승인 없이 즉시 · 송장 등록 전까지 */
+    custCancelNow(b) {
+      const o = findOrder(b.dataset.id); if (!o || o.kind !== 'normal' || !isLate(o)) return;
+      orderGo(o, 'delay_cancel', '고객 [바로 취소] · 출고 지연(무단 지연) · 파트너 승인 없이 즉시');
+      o.cancelWhy = 'overdue';
+      app.log('money', `${o.id} 전액 환불 ${won(o.paid)} · 공제 없음 · 취소한 항목에 낸 금액 그대로(C-PAY-02)`);
+      app.log('rule', '무단 지연 기록은 그대로 남아요(MVP는 기록만, 페널티 2차 A-PTN-03) · 취소된 항목에는 송장을 넣을 수 없어요');
+      app.notify('NOTI_PARTNER_CLAIM_NEW', PT_ORDER, CH_PT_CLAIM, `${o.id} 고객이 출고 지연으로 바로 취소했어요 · 송장 등록 막힘`);
+      refresh();
+    },
+    /* 체험 · 고객 [취소 요청](맞춤 생산 지연): 생산 지연 취소(DELAY_CANCEL) · 자동 승인 없음 · 생산 보류 없음 */
+    custDelayReq(b) {
+      const o = findOrder(b.dataset.id); if (!o || o.kind !== 'custom' || !isLate(o) || dcOpen(o)) return;
+      if (o.dc) o.dcHist = (o.dcHist || []).concat([o.dc]);
+      o.dc = { at: app.clock.now(), st: 'CANCEL_REQUESTED', progress: null, result: null };
+      app.log('state', `생산 지연 취소 클레임 ${o.id}: <b>${GC.sm.stateName('CLAIM_CANCEL', 'CANCEL_REQUESTED')}</b> · claim_type DELAY_CANCEL · 고객 [취소 요청]${o.dcHist ? ' · 기각 뒤 다시 열린 요청' : ''} · 고객 라벨 '${esc(GC.claim.label('CLAIM_CANCEL', 'CANCEL_REQUESTED', null, 'DELAY_CANCEL'))}'`);
+      app.log('rule', '자동 승인 없음 · 본사 중재 · 생산 보류 플래그를 켜지 않아요 — 생산은 계속하고 [송장 등록]도 그대로(기각되면 바로 출고되도록, D59)');
+      app.notify('NOTI_PARTNER_CLAIM_NEW', PT_ORDER, CH_PT_CLAIM, `${o.id} 생산 지연 취소 요청 · 출고 가능 시점과 생산 진행(사진·기록)을 올려 주세요 · 생산은 계속`);
+      app.notify('NOTI_INT_MEDIATION_NEW', '운영팀(CS)', CH_INT, `대성포장 ${o.id} 생산 지연 취소 요청 · 자동 승인 없음 · 판정 목표 영업일 5일`);
+      refresh();
+    },
+    async dcProgress(b) {
+      const o = findOrder(b.dataset.id); if (!o || !dcOpen(o) || o.dc.progress) return;
+      const eta = GC.addBusinessDays(app.clock.now(), 2);
+      await app.ext({ service: 'AWS S3 · GuardDuty', what: '출고 가능 시점·생산 진행 올리기', lines: [`${o.id} · 출고 가능 시점 ${fmtDate(eta, false)}`, '생산 진행 사진 2장(인쇄 끝 · 재단 중) · 작업 기록', '본사 중재 화면에 그대로 보여요(P-ORD-04)'] });
+      o.dc.progress = { at: app.clock.now(), eta, note: '인쇄 끝 · 재단·포장 남음 · 사진 2장' };
+      app.log('user', `파트너 답변 · ${o.id}: 출고 가능 ${fmtDate(eta, false)} · 인쇄 끝, 재단·포장 남음 · 사진 2장`);
+      refresh();
+    },
+    /* 체험 · 본사 판정: 승인 → 공제 없이 전액 환불 · 돌려준 디자인비 파트너 정산 차감 · 인쇄물·판 폐기 · 연결 보장 자동 해제 */
+    dcApprove(b) {
+      const o = findOrder(b.dataset.id); if (!o || !dcOpen(o) || o.st !== 'IN_PRODUCTION') return;
+      const m = dcMoney(o); const why = '파트너 출고 가능 시점이 고객이 쓸 날보다 늦어요';
+      dcGo(o, 'mediation_approve', `본사 중재 승인(파트너 귀책) · 판정 근거 "${why}"`);
+      orderGo(o, 'delay_cancel_approved', '생산 지연 취소 본사 중재 승인');
+      if (GC.sm.can('DESIGN', o.design, 'delay_cancel_approved')) designGo(o, 'delay_cancel_approved', '생산 지연 취소 승인 · 생산 중단');
+      const res = GC.claim.result('CLAIM_CANCEL', o.dc.st, 'refund', 'DELAY_CANCEL'); dcGo(o, 'refund', '환불 완료');
+      Object.assign(o.dc, { result: res, money: m, doneAt: app.clock.now() }); o.cancelWhy = 'delay';
+      app.log('money', `${o.id} 고객 환불 ${won(m.refund)} · 공제 0원(${esc(o.paidNote)}) · 멤버십 이용권·유효기간이 남은 쿠폰 되살림`);
+      app.log('money', `대성포장 정산 '중재 판정' 이벤트 −${won(m.designFeeToPartner)}(고객에게 돌려준 디자인비) · 그 주 정산에서 빼고 모자라면 미수금(분쟁 조정) · 구매 확정이 없어 상품 대금 정산 없음`);
+      app.log('rule', "인쇄물·판은 회사 저작권 디자인이라 파트너가 폐기(손실 파트너) · 재주문 연결 보장 자동 해제 · 사유 '생산 지연 취소'(파트너 쪽) → 다른 파트너로 다시 주문하면 디자인비 0원·판비만(D-RE-01)");
+      app.notify('NOTI_MEDIATION_DECIDED', '고객', CH_CUST, `${o.id} 생산 지연 취소 승인 · 낸 금액 전부 ${won(m.refund)} 환불`);
+      app.notify('NOTI_PARTNER_MEDIATION_DECIDED', PT_ORDER, CH_PT_WD, `${o.id} 생산 지연 취소 승인 · 돌려준 디자인비 ${won(m.designFeeToPartner)} 정산 차감 · 인쇄물·판 폐기 확인 요청`);
+      checkMask(); refresh();
+    },
+    /* 체험 · 본사 판정: 기각 → 출고 독촉 · 새 출고 예정일(파트너가 올린 출고 가능 시점) 저장 · 그날도 넘기면 다시 요청 가능 */
+    dcDismiss(b) {
+      const o = findOrder(b.dataset.id); if (!o || !dcOpen(o)) return;
+      const shipped = o.st !== 'IN_PRODUCTION'; if (!shipped && !o.dc.progress) return;
+      const why = shipped ? '요청 중에 이미 출고돼 그대로 배송해요' : '진행 사진상 재단만 남았고 출고 가능 시점이 영업일 2일 안이에요';
+      const res = GC.claim.result('CLAIM_CANCEL', o.dc.st, 'mediation_dismiss', 'DELAY_CANCEL');
+      dcGo(o, 'mediation_dismiss', `본사 중재 기각(최종 · 이의 제기 없음) · 판정 근거 "${why}"`);
+      Object.assign(o.dc, { result: res, doneAt: app.clock.now() });
+      if (!shipped) {
+        withDue(o, o.dc.progress.eta, 'dismiss');
+        app.log('rule', `${o.id} 새 출고 예정일 ${fmtDate(o.due, false)}(파트너가 올린 출고 가능 시점) · 판정 시각 ${fmtDate(o.overdueAt)}로 다시 저장 · 그때까지도 송장이 없으면 고객 [취소 요청]이 다시 열려요(D59 ③)`);
+      }
+      app.notify('NOTI_MEDIATION_DECIDED', '고객', CH_CUST, shipped ? `${o.id} 생산 지연 취소 기각 · 보낸 물건 그대로 배송` : `${o.id} 생산 지연 취소 기각 · 새 출고 예정일 ${fmtDate(o.due, false)} · 그날 다음 영업일까지도 출고되지 않으면 다시 요청할 수 있어요`);
+      app.notify('NOTI_PARTNER_MEDIATION_DECIDED', PT_ORDER, CH_PT_WD, shipped ? `${o.id} 생산 지연 취소 기각 · 그대로 배송` : `${o.id} 생산 지연 취소 기각 · 출고 독촉 · 새 출고 예정일 ${fmtDate(o.due, false)}까지 출고해 주세요`);
+      refresh();
+    },
+    async ptDiscard(b) {
+      const o = findOrder(b.dataset.id); if (!o || o.cancelWhy !== 'delay' || o.discarded) return;
+      await app.ext({ service: 'AWS S3 · GuardDuty', what: '인쇄물·판 폐기 확인 올리기', lines: [`${o.id} · 폐기 사진 2장 · 폐기 일시`, '회사 저작권 디자인이라 다른 곳에 쓰지 않았다는 확인'] });
+      o.discarded = app.clock.now(); app.log('user', `${o.id} 인쇄물·판 폐기 확인을 올렸어요`);
       refresh();
     },
     shipView(b) { S().shipOpen = b.dataset.id; app.log('rule', `접근 기록: ${b.dataset.id} 고객 배송 정보 건별 열람(정지·계약 종료 중) · 계정·시각·IP`); refresh(); },
@@ -1570,6 +1727,12 @@
     app.log('state', `주문 ${o.id}: ${stLabel(o)} → ${GC.sm.stateName(omc(o), to)} · ${by}`);
     o.st = to;
   }
+  /* 생산 지연 취소 클레임(C-STATE-02 CLAIM_CANCEL · claim_type DELAY_CANCEL): 표에 있는 이동만 */
+  function dcGo(o, ev, by) {
+    const to = GC.sm.next('CLAIM_CANCEL', o.dc.st, ev);
+    app.log('state', `생산 지연 취소 클레임 ${o.id}: ${GC.sm.stateName('CLAIM_CANCEL', o.dc.st)} → <b>${GC.sm.stateName('CLAIM_CANCEL', to)}</b> · ${by}`);
+    o.dc.st = to;
+  }
   /* 디자인 요청 상태(C-STATE-03): 표에 있는 이동만 */
   function designGo(o, ev, by) {
     const to = GC.sm.next('DESIGN', o.design, ev);
@@ -1715,6 +1878,17 @@
           app.notify('NOTI_ITEM_PARTNER_CHANGE_PROPOSED', '고객', CH_CUST, `${o.id} 답변 기한 하루 전 다시 알림 · ${fmtDate(c.due)}까지 답이 없으면 전액 환불(예고)`);
         }
         if (c.remindAt && now >= c.due && GC.notice.elapsed(c.remindAt, now)) chgRefund(o, 'expired');
+      });
+      /* 출고 기한 넘김(P-ORD-03 · D58·D59): 저장한 판정 시각(출고일 다음 영업일 끝)을 넘겼는데 송장이 없으면 한 번 알림.
+         일반은 무단 지연 기록 + 고객 [바로 취소], 맞춤은 '생산 지연' + 고객 [취소 요청]. 정지·종료 중에도 남은 주문은 같은 규칙 */
+      s.orders.forEach((o) => {
+        if (!dueLive(o) || o.overdue || now <= o.overdueAt) return;
+        o.overdue = { at: now }; o.lateRound = (o.lateRound || 0) + 1;
+        const custom = o.kind === 'custom'; const again = o.lateRound > 1;
+        app.log('warn', custom ? `${o.id} 생산 지연: 출고 예정일 ${fmtDate(o.due, false)} 다음 영업일 끝(${fmtDate(o.overdueAt)})까지 송장 없음 → 고객 [취소 요청]${again ? '이 다시(기각 때 받은 새 예정일도 넘김, D59 ③)' : ''} 열림 · 운영 모니터링 목록(A-ORD-01)`
+          : `${o.id} 출고 지연: 약속 출고일 ${fmtDate(o.due, false)} 다음 영업일 끝(${fmtDate(o.overdueAt)})까지 송장도 지연 안내도 없음 → 무단 지연 기록(MVP는 기록만, 페널티 2차) · 고객 [바로 취소] 열림 · 운영 모니터링 목록(A-ORD-01)`);
+        app.notify(custom ? 'NOTI_PRODUCTION_OVERDUE' : 'NOTI_SHIP_OVERDUE', '고객', CH_CUST_LATE, custom ? `${o.id} 제작이 늦어지고 있어요 · [취소 요청] — 본사가 확인해 승인하면 낸 금액 전부를 돌려드려요` : `${o.id} 출고가 늦어지고 있어요 · [바로 취소] — 공제 없이 바로 취소할 수 있어요`);
+        app.notify('NOTI_PARTNER_SHIP_OVERDUE', PT_ORDER, CH_PT_DUE, `${o.id} 출고 기한 넘김(${dueName(o)} ${fmtDate(o.due, false)}) · ${custom ? '고객 [취소 요청]이 열렸어요' : '무단 지연으로 기록 · 고객 [바로 취소]가 열렸어요'} · 바로 송장을 등록해 주세요`);
       });
       /* [인쇄 가능] 확인 기한(D47 · D46): 넘기면 파트너 리마인드 + 운영 알림 한 번 · 정지·종료·변경 제안 중에는 보내지 않음 */
       s.orders.forEach((o) => {

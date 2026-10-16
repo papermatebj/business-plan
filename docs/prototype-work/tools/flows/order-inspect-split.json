@@ -1,0 +1,19 @@
+[
+ {"click":"#ord-scn [data-scn=\"inspect\"]","after":400},
+ {"eval":"(()=>{ const t=document.querySelector('#gc-turn .turn-what').textContent; if(!t.includes('[일부 승인]')) throw new Error('검수 차례에 일부 승인 안내 없음: '+t); const now=Array.from(document.querySelectorAll('#gc-strips .chip.is-now,#gc-strips .chip.is-branch-now')).map(c=>c.title).join('|'); if(!now.includes('RETURN_INSPECTING')) throw new Error('칩 기대 RETURN_INSPECTING: '+now); return [t, now, Array.from(document.querySelectorAll('#gc-rules .rule-row')).map(e=>e.innerText.split(String.fromCharCode(10)).join(': ')).join(' | ')]; })()"},
+ {"role":"customer","shot":"order-77-inspect-customer"},
+ {"eval":"document.querySelector('#gc-device .claimbox').innerText.split(String.fromCharCode(10)).join(' | ')"},
+ {"role":"partner","shot":"order-78-inspect-partner"},
+ {"eval":"(()=>{ if(!document.querySelector('#gc-device [data-act=\"partialReturn\"]')) throw new Error('[일부 승인] 버튼 없음'); const o=Array.from(document.querySelectorAll('#okQty option')).map(x=>x.textContent); return o.join(','); })()"},
+ {"act":"partialReturn","after":400},
+ {"eval":"(()=>{ const now=Array.from(document.querySelectorAll('#gc-strips .chip.is-now,#gc-strips .chip.is-branch-now')).map(c=>c.title).join('|'); if(!now.includes('RETURN_REJECTED')) throw new Error('나뉜 항목 클레임 기대 RETURN_REJECTED: '+now); const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,16).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('항목 분할')||!log.includes('21,603원')||!log.includes('일부 승인')) throw new Error('일부 승인 기록(분할·승인 수량 환불 21,603원) 없음: '+log); return [now, log]; })()"},
+ {"role":"customer","shot":"order-79-inspect-split-customer"},
+ {"eval":"(()=>{ const it=Array.from(document.querySelectorAll('#gc-device .oitem')).map(e=>e.querySelector('.nm').textContent.trim()+' ['+e.querySelector('.st').textContent+']').join(' / '); if(!it.includes('무형광 냅킨 · 1박스 [반품 완료]')||!it.includes('무형광 냅킨 · 1박스 [판매자 거부]')) throw new Error('승인 1박스 반품 완료 + 거부 1박스 판매자 거부로 나뉘지 않음: '+it); const box=document.querySelector('#gc-device .claimbox').innerText.split(String.fromCharCode(10)).join(' | '); if(!box.includes('검수 결과가 수량별로 나뉘었어요')) throw new Error('수량별 결과 안내 없음: '+box); if(!document.querySelector('#gc-device [data-act=\"objection\"]')) throw new Error('거부 수량에 [이의 제기] 없음'); return [it, box]; })()"},
+ {"act":"retBack","attr":"data-v=\"dispose\""},
+ {"eval":"document.querySelector('#gc-device [data-act=\"retBack\"][aria-pressed=\"true\"]').textContent"},
+ {"adv":"86400000"},{"adv":"86400000"},{"adv":"86400000"},
+ {"wait":100,"shot":"order-80-inspect-rejected-final"},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,14).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('폐기')) throw new Error('거부 확정 뒤 폐기 기록 없음: '+log); const t=document.querySelector('#gc-turn .turn-done, #gc-turn .turn-what').textContent; return [t, log]; })()"},
+ {"role":"partner","shot":"order-81-inspect-partner-after"},
+ {"role":"hq"}
+]

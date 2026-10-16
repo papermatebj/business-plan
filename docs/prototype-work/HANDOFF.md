@@ -14,6 +14,8 @@
 
 **2026-10-16 S11(결정 D46~D52 반영, 재게시 끝)**: 엔진에 디자인비 쿠폰 최소 주문 = 묶음의 맞춤 품목 금액·할인 큰 묶음(`designFees[].couponShort`), `partialCancel`이 디자인비 쿠폰을 원래 묶음에 최소 주문 없이 고정, ORDER `parent_printable`(맞춤 항목에 붙은 구성품은 본 항목 [인쇄 가능] 때 발주 확인), CLAIM_RETURN `EXCHANGE_REQUESTED`·`claim.step(…, claimType)`, `price.priceChangeAlert()`·`priceChangeCheck()`, 새 키 6개(입점 처리 목표 3·사업자 수동 검토·폐업 유예·가격 경고). 검사 43개. 공통 CSS `.rules .rule-row` 이름 칸 최소 5em. 페이지 9개 + index 고침, 흐름 92 → 104개(hub 제외 103 PASS). 결과는 `docs/revision-work/prototype-impact.md` ‘S11 결과’. 같은 URL 재게시(버전 9) — S10과 같은 방법(게시본 13개 해시 비교 → 페이지 `read` 한 번 → publish). **주의**: 서브에이전트가 메인 스크래치 폴더에 같은 이름의 스크립트를 덮어쓸 수 있으니, 메인 도구 파일 이름은 겹치지 않게(예: `main_*.py`). 페이지 에이전트는 흐름을 2개씩 돌림. 다음은 S12(`prototype-impact.md` 맨 아래 ‘S12 입력’).
 
+**2026-10-17 취소·환불(D53~D61) 반영, 재게시 끝**: 엔진은 10-16 반영 세션에서 바꿈(`partialCancel` 다시 씀 — 낸 금액 그대로·`TIER_CHANGE` 차단·`couponsRestored`·`recalc`·`zeroRefund` 없앰, `designCancel` D54·D55·D59, `refund.dueAt`·`delayComp`, `order.overdueAt`·`isOverdue`, `claim.RETURN_REASONS`·`shippedLate`, 새 전이 5개, 키 3개, 검사 44개). 10-17에 페이지 6개(order / design+partner / benefit+settlement+system, 서브에이전트 3 — 지시문은 `docs/revision-work/page-agent-prompts.md`)와 index 설명을 고침, 흐름 104 → 122개(hub 제외 121 PASS, 엔진·공통 자산 변경 없음). 결과는 `docs/revision-work/prototype-impact.md` ‘취소·환불 마무리’. 같은 URL 재게시(버전 10) — S10·S11과 같은 방법(게시본 13개를 직전 게시 커밋 3308b45와 해시 비교 → 페이지 `read` 한 번 → publish). 다음은 S12(`prototype-impact.md` ‘S12 입력’ + ‘S12 입력 보탬’).
+
 ---
 아래는 일시 중지 시점(2026-10-13 새벽)의 원래 인수인계 기록입니다.
 

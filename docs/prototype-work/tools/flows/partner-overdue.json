@@ -1,0 +1,257 @@
+[
+{
+"act": "startApply",
+"after": 400
+},
+{
+"act": "ntsCheck",
+"after": 400
+},
+{
+"act": "nextStep"
+},
+{
+"act": "nextStep"
+},
+{
+"act": "upAll",
+"after": 400
+},
+{
+"act": "nextStep"
+},
+{
+"act": "verifyAcct",
+"after": 400
+},
+{
+"act": "nextStep"
+},
+{
+"check": "ag_privacy"
+},
+{
+"check": "ag_rules"
+},
+{
+"act": "submit",
+"after": 400
+},
+{
+"role": "hq"
+},
+{
+"act": "startReview"
+},
+{
+"act": "docAllOk"
+},
+{
+"act": "toSample"
+},
+{
+"act": "sampleIn"
+},
+{
+"check": "smp_color"
+},
+{
+"check": "smp_cut"
+},
+{
+"check": "smp_ink"
+},
+{
+"act": "approve"
+},
+{
+"act": "sendContract",
+"after": 400
+},
+{
+"role": "partner"
+},
+{
+"check": "cl_circ"
+},
+{
+"check": "cl_plate"
+},
+{
+"check": "cl_copy"
+},
+{
+"check": "cl_privacy"
+},
+{
+"check": "cl_quality"
+},
+{
+"act": "sign",
+"after": 500
+},
+{
+"act": "mfa"
+},
+{
+"act": "ptTab",
+"attr": "data-t=\"orders\"",
+"shot": "partner-od01-orders-due"
+},
+{
+"role": "system",
+"shot": "partner-od02-system"
+},
+{
+"adv": "604800000"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ').slice(0,300)"
+},
+{
+"role": "partner"
+},
+{
+"act": "ptLogin"
+},
+{
+"act": "ptOtp"
+},
+{
+"act": "ptTab",
+"attr": "data-t=\"orders\""
+},
+{
+"eval": "(()=>{const r=[...document.querySelectorAll('#gc-device .ord-tbl tbody tr')].find(r=>r.innerText.includes('GC-2610-1041'));if(!r)return 'none';r.scrollIntoView({block:'center'});return r.innerText.replace(/\\s+/g,' ').slice(0,400)})()",
+"shot": "partner-od03-normal-late",
+"after": 200
+},
+{
+"eval": "(()=>{const r=[...document.querySelectorAll('#gc-device .ord-tbl tbody tr')].find(r=>r.innerText.includes('GC-2610-1029'));if(!r)return 'none';r.scrollIntoView({block:'center'});return r.innerText.replace(/\\s+/g,' ').slice(0,400)})()",
+"shot": "partner-od04-custom-late",
+"after": 200
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ').slice(0,300)"
+},
+{
+"act": "custCancelNow",
+"attr": "data-id=\"GC-2610-1041\""
+},
+{
+"act": "custDelayReq",
+"attr": "data-id=\"GC-2610-1029\""
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ').slice(0,300)"
+},
+{
+"eval": "(()=>{const r=[...document.querySelectorAll('#gc-device .ord-tbl tbody tr')].find(r=>r.innerText.includes('GC-2610-1029'));if(!r)return 'none';r.scrollIntoView({block:'center'});return r.innerText.replace(/\\s+/g,' ').slice(0,400)})()",
+"shot": "partner-od05-mediating",
+"after": 200
+},
+{
+"act": "dcProgress",
+"attr": "data-id=\"GC-2610-1029\"",
+"after": 400
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ').slice(0,300)"
+},
+{
+"role": "hq"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .chg-item')].find(c=>/생산 지연 취소/.test(c.innerText));if(!c)return 'none';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ').slice(0,500)})()",
+"shot": "partner-od06-hq-decide",
+"after": 200
+},
+{
+"act": "dcDismiss",
+"attr": "data-id=\"GC-2610-1029\""
+},
+{
+"role": "partner"
+},
+{
+"eval": "(()=>{const r=[...document.querySelectorAll('#gc-device .ord-tbl tbody tr')].find(r=>r.innerText.includes('GC-2610-1029'));if(!r)return 'none';r.scrollIntoView({block:'center'});return r.innerText.replace(/\\s+/g,' ').slice(0,400)})()",
+"shot": "partner-od07-dismissed",
+"after": 200
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ').slice(0,300)"
+},
+{
+"adv": "604800000"
+},
+{
+"role": "partner"
+},
+{
+"act": "ptLogin"
+},
+{
+"act": "ptOtp"
+},
+{
+"act": "ptTab",
+"attr": "data-t=\"orders\""
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ').slice(0,300)"
+},
+{
+"act": "custDelayReq",
+"attr": "data-id=\"GC-2610-1029\""
+},
+{
+"act": "dcProgress",
+"attr": "data-id=\"GC-2610-1029\"",
+"after": 400
+},
+{
+"role": "hq"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .chg-item')].find(c=>/지난 요청/.test(c.innerText));if(!c)return 'none';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ').slice(0,500)})()",
+"shot": "partner-od08-hq-second",
+"after": 200
+},
+{
+"act": "dcApprove",
+"attr": "data-id=\"GC-2610-1029\""
+},
+{
+"role": "partner"
+},
+{
+"eval": "(()=>{const r=[...document.querySelectorAll('#gc-device .ord-tbl tbody tr')].find(r=>r.innerText.includes('GC-2610-1029'));if(!r)return 'none';r.scrollIntoView({block:'center'});return r.innerText.replace(/\\s+/g,' ').slice(0,400)})()",
+"shot": "partner-od09-approved",
+"after": 200
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ').slice(0,300)"
+},
+{
+"act": "ptDiscard",
+"attr": "data-id=\"GC-2610-1029\"",
+"after": 400
+},
+{
+"act": "ptTab",
+"attr": "data-t=\"settle\"",
+"shot": "partner-od10-settle"
+},
+{
+"eval": "Array.from(document.querySelectorAll('#gc-device .ord-tbl tbody tr')).map(r=>r.innerText.replace(/\\s+/g,' ').slice(0,260))"
+},
+{
+"eval": "Array.from(document.querySelectorAll('#gc-log li')).slice(0,12).map(l=>l.textContent.replace(/\\s+/g,' ').trim().slice(0,220))"
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ').slice(0,300)"
+}
+]

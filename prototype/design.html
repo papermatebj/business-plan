@@ -21,6 +21,7 @@
   .steps-mini span.on { border-color: var(--spot); color: var(--ink); font-weight: 600; }
   .chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
   .chips-row .tag { font-size: 12.5px; padding: 3px 9px; }
+  .chips-row .tag.med-chip { white-space: normal; text-align: left; cursor: pointer; max-width: 100%; }
   .proof-wrap { position: relative; padding: 18px 16px; color: var(--ink-3); }
   .proof-wrap .pin-hit { position: absolute; inset: 18px 16px; cursor: crosshair; }
   .pin-list { display: grid; gap: 6px; }
@@ -72,7 +73,7 @@
     domain: 'design',
     title: '맞춤 디자인',
     lede: '사장님이 로고를 넣은 수저집을 주문하면, 본사 디자인팀이 시안을 만들고, 고객이 확정한 파일만 파트너 인쇄소로 넘어갑니다. 고객과 파트너는 서로 직접 만나지 않아요.',
-    meta: '근거: 기능 명세서 D-REQ-01~D-RE-01 · C-PRICE-01 · C-PAY-02 · C-STATE-01~03 · U-MY-01·03 · P-ORD-06 · 기획서 06장 · 2026-10-14 부록 B 결정(D1·D3·D4·D17~D19) · 2026-10-15~16 결정(D20·D21·D28·D30·D35·D41·D47) · S11 맞춤 ④(룸 알림 묶음) 반영',
+    meta: '근거: 기능 명세서 D-REQ-01~D-RE-01 · C-PRICE-01 · C-PAY-02 · C-STATE-01~03 · U-MY-01·02·03 · P-ORD-03·04·06 · A-ORD-02 · 기획서 06장 · 2026-10-14 부록 B 결정(D1·D3·D4·D17~D19) · 2026-10-15~16 결정(D20·D21·D28·D30·D35·D41·D47) · S11 맞춤 ④(룸 알림 묶음) · 2026-10-16 취소·환불 결정(D54 무료 디자인 공제 없앰 · D55 확정 후 취소 기본 승인 · D59 생산 지연 취소) 반영',
     actors: [
       { id: 'customer', title: '맞춤 제작', tab: '디자인' },
       { id: 'design' },
@@ -101,6 +102,8 @@
       asking: false, viewedVer: 0, proposeFrom: null, slaBefore: null, revReqAt: null, restoreDue: false, source: null,
       remake: null, settled: false, exchangedAt: null, exchangeSettleDue: null, claims: [],
       handedAt: null, printDue: null, printLate: false,
+      // 생산 지연(P-ORD-03 · D59): 판정 시각은 출고 예정일이 정해질 때 계산해 저장 · delay = 열린 생산 지연 취소(DELAY_CANCEL) 요청
+      overdueAt: null, overdue: null, overdueRound: 0, dueFrom: null, delay: null, bulkNotice: false, bulkLogged: false, discard: null, medNote: '',
     });
     app.strips.claim.hidden = true;
     setFlow('normal');
@@ -124,12 +127,18 @@
     }
     return to;
   }
-  const CLAIM_TYPE_NAME = { CUSTOM_CANCEL: '확정 후 취소', REMAKE: '재제작' };
+  const CLAIM_TYPE_NAME = { CUSTOM_CANCEL: '확정 후 취소', DELAY_CANCEL: '생산 지연 취소', REMAKE: '재제작' };
   const lastClaim = () => { const l = S().claims; return l.length ? l[l.length - 1] : null; };
   const CONFIRMED_D = ['APPROVED', 'HANDED_OFF', 'PREFLIGHT_REJECTED'];
   /* 확정 후 변경으로 다시 시안 단계가 된 건(표시, 상태 아님) */
   const changeCase = () => S().afterChange && ['REVISION', 'PROPOSED', 'ON_HOLD'].includes(app.state('design'));
-  const claimOpen = () => { const s = S(); return !!(s.remake && app.state('claim') !== 'CLAIM_COMPLETED'); };
+  /* 열린 클레임: 재제작(REMAKE) · 생산 지연 취소(DELAY_CANCEL). 열려 있으면 자동 구매 확정에서 빠짐(C-STATE-02) */
+  const remakeOpen = () => { const s = S(); return !!(s.remake && app.state('claim') !== 'CLAIM_COMPLETED'); };
+  const delayOpen = () => { const s = S(); return !!(s.delay && app.state('claim') !== 'CLAIM_COMPLETED'); };
+  const claimOpen = () => remakeOpen() || delayOpen();
+  /* 생산 지연(표시, 상태 아님): 출고 예정일 다음 영업일 끝(판정 시각)까지 송장이 없음 — 출고하면 표시를 내림 */
+  const delayShown = () => !!(S().overdue && app.state('design') === 'IN_PRODUCTION');
+  const delayLabel = () => GC.claim.label('CLAIM_CANCEL', app.state('claim'), null, 'DELAY_CANCEL'); // '취소 중재 중' · 승인 뒤 회수 대기면 '취소 승인'
   const plateTxt = (v) => (v > 0 ? `판 만들었음 · 실비 ${won(v)} 증빙` : '판 아직 안 만듦');
   /* 재제작(REMAKE)은 반품 상태를 쓰므로 진행 중 단계를 재제작 말로 보여 줌(접수 → 검수 → 승인 → 발송).
      엔진 GC.claim.step(…, 'REMAKE')이 '회수 중'·'재제작 승인'은 같게 주므로 그대로 쓰고, 엔진 말이 반품 쪽인 네 단계만 페이지에서 덮어씀
@@ -170,18 +179,25 @@
   }
   const calc = (type, qty) => GC.price.calcOrder(orderInput(type, qty));
   /* 취소 계산(C-PAY-02 예시 2): 단계는 상태가 아니라 '첫 시안 전달 시각' 기록과 '확정 후 변경 건' 표시로 정함.
-     디자인비 공제(2026-10-16 D41) = 낸 디자인비(p.designFee — 디자인비 쿠폰으로 깎인 몫은 빼고 기록, 그 몫은 본사 부담이라 쿠폰으로 전액 무료면 0원).
-     39,000원 공제(freeCustom)는 50만원 무료·멤버십 이용권으로 무료가 된 맞춤형만(p.freeBy)
+     디자인비 공제(2026-10-16 D54) = 실제로 낸 디자인비(p.designFee — 디자인비 쿠폰으로 깎인 몫은 빼고 기록). 50만원 무료·멤버십 이용권·디자인비 쿠폰으로
+     무료였으면 0원이고, 이용권·쿠폰은 첫 시안이 나갔으므로 사용 처리. 예전의 무료 디자인 39,000원 공제(freeCustom)는 없앰.
      판비 공제 = 취소 보상 = min(파트너가 증빙한 실비, 고객이 낸 판비 = 판비 줄 결제 금액 platePaid, D20) */
-  const FREE_BY = ['threshold', 'voucher'];
-  const freeByOf = (df) => (df && df.type === 'CUSTOM' && FREE_BY.includes(df.reason) ? df.reason : null);
-  function cancelPreview() {
+  const freeWhyOf = (df) => (df && df.type === 'CUSTOM' && df.fee === 0 ? df.reason : df && df.couponDisc && df.fee - df.couponDisc <= 0 ? 'coupon' : null);
+  const FREE_WHY = { threshold: '맞춤 품목 50만원 이상', voucher: '멤버십 이용권', coupon: '디자인비 쿠폰' };
+  function cancelPreview(extra = {}) {
     const s = S(); const p = s.paid; if (!p) return null;
     return GC.refund.designCancel({
       type: s.type, state: app.state('design'), firstProposed: !!s.firstProposedAt, afterChange: s.afterChange,
-      itemsAmount: p.total - p.designFee, paidDesignFee: p.designFee, freeCustom: s.type === 'CUSTOM' && !!p.freeBy,
-      plateFee: p.platePaid, plateCost: s.plateCost || 0, fixFee: p.fix || 0, fixStarted: s.fixStarted,
+      itemsAmount: p.total - p.designFee, paidDesignFee: p.designFee,
+      plateFee: p.platePaid, plateCost: s.plateCost || 0, fixFee: p.fix || 0, fixStarted: s.fixStarted, ...extra,
     });
+  }
+  /* 생산 지연 취소(DELAY_CANCEL, D59): 승인하면 파트너 귀책 → 공제 없이 그 항목에 낸 금액 전부, 돌려준 디자인비는 파트너 부담(designFeeToPartner) */
+  const delayPreview = () => cancelPreview({ productionDelay: true });
+  /* 생산 지연 판정 시각 저장(공통 용어 '기한은 시작 때 계산해 저장'): 출고 예정일 + order.overdue_grace_bd 영업일, 그날 끝 */
+  function setShipDue(due, from) {
+    const s = S(); s.shipDue = due; s.dueFrom = from; s.overdueAt = GC.order.overdueAt(due); s.overdue = null; s.bulkLogged = false;
+    app.log('rule', `출고 예정일 ${fmtDate(due, false)}${from === 'dismiss' ? '(취소 기각 때 받은 새 예정일)' : ''} · 생산 지연 판정 ${fmtDate(s.overdueAt)} = 출고 예정일 + ${pv('order.overdue_grace_bd')} 끝 · 이때까지 송장이 없으면 고객 [취소 요청]이 열려요(P-ORD-03, 시작 때 계산해 저장)`);
   }
   /* 파트너 정산: 판매가 = 상품 금액 + 판비(① 단계), 파트너 할인 = 즉시 할인(판비 범위를 골랐으면 판비 할인 포함) */
   function settlePreview() {
@@ -240,7 +256,16 @@
     if (s.after) {
       const pp = { k: '고객이 낸 판비', v: `${won(platePaid())} (판비 줄 결제 금액)` };
       if (s.plateCost === null) return app.turn('partner', '생산 보류 요청이 왔어요. 판을 이미 만들었는지, 만들었다면 실비를 증빙해 답해 주세요', { hint: '파트너는 영업시간 4시간 안에 답해야 하고, 답이 없으면 운영팀이 전화로 확인해요. 그동안 [인쇄 가능]은 서버가 막아요.', rules: [{ k: '판비 공제', v: 'min(증빙 실비, 고객이 낸 판비)' }, pp, { k: '증빙 없음', v: '판비 공제 0원' }] });
-      return app.turn('hq', `고객의 확정 후 ${s.after.kind === 'change' ? '변경' : '취소'} 요청을 중재하세요`, { rules: [{ k: '확정 후 취소 자동 승인', v: '없음(본사 중재)' }, { k: '판비 공제 = 취소 보상', v: 'min(증빙 실비, 고객이 낸 판비)' }, pp, { k: '중재 결과', v: '최종 · 기각해도 이의 제기 없음' }] });
+      if (s.after.kind === 'change') return app.turn('hq', '고객의 확정 후 변경 요청을 중재하세요', { rules: [{ k: '승인하면', v: '수정 1회 차감 · 새 버전 다시 확정' }, { k: '그동안', v: '생산 보류' }, { k: '중재 결과', v: '최종 · 이의 제기 없음' }] });
+      return app.turn('hq', '고객의 확정 후 취소 요청을 중재하세요. 기본은 승인이에요. 요청 사유·판 제작 증빙·협의 기록을 보고, 기각하려면 판정 근거를 적어요', { hint: '자동 승인은 없어요. 판정 목표는 영업일 5일이고 넘기면 팀장에게 알려요. 그동안 생산 보류는 그대로예요.', rules: [{ k: '확정 후 취소', v: '본사 중재 · 기본 승인(2026-10-16)' }, { k: '승인하면 공제', v: '낸 디자인비 + 판비 min(증빙 실비, 낸 판비)' }, pp, { k: '기각', v: '관리자 판단 · 판정 근거 필수' }, { k: '중재 결과', v: '양측에 알림 · 최종 · 이의 제기 없음' }] });
+    }
+    // 생산 지연 취소(DELAY_CANCEL, P-ORD-03 · A-ORD-02 · D59): 생산 보류 없이 본사 중재
+    if (s.delay && ['CANCEL_REQUESTED', 'CANCEL_APPROVED'].includes(app.state('claim'))) {
+      const R = [{ k: '생산 지연 취소', v: '자동 승인 없음 · 본사 중재' }, { k: '그동안', v: '생산 계속(보류 없음)' }, { k: '승인하면', v: '공제 없이 낸 금액 전부 · 쿠폰 되살림' }, { k: '돌려준 디자인비', v: "파트너 부담('중재 판정' −)" }, { k: '기각하면', v: '출고 독촉 · 새 출고 예정일' }];
+      if (app.state('claim') === 'CANCEL_APPROVED') return app.turn('system', '승인했지만 이미 출고된 건이에요. 시스템 탭에서 배송 완료를 확인하면 플랫폼이 회수해 검수 없이 환불해요', { rules: [{ k: '회수', v: '배송 완료 뒤 플랫폼이 접수' }, { k: '회수 배송비', v: '파트너' }, { k: '환불', v: '회수 완료 뒤 · 검수 없음' }] });
+      if (!s.delay.progress && !s.delay.shipped) return app.turn('partner', '고객이 생산 지연 취소를 요청했어요(취소 중재 중). [출고 가능 시점·진행 올리기]로 출고 가능 시점과 생산 사진·기록을 올리세요. 생산은 멈추지 않아요', { hint: '요청 중에도 송장 등록은 막지 않아요. 지금 보내면 본사가 승인할 때 회수한 뒤 환불하고, 기각하면 그대로 배송돼요.', rules: R });
+      if (s.delay.shipped) return app.turn('hq', '요청 중에 파트너가 출고했어요. 그래도 판정하세요. 승인하면 배송 완료 뒤 회수해 검수 없이 환불하고(회수 배송비 파트너), 기각하면 그대로 배송돼요', { rules: R.slice(0, 1).concat([{ k: '요청 중 송장 등록', v: '막지 않음' }, { k: '승인하면', v: '배송 완료 뒤 플랫폼 회수 → 환불' }, { k: '기각하면', v: '그대로 배송 · 판정 근거 필수' }]) });
+      return app.turn('hq', '고객의 생산 지연 취소 요청을 판정하세요. 파트너가 올린 출고 가능 시점·생산 진행과 고객 사정을 보고 정하고, 판정 근거를 적어요', { hint: '결과는 양측에 알리고 최종이에요(이의 제기 없음). 기각하면 파트너가 올린 출고 가능 시점을 새 출고 예정일로 저장하고, 그날 다음 영업일까지도 송장이 없으면 [취소 요청]이 다시 열려요.', rules: R.concat([{ k: '판정 목표', v: '영업일 5일 · 넘기면 팀장 알림' }]) });
     }
     if (s.restoreDue) return app.turn('hq', '확정 후 변경 건이 30일 동안 답이 없어요. 운영 확인 목록에서 이전 확정본으로 복원하세요', { hint: '확정 후 변경으로 다시 시안 단계가 된 건은 자동 취소하지 않아요(D-ROOM-07, 2026-10-14 확정).', rules: [{ k: '복원', v: `디자인 요청 → 파트너 전달 · 주문 항목 → 디자인 확정` }, { k: '생산 보류', v: '복원하면 해제' }] });
     if (s.remake && !['CLAIM_COMPLETED'].includes(app.state('claim'))) {
@@ -270,10 +295,15 @@
         const due = s.printDue ? fmtDate(s.printDue) : '';
         const what = s.printLate ? `확인 기한(${due})이 지났어요. ${s.downloaded ? '바로 [인쇄 가능] 또는 [반려]를 누르세요' : '패키지를 내려받아 바로 확인하세요'}`
           : s.downloaded ? `인쇄 적합성을 확인하고 ${due}까지 [인쇄 가능] 또는 [반려]를 누르세요` : `맞춤 제작 큐에서 인쇄 패키지를 내려받으세요. 확인 기한(${due}까지)은 전달된 때부터 이미 흐르고 있어요`;
-        return app.turn('partner', what, { hint: `[인쇄 가능]을 누르는 순간이 "생산 시작"이에요. 그 뒤로는 고객이 취소할 수 없고 불량만 재제작해요. 그 전에는 고객이 [확정 후 변경 요청]·[취소 요청]을 할 수 있어요. 내려받아야 [인쇄 가능]을 누를 수 있지만 기한은 내려받기 전에도 흘러요${s.printLate ? '' : '(+1일로 넘겨 보면 파트너 리마인드와 운영 알림이 가요)'}.`, rules: [{ k: '[인쇄 가능]·[반려] 기한', v: due ? `${due}까지` : '-' }, { k: '전달된 때부터(내려받은 때 아님)', policy: 'production.print_check_bd' }, { k: '다시 전달하면(반려 수정·복원)', v: '새로 셈' }, { k: '제작 기간', v: `[인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일` }] });
+        return app.turn('partner', what, { hint: `[인쇄 가능]을 누르는 순간이 "생산 시작"이에요. 그 뒤로는 고객 사정으로 취소할 수 없고 불량만 재제작해요(출고 예정일 다음 영업일까지 출고하지 않으면 열리는 생산 지연 취소만 예외). 그 전에는 고객이 [확정 후 변경 요청]·[취소 요청]을 할 수 있어요. 내려받아야 [인쇄 가능]을 누를 수 있지만 기한은 내려받기 전에도 흘러요${s.printLate ? '' : '(+1일로 넘겨 보면 파트너 리마인드와 운영 알림이 가요)'}.`, rules: [{ k: '[인쇄 가능]·[반려] 기한', v: due ? `${due}까지` : '-' }, { k: '전달된 때부터(내려받은 때 아님)', policy: 'production.print_check_bd' }, { k: '다시 전달하면(반려 수정·복원)', v: '새로 셈' }, { k: '제작 기간', v: `[인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일` }] });
       }
       case 'PREFLIGHT_REJECTED': return app.turn('design', '파트너가 인쇄를 반려했어요. 고쳐서 다시 전달하거나, 보이는 내용이 바뀌면 고객 재확정을 받으세요');
-      case 'IN_PRODUCTION': return app.turn('partner', '생산이 끝나면 송장을 등록해 출고하세요', { rules: [{ k: '출고 예정일', v: s.shipDue ? fmtDate(s.shipDue, false) : '-' }] });
+      case 'IN_PRODUCTION': {
+        const R = [{ k: '출고 예정일', v: s.shipDue ? `${fmtDate(s.shipDue, false)}${s.dueFrom === 'dismiss' ? ' (새 예정일)' : ''}` : '-' }, { k: '생산 지연 판정', v: s.overdueAt ? `${fmtDate(s.overdueAt)}까지 송장 없음` : '-' }, { k: '유예', policy: 'order.overdue_grace_bd' }];
+        if (delayShown()) return app.turn('customer', `출고 예정일이 지나 '생산 지연'이 됐어요. 주문 상세에서 [취소 요청]을 누르세요(파트너 화면에서 송장을 등록해 그대로 출고할 수도 있어요)`, { hint: `${s.overdueRound > 1 ? '취소 기각 때 받은 새 출고 예정일도 넘겨 [취소 요청]이 다시 열렸어요(D59 ③). ' : ''}요청하면 본사가 판단하고, 그동안 제작은 계속돼요. 승인되면 공제 없이 낸 금액 전부를 돌려줘요.`, rules: R.concat([{ k: '[취소 요청]', v: '본사 중재 · 자동 승인 없음' }, { k: '지연으로 안 봄', v: '인쇄 반려(디자인팀 원인) · 본사 일괄 공지' }]) });
+        if (s.dueFrom === 'dismiss') return app.turn('partner', `본사가 생산 지연 취소를 기각하고 출고를 독촉했어요. 새 출고 예정일(${fmtDate(s.shipDue, false)})까지 송장을 등록해 출고하세요`, { hint: '새 예정일 다음 영업일이 끝날 때까지도 송장이 없으면 고객의 [취소 요청]이 다시 열려요(+1일로 넘겨 보세요).', rules: R });
+        return app.turn('partner', '생산이 끝나면 송장을 등록해 출고하세요', { hint: s.bulkNotice ? '본사 일괄 공지(택배 파업) 기간이라 출고 예정일을 넘겨도 생산 지연으로 보지 않아요.' : '송장 없이 +1일·+7일로 판정 시각(출고 예정일 다음 영업일 끝)을 넘기면 생산 지연이 되고 고객에게 [취소 요청]이 열려요.', rules: R });
+      }
       case 'SHIPPED':
         if (it === 'SHIPPED') return app.turn('system', '택배 조회로 배송 완료를 감지해요(시스템 탭에서 실행)');
         if (it === 'DELIVERED') return app.turn('customer', '받은 상품을 확인하고 [구매 확정]을 누르세요. 인쇄가 확정본과 다르면 [재제작 요청]을 누르세요', { hint: '맞춤 제작이라 단순 변심 반품·교환은 안 되고 불량만 재제작해요. 7일이 지나면 자동으로 확정돼요(클레임이 열린 항목은 빼고).', rules: [{ k: '자동 구매 확정', policy: 'order.auto_confirm_days' }, { k: '불량 신청 기한', v: '받은 날부터 3개월 · 안 날부터 30일' }] });
@@ -281,10 +311,16 @@
         if (it === 'RETURNED') return app.done(`재제작 대신 환불했어요. 주문 항목은 반품 완료, 클레임은 '${claimDoneLabel()}'예요.`, { next: '[처음부터]로 다른 길도 가 볼 수 있어요.' });
         break;
       case 'COMPLETED':
+        if (it === 'RETURNED' && lastClaim() && lastClaim().type === 'DELAY_CANCEL') return app.done(`생산 지연 취소를 승인했고, 이미 출고된 물건을 플랫폼이 회수해 검수 없이 전액 ${won(s.refunded.refund)}을 돌려드렸어요. 주문 항목은 반품 완료, 클레임은 '${claimDoneLabel()}'예요.`, { next: `회수 배송비는 파트너가 내고, 돌려준 디자인비 ${won(s.refunded.designFeeToPartner)}은 파트너 정산에서 빼요('중재 판정'). 재주문 연결 보장은 '생산 지연 취소' 사유로 풀렸어요.` });
         if (it === 'EXCHANGED') return app.done(`재제작품을 받았어요. 주문 항목은 '교환·재제작 완료'(끝 상태), 클레임은 '${claimDoneLabel()}'예요.${s.remake && s.remake.settledBefore ? ' 이미 구매 확정·정산된 항목이라 새 정산은 없어요.' : ''}`, { next: '재제작품이 또 불량이면 그 물건을 받은 날부터 3개월 안에 다시 [재제작 요청]을 할 수 있어요(2026-10-14 확정). [같은 디자인으로 재주문]도 돼요.' });
         if (it === 'RETURNED') return app.done(`재제작 대신 환불했어요. 주문 항목은 반품 완료, 클레임은 '${claimDoneLabel()}'예요.`, { next: '이미 정산된 항목이면 다음 정산 주기에서 되돌려요(역분개).' });
         return app.done('주문 한 건이 끝났어요. 파트너 정산 대상이 됐어요.', { next: '고객 화면에서 [같은 디자인으로 재주문]을 눌러 보세요. 디자인 단계 없이 바로 파트너에게 넘어가고, 판비가 면제되며 파트너 수수료가 3%p 내려가요. 인쇄 불량이면 [재제작 요청]도 할 수 있어요.' });
-      case 'CANCELED': return app.done(`디자인 요청이 취소됐어요.${s.refunded ? ` 환불 ${won(s.refunded.refund)}${s.refunded.deduction ? ` (공제 ${won(s.refunded.deduction)})` : ''}.` : ''}${s.refunded && s.refunded.plateToPartner ? ` 파트너 '취소 보상' ${won(s.refunded.plateToPartner)}.` : ''}`, { next: '[처음부터]를 눌러 다른 길로 다시 가 볼 수 있어요.' });
+      case 'CANCELED':
+        if (s.refunded && s.refunded.claimType === 'DELAY_CANCEL') {
+          if (s.discard && !s.discard.done) return app.turn('partner', '생산 지연 취소가 승인됐어요. 이미 만든 인쇄물과 판을 폐기하고 [폐기 확인 올리기]를 누르세요', { hint: '회사 저작권 디자인이라 다른 곳에 쓸 수 없어요. 인쇄물·판 손실은 파트너가 지고(대금을 받지 않음), 돌려준 디자인비도 파트너 정산에서 빼요.', rules: [{ k: '인쇄물·판', v: '파트너 폐기 · 손실 파트너' }, { k: '돌려준 디자인비', v: `${won(s.refunded.designFeeToPartner)} · '중재 판정' −` }, { k: '정산액이 모자라면', v: '미수금(분쟁 조정)' }] });
+          return app.done(`생산 지연 취소가 승인됐어요. 공제 없이 낸 금액 전부 ${won(s.refunded.refund)}(디자인비·판비 포함)을 돌려드리고 쿠폰을 되살렸어요.`, { next: `돌려준 디자인비 ${won(s.refunded.designFeeToPartner)}은 파트너 정산에서 빼요('중재 판정'). 재주문 연결 보장이 '생산 지연 취소' 사유로 풀려, 같은 디자인을 다른 판매자로 다시 주문하면 디자인비 없이 판비만 내요. [처음부터]로 기각 갈래도 볼 수 있어요.` });
+        }
+        return app.done(`디자인 요청이 취소됐어요.${s.refunded ? ` 환불 ${won(s.refunded.refund)}${s.refunded.deduction ? ` (공제 ${won(s.refunded.deduction)})` : ''}.` : ''}${s.refunded && s.refunded.plateToPartner ? ` 파트너 '취소 보상' ${won(s.refunded.plateToPartner)}.` : ''}`, { next: '[처음부터]를 눌러 다른 길로 다시 가 볼 수 있어요.' });
     }
     app.turn('customer', '주문 상세에서 진행 상황을 확인하세요');
   }
@@ -310,6 +346,11 @@
   }
   /* 룸 메시지 알림의 묶음 조건(C-NOTI-01 · notify.room_digest_minutes): 고객 알림톡·담당 디자이너 Slack은 10분 동안 안 읽으면 묶어 1회 */
   const digestNote = (ch) => ` <span class="faint">(${ch}은 ${pv('notify.room_digest_minutes')} 동안 안 읽으면 묶어 1회)</span>`;
+  /* 알림 채널(C-NOTI-01 표): 생산 지연 고객·파트너 · 중재 결과 고객·파트너 */
+  const CH_CUST_OVERDUE = ['알림톡', 'SMS 대체', '앱 푸시', '알림센터'];
+  const CH_PT_OVERDUE = ['알림톡', 'SMS 대체', '알림센터'];
+  const CH_CUST_MED = ['알림톡', 'SMS 대체', '앱 푸시', '이메일', '알림센터'];
+  const CH_PT_MED = ['알림톡', 'SMS 대체', '이메일', '알림센터'];
 
   /* ── 고객 화면 ── */
   const VIEWS = {};
@@ -402,7 +443,7 @@
           <dl class="kv"><dt>디자인비</dt><dd>${df.fee === 0 ? '무료 (50만원 이상)' : `${won(df.fee)} · 맞춤 품목 ${won(df.shortfall)} 더 담으면 무료`}</dd>
           <dt>무료 수정</dt><dd>${pv('design.free_revisions_custom')}</dd><dt>첫 시안</dt><dd>배정 후 ${pv('design.sla.first_draft_days')} 안</dd></dl>
           ${agree('rights', '올린 로고·문구의 권리는 제가 보증합니다')}
-          ${agree('stage', '첫 시안 전 취소는 전액 환불, 첫 시안 뒤 취소는 디자인비를 공제합니다')}
+          ${agree('stage', '첫 시안 전 취소는 전액 환불, 첫 시안 뒤 취소는 낸 디자인비를 공제합니다(디자인비가 무료였으면 공제 없음)')}
           ${agree('own', '완성 디자인의 저작권은 회사에, 매장 사용권은 저에게 있습니다')}</div>`;
     } else if (s.type === 'TEMPLATE') {
       const tpls = [['band', '한식 띠 배너'], ['emblem', '원형 엠블럼'], ['line', '미니멀 라인']];
@@ -433,9 +474,9 @@
     f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="toCheckout" ${ready ? '' : 'disabled'}>주문서로</button>`);
   }
   function requiredChecks() { const t = S().type; return t === 'CUSTOM' ? ['rights', 'stage', 'own'] : t === 'TEMPLATE' ? ['rights', 'own'] : ['outline', 'rights']; }
+  /* 주문서 동의(U-ORD-02). 2026-10-16 D54: 무료 디자인 39,000원 공제의 별도 고지·체크(co_free)를 없앰 — 단계별 환불 규정 동의(co_stage)만 남음 */
   function checkoutChecks() {
-    const s = S(); const r = calc(); const keys = ['co_stage', 'co_plate'];
-    if (s.type === 'CUSTOM' && freeByOf(r.designFees[0])) keys.push('co_free');
+    const s = S(); const keys = ['co_stage', 'co_plate'];
     if (s.type === 'REORDER') keys.push('co_prev');
     return keys;
   }
@@ -460,10 +501,9 @@
         ${s.pay === 'vbank' ? '<p class="xsmall faint">가상계좌는 입금이 확인된 뒤에 디자인이 시작돼요. 이 프로토타입에서는 바로 입금된 것으로 처리해요.</p>' : ''}</div>
       <div class="app-sec">
         ${agree('co_stage', '디자인 확정 후 생산이 시작되며, 디자인 단계별 환불 규정에 동의합니다')}
+        ${s.type !== 'REORDER' ? `<p class="xsmall faint">단계별 공제: 첫 시안 전 전액 환불 · 첫 시안 뒤 낸 디자인비만 공제 · 확정 뒤는 본사 확인 뒤 낸 디자인비와 (판을 만들었으면) 판비 공제.${freeWhyOf(r.designFees[0]) ? ` 이 주문은 디자인비가 무료(${FREE_WHY[freeWhyOf(r.designFees[0])]})라 첫 시안 뒤 취소해도 디자인비 공제가 없어요.` : ''}</p>` : ''}
         ${s.type !== 'REORDER' ? agree('co_plate', '판은 제작 파트너가 보관하며 넘겨받지 않는다는 점을 확인했습니다') : agree('co_plate', '맞춤 제작이라 생산 시작 뒤에는 취소·반품이 제한됩니다')}
         ${s.type === 'REORDER' ? agree('co_prev', `이전 확정본(v${s.versions.length}, 문구 "${STORE.name} / ${STORE.insta}")을 확인했습니다`) : ''}
-        ${s.type === 'CUSTOM' && freeByOf(r.designFees[0]) ? `${agree('co_free', `첫 시안을 받은 뒤 취소하면 디자인비 ${pv('design.fee')}을 공제합니다`)}
-          <p class="xsmall faint">${freeByOf(r.designFees[0]) === 'voucher' ? '멤버십 이용권' : '50만원 이상'}으로 무료가 된 맞춤 디자인이라 이 동의를 따로 받아요. 디자인비 쿠폰으로 무료·할인이 된 경우에는 공제가 낸 디자인비뿐이라(쿠폰으로 전액 무료면 0원) 이 체크가 붙지 않아요.</p>` : ''}
       </div>`;
     const ok = checkoutChecks().every((k) => s.checks[k]);
     f.bottom(`<button class="btn btn-primary btn-lg btn-block" data-act="pay" ${ok ? '' : 'disabled'}>${won(r.totals.pay)} 결제하기</button>`);
@@ -503,6 +543,21 @@
     if (s.asking) marks.push('<span class="tag tag-warn">답변 필요</span>');
     if (s.after) marks.push(`<span class="tag tag-stop">${s.after.kind === 'change' ? '변경 요청 중' : '취소 중재 중'}</span>`);
     else if (s.afterChange && d !== 'CANCELED') marks.push('<span class="tag tag-warn">확정 후 변경 중</span>');
+    // 생산 지연 취소는 생산을 멈추지 않으므로 '취소 중재 중'을 경고색으로(생산 보류의 정지색과 구분)
+    if (delayOpen()) marks.push(`<span class="tag tag-warn">${esc(delayLabel())}</span>`);
+    else if (delayShown()) marks.push('<span class="tag tag-warn">생산 지연</span>');
+    const dp = s.paid && (delayShown() || delayOpen()) ? delayPreview() : null;
+    const delayCard = !dp ? '' : delayOpen()
+      ? `<div class="app-card"><div class="split"><b class="small">생산 지연 취소 요청</b><span class="st st-warn nw">${esc(delayLabel())}</span></div>
+          <dl class="kv small"><dt>처리</dt><dd>${app.state('claim') === 'CANCEL_APPROVED' ? '본사가 승인했어요. 받으신 물건을 회수한 뒤 검수 없이 환불해 드려요(회수 배송비는 판매자 부담)' : '본사가 판매자의 출고 가능 시점과 제작 진행을 보고 정해요'}</dd>
+            <dt>승인되면</dt><dd>낸 금액 전부 ${won(dp.refund)} 환불 · 쿠폰 되살림</dd>
+            <dt>그동안</dt><dd>${s.delay.shipped ? '판매자가 그 사이 보냈어요. 승인되면 회수한 뒤 환불하고, 기각되면 그대로 받으시면 돼요' : '제작은 멈추지 않고 계속돼요'}</dd></dl>
+          ${app.state('claim') === 'CANCEL_REQUESTED' ? '<button class="btn btn-sm btn-ghost" data-act="delayWithdraw">요청 철회</button>' : ''}</div>`
+      : `<div class="app-card"><div class="split"><b class="small">제작이 늦어지고 있어요</b><span class="st st-warn nw">생산 지연</span></div>
+          <p class="small">출고 예정일(${fmtDate(s.shipDue, false)})이 지났는데 아직 출고되지 않았어요.</p>
+          <div class="split small"><span>승인되면 환불</span><b class="num">${won(dp.refund)}</b></div>
+          <p class="xsmall faint">본사가 확인해 승인하면 낸 금액 전부를 돌려드려요(디자인비·판비 포함, 쿠폰도 되살려요). 요청해도 제작은 계속돼요.</p>
+          <button class="btn btn-sm btn-danger" data-act="delayReq">취소 요청</button></div>`;
     const rm = s.remake; const rc = rm ? app.state('claim') : null;
     const remakeDue = (from) => GC.claim.defectDeadline(from);
     const canRemake = ['DELIVERED', 'CONFIRMED', 'EXCHANGED'].includes(it) && !claimOpen();
@@ -522,7 +577,8 @@
             ${s.sla && ['ASSIGNED', 'IN_PROGRESS', 'REVISION'].includes(d) && !s.asking ? `<dt>다음 시안 예정</dt><dd>${fmtDate(s.sla.due)}까지</dd>` : ''}
             ${d === 'REQUESTED' && s.sla ? `<dt>배정 예정</dt><dd>${fmtDate(s.sla.due)}까지</dd>` : ''}
             ${waiting != null ? `<dt>응답 대기</dt><dd>${waiting}일째</dd>` : ''}
-            ${['CUSTOM', 'TEMPLATE'].includes(s.type) && s.paid ? `<dt>무료 수정</dt><dd>${s.freeLeft}회 남음</dd>` : ''}
+            ${['CUSTOM', 'TEMPLATE'].includes(s.type) && s.paid && d !== 'IN_PRODUCTION' ? `<dt>무료 수정</dt><dd>${s.freeLeft}회 남음</dd>` : ''}
+            ${d === 'IN_PRODUCTION' && s.shipDue ? `<dt>출고 예정일</dt><dd>${fmtDate(s.shipDue, false)}${s.dueFrom === 'dismiss' ? ' (새 예정일)' : ''}</dd>` : ''}
           </dl>
           ${s.asking ? `<div class="note note-warn small">디자이너 질문: "로고 파일의 초록색이 간판 사진과 달라 보여요. 간판색(PANTONE 3415C)으로 맞출까요?"</div><button class="btn btn-primary" data-act="answerQ">룸에서 답하기</button>` : ''}
           ${d === 'ON_HOLD' ? `<button class="btn btn-primary" data-act="resume">진행 재개</button>` : ''}
@@ -546,11 +602,13 @@
         ${canCancel ? `<div class="app-card"><b class="small">지금 취소하면</b>
           <div class="split small"><span>환불 예정</span><b class="num">${won(cp.refund)}</b></div>
           ${cp.lines.map((l) => `<div class="split xsmall"><span class="faint">공제 · ${esc(l.label)}</span><span class="num">−${won(l.amount)}</span></div>`).join('')}
-          ${cp.stage === 'BEFORE_PROPOSAL' ? '<p class="xsmall faint">첫 시안을 받기 전이라 전액 환불돼요.</p>' : cp.reorderFree ? '<p class="xsmall faint">판비 0원 재주문이라 본사 중재 없이 바로 취소돼요(공제 0원).</p>' : s.firstProposedAt && ['REQUESTED', 'ASSIGNED', 'IN_PROGRESS'].includes(d) ? '<p class="xsmall faint">맞춤형으로 바꿔 다시 시작했어도 첫 시안을 이미 받았으므로 디자인비를 공제해요.</p>' : ''}
+          ${cp.stage === 'BEFORE_PROPOSAL' ? '<p class="xsmall faint">첫 시안을 받기 전이라 전액 환불돼요.</p>' : cp.reorderFree ? '<p class="xsmall faint">판비 0원 재주문이라 본사 중재 없이 바로 취소돼요(공제 0원).</p>' : !cp.deduction && s.type === 'CUSTOM' ? `<p class="xsmall faint">디자인비가 무료(${FREE_WHY[s.paid.freeWhy] || '무료'})라 첫 시안을 받았어도 공제가 없어요.${s.paid.freeWhy && s.paid.freeWhy !== 'threshold' ? ' 첫 시안이 나가 이용권·쿠폰은 사용한 것으로 봐요.' : ''}</p>` : s.firstProposedAt && ['REQUESTED', 'ASSIGNED', 'IN_PROGRESS'].includes(d) ? '<p class="xsmall faint">맞춤형으로 바꿔 다시 시작했어도 첫 시안을 이미 받았으므로 낸 디자인비를 공제해요.</p>' : ''}
           <button class="btn btn-sm btn-danger" data-act="cancelDesign">${cp.reorderFree ? '취소' : '주문 취소'}</button></div>` : ''}
+        ${delayCard}
         ${canChange || canCustomCancel ? `<div class="app-card"><b class="small">${s.afterChange ? '변경 중인 주문을 취소하고 싶어요' : '확정 후 바꾸고 싶어요'}</b><span class="xsmall muted">${s.afterChange ? '확정 후 변경으로 다시 시안 단계가 된 건이라 일반 취소가 아니라 확정 후 취소로 받아 본사가 중재해요.' : '파트너가 [인쇄 가능]을 누르기 전까지만 요청할 수 있고, 본사가 중재해요.'}</span>
+          ${canCustomCancel ? '<span class="xsmall">확정 후 취소는 본사 확인 뒤, 낸 디자인비와 (판을 만들었으면) 판비를 빼고 환불합니다</span>' : ''}
           <div class="cluster">${canChange ? '<button class="btn btn-sm" data-act="afterReq" data-kind="change">확정 후 변경 요청</button>' : ''}${canCustomCancel ? '<button class="btn btn-sm btn-danger" data-act="afterReq" data-kind="cancel">취소 요청</button>' : ''}</div></div>` : ''}
-        ${s.after ? `<div class="note note-warn small">확정 후 ${s.after.kind === 'change' ? '변경' : '취소'} 요청을 본사가 확인하고 있어요. 그동안 인쇄는 멈춰 있어요.${s.after.kind === 'cancel' ? ` 공제는 디자인비와, 판매자가 판을 만들었다면 판비(최대 내신 판비 ${won(platePaid())} · 판비 줄 결제 금액)예요.` : ''}<div style="margin-top:6px"><button class="btn btn-sm btn-ghost" data-act="afterWithdraw">요청 철회</button></div></div>` : ''}
+        ${s.after ? `<div class="note note-warn small">확정 후 ${s.after.kind === 'change' ? '변경' : '취소'} 요청을 본사가 확인하고 있어요. 그동안 인쇄는 멈춰 있어요.${s.after.kind === 'cancel' ? ` 확정 후 취소는 본사 확인 뒤, 낸 디자인비와 (판을 만들었으면) 판비를 빼고 환불합니다. 판비는 최대 내신 판비 ${won(platePaid())}(판비 줄 결제 금액)까지예요.` : ''}<div style="margin-top:6px"><button class="btn btn-sm btn-ghost" data-act="afterWithdraw">요청 철회</button></div></div>` : ''}
         <p class="xsmall faint">대화와 연락처 가림은 <a href="room.html">협의 룸</a> 화면에서 따로 볼 수 있어요.</p>
       </div>`;
   }
@@ -612,7 +670,8 @@
     ['contact', '전화번호·SNS 표기를 확인했어요'],
     ['color', '모니터와 실물 색이 다를 수 있다는 점을 알아요'],
     ['qty', () => `수량·사이즈를 확인했어요(허용 오차 ${tol()})`],
-    ['nocancel', '확정하면 인쇄가 시작되어 취소·반품이 제한된다는 점에 따로 동의해요'],
+    // 확정 후 취소·반품 제한 별도 동의(D-APV-01 문구, 2026-10-16 D55 맞춤)
+    ['nocancel', '<b>(따로 동의)</b> 확정 후 단순 변심 반품은 할 수 없습니다. 생산 시작 전 취소는 본사 확인 뒤, 낸 디자인비와 (판을 만들었으면) 판비를 빼고 환불합니다'],
   ];
   function approve(f, s) {
     f.title('시안 확정'); f.tab('디자인'); f.back();
@@ -650,7 +709,7 @@
       ['상품', `${PRODUCT.name} (결제 시점 사양)`], ['수량·허용 오차', `${(s.qty * 1000).toLocaleString()}매 · ${tolText()} (결제 시점 상품 설정값)`], ['인쇄', '옵셋 · 2도 · 앞면'],
       ['색상', 'PANTONE 3415C, 블랙'], ['문구 전문', `${STORE.name} / ${ver && ver.v >= 2 ? STORE.insta : STORE.phone}`],
       ['확정 시안', ver ? `v${ver.v} ${s.approvedOpt || ver.opts[0]}안` : '-'], ['인쇄 원본 해시', s.hash ? s.hash.slice(0, 24) + '…' : '계산 중'],
-      ['동의', '오탈자·연락처·색상 차이·수량과 허용 오차·취소 제한(약관 v1.0)'], ['포트폴리오', s.checks.ap_portfolio ? '동의' : '동의 안 함'],
+      ['동의', '오탈자·연락처·색상 차이·수량과 허용 오차·확정 후 취소·반품 제한(동의 문구·약관 v1.0)'], ['포트폴리오', s.checks.ap_portfolio ? '동의' : '동의 안 함'],
       ['확정 시각·IP', `${s.approvedAt ? fmtDate(s.approvedAt) : '-'} · 211.***.***.20`],
     ];
   }
@@ -684,7 +743,7 @@
       return `<span class="sla ${cls}">${left < 0 ? 'SLA 초과' : '기한 ' + fmtDate(s.sla.due)}</span>`;
     };
     const myCard = s.paid && d !== 'COMPLETED' && d !== 'CANCELED' ? `<div class="kcard is-live"><div class="split"><span class="kt">DR-24118</span><span class="tag">${TYPES[s.type].name}</span></div><span>${STORE.name} · 수저집</span>
-      <span class="xsmall faint">${s.designer ? '담당 ' + s.designer.name : '담당 없음'} · 수정 ${s.revisions}회</span>${s.asking ? '<span class="tag tag-warn">고객 답변 대기 · SLA 멈춤</span>' : slaTxt()}${s.hold ? `<span class="tag tag-stop">생산 보류${s.after && s.after.kind === 'cancel' ? ' · 취소 중재 중' : s.afterChange ? ' · 확정 후 변경 건' : ''}</span>` : ''}</div>` : '';
+      <span class="xsmall faint">${s.designer ? '담당 ' + s.designer.name : '담당 없음'} · 수정 ${s.revisions}회</span>${s.asking ? '<span class="tag tag-warn">고객 답변 대기 · SLA 멈춤</span>' : slaTxt()}${s.hold ? `<span class="tag tag-stop">생산 보류${s.after && s.after.kind === 'cancel' ? ' · 취소 중재 중' : s.afterChange ? ' · 확정 후 변경 건' : ''}</span>` : ''}${delayOpen() ? '<span class="tag tag-warn">취소 중재 중 · 생산 계속</span>' : delayShown() ? '<span class="tag tag-warn">생산 지연</span>' : ''}</div>` : '';
     const kan = `<div class="kanban">${cols.map(([name, sts]) => {
       const mine = sts.includes(d) ? myCard : '';
       const ext = (others[name] || []).map(([id, t, ty]) => `<div class="kcard"><div class="split"><span class="kt">${id}</span><span class="tag">${ty}</span></div><span>${t}</span></div>`).join('');
@@ -737,7 +796,7 @@
     const s = S(); const d = app.state('design'); const it = app.state('item');
     if (!s.paid) { f.body.innerHTML = '<h3>맞춤 제작 주문</h3><p class="muted">아직 들어온 맞춤 주문이 없어요.</p>'; return; }
     const rc = s.remake ? app.state('claim') : null;
-    const remakeOpen = claimOpen();
+    const remakeOpen = s.remake ? claimOpen() : false;
     const tabs = [['디자인 중', DESIGN_ACTIVE.includes(d) && !remakeOpen], ['파일 수신', d === 'HANDED_OFF'], ['인쇄 반려', d === 'PREFLIGHT_REJECTED'], ['생산 중', d === 'IN_PRODUCTION'], ['출고', (d === 'SHIPPED' || d === 'COMPLETED') && !remakeOpen], ['재제작', remakeOpen]];
     const sp = settlePreview();
     let detail = '';
@@ -775,18 +834,32 @@
           <button class="btn btn-primary" data-act="printable" ${!s.downloaded ? 'disabled' : ''} ${s.hold ? 'aria-disabled="true"' : ''}>인쇄 가능</button>
           <button class="btn btn-danger" data-act="preflightReject" ${!s.downloaded || s.hold ? 'disabled' : ''}>반려</button>
         </div>
-        ${s.hold ? '<p class="xsmall" style="color:var(--stop)">생산 보류 중이라 [인쇄 가능]을 눌러도 서버가 거부해요. 보류 중에는 확인 기한 알림을 보내지 않아요.</p>' : `<p class="xsmall faint">패키지를 내려받아야 [인쇄 가능]·[반려]를 누를 수 있어요. 기한은 내려받은 때가 아니라 패키지가 전달된 때부터 세고, 디자인팀이 다시 전달하면 새로 세요. [인쇄 가능]을 누르면 출고 예정일이 ${fmtDate(GC.addBusinessDays(app.clock.now(), PRODUCT.leadDays), false)}로 정해지고, 이때부터 고객은 취소할 수 없어요.</p>`}`;
+        ${s.hold ? '<p class="xsmall" style="color:var(--stop)">생산 보류 중이라 [인쇄 가능]을 눌러도 서버가 거부해요. 보류 중에는 확인 기한 알림을 보내지 않아요.</p>' : `<p class="xsmall faint">패키지를 내려받아야 [인쇄 가능]·[반려]를 누를 수 있어요. 기한은 내려받은 때가 아니라 패키지가 전달된 때부터 세고, 디자인팀이 다시 전달하면 새로 세요. [인쇄 가능]을 누르면 출고 예정일이 ${fmtDate(GC.addBusinessDays(app.clock.now(), PRODUCT.leadDays), false)}로 정해지고, 이때부터 고객 사정으로는 취소할 수 없어요. 출고 예정일 다음 영업일까지 송장이 없으면 고객에게 생산 지연 취소 요청이 열려요(본사 중재).</p>`}`;
     } else if (d === 'PREFLIGHT_REJECTED') {
       detail = `<div class="note note-warn small">반려했어요. 디자인팀이 고쳐서 다시 보내면 새 버전으로 확인해요. 예전 파일은 잠겨요.</div>${s.hold && s.after ? `<div class="hold-banner"><b>생산 보류 요청${s.after.kind === 'cancel' ? ' · 취소 중재 중' : ''}</b> · 판을 이미 만들었는지 답해 주세요. ${plateAsk}</div>` : ''}`;
     } else if (d === 'IN_PRODUCTION') {
-      detail = `<dl class="kv small"><dt>출고 예정일</dt><dd>${s.shipDue ? fmtDate(s.shipDue, false) : '-'} ([인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일)</dd><dt>택배사</dt><dd>CJ대한통운</dd><dt>송장번호</dt><dd>6890-1234-5678</dd></dl><button class="btn btn-primary btn-ext" data-act="ship">송장 등록하고 출고</button>`;
+      const dOpen = delayOpen(); const pr = s.delay && s.delay.progress;
+      detail = `<dl class="kv small"><dt>출고 예정일</dt><dd>${s.shipDue ? fmtDate(s.shipDue, false) : '-'} (${s.dueFrom === 'dismiss' ? '취소 기각 때 받은 새 예정일' : `[인쇄 가능] 확인일부터 영업일 ${PRODUCT.leadDays}일`})</dd>
+          <dt>생산 지연 판정</dt><dd>${s.overdueAt ? `${fmtDate(s.overdueAt)}까지 송장이 없으면 · 출고 예정일 + ${pv('order.overdue_grace_bd')}` : '-'}${delayShown() ? ' <span class="st st-stop">기한 넘김</span>' : ''}</dd>
+          <dt>택배사</dt><dd>CJ대한통운</dd><dt>송장번호</dt><dd>6890-1234-5678</dd></dl>
+        ${delayShown() && !dOpen ? '<div class="note note-warn small">출고 기한을 넘겼어요. 고객에게 알리고 [취소 요청]을 열었어요. 요청이 오면 본사가 판단하고, 승인되면 공제 없이 전액 환불하며 돌려준 디자인비는 파트너 정산에서 빼요. 지연은 기록만 하고 평가·페널티는 2차예요.</div>' : ''}
+        ${dOpen ? `<div class="note note-warn small"><b>취소 중재 중 · 생산 지연 취소(DELAY_CANCEL)</b> · 생산 보류는 켜지 않아요. 계속 만들면서 출고 가능 시점과 생산 진행(사진·기록)을 올려 주세요. 기각되면 바로 출고하면 돼요.
+          ${pr ? `<div style="margin-top:6px">올림 ${fmtDate(pr.at)} · 출고 가능 <b>${fmtDate(pr.eta, false)}</b> · ${esc(pr.note)}</div>` : '<div style="margin-top:6px"><button class="btn btn-sm btn-ext" data-act="delayProgress">출고 가능 시점·진행 올리기</button></div>'}</div>` : ''}
+        <div><button class="btn btn-primary btn-ext" data-act="ship">송장 등록하고 출고</button></div>
+        ${dOpen ? '<p class="xsmall faint">요청 중에도 송장 등록은 막지 않아요. 본사가 승인하면 플랫폼이 회수한 뒤 검수 없이 환불하고 회수 배송비는 파트너가 내요. 기각하면 그대로 배송돼요.</p>' : ''}`;
     } else if (d === 'SHIPPED' || d === 'COMPLETED') {
-      detail = `<div class="note small">출고했어요. 주문 항목 상태: ${GC.sm.stateName('ORDER_CUSTOM', it)}. ${it === 'EXCHANGED' ? (s.remake && s.remake.settledBefore ? '이미 구매 확정·정산된 항목이라 재제작으로 새 정산은 생기지 않아요.' : '재제작품 배송 완료 7일 뒤 구매 확정과 같이 정산돼요.') : it === 'RETURNED' ? '재제작 대신 환불했어요. 이미 정산됐으면 다음 주기에서 되돌려요(역분개).' : '구매 확정되면 다음 주 정산에 들어가요.'}</div>`;
+      const dc = delayOpen() ? `<div class="note note-warn small"><b>${esc(delayLabel())} · 생산 지연 취소(DELAY_CANCEL)</b> · 요청 중에 출고했어요. ${app.state('claim') === 'CANCEL_APPROVED' ? '본사가 승인했어요. 배송 완료 뒤 플랫폼이 회수해 검수 없이 환불하고, 회수 배송비는 파트너가 내요.' : '본사가 승인하면 회수 뒤 환불(회수 배송비 파트너), 기각하면 그대로 배송돼요.'}</div>` : '';
+      detail = `${dc}<div class="note small">출고했어요. 주문 항목 상태: ${GC.sm.stateName('ORDER_CUSTOM', it)}. ${it === 'RETURNED' && lastClaim() && lastClaim().type === 'DELAY_CANCEL' ? `생산 지연 취소 승인으로 회수해 환불했어요. 회수 배송비와 돌려준 디자인비 ${won(s.refunded.designFeeToPartner)}은 파트너 부담이에요.` : it === 'EXCHANGED' ? (s.remake && s.remake.settledBefore ? '이미 구매 확정·정산된 항목이라 재제작으로 새 정산은 생기지 않아요.' : '재제작품 배송 완료 7일 뒤 구매 확정과 같이 정산돼요.') : it === 'RETURNED' ? '재제작 대신 환불했어요. 이미 정산됐으면 다음 주기에서 되돌려요(역분개).' : '구매 확정되면 다음 주 정산에 들어가요.'}</div>`;
     } else if (d === 'CANCELED') {
-      detail = `<div class="note note-stop small">주문이 취소됐어요.${s.refunded && s.refunded.plateToPartner ? ` 판비 공제 ${won(s.refunded.plateToPartner)}은 '취소 보상'으로 수수료 없이(0%) 정산돼요.` : ''}</div>`;
+      const dl = s.refunded && s.refunded.claimType === 'DELAY_CANCEL';
+      detail = dl ? `<div class="note note-stop small">생산 지연 취소가 승인돼 주문이 취소됐어요(파트너 귀책). 고객에게 낸 금액 전부를 돌려줬고, 돌려준 디자인비 ${won(s.refunded.designFeeToPartner)}은 이 파트너 정산에서 빼요('중재 판정'). 이미 만든 인쇄물과 판은 회사 저작권 디자인이라 다른 곳에 쓸 수 없어 폐기해요.</div>
+          ${s.discard && s.discard.done ? `<p class="small"><span class="st st-done">폐기 확인 올림</span> ${fmtDate(s.discard.done)} · 사진 2장</p>` : '<div><button class="btn btn-ext" data-act="discardDone">폐기 확인 올리기</button></div>'}`
+        : `<div class="note note-stop small">주문이 취소됐어요.${s.refunded && s.refunded.plateToPartner ? ` 판비 공제 ${won(s.refunded.plateToPartner)}은 '취소 보상'으로 수수료 없이(0%) 정산돼요.` : ''}</div>`;
     }
-    const lockTag = s.after && s.after.kind === 'cancel' ? ' <span class="tag tag-stop">취소 중재 중</span>' : s.hold ? ' <span class="tag tag-stop">생산 보류</span>' : '';
+    const lockTag = s.after && s.after.kind === 'cancel' ? ' <span class="tag tag-stop">취소 중재 중</span>' : s.hold ? ' <span class="tag tag-stop">생산 보류</span>'
+      : delayOpen() ? ` <span class="tag tag-warn">${esc(delayLabel())}</span>` : delayShown() ? ' <span class="tag tag-warn">생산 지연</span>' : '';
     const comp = d === 'CANCELED' && s.refunded && s.refunded.plateToPartner;
+    const dFee = s.refunded && s.refunded.claimType === 'DELAY_CANCEL' ? s.refunded.designFeeToPartner : null; // 생산 지연 취소 승인 → 돌려준 디자인비 파트너 부담
     // 끝난 클레임: 고객과 같은 완료 결과 라벨(D30)
     const lcp = lastClaim();
     const claimNote = lcp && !s.after && !remakeOpen ? `<div class="note small">${CLAIM_TYPE_NAME[lcp.type]} 클레임 · 완료 결과 <b>${esc(lcp.label)}</b> (${lcp.result}) · ${fmtDate(lcp.at)}${lcp.partnerNote ? ` · ${esc(lcp.partnerNote)}` : ''}</div>` : '';
@@ -798,8 +871,14 @@
         <tbody><tr class="is-hl"><td>GC-20261012-${s.round === 1 ? '0412' : '0977'}</td><td>${esc(PRODUCT.name)}</td><td class="num">${(s.qty * 1000).toLocaleString()}매</td><td><span class="st st-now">${GC.sm.stateName('ORDER_CUSTOM', it)}</span>${lockTag}${remakeOpen ? ' <span class="tag tag-warn">재제작</span>' : ''}</td><td>${TYPES[s.type].name}</td></tr></tbody></table></div>
       ${claimNote}
       ${detail}
-      <div class="panel"><div class="panel-h"><h2>이 주문의 정산 ${comp ? '' : '예정'}</h2><span class="xsmall faint">${comp ? '클레임 완료 정산 이벤트' : '구매 확정 뒤 주간 정산'}</span></div><div class="panel-b">
-        ${comp ? `<table class="tbl small"><tbody>
+      <div class="panel"><div class="panel-h"><h2>이 주문의 정산 ${comp || dFee != null ? '' : '예정'}</h2><span class="xsmall faint">${dFee != null ? "중재 판정 정산 이벤트" : comp ? '클레임 완료 정산 이벤트' : '구매 확정 뒤 주간 정산'}</span></div><div class="panel-b">
+        ${dFee != null ? `<table class="tbl small"><tbody>
+          <tr><td>구매 확정 정산</td><td class="num">없음 (취소·${it === 'RETURNED' ? '회수' : '구매 확정 없음'})</td></tr>
+          <tr><td>중재 판정 · 돌려준 디자인비(파트너 부담)</td><td class="num">−${won(dFee)}</td></tr>
+          ${it === 'RETURNED' ? '<tr><td>회수 배송비</td><td class="num">파트너 부담</td></tr>' : ''}
+          <tr class="is-sum"><td>정산액</td><td class="num">−${won(dFee)}</td></tr></tbody></table>
+          <p class="xsmall faint">그 주 정산 이벤트에서 빼고, 정산액이 모자라면 미수금(분쟁 조정)으로 넘겨 다음 정산에서 먼저 빼요(C-STL-01·02). 인쇄물·판 손실은 대금을 받지 않는 것으로 이미 파트너가 져요. 근거는 입점 계약의 생산 지연 조항이에요 <span class="tag tag-phase">법률 자문 전 초안</span></p>`
+        : comp ? `<table class="tbl small"><tbody>
           <tr><td>취소 보상(판비 공제분)</td><td class="num">${won(s.refunded.plateToPartner)}</td></tr>
           <tr><td>판매 수수료</td><td class="num">0원 (0%)</td></tr>
           <tr class="is-sum"><td>정산액</td><td class="num">${won(s.refunded.plateToPartner)}</td></tr></tbody></table>
@@ -817,15 +896,40 @@
     const s = S();
     if (!s.paid) { f.body.innerHTML = '<h3>분쟁 중재</h3><p class="muted">중재할 건이 없어요.</p>'; return; }
     const r = s.paidCalc;
-    let med = '<div class="panel"><div class="panel-b"><p class="muted small">지금 중재할 건이 없어요. 확정 뒤 고객이 변경·취소를 요청하면 여기로 와요.</p></div></div>';
+    let med = '<div class="panel"><div class="panel-b"><p class="muted small">지금 중재할 건이 없어요. 확정 뒤 고객이 변경·취소를 요청하거나, 생산 지연으로 취소를 요청하면 여기로 와요.</p></div></div>';
+    /* 판정 근거(A-ORD-02): 결과와 함께 기록 · 기각은 근거가 있어야 누를 수 있음(D55 ②). 입력은 화면을 다시 그리지 않고 버튼만 켬 */
+    const noteBox = (presets) => `<div class="field"><label for="medNote">판정 근거 <span class="xsmall faint">(기각은 필수 · 양측 결과 알림에 요지가 들어가요)</span></label>
+        <textarea class="textarea" id="medNote" data-input="medNote" rows="2" placeholder="예: 협의 기록에서 고객이 같은 문구로 다시 주문하기로 했어요">${esc(s.medNote || '')}</textarea>
+        <div class="chips-row">${presets.map((t) => `<button class="tag med-chip" data-act="medPreset" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>`;
     if (s.after) {
       const cp = cancelPreview(); const cancel = s.after.kind === 'cancel';
-      med = `<div class="panel"><div class="panel-h"><h2>확정 후 ${cancel ? '취소(CUSTOM_CANCEL)' : '변경'} 요청 · DR-24118</h2><span class="tag tag-stop">생산 보류 켜짐</span></div><div class="panel-b stack">
-        <dl class="kv small"><dt>고객 사유</dt><dd>${cancel ? '매장 오픈이 미뤄져서 취소하고 싶어요' : '인스타 계정 철자를 바꾸고 싶어요'}</dd>${s.afterChange && cancel ? '<dt>건의 성격</dt><dd>확정 후 변경으로 다시 시안 단계가 된 건 → 일반 취소가 아니라 확정 후 취소(2026-10-14 확정)</dd>' : ''}
-          <dt>파트너 답변</dt><dd>${s.plateCost === null ? '<span class="st st-warn">기다리는 중</span>' : plateTxt(s.plateCost)}</dd><dt>공제 동의</dt><dd>요청할 때 받음(판비는 최대 고객이 낸 판비 ${won(platePaid())} · 판비 줄 결제 금액)</dd><dt>판단 근거</dt><dd>확정 스냅샷 · 동의 기록 · 협의 룸 대화</dd></dl>
-        ${cancel ? `<table class="tbl small"><tbody><tr><td>환불 대상 금액</td><td class="num">${won(cp.total)}</td></tr>${cp.lines.map((l) => `<tr><td>공제 · ${esc(l.label)}</td><td class="num">−${won(l.amount)}</td></tr>`).join('')}<tr class="is-sum"><td>고객 환불</td><td class="num">${won(cp.refund)}</td></tr>${cp.plateToPartner ? `<tr><td>파트너 '취소 보상'(수수료 0%)</td><td class="num">${won(cp.plateToPartner)}</td></tr>` : ''}</tbody></table>` : '<p class="small">승인하면 기존 인쇄 패키지를 무효로 하고 파트너 다운로드 링크를 회수해요. 디자인 요청은 수정 단계로 돌아가고, 수정 횟수 1회를 써요. 새 버전은 고객이 다시 확정해야 하고, 그 버전을 다시 전달할 때까지 생산 보류를 켜 둬요.</p>'}
-        <div class="cluster"><button class="btn btn-primary" data-act="mediate" data-r="ok" ${s.plateCost === null ? 'disabled' : ''}>${cancel ? '취소 승인' : '변경 승인'}</button><button class="btn" data-act="mediate" data-r="no">기각</button></div>
-        <p class="xsmall faint">${s.plateCost === null ? '파트너가 판 제작 여부를 답하면 판단할 수 있어요. ' : ''}중재 결과는 최종이에요. ${cancel ? '기각하면 클레임이 바로 끝나고 이의 제기는 없어요.' : ''}</p></div></div>`;
+      med = `<div class="panel"><div class="panel-h"><h2>확정 후 ${cancel ? '취소(CUSTOM_CANCEL)' : '변경'} 요청 · DR-24118</h2><span class="cluster">${cancel ? '<span class="tag tag-spot">기본은 승인</span>' : ''}<span class="tag tag-stop">생산 보류 켜짐</span></span></div><div class="panel-b stack">
+        ${cancel ? '<div class="note note-spot small">확정 후 취소는 본사가 보고 정하되 <b>기본은 승인</b>이에요. 공제가 실제로 생긴 비용(디자인 작업 = 낸 디자인비, 판 = 증빙한 실비)이라 낸 금액 안에서 비용만 빼고 돌려줘요. 정해 둔 기각 사유 목록은 없고, 건마다 보고 기각할 수 있어요(판정 근거 필수).</div>' : ''}
+        <dl class="kv small"><dt>요청 사유</dt><dd>${cancel ? '매장 오픈이 미뤄져서 취소하고 싶어요' : '인스타 계정 철자를 바꾸고 싶어요'} · ${fmtDate(s.after.at)}</dd>${s.afterChange && cancel ? '<dt>건의 성격</dt><dd>확정 후 변경으로 다시 시안 단계가 된 건 → 일반 취소가 아니라 확정 후 취소(2026-10-14 확정)</dd>' : ''}
+          <dt>판 제작 증빙</dt><dd>${s.plateCost === null ? '<span class="st st-warn">파트너 답변 기다리는 중</span>' : plateTxt(s.plateCost)}${s.plateCost > 0 ? ' · 작업 기록·사진·실비 내역' : ''}</dd>
+          <dt>협의 기록</dt><dd>협의 룸 대화 · 확정 스냅샷 v${s.confirmedVer || s.versions.length} · 확정 동의 기록(${s.approvedAt ? fmtDate(s.approvedAt) : '-'})</dd>
+          <dt>공제 동의</dt><dd>요청할 때 받음(판비는 최대 고객이 낸 판비 ${won(platePaid())} · 판비 줄 결제 금액)</dd></dl>
+        ${cancel ? `<table class="tbl small"><tbody><tr><td>환불 대상 금액</td><td class="num">${won(cp.total)}</td></tr>${cp.lines.map((l) => `<tr><td>공제 · ${esc(l.label)}</td><td class="num">−${won(l.amount)}</td></tr>`).join('') || '<tr><td>공제</td><td class="num">0원 (낸 디자인비 0원 · 판 증빙 없음)</td></tr>'}<tr class="is-sum"><td>승인하면 고객 환불</td><td class="num">${won(cp.refund)}</td></tr>${cp.plateToPartner ? `<tr><td>파트너 '취소 보상'(수수료 0%)</td><td class="num">${won(cp.plateToPartner)}</td></tr>` : ''}</tbody></table>
+          ${noteBox(['요청 사유·판 제작 증빙 확인 · 기본 승인', '협의 기록에서 고객이 같은 문구로 다시 주문하기로 했어요'])}` : '<p class="small">승인하면 기존 인쇄 패키지를 무효로 하고 파트너 다운로드 링크를 회수해요. 디자인 요청은 수정 단계로 돌아가고, 수정 횟수 1회를 써요. 새 버전은 고객이 다시 확정해야 하고, 그 버전을 다시 전달할 때까지 생산 보류를 켜 둬요.</p>'}
+        <div class="cluster"><button class="btn btn-primary" data-act="mediate" data-r="ok" ${s.plateCost === null ? 'disabled' : ''}>${cancel ? '취소 승인' : '변경 승인'}</button><button class="btn" data-act="mediate" data-r="no" ${cancel && !(s.medNote || '').trim() ? 'disabled' : ''}>기각</button></div>
+        <p class="xsmall faint">${s.plateCost === null ? '파트너가 판 제작 여부를 답하면 판단할 수 있어요. ' : ''}중재 결과는 양측에 알리고 최종이에요. ${cancel ? '기각하면 클레임이 바로 끝나고(취소 기각) 이의 제기는 없어요.' : ''}</p></div></div>`;
+    }
+    if (s.delay && ['CANCEL_REQUESTED', 'CANCEL_APPROVED'].includes(app.state('claim'))) {
+      const dp = delayPreview(); const pr = s.delay.progress; const shipped = s.delay.shipped; const waitCollect = app.state('claim') === 'CANCEL_APPROVED';
+      med = `<div class="panel"><div class="panel-h"><h2>생산 지연 취소(DELAY_CANCEL) 요청 · DR-24118</h2><span class="tag tag-warn">${waitCollect ? '승인 · 회수 대기' : shipped ? '요청 중 출고됨' : '생산 계속 · 보류 없음'}</span></div><div class="panel-b stack">
+        <dl class="kv small"><dt>요청 사유</dt><dd>출고 예정일이 지나도 오지 않아요. 매장 행사(10월 말)에 쓰려던 수저집이에요 · ${fmtDate(s.delay.at)}</dd>
+          <dt>출고 예정일</dt><dd>${fmtDate(s.shipDue, false)} · ${s.dueFrom === 'dismiss' ? '지난 취소 기각 때 받은 새 예정일' : `[인쇄 가능] 확인일 + 리드타임 영업일 ${PRODUCT.leadDays}일`}</dd>
+          <dt>생산 지연 판정</dt><dd>${fmtDate(s.overdueAt)}(출고 예정일 + ${pv('order.overdue_grace_bd')} 끝)까지 송장 없음${s.overdueRound > 1 ? ` · ${s.overdueRound}번째 지연` : ''}</dd>
+          <dt>지연으로 안 보는 경우</dt><dd>인쇄 반려(디자인팀 원인) — 출고 예정일을 [인쇄 가능]부터 세어 해당 없음 · 본사 일괄 공지(천재지변·택배 파업) — 없음</dd>
+          <dt>파트너 답변</dt><dd>${pr ? `출고 가능 <b>${fmtDate(pr.eta, false)}</b> · ${esc(pr.note)} · ${fmtDate(pr.at)}` : shipped ? '출고 가능 시점 대신 송장을 등록했어요' : '<span class="st st-warn">출고 가능 시점·진행 기다리는 중</span>'}</dd>
+          <dt>송장</dt><dd>${shipped ? '<span class="st st-warn">요청 중 출고됨</span> 송장 등록은 막지 않아요' : '아직 없음 · 생산 계속'}</dd></dl>
+        <table class="tbl small"><tbody><tr><td>낸 금액(상품·판비·디자인비)</td><td class="num">${won(dp.total)}</td></tr><tr><td>공제</td><td class="num">0원 (파트너 귀책)</td></tr><tr class="is-sum"><td>승인하면 고객 환불</td><td class="num">${won(dp.refund)}</td></tr>
+          <tr><td>되살리는 혜택</td><td class="small">${s.paidCalc && s.paidCalc.totals.hqDisc ? '본사 쿠폰 \'첫 맞춤 주문 5,000원\'' : '없음'}${s.paid.designCoupon ? ' · 디자인비 쿠폰' : ''} (유효기간이 남은 것 · 멤버십 이용권도 같음)</td></tr>
+          <tr><td>돌려준 디자인비 · 파트너 부담('중재 판정' −)</td><td class="num">${won(dp.designFeeToPartner)}</td></tr></tbody></table>
+        ${waitCollect ? '<p class="small">승인했어요. 이미 출고된 건이라 배송 완료 뒤 플랫폼이 회수를 접수하고, 회수 완료 뒤 검수 없이 환불해요(회수 배송비 파트너).</p>'
+          : `${noteBox(['파트너 출고 가능 시점이 고객이 쓸 날(매장 행사)보다 늦어요', '진행 사진상 재단만 남았고 출고 가능 시점이 영업일 2일 안이에요'])}
+        <div class="cluster"><button class="btn btn-primary" data-act="mediate" data-r="ok">취소 승인</button><button class="btn" data-act="mediate" data-r="no" ${!(s.medNote || '').trim() || (!pr && !shipped) ? 'disabled' : ''}>기각 · 출고 독촉</button></div>
+        <p class="xsmall faint">승인하면 ${shipped ? '배송 완료 뒤 회수해 검수 없이 환불하고(회수 배송비 파트너)' : '주문 항목·디자인 요청을 취소하고 바로 환불하며'}, 인쇄물·판은 파트너가 폐기하고 재주문 연결 보장은 '생산 지연 취소' 사유로 자동 해제해요(다른 파트너로 다시 주문하면 디자인비 0원·판비만). 기각하면 ${shipped ? '그대로 배송돼요' : '파트너에게 출고를 독촉하고 파트너가 올린 출고 가능 시점을 새 출고 예정일로 저장해요. 그날 다음 영업일까지도 송장이 없으면 [취소 요청]이 다시 열려요'}. ${!pr && !shipped ? '기각은 파트너가 출고 가능 시점을 올린 뒤에 할 수 있어요. ' : ''}결과는 양측에 알리고 최종이에요(이의 제기 없음).</p>`}</div></div>`;
     }
     if (s.restoreDue) {
       const cv = s.versions.find((x) => x.v === s.confirmedVer);
@@ -868,6 +972,9 @@
     }
     if (s.remake && app.state('claim') === 'RETURN_INSPECTING' && s.remake.inspectDue) rows.push(['재제작 검수 기한', `${fmtDate(s.remake.inspectDue)} · 넘기면 재제작 승인으로 봄`, now > s.remake.inspectDue ? '<span class="sla sla-over">자동 승인</span>' : '<span class="sla sla-ok">여유</span>']);
     if (s.exchangeSettleDue) rows.push(['EXCHANGED 정산', `재제작품 배송 완료 + 7일 = ${fmtDate(s.exchangeSettleDue)} (상태는 그대로)`, now >= s.exchangeSettleDue ? '실행됨' : '<span class="sla sla-ok">대기</span>']);
+    // 생산 지연 판정(P-ORD-03 · D59): 출고 예정일이 정해질 때 저장한 판정 시각을 넘기면 '생산 지연' 표시 + 고객·파트너 알림 → 고객 [취소 요청]
+    if (d === 'IN_PRODUCTION' && s.overdueAt) rows.push(['생산 지연 판정', `출고 예정일 ${fmtDate(s.shipDue, false)} + ${UI.pv('order.overdue_grace_bd')} 끝 = ${fmtDate(s.overdueAt)} · 송장이 없으면 고객·파트너 알림, 고객 [취소 요청] · 운영 모니터링 목록`,
+      s.bulkNotice ? '<span class="sla sla-warn">일괄 공지 · 판정 멈춤</span>' : delayShown() ? '<span class="sla sla-over">생산 지연 · 알림 보냄</span>' : `<span class="sla ${s.overdueAt - now < GC.DAY ? 'sla-warn' : 'sla-ok'}">${fmtDate(s.overdueAt)}까지</span>`]);
     f.body.innerHTML = `
       <h3>배치·외부 연동</h3>
       <p class="small muted">사람이 누르지 않아도 시간이 되면 돌아가는 일들이에요. 위쪽 +1일·+7일로 시간을 보내면 자동으로 실행돼요.</p>
@@ -877,7 +984,9 @@
         <button class="btn btn-ext" data-act="trackDelivery" ${it === 'SHIPPED' ? '' : 'disabled'}>택배 배송 완료 확인</button>
         <button class="btn" data-act="autoConfirm" ${it === 'DELIVERED' && !claimOpen() ? '' : 'disabled'}>자동 구매 확정 지금 실행</button>
         ${s.remake ? `<button class="btn btn-ext" data-act="remakeDelivered" ${app.state('claim') === 'EXCHANGE_SHIPPED' ? '' : 'disabled'}>재제작품 배송 완료 확인</button>` : ''}
+        ${d === 'IN_PRODUCTION' ? `<button class="btn" data-act="bulkNotice">${s.bulkNotice ? '본사 일괄 공지 끝내기' : '본사 일괄 공지 · 택배 파업'}</button>` : ''}
       </div>
+      ${d === 'IN_PRODUCTION' ? '<p class="xsmall faint">천재지변·택배 파업처럼 전체가 늦어지면 본사가 일괄 공지하고, 그 기간에는 생산 지연으로 보지 않아요(P-ORD-03). 인쇄 반려로 늦어진 것(디자인팀 원인)은 출고 예정일을 [인쇄 가능]부터 세므로 처음부터 지연에 들어가지 않아요.</p>' : ''}
       <div class="note note-ext small">외부 연동: 토스페이먼츠(결제·지급대행) · 솔라피(알림톡) · FCM(푸시) · S3(파일) · GuardDuty(악성코드 검사) · 스윗트래커(배송 조회). 프로토타입에서는 안내 창으로 대신해요.</div>`;
   };
 
@@ -903,8 +1012,8 @@
       await app.ext({ service: '토스페이먼츠', what: '결제창 호출', lines: [`결제 금액 ${won(r.totals.pay)}`, '서버가 금액을 다시 계산해 화면 금액과 같을 때만 결제창을 열어요', '결과는 리다이렉트로 받고 PG 조회로 한 번 더 확인해요'], result: '결제가 승인된 것으로 처리해요' });
       const df = r.designFees[0]; const fee = df.fee; const ln = r.lines[0];
       // 결제 스냅샷: 판비(목록 금액)·고객이 낸 판비(판비 줄 결제 금액, D20)·허용 오차(결제 시점 상품 설정값, D28)
-      // 디자인비: 낸 디자인비(디자인비 쿠폰 몫을 뺀 금액, D41)와 무료 사유(50만원·멤버십 이용권일 때만 — 첫 시안 뒤 취소 39,000원 공제 대상)
-      s.paid = { at: app.clock.now(), total: r.totals.pay, designFee: fee - (df.couponDisc || 0), designCoupon: df.couponDisc || 0, freeBy: freeByOf(df), plate: r.totals.plates, platePaid: ln.platePaid, tolerance: tolNow() };
+      // 디자인비: 낸 디자인비(디자인비 쿠폰 몫을 뺀 금액, D41) — 첫 시안 뒤 취소 공제는 이 금액뿐(무료였으면 0원, D54). freeWhy는 안내 문구용
+      s.paid = { at: app.clock.now(), total: r.totals.pay, designFee: fee - (df.couponDisc || 0), designCoupon: df.couponDisc || 0, freeWhy: freeWhyOf(df), plate: r.totals.plates, platePaid: ln.platePaid, tolerance: tolNow() };
       s.paidCalc = r;
       app.log('money', `결제 ${won(r.totals.pay)} = 파트너 몫 ${won(r.totals.gross + r.totals.plates - r.totals.instantDisc)} + 디자인비 ${won(fee)} − 본사 상품 할인 쿠폰 ${won(r.totals.hqDisc)}`);
       if (r.totals.plates) app.log('rule', `고객이 낸 판비 = 판비 ${won(ln.plateFee)}${ln.plateInstantDisc ? ` − 즉시 할인 ${won(ln.plateInstantDisc)}` : ''} − 본사 쿠폰 안분 ${won(ln.plateHqAlloc)} = ${won(ln.platePaid)} (판비 줄 결제 금액 · 결제 스냅샷 · 확정 후 취소 판비 공제 상한)`);
@@ -956,7 +1065,7 @@
       s.pins.filter((p) => p.v === v - 1).forEach((p) => { p.resolved = true; });
       const onTime = !s.sla || app.clock.now() <= s.sla.due;
       goDesign('propose', `${s.proposeFrom === 'REVISION' ? '수정본' : '시안'} v${v} 등록${onTime ? ' · SLA 안' : ' · SLA 초과'}`);
-      if (!s.firstProposedAt) { s.firstProposedAt = app.clock.now(); app.log('rule', '첫 시안 전달 시각 기록 → 이제부터 취소하면 디자인비를 공제해요(상태가 아니라 이 기록으로 판단)'); }
+      if (!s.firstProposedAt) { s.firstProposedAt = app.clock.now(); app.log('rule', '첫 시안 전달 시각 기록 → 이제부터 취소하면 낸 디자인비를 공제해요(무료였으면 0원 · 이용권·쿠폰은 사용 처리, D54 · 상태가 아니라 이 기록으로 판단)'); }
       s.sla = null; s.revReqAt = null; setWait(); s.viewVer = v; s.viewOpt = 'A';
       app.notify(v === 1 ? 'NOTI_DESIGN_PROPOSED' : 'NOTI_DESIGN_REVISED', '고객', ['알림톡', '푸시', '이메일'], `시안 v${v} 도착`);
       refresh();
@@ -1034,11 +1143,11 @@
     /* 템플릿형·자체 파일 → 맞춤형 전환 결제(D-REQ-02·D-REQ-04, C-STATE-03 → REQUESTED) */
     async convertCustom() {
       const s = S(); const cdf = calc('CUSTOM').designFees[0]; const fee = cdf.fee; const revs = GC.Policy.get('design.free_revisions_custom');
-      const ok = await app.confirm({ title: '맞춤형으로 바꿀까요?', body: `<p>디자인비 ${fee ? `${won(fee)}을 더 내면` : '없이(맞춤 품목 50만원 이상)'} 디자이너가 레이아웃부터 새로 잡아요. 무료 수정 ${revs}회로 새로 시작하고, 배정·첫 시안 기한을 지금부터 다시 세요.</p><p class="small">맞춤형 취소 공제 규정에 다시 동의해요.${fee ? '' : ` 50만원 이상으로 무료가 된 맞춤 디자인도 첫 시안을 받은 뒤 취소하면 디자인비 ${won(GC.Policy.get('design.fee'))}을 공제해요.`}${s.firstProposedAt ? ' 첫 시안을 이미 받았으므로 지금부터 취소하면 디자인비를 공제해요.' : ''}</p>`, ok: '동의하고 바꾸기' });
+      const ok = await app.confirm({ title: '맞춤형으로 바꿀까요?', body: `<p>디자인비 ${fee ? `${won(fee)}을 더 내면` : '없이(맞춤 품목 50만원 이상)'} 디자이너가 레이아웃부터 새로 잡아요. 무료 수정 ${revs}회로 새로 시작하고, 배정·첫 시안 기한을 지금부터 다시 세요.</p><p class="small">맞춤형 취소 공제 규정에 다시 동의해요. 첫 시안 뒤 취소하면 낸 디자인비를 공제해요${fee ? '' : '(50만원 이상으로 무료면 공제 없음)'}.${s.firstProposedAt && fee ? ' 첫 시안을 이미 받았으므로 지금부터 취소하면 낸 디자인비를 공제해요.' : ''}</p>`, ok: '동의하고 바꾸기' });
       if (!ok) return;
       if (fee) await app.ext({ service: '토스페이먼츠', what: '맞춤형 전환 결제(디자인 부가 결제)', lines: [`${won(fee)} · 본사 매출 · 원 주문에 연결`, '작업을 시작하면 환불되지 않아요'] });
       const from = s.type;
-      s.type = 'CUSTOM'; s.paid.designFee += fee; s.paid.total += fee; s.paid.freeBy = freeByOf(cdf); s.freeLeft = revs; s.asking = false; s.waitSince = null; s.notices = {};
+      s.type = 'CUSTOM'; s.paid.designFee += fee; s.paid.total += fee; s.paid.freeWhy = fee ? null : freeWhyOf(cdf); s.freeLeft = revs; s.asking = false; s.waitSince = null; s.notices = {};
       goDesign('convert_custom', `${TYPES[from].name} → 맞춤형 전환 결제${fee ? ` ${won(fee)}` : ''} · 이전 담당자 먼저`);
       setSla('assign', GC.addBusinessHours(app.clock.now(), GC.Policy.get('design.sla.assign_hours')));
       setFlow('normal');
@@ -1087,9 +1196,10 @@
       const s = S();
       if (s.hold) { app.log('warn', '생산 보류 플래그가 켜져 있어 서버가 [인쇄 가능]을 거부했어요'); app.toast('생산 보류 중이라 서버가 거부했어요'); refresh(); return; }
       app.clock.pass(30 * 60000);
-      s.shipDue = GC.addBusinessDays(app.clock.now(), PRODUCT.leadDays);
       goDesign('printable', `파트너 인쇄 가능 확인 = 생산 시작${s.printDue ? (app.clock.now() <= s.printDue ? ' · 확인 기한 안' : ' · 확인 기한을 넘겨 지연 기록') : ''}`);
       goItem('printable');
+      setShipDue(GC.addBusinessDays(app.clock.now(), PRODUCT.leadDays), 'printable');
+      s.overdueRound = 0;
       app.notify('NOTI_PRODUCTION_STARTED', '고객', ['푸시'], `제작 시작 · 출고 예정 ${fmtDate(s.shipDue, false)}`);
       refresh();
     },
@@ -1115,7 +1225,10 @@
     async ship() {
       await app.ext({ service: 'CJ대한통운 · 스윗트래커', what: '송장 등록', lines: ['택배사별 송장 형식 검증', '24시간 안에 집하 기록이 없으면 허위 송장 의심으로 운영팀 알림'] });
       const s = S(); if (s.shipDue && s.shipDue > app.clock.now()) app.clock.pass(s.shipDue - app.clock.now());
-      goDesign('ship', '송장 등록'); goItem('ship');
+      const late = !!s.overdue;
+      goDesign('ship', `송장 등록${late ? ' · 출고 예정일을 넘겨 출고' : ''}`); goItem('ship');
+      if (late) app.log('rule', `출고 예정일(${fmtDate(s.shipDue, false)})과 판정 시각을 넘겨 출고했어요 → 생산 지연으로 기록(MVP는 기록만, 평가·페널티 2차)`);
+      if (delayOpen()) { s.delay.shipped = true; app.log('rule', '생산 지연 취소 요청 중 송장 등록 — 막지 않아요. 요청은 그대로 두고 본사가 판정: 승인하면 배송 완료 뒤 플랫폼이 회수해 검수 없이 환불(회수 배송비 파트너), 기각하면 그대로 배송(C-STATE-02)'); }
       app.notify('NOTI_SHIPPED', '고객', ['알림톡', '푸시'], '출고 · 배송 조회 링크');
       refresh();
     },
@@ -1124,6 +1237,57 @@
       app.clock.pass(26 * 3600000);
       goItem('deliver'); S().deliveredAt = app.clock.now();
       app.notify('NOTI_DELIVERED', '고객', ['푸시'], '배송 완료 · 7일 뒤 자동 구매 확정');
+      if (delayOpen()) app.log('rule', '생산 지연 취소 클레임이 열려 있어 자동 구매 확정에서 빠져요');
+      if (delayOpen() && app.state('claim') === 'CANCEL_APPROVED') await collectDelay();
+      refresh();
+    },
+    /* ── 생산 지연 취소(DELAY_CANCEL, P-ORD-03·04 · A-ORD-02 · 2026-10-16 D59) ── */
+    async delayReq() {
+      const s = S(); if (!delayShown() || delayOpen()) return;
+      const dp = delayPreview();
+      const ok = await app.confirm({ title: '생산 지연으로 취소를 요청할까요?', body: `<p>승인되면 환불 <b>${won(dp.refund)}</b> (공제 없음 · 디자인비·판비 포함)</p><p class="small">본사가 확인해 승인하면 낸 금액 전부를 돌려드리고 쿠폰도 되살려요. 본사가 판매자의 출고 가능 시점과 제작 진행을 보고 정하고, 그동안 제작은 계속돼요. 받아 주지 않으면 새 출고 예정일을 알려 드려요(그날도 넘기면 다시 요청할 수 있어요).</p>`, ok: '취소 요청하기', cancel: '그대로 두기' });
+      if (!ok) return;
+      s.delay = { at: app.clock.now(), progress: null, shipped: false }; s.medNote = '';
+      showClaim('CLAIM_CANCEL', '생산 지연 취소 클레임', 'claim_type DELAY_CANCEL · 자동 승인 없음 · 본사 중재 · 생산 계속 · C-STATE-02', 'DELAY_CANCEL');
+      app.setState('claim', 'CANCEL_REQUESTED', { by: `고객 [취소 요청] · 생산 지연${s.overdueRound > 1 ? ' · 기각 뒤 다시 열린 요청' : ''}` });
+      app.log('rule', `고객 라벨 '${esc(delayLabel())}' · 생산 보류 플래그는 켜지 않아요 — 생산은 계속하고 [송장 등록]도 막지 않아요(기각되면 바로 출고되도록, D59)`);
+      app.notify('NOTI_PARTNER_CLAIM_NEW', '파트너(주문 담당)', ['알림톡', 'SMS 대체', '알림센터'], '생산 지연 취소 요청 · 출고 가능 시점과 생산 진행(사진·기록)을 올려 주세요 · 생산은 계속');
+      app.notify('NOTI_INT_MEDIATION_NEW', '운영팀(CS)', ['관리자 알림', 'Slack'], '생산 지연 취소 요청 · 자동 승인 없음 · 판정 목표 영업일 5일');
+      refresh();
+    },
+    delayWithdraw() {
+      const s = S(); if (!delayOpen() || app.state('claim') !== 'CANCEL_REQUESTED') return;
+      finishClaim('withdraw', '고객이 생산 지연 취소 요청 철회', { note: '요청을 거두셨어요. 판매자가 이어서 만들어 보내요.', partnerNote: '고객 철회 · 그대로 출고' });
+      s.delay = null; s.medNote = '';
+      app.notify('NOTI_CLAIM_WITHDRAWN', '파트너', ['알림톡'], '고객이 생산 지연 취소 요청을 철회했어요');
+      refresh();
+    },
+    async delayProgress() {
+      const s = S(); if (!delayOpen()) return;
+      const eta = GC.addBusinessDays(app.clock.now(), 2);
+      await app.ext({ service: 'AWS S3 · GuardDuty', what: '출고 가능 시점·생산 진행 올리기', lines: [`출고 가능 시점 ${fmtDate(eta, false)}`, '생산 진행 사진 2장(인쇄 끝 · 재단 중) · 작업 기록', '본사 중재 화면에 그대로 보여요(P-ORD-04)'] });
+      app.clock.pass(40 * 60000);
+      s.delay.progress = { at: app.clock.now(), eta, note: '인쇄 끝 · 재단·포장 남음 · 사진 2장' };
+      app.log('user', `파트너 답변: 출고 가능 ${fmtDate(eta, false)} · 인쇄 끝, 재단·포장 남음 · 사진 2장`);
+      refresh();
+    },
+    async discardDone() {
+      const s = S(); if (!s.discard || s.discard.done) return;
+      await app.ext({ service: 'AWS S3 · GuardDuty', what: '인쇄물·판 폐기 확인 올리기', lines: ['폐기 사진 2장 · 폐기 일시', '회사 저작권 디자인이라 다른 곳에 쓰지 않았다는 확인'] });
+      s.discard.done = app.clock.now();
+      app.log('user', '파트너가 인쇄물·판 폐기 확인을 올렸어요');
+      refresh();
+    },
+    medNote(t) {
+      const s = S(); s.medNote = t.value;
+      const b = app.lastFrame && app.lastFrame.querySelector('[data-act="mediate"][data-r="no"]');
+      if (b) b.disabled = !t.value.trim() || !!(s.delay && !s.delay.progress && !s.delay.shipped);
+    },
+    medPreset(b) { S().medNote = b.dataset.t; refresh(); },
+    bulkNotice() {
+      const s = S(); s.bulkNotice = !s.bulkNotice;
+      app.log('rule', s.bulkNotice ? '본사 일괄 공지(택배 파업 · 공지사항 게시) 시작 → 이 기간에는 출고 지연·생산 지연으로 보지 않고 지연 기록에서 빼요(P-ORD-03)' : '본사 일괄 공지 끝 → 저장한 판정 시각으로 다시 판정해요(공지 기간만큼 미룰지는 명세에 없어 그대로 둠)');
+      if (!s.bulkNotice && app.state('design') === 'IN_PRODUCTION' && s.overdueAt && !s.overdue && app.clock.now() > s.overdueAt) markOverdue(app.clock.now());
       refresh();
     },
     autoConfirm() { doConfirm('자동 구매 확정 배치(관리자가 바로 실행)'); },
@@ -1133,7 +1297,8 @@
       s.history = true; s.round = 2; s.type = 'REORDER'; s.cs = 'reorder'; s.checks = {};
       Object.assign(s, { paid: null, downloaded: false, after: null, hold: false, afterChange: false, plateCost: null, refunded: null, shipDue: null, deliveredAt: null,
         remake: null, settled: false, exchangedAt: null, exchangeSettleDue: null, source: null, restoreDue: false, waitSince: null, notices: {}, claims: [],
-        handedAt: null, printDue: null, printLate: false });
+        handedAt: null, printDue: null, printLate: false,
+        overdueAt: null, overdue: null, overdueRound: 0, dueFrom: null, delay: null, bulkNotice: false, bulkLogged: false, discard: null, medNote: '' });
       ['design', 'item', 'claim'].forEach((k) => { app.strips[k].current = null; app.strips[k].lastMainIdx = null; });
       app.strips.claim.hidden = true;
       app.log('user', '고객이 [같은 디자인으로 재주문]을 눌렀어요');
@@ -1144,7 +1309,7 @@
       const s = S(); const cp = cancelPreview();
       const why = cp.stage === 'BEFORE_PROPOSAL' ? '첫 시안 전이라 전액 환불돼요.' : cp.reorderFree ? '판비 0원 재주문이라 본사 중재 없이 바로 취소되고 공제는 없어요.'
         : cp.deduction ? `첫 시안을 받은 뒤라 ${won(cp.deduction)}을 공제해요(${esc(cp.lines.map((l) => l.label).join(' · '))}).`
-        : `첫 시안을 받았지만 ${s.type === 'CUSTOM' ? '디자인비 쿠폰으로 무료라(쿠폰 몫은 본사 부담)' : `${TYPES[s.type].name}이라`} 공제할 디자인비가 없어요.`;
+        : `첫 시안을 받았지만 ${s.type === 'CUSTOM' ? `디자인비가 무료(${FREE_WHY[s.paid.freeWhy] || '무료'})라` : `${TYPES[s.type].name}이라`} 공제할 디자인비가 없어요.${s.type === 'CUSTOM' && s.paid.freeWhy && s.paid.freeWhy !== 'threshold' ? ' 이용권·쿠폰은 첫 시안이 나가 사용한 것으로 봐요.' : ''}`;
       const ok = await app.confirm({ title: '주문을 취소할까요?', body: `<p>환불 예정 ${won(cp.refund)}${cp.deduction ? ` (공제 ${won(cp.deduction)})` : ''}</p><p class="small">${why}</p>`, ok: '취소하기', cancel: '그대로 두기', danger: true });
       if (!ok) return;
       await app.ext({ service: '토스페이먼츠', what: '결제 취소(판매자별 부분 취소)', lines: [`환불 ${won(cp.refund)}`, '파트너 몫과 본사 몫을 판매자별로 나눠 취소해요', '요청 키(취소 건 ID + 회차)를 먼저 저장하고 같은 키로만 다시 요청해요'] });
@@ -1152,7 +1317,8 @@
       if (cp.reorderFree) { goDesign('reorder_cancel', '판비 0원 재주문 · 생산 전 바로 취소'); goItem('reorder_cancel', '판비 0원 재주문 취소 · 공제 0원'); }
       else { goDesign('cancel', `고객 취소 · 공제 ${won(cp.deduction)}`); goItem('cancel'); }
       app.log('money', `환불 ${won(cp.refund)}${cp.deduction ? ` · 공제 ${won(cp.deduction)}` : cp.stage === 'BEFORE_PROPOSAL' ? ' · 공제 없음(멤버십 이용권·쿠폰 복원)' : ' · 공제 없음'}`);
-      if (cp.stage !== 'BEFORE_PROPOSAL' && s.paid.designCoupon) app.log('rule', `디자인비 쿠폰 몫 ${won(s.paid.designCoupon)}은 공제하지 않고 본사 부담 · 첫 시안 뒤 취소라 쿠폰은 돌려주지 않아요(D41)`);
+      if (cp.stage !== 'BEFORE_PROPOSAL' && s.paid.designCoupon) app.log('rule', `디자인비 쿠폰 몫 ${won(s.paid.designCoupon)}은 공제하지 않고 본사 부담 · 첫 시안 뒤 취소라 쿠폰은 돌려주지 않아요(D41·D54)`);
+      if (cp.stage !== 'BEFORE_PROPOSAL' && s.type === 'CUSTOM' && !cp.deduction && s.paid.freeWhy) app.log('rule', `첫 시안 뒤 취소 공제 = 낸 디자인비뿐이라 무료(${FREE_WHY[s.paid.freeWhy]}) 디자인은 0원(D54 · 무료 디자인 별도 공제 없음)${s.paid.freeWhy === 'threshold' ? '' : ' · 이용권·쿠폰은 사용 처리'}`);
       s.cs = 'progress'; refresh();
     },
     /* 확정 후 변경·취소 요청(D-APV-02): 접수 즉시 생산 보류. 취소는 확정 후 취소(CUSTOM_CANCEL) 클레임 */
@@ -1161,10 +1327,10 @@
       const designPart = cp.lines.filter((l) => !/판비/.test(l.label)).reduce((a, l) => a + l.amount, 0);
       const body = kind === 'change'
         ? `<p class="small">요청하는 즉시 파트너 인쇄가 멈추고 본사가 중재해요. 승인되면 수정 횟수 1회를 쓰고(없으면 ${pv('design.extra_revision_fee')}), 새 버전을 다시 확정해야 해요. 파트너가 판을 이미 만들었고 바뀐 내용이 판에 들어가면 새 판비를 안내해요.</p>`
-        : `<p class="small">요청하는 즉시 판매자 인쇄가 멈추고 본사가 중재해요(자동 승인 없음).</p><table class="tbl small"><tbody><tr><td>디자인비 공제</td><td class="num">${won(designPart)}</td></tr><tr><td>판비 공제</td><td class="num">최대 ${won(platePaid())}</td></tr></tbody></table><p class="xsmall faint">판비는 판매자가 판 제작 실비를 증빙했을 때만, 실비와 내신 판비(판비 줄 결제 금액 ${won(platePaid())} · 쿠폰 나눔 반영) 중 작은 금액을 공제해요. 이 공제 기준에 동의해야 요청돼요.</p>`;
+        : `<p class="small">확정 후 취소는 본사 확인 뒤, 낸 디자인비와 (판을 만들었으면) 판비를 빼고 환불합니다. 요청하는 즉시 판매자 인쇄가 멈추고 본사가 확인해요(자동 승인 없음).</p><table class="tbl small"><tbody><tr><td>디자인비 공제</td><td class="num">${won(designPart)}</td></tr><tr><td>판비 공제</td><td class="num">최대 ${won(platePaid())}</td></tr></tbody></table><p class="xsmall faint">판비는 판매자가 판 제작 실비를 증빙했을 때만, 실비와 내신 판비(판비 줄 결제 금액 ${won(platePaid())} · 쿠폰 나눔 반영) 중 작은 금액을 공제해요. 이 공제 기준에 동의해야 요청돼요.</p>`;
       const ok = await app.confirm({ title: kind === 'change' ? '확정한 디자인을 바꿀까요?' : (s.afterChange ? '변경 중인 주문을 취소할까요?' : '확정한 주문을 취소할까요?'), body, ok: kind === 'change' ? '요청하기' : '공제 기준에 동의하고 요청하기', cancel: '그대로 두기' });
       if (!ok) return;
-      s.after = { kind, at: app.clock.now() };
+      s.after = { kind, at: app.clock.now() }; s.medNote = '';
       if (kind === 'change') s.changeFrom = d;
       if (!s.hold) { s.hold = true; app.log('rule', '생산 보류 플래그 켬 → 파트너 [인쇄 가능]을 서버가 막아요'); }
       else app.log('rule', '확정 후 변경 건이라 이미 켜진 생산 보류를 그대로 둬요');
@@ -1198,11 +1364,14 @@
     },
     async mediate(b) {
       const s = S(); const accept = b.dataset.r === 'ok'; const a = s.after;
+      const note = (s.medNote || '').trim();
+      if (!accept && (s.delay || (a && a.kind === 'cancel')) && !note) { app.toast('기각하려면 판정 근거를 적어 주세요'); app.log('warn', '판정 근거 없이 기각할 수 없어요(A-ORD-02 판정 근거 기록)'); return; }
+      if (s.delay && delayOpen()) return mediateDelay(accept, note);
       if (a.kind === 'change') {
         if (!accept) {
           s.after = null; s.hold = s.afterChange;
           app.log('user', '본사 중재: 확정 후 변경 기각(최종) · 생산 보류 해제');
-          app.notify('NOTI_MEDIATION_DECIDED', '고객', ['알림톡', '이메일'], '변경 요청 기각 · 확정본대로 제작');
+          app.notify('NOTI_MEDIATION_DECIDED', '고객', CH_CUST_MED, '변경 요청 기각 · 확정본대로 제작');
           refresh(); return;
         }
         goDesign('change_approved', '확정 후 변경 승인 · 기존 패키지 무효·다운로드 링크 회수');
@@ -1211,27 +1380,29 @@
         setSla('revision', GC.addBusinessDays(app.clock.now(), GC.Policy.get('design.sla.revision_days')));
         s.after = null; s.afterChange = true; s.downloaded = false; s.waitSince = null; s.notices = {};
         app.log('rule', '확정 후 변경 건 표시를 붙였어요: 생산 보류는 새 버전을 다시 전달할 때까지 유지, 이 건의 취소는 확정 후 취소(본사 중재), 30일 무응답이면 자동 취소 대신 이전 확정본 복원');
-        app.notify('NOTI_MEDIATION_DECIDED', '고객', ['알림톡', '이메일'], '변경 승인 · 새 시안을 다시 확정해 주세요');
+        app.notify('NOTI_MEDIATION_DECIDED', '고객', CH_CUST_MED, '변경 승인 · 새 시안을 다시 확정해 주세요');
         refresh(); return;
       }
       if (!accept) {
-        finishClaim('mediation_dismiss', '본사 중재 · 확정 후 취소 기각(최종, 이의 제기 없음)', {
-          note: '사유: 확정 기록·동의 내용과 판매자 답변을 본사가 확인해 기각했어요. 확정본대로 제작하고, 중재 결과는 최종이에요.',
+        finishClaim('mediation_dismiss', '본사 중재 · 확정 후 취소 기각(관리자 판단 · 최종, 이의 제기 없음)', {
+          note: `사유: ${note}. 확정본대로 제작하고, 중재 결과는 최종이에요.`,
           partnerNote: s.afterChange ? '본사 기각 · 확정 후 변경 건이라 생산 보류는 새 버전 전달까지 유지' : '본사 기각 · 생산 보류 해제, 확정본대로 진행' });
-        s.after = null; s.hold = s.afterChange;
-        app.log('user', `본사 중재: 취소 기각 · ${s.afterChange ? '확정 후 변경 건이라 생산 보류는 새 버전 전달까지 유지' : '생산 보류 해제'}`);
-        app.notify('NOTI_MEDIATION_DECIDED', '고객', ['알림톡', '이메일'], '취소 요청 기각 · 중재 결과는 최종');
+        s.after = null; s.hold = s.afterChange; s.medNote = '';
+        app.log('user', `본사 중재: 확정 후 취소 기각 · 판정 근거 "${esc(note)}" · ${s.afterChange ? '확정 후 변경 건이라 생산 보류는 새 버전 전달까지 유지' : '생산 보류 해제'}`);
+        app.notify('NOTI_MEDIATION_DECIDED', '고객', CH_CUST_MED, `취소 요청 기각 · 사유 ${esc(note)} · 중재 결과는 최종`);
+        app.notify('NOTI_PARTNER_MEDIATION_DECIDED', '파트너', CH_PT_MED, '확정 후 취소 기각 · 생산 보류 해제 · 확정본대로 진행');
         refresh(); return;
       }
       const cp = cancelPreview();
       await app.ext({ service: '토스페이먼츠', what: '결제 취소(판매자별 부분 취소)', lines: [`고객 환불 ${won(cp.refund)}`, cp.plateToPartner ? `판비 공제 ${won(cp.plateToPartner)} → 파트너 '취소 보상'(수수료 0%)` : '판비 공제 없음', '요청 키(취소 건 ID + 회차)를 먼저 저장하고 같은 키로만 다시 요청해요'] });
-      app.go('claim', 'mediation_approve', { by: '본사 중재 · 확정 후 취소 승인' });
-      s.refunded = cp; s.hold = false; s.after = null; s.afterChange = false;
+      app.go('claim', 'mediation_approve', { by: `본사 중재 · 확정 후 취소 승인(기본 승인)${note ? ` · 근거 ${note}` : ''}` });
+      s.refunded = cp; s.hold = false; s.after = null; s.afterChange = false; s.medNote = '';
       goDesign('custom_cancel_approved', '본사 중재로 확정 후 취소');
       goItem('custom_cancel_approved');
-      finishClaim('refund', '환불 완료', { note: `환불 ${won(cp.refund)}${cp.deduction ? `(공제 ${won(cp.deduction)})` : ''} · 결제한 수단으로 돌려드렸어요.`, partnerNote: cp.plateToPartner ? `취소 보상 ${won(cp.plateToPartner)}(수수료 0%)` : '취소 보상 없음' });
+      finishClaim('refund', '환불 완료', { note: `환불 ${won(cp.refund)}${cp.deduction ? `(공제 ${won(cp.deduction)} — 낸 디자인비${cp.plateToPartner ? '·판비' : ''})` : ''} · 결제한 수단으로 돌려드렸어요.`, partnerNote: cp.plateToPartner ? `취소 보상 ${won(cp.plateToPartner)}(수수료 0%)` : '취소 보상 없음' });
       app.log('money', `환불 ${won(cp.refund)} · 공제 ${won(cp.deduction)}${cp.plateToPartner ? ` (판비 ${won(cp.plateToPartner)}은 파트너 '취소 보상' 정산 이벤트)` : ''}`);
-      app.notify('NOTI_PARTNER_MEDIATION_DECIDED', '파트너', ['알림톡'], `확정 후 취소 승인${cp.plateToPartner ? ` · 취소 보상 ${won(cp.plateToPartner)}` : ''}`);
+      app.notify('NOTI_MEDIATION_DECIDED', '고객', CH_CUST_MED, `확정 후 취소 승인 · 환불 ${won(cp.refund)}${cp.deduction ? ` (공제 ${won(cp.deduction)})` : ''}`);
+      app.notify('NOTI_PARTNER_MEDIATION_DECIDED', '파트너', CH_PT_MED, `확정 후 취소 승인${cp.plateToPartner ? ` · 취소 보상 ${won(cp.plateToPartner)}` : ''}`);
       refresh();
     },
     /* 확정 후 변경 건 30일 무응답 → 본사 중재로 이전 확정본 복원(D3, D-ROOM-07) */
@@ -1320,6 +1491,87 @@
     },
   });
 
+  /* ── 생산 지연 취소(DELAY_CANCEL) 처리 묶음 (P-ORD-03 · C-STATE-02 · A-ORD-02 · 2026-10-16 D59) ── */
+  /* 판정 시각을 넘겨 '생산 지연'이 됨: 고객·파트너 알림 → 고객 [취소 요청]. 기각 뒤 새 예정일도 넘기면 다시(③) */
+  function markOverdue(now) {
+    const s = S(); s.overdue = { at: now }; s.overdueRound += 1;
+    const again = s.overdueRound > 1;
+    app.log('warn', `생산 지연: 출고 예정일 ${fmtDate(s.shipDue, false)} 다음 영업일 끝(${fmtDate(s.overdueAt)})까지 송장이 없어요 → '생산 지연' 표시 · 고객 [취소 요청]${again ? '이 다시' : ''} 열림${again ? '(기각 때 받은 새 예정일도 넘김, D59 ③)' : ''} · 운영 모니터링 목록(A-ORD-01)`);
+    app.notify('NOTI_PRODUCTION_OVERDUE', '고객', CH_CUST_OVERDUE, `제작이 늦어지고 있어요 · 출고 예정일 ${fmtDate(s.shipDue, false)} · [취소 요청] — 본사가 확인해 승인하면 낸 금액 전부를 돌려드려요`);
+    app.notify('NOTI_PARTNER_SHIP_OVERDUE', '파트너(주문 담당)', CH_PT_OVERDUE, `출고 기한 넘김 · 출고 예정일 ${fmtDate(s.shipDue, false)} · 고객 [취소 요청]이 열렸어요 · 지연은 기록만(평가·페널티 2차)`);
+  }
+  /* 되살리는 혜택(C-PAY-02): 취소한 항목에만 걸린 쿠폰·멤버십 이용권(유효기간이 남은 것) */
+  function restoreText() {
+    const s = S(); const r = s.paidCalc; const list = [];
+    if (r && r.totals.hqDisc) list.push("본사 쿠폰 '첫 맞춤 주문 5,000원'");
+    if (s.paid.designCoupon) list.push('디자인비 쿠폰');
+    if (s.paid.freeWhy === 'voucher') list.push('멤버십 무료 이용권');
+    return list.length ? list.join(' · ') : '되살릴 쿠폰·이용권 없음';
+  }
+  /* 승인(바로 환불 또는 회수 뒤 환불) 공통: 환불·혜택·파트너 부담·연결 보장 해제·알림 */
+  function delaySettled(dp, collected) {
+    const s = S();
+    s.refunded = dp; s.delay = null; s.medNote = '';
+    finishClaim(collected ? 'collected_refund' : 'refund', collected ? '회수 완료 · 파트너 검수 없이 환불' : '환불 완료', {
+      note: `생산 지연으로 낸 금액 전부 ${won(dp.refund)}(디자인비·판비 포함, 공제 없음)을 결제한 수단으로 돌려드렸어요. 되살린 혜택: ${restoreText()}.`,
+      partnerNote: `돌려준 디자인비 ${won(dp.designFeeToPartner)} 정산 차감('중재 판정')${collected ? ' · 회수 배송비 파트너' : ' · 인쇄물·판 폐기'}` });
+    app.log('money', `환불 ${won(dp.refund)} · 공제 0원(파트너 귀책 · 디자인비 ${won(s.paid.designFee)}·판비 ${won(platePaid())} 포함)`);
+    app.log('rule', `되살림: ${restoreText()} (멤버십 이용권·유효기간이 남은 쿠폰, C-PAY-02)`);
+    app.log('money', dp.designFeeToPartner ? `파트너 정산 '중재 판정' 이벤트 −${won(dp.designFeeToPartner)}(돌려준 디자인비 · 그 주 정산에서 빼고 모자라면 미수금 '분쟁 조정') · 구매 확정이 없어 이 항목의 구매 확정 정산은 없음` : '돌려준 디자인비가 0원(무료 디자인)이라 파트너 정산 차감 없음 · 구매 확정 정산도 없음');
+    app.log('rule', "재주문 연결 보장 자동 해제 · 사유 '생산 지연 취소'(파트너 쪽) · 다른 파트너로 다시 주문하면 디자인비 0원·판비만 새로(D-RE-01)");
+    if (collected) {
+      app.log('money', '회수 배송비는 파트너 부담(중재 판정 비용 부담)');
+      app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', 'SMS 대체', '앱 푸시', '알림센터'], `회수 완료 · 낸 금액 전부 ${won(dp.refund)} 환불`);
+    } else {
+      app.log('rule', '이미 만든 인쇄물·판은 회사 저작권 디자인이라 파트너가 폐기해요(손실은 파트너, 반영 때 확인)');
+      app.notify('NOTI_MEDIATION_DECIDED', '고객', CH_CUST_MED, `생산 지연 취소 승인 · 낸 금액 전부 ${won(dp.refund)} 환불 · ${restoreText()} 되살림`);
+      app.notify('NOTI_PARTNER_MEDIATION_DECIDED', '파트너', CH_PT_MED, `생산 지연 취소 승인 · 돌려준 디자인비 ${won(dp.designFeeToPartner)} 정산 차감 · 인쇄물·판 폐기 확인 요청`);
+    }
+  }
+  async function mediateDelay(accept, note) {
+    const s = S(); const dp = delayPreview(); const shipped = s.delay.shipped;
+    if (!accept) {
+      if (!s.delay.progress && !shipped) { app.toast('파트너가 출고 가능 시점을 올린 뒤에 기각할 수 있어요'); return; }
+      const eta = shipped ? null : s.delay.progress.eta;
+      finishClaim('mediation_dismiss', `본사 중재 · 생산 지연 취소 기각(최종, 이의 제기 없음)${shipped ? ' · 이미 출고돼 그대로 배송' : ' · 출고 독촉'}`, {
+        note: `사유: ${note}. ${shipped ? '보낸 물건을 그대로 받으시면 돼요.' : `판매자에게 출고를 독촉했고 새 출고 예정일은 ${fmtDate(eta, false)}예요. 그날 다음 영업일까지도 출고되지 않으면 다시 취소를 요청할 수 있어요.`}`,
+        partnerNote: shipped ? '본사 기각 · 그대로 배송' : `본사 기각 · 출고 독촉 · 새 출고 예정일 ${fmtDate(eta, false)}` });
+      s.delay = null; s.medNote = '';
+      app.log('user', `본사 중재: 생산 지연 취소 기각 · 판정 근거 "${esc(note)}"`);
+      if (!shipped) setShipDue(eta, 'dismiss');
+      app.notify('NOTI_MEDIATION_DECIDED', '고객', CH_CUST_MED, shipped ? '생산 지연 취소 요청 기각 · 보낸 물건 그대로 배송' : `생산 지연 취소 요청 기각 · 새 출고 예정일 ${fmtDate(eta, false)} · 그날 다음 영업일까지도 출고되지 않으면 다시 요청할 수 있어요`);
+      app.notify('NOTI_PARTNER_MEDIATION_DECIDED', '파트너', CH_PT_MED, shipped ? '생산 지연 취소 기각 · 그대로 배송' : `생산 지연 취소 기각 · 출고 독촉 · 새 출고 예정일 ${fmtDate(eta, false)}까지 출고해 주세요`);
+      refresh(); return;
+    }
+    if (shipped) {
+      // 요청 중 출고된 건: '이미 출고' 취소 이의 인정과 같이 플랫폼이 회수 → 회수 완료 뒤 검수 없이 환불(배송 중이면 배송 완료 뒤 회수)
+      await app.ext({ service: '계약 택배사 · 스윗트래커', what: '플랫폼 회수 접수(생산 지연 취소 승인)', lines: ['배송 중이면 배송 완료 뒤 회수를 접수해요', '회수 완료 뒤 파트너 검수 없이 환불 · 회수 배송비 파트너', '출고 뒤 취소 이의 인정과 같은 처리(C-STATE-02)'] });
+      app.go('claim', 'mediation_approve', { by: `본사 중재 · 생산 지연 취소 승인 · 이미 출고돼 회수 뒤 환불${note ? ` · 근거 ${note}` : ''}` });
+      s.medNote = '';
+      app.notify('NOTI_MEDIATION_DECIDED', '고객', CH_CUST_MED, '생산 지연 취소 승인 · 받으신 물건을 회수한 뒤 낸 금액 전부 환불');
+      app.notify('NOTI_PARTNER_MEDIATION_DECIDED', '파트너', CH_PT_MED, `생산 지연 취소 승인 · 회수 뒤 환불(회수 배송비 파트너) · 돌려준 디자인비 ${won(dp.designFeeToPartner)} 정산 차감`);
+      if (app.state('item') === 'DELIVERED') await collectDelay(); else refresh();
+      return;
+    }
+    await app.ext({ service: '토스페이먼츠', what: '결제 취소(판매자별 부분 취소)', lines: [`고객 환불 ${won(dp.refund)} · 공제 없음(디자인비·판비 포함)`, '파트너 몫과 본사 몫(디자인비)을 판매자별로 나눠 취소해요', '요청 키(취소 건 ID + 회차)를 먼저 저장하고 같은 키로만 다시 요청해요'] });
+    app.go('claim', 'mediation_approve', { by: `본사 중재 · 생산 지연 취소 승인(파트너 귀책)${note ? ` · 근거 ${note}` : ''}` });
+    goDesign('delay_cancel_approved', '생산 지연 취소 중재 승인 · 생산 중단');
+    goItem('delay_cancel_approved');
+    delaySettled(dp, false);
+    s.discard = { at: app.clock.now(), done: null };
+    refresh();
+  }
+  /* 승인 뒤 배송 완료된 건: 플랫폼 회수 → 검수 없이 환불(주문 항목 RETURNED) */
+  async function collectDelay() {
+    const dp = delayPreview();
+    await app.ext({ service: '계약 택배사', what: '플랫폼 회수', lines: ['배송 완료된 물건을 플랫폼이 회수 접수 · 회수 완료 확인', '파트너 검수 없이 환불', '회수 배송비 파트너'] });
+    app.clock.pass(2 * GC.DAY);
+    goItem('delay_cancel_collected');
+    goDesign('complete', '연결 항목이 생산 지연 취소로 회수·환불돼 완료');
+    delaySettled(dp, true);
+    refresh();
+  }
+
   function doConfirm(by) {
     const s = S();
     goItem('confirm');
@@ -1380,6 +1632,12 @@
           s.waitSince = null; s.notices = {};
         }
       }
+    }
+    // 생산 지연(P-ORD-03 · D59): 저장한 판정 시각(출고 예정일 다음 영업일 끝)을 넘겼는데 송장이 없으면 '생산 지연' 표시 + 고객·파트너 알림 → 고객 [취소 요청]
+    // 본사 일괄 공지 기간이면 지연으로 보지 않음. 인쇄 반려(디자인팀 원인)는 출고 예정일을 [인쇄 가능]부터 세므로 들어오지 않음
+    if (d === 'IN_PRODUCTION' && s.overdueAt && !s.overdue && now > s.overdueAt) {
+      if (!s.bulkNotice) markOverdue(now);
+      else if (!s.bulkLogged) { s.bulkLogged = true; app.log('rule', `판정 시각 ${fmtDate(s.overdueAt)}을 넘겼지만 본사 일괄 공지 기간이라 생산 지연으로 보지 않아요(P-ORD-03)`); }
     }
     // [인쇄 가능] 확인 기한(전달된 때부터, D47)을 넘기면 파트너 리마인드 + 운영 알림. 내려받기 전이어도 셈.
     // 생산 보류 중에는 [인쇄 가능]이 막혀 있어 보내지 않음(D46 정지 중 알림 멈춤과 같은 취지 — 판단)
