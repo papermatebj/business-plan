@@ -1,4 +1,4 @@
-# 부록 B 반영 — 정할 것 (D1~D19) · S8 남은 확인 거리 (D20~D33) · S9 (D34~D35) · S10 (D36~D45) · S11 (D46~D52) · 취소·환불 정책 수정 (D53~D59) · 반영 세션 (D60) · 마무리 (D61) · 환경·배포 (D62~D65) · S12 (D66~D72) · 표준안 정리 (D73)
+# 부록 B 반영 — 정할 것 (D1~D19) · S8 남은 확인 거리 (D20~D33) · S9 (D34~D35) · S10 (D36~D45) · S11 (D46~D52) · 취소·환불 정책 수정 (D53~D59) · 반영 세션 (D60) · 마무리 (D61) · 환경·배포 (D62~D65) · S12 (D66~D72) · 표준안 정리 (D73) · 정리 1단계 (D74~D76)
 
 > 근거: `docs/analysis/2026-10-13_식업-기획서-분석.md` 부록 B. 줄 번호는 `docs/revision-work/baseline/` 기준.
 > 각 항목의 **결정:** 칸에 결론을 적었습니다(S1, 2026-10-14에 16건 모두 결정). 결정을 바꾸려면 이 파일을 고치고 HANDOFF 세션 기록에 남깁니다.
@@ -825,3 +825,36 @@ D1(판비 공제식) 없어짐 · D18·D19 → 일반 취소(바로, 낸 디자�
 
 ### 반영할 곳
 명세: 공통 용어·`#g-dec4`(행 추가)·U-MY-01~03·D-APV-01·D-APV-02·D-RE-01·D-REQ-04·D-ROOM-07·P-ONB-03·P-ORD-03~06·P-STL-01·A-ORD-01·A-ORD-02·A-STL-01·A-STL-03·A-SYS-03·C-PRICE-01·C-PAY-02·C-STL-01·C-STL-02·C-STATE-01~03·C-NOTI-01 (그 밖에 CUSTOM_CANCEL·DELAY_CANCEL·판비 공제·취소 보상·지연배상금·되돌려 받기가 나오는 곳 전부) / 기획서 07장 E·F·H·J·15장 / 디자인 요청서(확정 후 취소 요청·생산 지연 취소 요청·되돌려 받기·지연배상금 화면) / 법률·PG 질문서 / 정리본 `refund-policy.html`(세 층으로 다시 정리, 재게시) / `prototype-impact.md`에 ‘D73 입력’(다음 세션 프로토타입).
+
+# 정리 1단계 — D74~D76 (2026-10-17)
+
+사용자 승인(2026-10-17, `simplify-plan.md`): 매 세션 프로토타입이 빈칸을 찾고 빈칸 하나가 결정 하나가 되어 정책값 키(163개)와 알림 표(89행 · 코드 126개 × 채널 6칸)가 계속 커졌다. **범위만 줄이고 동작은 그대로 둔다**(값·계산·상태는 바뀌지 않음). AskUserQuestion 2개, 모두 추천안: 정책값은 ‘돈 + 약속 기한’, 알림은 ‘필수 목록 + 채널 원칙’.
+
+## D74. 확인 거리로 올리는 기준 — ☑ 2026-10-17
+
+명세에 없는 세부(알림 채널·문구·묶음·재알림 시점, 상수 값, 드문 예외)는 **개발 때 기본값으로 정하고 확인 거리로 올리지 않는다.** 돈·법·고객 권리(고객이 손해를 보거나 권리를 잃는 것)에 걸리는 것만 확인 거리로 올린다. 개발 때 정한 숫자는 상수(A-SYS-03 둘째 표)로 두고, 프로토타입에서는 ‘판단해서 넣은 것’에 적는다. 확인 거리로 올린 것도 먼저 ‘법 · 표준 · 관리자 처리’(D73) 중 어디에 넣을지 본다.
+
+반영: HANDOFF 작업 규칙 · `page-agent-prompts.md` 공통 블록 · `prototype-impact.md` 확인 거리 기준 · 명세 A-SYS-03 규칙 · C-NOTI-01 규칙.
+
+## D75. 정책값 키를 ‘관리자 설정 키 48 + 상수 115’로 나눔 — ☑ 2026-10-17
+
+- **관리자 설정 키**(A-SYS-03 첫 표): 운영자가 화면에서 바꾸는 값 = 돈 + 고객·파트너에게 약속한 처리 기한 + 달력. 지금처럼 승인·예약 적용·되돌리기·변경 이력.
+  - MVP 29개: 달력 `calendar.holidays`·`calendar.business_hours` / 수수료 `commission.default_rate`·`custom_rate`·`new_partner_discount`·`reorder_discount`·`floor`·`override_max` / 디자인 가격 `design.fee`·`multi_item_fee`·`free_threshold`·`extra_revision_fee`·`source_file_fee`·`own_file_fix_fee`·`vector_redo_fee` / 무료 수정 `design.free_revisions_custom`·`_template` / 디자인 SLA `design.sla.assign_hours`·`first_draft_days`·`revision_days` / 할인 `promo.instant_discount_max` / 기한 `order.auto_confirm_days`·`payment.vbank_due_days`·`claim.cancel_auto_approve_bd`·`claim.pickup_register_bd`·`claim.inspect_bd`·`claim.exchange_ship_bd`·`claim.objection_days`·`production.print_check_bd`.
+  - 2차·3차 돈 값 19개(그 단계를 만들 때 키로 둠): `commission.plan_discount_pro`·`_premium`, `partner_plan.price`·`ad_cash`, `coupon.rate_max`, `design.rush_fee`·`brand_package_fee`·`logo_fee`, `membership.*` 가격·혜택 8개(`retry_schedule`은 상수), `point.reorder_rate`, `ads.cpc_min_bid`·`credit_limit`.
+- **상수**(A-SYS-03 둘째 표, 115개): 코드에 두고 배포로 바꾼다. 값·설명은 그대로 옮김. 보안(`security.*`), 파일 한도, 보관 기간, 화면 한도(개수·크기), 배치 시각, 운영 목표 기한(입점·검수·CS·관리자 처리), 디자인 무응답 기한, 주문·클레임의 나머지 기한(반품 발송 7일·늦게 받음 7일·되돌림 2일·발주 확인 리마인드·지연 판정·지연 안내 10일·파트너 변경 응답 7일), 정산 일정·청구 기준, 계약에 고정되는 값(직거래 기간·위약금), 법정 값(`claim.refund_due_bd` 3영업일·`claim.refund_delay_rate` 연 15%), 알림 묶음·광고 빈도, 검색, 앱 버전.
+- **명세 표기:** 키는 ‘(정책값 `key`)’, 상수는 ‘(상수 `key`)’. 키가 없던 값도 같은 기준 — ‘(정책값, 2차에 키)’로 적었던 값 중 돈이 아닌 것은 ‘(상수)’, 돈(멤버십 등급 기준·적립률·가입 프로모션)과 디자인 SLA(재주문·로고 첫 시안)는 그대로.
+- **권한:** 보안 값은 상수라 화면에서 바꾸지 않는다(‘보안 정책값은 최고관리자만’ 규칙(2026-10-16)은 배포로 대신). 남은 키의 권한 행은 그대로(수수료 → 수수료율 변경, 디자인 가격 → 디자인 옵션 가격, 쿠폰·즉시 할인·멤버십·광고 → 쿠폰 · 캠페인 · 멤버십 · 광고 운영, 나머지 → 최고관리자).
+- 고객·파트너에게 약속한 상수(반품 발송 기한·무응답 기한 등)를 바꾸는 배포도 약관·공지 절차(A-MKT-04)는 같다. 진행 중인 건은 시작 때 값을 유지하는 규칙도 상수에 그대로.
+- 없어지는 것: 상수 값을 바꾸는 화면·승인·예약 적용(상수는 배포 이력이 변경 이력).
+
+반영: 명세 A-SYS-03(표 둘)·공통 용어 ‘정책값’·‘상수’·05장 머리말·A-SYS-01·P-ONB-04·본문 표시 약 110곳·C-STATE-02 기한 키 목록·`#g-dec4` / 기획서 08장 기능 표 ‘정책값 설정’·15장 / 정리본 T 표(키 열) / 프로토타입(엔진 정책값 키 142 → 키·상수 구분, system 페이지 정책값 화면)은 다음 프로토타입 세션(`prototype-impact.md` ‘정리 1단계 입력’).
+
+## D76. 알림은 ‘필수 알림 목록 + 채널 원칙’만 — ☑ 2026-10-17
+
+- C-NOTI-01을 **필수 알림 목록 + 채널 원칙(등급 5줄)**으로 바꾼다. 코드별 채널 6칸과 칸마다 붙은 조건은 없앤다.
+- **필수 기준:** ① 돈이 움직이거나 결제·환불·정산 결과 ② 법이 알리라고 한 것(공급 곤란·출고 지연, 정기결제 예정·요금 변경, 휴면 예고 등) ③ 기한을 넘기면 자동으로 불이익이 생기는 것의 예고·결과(자동 취소·자동 승인·보류·판매 중지·자동 철회) ④ 보안·계정·계약 ⑤ 내부: 돈 사고·보안·장애·관리자 처리 접수. → 고객 40(MVP 31 · 2차 9) · 파트너 37(MVP 33 · 2·3차 4) · 내부 14, 코드 91개.
+- **채널 원칙:** 필수(알림톡 → 실패 시 SMS·LMS + 알림센터 + 앱 푸시(있으면), 이메일은 돈·결과·계약) / 진행 안내(앱 푸시를 받으면 앱 푸시, 아니면 알림톡 + 알림센터, 이메일 없음) / 메시지(협의 룸·생산 협의 채널 — 10분 묶음) / 마케팅 성격(쿠폰 만료 예고·판 보관 만료 예고 — 마케팅 수신 동의자만 앱 푸시·이메일, 알림센터에는 늘 남김, D34 그대로) / 내부(관리자 알림센터 + Slack, 돈 사고·보안·장애는 이메일도).
+- **표에서 빠지는 35개 코드**(진행 안내·리마인드·메시지·업무 대기): 고객 `VBANK_DUE_SOON`·`CONFIRM_DUE`·`DESIGN_ASSIGNED`·`DESIGN_REVISED`·`ROOM_MESSAGE`·`FILE_REVIEWED`·`FILE_SCAN_REJECTED`·`DESIGN_REMIND`·`PRODUCTION_STARTED`·`BIZ_STATUS_RESTORED` + 마케팅 성격 2(`COUPON_EXPIRE_SOON`·`PLATE_EXPIRY_NOTICE` — 채널 원칙 행에 이름으로 남김) / 파트너 `ACCEPT_LATE`·`SHIP_DUE`·`PRINT_CHECK_DUE`·`CHANNEL_MESSAGE`·`FILE_SCAN_REJECTED` / 내부 18(`INT_DESIGN_NEW`·`SLA_DUE`·`SLA_OVER`·`ROOM_MESSAGE`·`CHANNEL_MESSAGE`·`PREFLIGHT_REJECTED`·`FILE_REVIEW`·`PRINT_CHECK_LATE`·`ONBOARD_NEW`·`ONBOARD_SAMPLE_LATE`·`ONBOARD_SIGN_LATE`·`PARTNER_OTP_REQUEST`·`PARTNER_BIZ_RESUMED`·`BIZ_VERIFY_NEW`·`BIZ_VERIFY_LATE`·`PRODUCT_REVIEW_LATE`·`PRODUCT_REPORTED`·`FILE_SCAN_REJECTED`). 기능 본문에 적힌 코드는 그대로 두고(그게 목록), 채널은 원칙의 등급, 묶음·재알림·문구는 개발 때 정한다.
+- 그대로: 정보성 알림은 고객이 끌 수 없음(U-MY-06), 광고성은 C-NOTI-02, 파트너 보안·계정 알림은 대표자에게, 알림 문구에 전화번호·주소 없음, 예고 뒤 24시간, 배치 감시, 예외 처리 3줄.
+
+반영: 명세 C-NOTI-01(제목 ‘알림 기준(필수 알림 · 채널 원칙)’)·C-NOTI-02(‘표대로’ → ‘원칙대로’)·`#g-dec4` / 기획서 15장 ‘필수 알림 채널’ 행·`#g-dec` 같은 표기 / 법률 질문서 L-48 ‘알림 매트릭스’ 표기 / 프로토타입(알림 코드는 엔진·페이지에 그대로 써도 됨 — 필수 목록과 어긋나는 채널 표시만)은 다음 프로토타입 세션.

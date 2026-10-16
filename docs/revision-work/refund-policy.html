@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<!-- 게시본: https://claude.ai/artifact/EjAuQ29zfAmfFABhg6PMeq (2026-10-17 표준안 D73으로 다시 정리: 법 · 표준 · 관리자 처리 세 층, 지금 규칙만 표시. 결정 기록은 docs/revision-work/decisions.md) -->
+<!-- 게시본: https://claude.ai/artifact/EjAuQ29zfAmfFABhg6PMeq (2026-10-17 표준안 D73으로 다시 정리: 법 · 표준 · 관리자 처리 세 층, 지금 규칙만 표시. 결정 기록은 docs/revision-work/decisions.md · 2026-10-17 정리 1단계 D75: T 표 키 열에 정책값(●)·상수 구분) -->
 <style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>식업 취소·환불 정책</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -469,7 +469,7 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
         <div class="refs"><span class="ref">D-APV-02</span><span class="ref">P-ONB-03</span><span class="flag dec">D73</span></div></div></div>
       <div class="rule" data-id="M6"><span class="rid">M6</span><div class="rbody">
         <p><span class="tier std">표준</span><b class="rt">고객 무응답 자동 취소</b>시안 확인·자체 파일 재업로드처럼 고객 답을 기다리는 건에 답이 없으면 3일째 리마인드, 14일째 보류, 30일째 자동 취소합니다. 공제는 취소 시점의 첫 시안 기록으로 정합니다. 보류·자동 취소는 예고를 보내고 24시간이 지난 건만 합니다. 고객이 사정을 알리면 운영자가 1회 30일 연장할 수 있습니다. 확정 후 변경 건은 자동 취소하지 않고 본사가 이전 확정본으로 되돌려 생산을 이어갑니다.</p>
-        <div class="refs"><span class="ref">D-ROOM-07</span><span class="ref">design.no_response_days</span><span class="flag legal">법률 L-17</span></div></div></div>
+        <div class="refs"><span class="ref">D-ROOM-07</span><span class="ref">design.no_response_*</span><span class="flag legal">법률 L-17</span></div></div></div>
       <div class="rule" data-id="M7"><span class="rid">M7</span><div class="rbody">
         <p><span class="tier law">법</span><b class="rt">단순 변심 취소·반품 불가 동의</b>주문할 때 알리고, 시안 확정 때 ‘생산 시작([인쇄 가능]) 뒤에는 단순 변심 취소·반품이 안 됨’ 별도 전자 동의를 받습니다. 이 동의는 고객 본인만 할 수 있어 운영자가 대신 확정할 수 없습니다. 같은 디자인 재주문 때도 다시 받습니다.</p>
         <div class="refs"><span class="ref">D-APV-01</span><span class="ref">D-RE-01</span><span class="ref">시행령 제21조</span><span class="flag dec">D73</span><span class="flag legal">법률 L-11</span><span class="flag legal">법률 L-12</span></div></div></div>
@@ -612,22 +612,22 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
 
   <!-- ===== T ===== -->
   <section id="t" class="sec">
-    <header class="sec-h"><span class="sec-k">T</span><div><h2>처리 기한과 자동 처리</h2><p class="sec-d">기한은 모두 관리자 화면(A-SYS-03)에서 바꾸는 값입니다. 영업일은 본사 공휴일 달력 하나로 셉니다.</p></div></header>
+    <header class="sec-h"><span class="sec-k">T</span><div><h2>처리 기한과 자동 처리</h2><p class="sec-d">키 열에 ●가 붙은 기한은 관리자 화면(A-SYS-03)에서 바꾸는 정책값이고, 나머지는 코드에 두고 배포로 바꾸는 상수입니다(2026-10-17 정리, 값은 그대로). 영업일은 본사 공휴일 달력 하나로 셉니다.</p></div></header>
     <div class="tbl wide">
       <table class="markable">
-        <thead><tr><th>ID</th><th>무엇</th><th>기본값</th><th>넘기면</th><th>정책값 키</th></tr></thead>
+        <thead><tr><th>ID</th><th>무엇</th><th>기본값</th><th>넘기면</th><th>키 (● 정책값 · 나머지 상수)</th></tr></thead>
         <tbody>
-          <tr data-id="T1" data-title="파트너 취소 요청 처리 기한"><td class="tid">T1</td><td><span class="tier std">표준</span>파트너 취소 요청 처리</td><td>1영업일</td><td>자동 승인 (송장 등록 건 제외)</td><td class="key">claim.cancel_auto_approve_bd</td></tr>
+          <tr data-id="T1" data-title="파트너 취소 요청 처리 기한"><td class="tid">T1</td><td><span class="tier std">표준</span>파트너 취소 요청 처리</td><td>1영업일</td><td>자동 승인 (송장 등록 건 제외)</td><td class="key">● claim.cancel_auto_approve_bd</td></tr>
           <tr data-id="T2" data-title="고객 반품 발송 기한"><td class="tid">T2</td><td><span class="tier std">표준</span>고객 반품 발송·회수 응답</td><td>7일</td><td>신청 자동 철회</td><td class="key">claim.return_ship_days</td></tr>
-          <tr data-id="T3" data-title="파트너 회수 접수 기한"><td class="tid">T3</td><td><span class="tier std">표준</span>파트너 회수 접수</td><td>2영업일</td><td>플랫폼이 자동 회수 접수</td><td class="key">claim.pickup_register_bd</td></tr>
-          <tr data-id="T4" data-title="반품 검수 기한"><td class="tid">T4</td><td><span class="tier std">표준</span>회수 뒤 검수</td><td>2영업일</td><td>자동 승인·환불 (교환은 승인 간주, 재제작은 재제작 승인)</td><td class="key">claim.inspect_bd</td></tr>
-          <tr data-id="T5" data-title="교환품 출고 기한"><td class="tid">T5</td><td><span class="tier std">표준</span>교환품 출고</td><td>2영업일</td><td>고객 동의받아 반품 전환</td><td class="key">claim.exchange_ship_bd</td></tr>
-          <tr data-id="T6" data-title="이의 제기 기한"><td class="tid">T6</td><td><span class="tier adm">관리자 처리</span>파트너 거부 뒤 고객 이의 제기</td><td>3일</td><td>거부 확정 (이의를 내면 관리자 처리)</td><td class="key">claim.objection_days</td></tr>
+          <tr data-id="T3" data-title="파트너 회수 접수 기한"><td class="tid">T3</td><td><span class="tier std">표준</span>파트너 회수 접수</td><td>2영업일</td><td>플랫폼이 자동 회수 접수</td><td class="key">● claim.pickup_register_bd</td></tr>
+          <tr data-id="T4" data-title="반품 검수 기한"><td class="tid">T4</td><td><span class="tier std">표준</span>회수 뒤 검수</td><td>2영업일</td><td>자동 승인·환불 (교환은 승인 간주, 재제작은 재제작 승인)</td><td class="key">● claim.inspect_bd</td></tr>
+          <tr data-id="T5" data-title="교환품 출고 기한"><td class="tid">T5</td><td><span class="tier std">표준</span>교환품 출고</td><td>2영업일</td><td>고객 동의받아 반품 전환</td><td class="key">● claim.exchange_ship_bd</td></tr>
+          <tr data-id="T6" data-title="이의 제기 기한"><td class="tid">T6</td><td><span class="tier adm">관리자 처리</span>파트너 거부 뒤 고객 이의 제기</td><td>3일</td><td>거부 확정 (이의를 내면 관리자 처리)</td><td class="key">● claim.objection_days</td></tr>
           <tr data-id="T7" data-title="관리자 처리 목표 기한"><td class="tid">T7</td><td><span class="tier adm">관리자 처리</span>관리자 처리 판정</td><td>영업일 5일 (목표)</td><td>팀장 알림만</td><td class="key">claim.mediation_bd</td></tr>
-          <tr data-id="T8" data-title="자동 구매 확정"><td class="tid">T8</td><td><span class="tier std">표준</span>자동 구매 확정</td><td>배송 완료 7일</td><td>구매 확정 (클레임 열린 항목 제외)</td><td class="key">order.auto_confirm_days</td></tr>
+          <tr data-id="T8" data-title="자동 구매 확정"><td class="tid">T8</td><td><span class="tier std">표준</span>자동 구매 확정</td><td>배송 완료 7일</td><td>구매 확정 (클레임 열린 항목 제외)</td><td class="key">● order.auto_confirm_days</td></tr>
           <tr data-id="T9" data-title="출고 지연 최대 기간"><td class="tid">T9</td><td><span class="tier std">표준</span>출고 지연 안내로 늦출 수 있는 기간</td><td>영업일 10일, 주문당 1번</td><td>—</td><td class="key">order.delay_cancel_days</td></tr>
           <tr data-id="T10" data-title="무단 지연·생산 지연 판정"><td class="tid">T10</td><td><span class="tier std">표준</span>무단 지연·생산 지연 판정</td><td>약속 출고일(맞춤은 출고 예정일) 다음 영업일</td><td>일반 상품은 [바로 취소], 맞춤 제작은 [관리자 처리 요청]</td><td class="key">order.overdue_grace_bd</td></tr>
-          <tr data-id="T11" data-title="가상계좌 입금 기한"><td class="tid">T11</td><td><span class="tier std">표준</span>가상계좌 입금</td><td>3일</td><td>자동 취소, 늦은 입금은 자동 환불</td><td class="key">payment.vbank_due_days</td></tr>
+          <tr data-id="T11" data-title="가상계좌 입금 기한"><td class="tid">T11</td><td><span class="tier std">표준</span>가상계좌 입금</td><td>3일</td><td>자동 취소, 늦은 입금은 자동 환불</td><td class="key">● payment.vbank_due_days</td></tr>
           <tr data-id="T12" data-title="제작 파트너 변경 응답 기한"><td class="tid">T12</td><td><span class="tier std">표준</span>제작 파트너 변경 제안 응답</td><td>7일</td><td>전액 환불 (예고 뒤 24시간)</td><td class="key">order.partner_change_reply_days</td></tr>
           <tr data-id="T13" data-title="디자인 무응답 기한"><td class="tid">T13</td><td><span class="tier std">표준</span>디자인 단계 고객 무응답</td><td>3 / 14 / 30일</td><td>리마인드 / 보류 / 자동 취소</td><td class="key">design.no_response_remind_days · _hold_days · _cancel_days</td></tr>
           <tr data-id="T14" data-title="환불 기한"><td class="tid">T14</td><td><span class="tier law">법</span>환불 (반품은 회수 확인 뒤)</td><td>3영업일</td><td>관리자 처리 목록에 올리고 재무 담당 알림. 지연배상금(기준 연 15%)은 관리자가 넣어 지급</td><td class="key">claim.refund_due_bd · claim.refund_delay_rate</td></tr>
