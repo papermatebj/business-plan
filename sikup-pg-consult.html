@@ -620,7 +620,7 @@ tr.grp td{background:var(--surface-2)}
   <div class="q-h"><span class="qid">PG-22</span><span class="b must">필수</span><h4>가상계좌·계좌이체 환불 송금</h4>
     <label class="done"><input type="checkbox"> 확인함</label></div>
   <p class="ask"><span class="ask-l">물어볼 말</span>가상계좌·계좌이체 결제를 환불할 때 PG가 고객 환불 계좌로 송금해 주나요(환불 계좌 API)? 예금주 확인도 함께 하나요? 수수료는요?</p>
-  <div class="q-grid"><div><h5>왜 묻나</h5><p>현금성 결제 환불은 고객이 입력한 환불 계좌로 보냅니다. 환불이 법정 기한을 넘기면 지연배상금을 환불과 따로 고객 환불 계좌로 보냅니다. 카드 환불은 승인 금액을 넘을 수 없으므로 카드 결제도 지연배상금만 계좌로 보냅니다(<a class="xref" href="#PG-27">PG-27</a>, 2026-10-16 결정). 결제 취소와 별개인 이 송금도 같은 환불 계좌 API로 할 수 있는지 함께 알려 주세요.</p></div><div><h5>원하는 답</h5><p>환불 계좌 송금 API와 예금주 확인.</p></div><div><h5>안 되면</h5><p>플랫폼이 직접 송금해야 하는데, 이 경우 자금 흐름 문제를 법률 자문으로 확인해야 합니다.</p></div></div>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>현금성 결제 환불은 고객이 입력한 환불 계좌로 보냅니다. 환불이 법정 기한을 넘기면 관리자가 지연배상금 금액을 정해 환불과 따로 고객 환불 계좌로 보냅니다(2026-10-17 결정 — 시스템이 자동으로 계산·송금하지 않음). 카드 환불은 승인 금액을 넘을 수 없으므로 카드 결제도 지연배상금만 계좌로 보냅니다(<a class="xref" href="#PG-27">PG-27</a>). 결제 취소와 별개인 이 송금도 같은 환불 계좌 API로 할 수 있는지 함께 알려 주세요.</p></div><div><h5>원하는 답</h5><p>환불 계좌 송금 API와 예금주 확인.</p></div><div><h5>안 되면</h5><p>플랫폼이 직접 송금해야 하는데, 이 경우 자금 흐름 문제를 법률 자문으로 확인해야 합니다.</p></div></div>
   <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a><a class="sid" href="sikup-spec.html#U-MY-02">U-MY-02</a></div>
   <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
   <div class="memo-print"></div>
@@ -638,8 +638,8 @@ tr.grp td{background:var(--surface-2)}
 <article class="q" id="PG-24" data-pri="rec" data-title="일부 판매자 몫만 남기는 환불">
   <div class="q-h"><span class="qid">PG-24</span><span class="b rec">중요</span><h4>일부 판매자 몫만 남기는 환불</h4>
     <label class="done"><input type="checkbox"> 확인함</label></div>
-  <p class="ask"><span class="ask-l">물어볼 말</span>맞춤 주문을 취소할 때 본사 몫(디자인비)은 남기고 파트너 몫만 환불하거나, 파트너 몫 중 판비만 남기고 나머지를 환불하는 처리가 가능한가요?</p>
-  <div class="q-grid"><div><h5>왜 묻나</h5><p>예: 인쇄 250,000 + 판비 50,000 + 디자인비 39,000 = 339,000원. 첫 시안 뒤 취소면 300,000원 환불(디자인비 공제), 확정 뒤 판 제작이 증빙되면 250,000원 환불(판비도 공제해 파트너에게 보상. 공제액은 증빙한 실비와 고객이 낸 판비 중 적은 금액이라, 실비 30,000원이면 270,000원 환불). 금액은 모두 임시 기본값입니다.</p></div><div><h5>원하는 답</h5><p>판매자별·금액별 부분 취소로 표현 가능.</p></div><div><h5>안 되면</h5><p>공제 대상 금액을 정산 이벤트로 보정합니다.</p></div></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>맞춤 주문을 취소할 때 본사 몫(디자인비)은 남기고 파트너 몫(인쇄비·판비)만 전액 환불하는 처리가 가능한가요? 법·표준 규칙 밖의 건은 본사 관리자가 건마다 환불 금액을 정하는데(관리자 처리), 이때처럼 한 판매자 몫 안에서 정한 금액만 부분 환불하는 처리도 가능한가요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>예: 인쇄 250,000 + 판비 50,000 + 디자인비 39,000 = 339,000원. 첫 시안 뒤부터 파트너가 [인쇄 가능]을 누르기 전까지(디자인 확정 뒤 포함) 취소하면 300,000원 환불(낸 디자인비만 공제, 판비는 전액 환불 — 2026-10-17 결정으로 확정 뒤 판비 공제를 없앰). 금액은 모두 임시 기본값입니다.</p></div><div><h5>원하는 답</h5><p>판매자별·금액별 부분 취소로 표현 가능.</p></div><div><h5>안 되면</h5><p>공제 대상 금액을 정산 이벤트로 보정합니다.</p></div></div>
   <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a><a class="sid" href="sikup-spec.html#D-APV-02">D-APV-02</a></div>
   <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
   <div class="memo-print"></div>
@@ -656,8 +656,8 @@ tr.grp td{background:var(--surface-2)}
 <article class="q" id="PG-71" data-pri="rec" data-title="결제 뒤 판매자 변경">
   <div class="q-h"><span class="qid">PG-71</span><span class="b rec">중요</span><h4>결제 뒤 판매자 변경</h4>
     <label class="done"><input type="checkbox"> 확인함</label></div>
-  <p class="ask"><span class="ask-l">물어볼 말</span>파트너가 판매를 멈추거나 정지·계약 종료되면, 아직 인쇄 전인 맞춤 주문 항목을 같은 사양의 다른 파트너 상품으로 옮길 수 있습니다(고객 동의를 받은 경우만). 새 상품이 더 싸면 차액을 부분 환불하고, 비싸도 고객에게 더 받지 않습니다. ① 하위몰형이면 이미 승인된 결제 안에서 그 항목의 판매자(하위몰)를 다른 판매자로 바꿀 수 있나요? 부분 취소 뒤 다시 결제하지 않고 할 방법이 있나요? ② 안 된다면 원래 판매자 몫을 부분 취소하고 새 판매자 몫을 어떻게 다시 잡아야 하나요(고객 재결제 없이)? ③ 지급대행형이면 결제 기록은 그대로 두고 내부 장부의 판매자만 바꿔 새 판매자에게 지급하면 되나요?</p>
-  <div class="q-grid"><div><h5>왜 묻나</h5><p>예: 인쇄 300,000 + 판비 50,000을 결제한 맞춤 항목을 원래 파트너가 만들 수 없게 되어 인쇄 280,000 + 판비 50,000인 다른 파트너 상품으로 옮기면, 차액 20,000원(결제 비율 반영)을 돌려주고 새 파트너에게 정산해야 합니다. 원래 파트너에게는 지급하지 않습니다. 금액은 모두 임시 기본값입니다.</p></div><div><h5>원하는 답</h5><p>결제 안에서 판매자 변경, 또는 고객 재결제 없이 판매자를 옮기는 처리 방법.</p></div><div><h5>안 되면</h5><p>원래 판매자 몫을 전액 부분 취소하고 플랫폼이 받은 것으로 기록한 뒤, 정산 이벤트로 새 파트너에게 지급합니다.</p></div></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>파트너가 판매를 멈추거나 정지·계약 종료되면, 아직 인쇄 전인 맞춤 주문 항목을 같은 사양의 다른 파트너 상품으로 옮길 수 있습니다(고객 동의를 받은 경우만). 새 상품이 더 싸면 관리자가 정한 차액을 부분 환불하고(2026-10-17 결정 — 계산식 대신 관리자가 금액을 넣음), 비싸도 고객에게 더 받지 않습니다. ① 하위몰형이면 이미 승인된 결제 안에서 그 항목의 판매자(하위몰)를 다른 판매자로 바꿀 수 있나요? 부분 취소 뒤 다시 결제하지 않고 할 방법이 있나요? ② 안 된다면 원래 판매자 몫을 부분 취소하고 새 판매자 몫을 어떻게 다시 잡아야 하나요(고객 재결제 없이)? ③ 지급대행형이면 결제 기록은 그대로 두고 내부 장부의 판매자만 바꿔 새 판매자에게 지급하면 되나요?</p>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>예: 인쇄 300,000 + 판비 50,000을 결제한 맞춤 항목을 원래 파트너가 만들 수 없게 되어 인쇄 280,000 + 판비 50,000인 다른 파트너 상품으로 옮기면, 관리자가 정한 차액(예: 20,000원)을 돌려주고 새 파트너에게 정산해야 합니다. 원래 파트너에게는 지급하지 않습니다. 금액은 모두 임시 기본값입니다.</p></div><div><h5>원하는 답</h5><p>결제 안에서 판매자 변경, 또는 고객 재결제 없이 판매자를 옮기는 처리 방법.</p></div><div><h5>안 되면</h5><p>원래 판매자 몫을 전액 부분 취소하고 플랫폼이 받은 것으로 기록한 뒤, 정산 이벤트로 새 파트너에게 지급합니다.</p></div></div>
   <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#A-ORD-01">A-ORD-01</a><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a><a class="sid" href="sikup-spec.html#C-STL-01">C-STL-01</a></div>
   <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
   <div class="memo-print"></div>
@@ -684,7 +684,7 @@ tr.grp td{background:var(--surface-2)}
   <div class="q-h"><span class="qid">PG-27</span><span class="b opt">확인</span><h4>환불 반영 시점 · 승인 금액 초과 방지</h4>
     <label class="done"><input type="checkbox"> 확인함</label></div>
   <p class="ask"><span class="ask-l">물어볼 말</span>카드 환불은 카드사 반영까지 영업일 3~5일로 안내하면 되나요? 환불 실패 웹훅이 있나요? 누적 환불이 승인 금액을 넘으면 PG가 거절하나요? 환불·부분 취소 요청에 우리가 만든 요청 키(멱등키)를 보낼 수 있나요? 응답 없이 끊겼을 때 그 키나 거래 번호로 취소 결과를 조회할 수 있나요?</p>
-  <div class="q-grid"><div><h5>왜 묻나</h5><p>여러 번 나눠 환불할 때 원 단위 오차로 승인 금액을 넘지 않도록 서버에서도 막습니다. 부분 취소·반품의 환불액은 그 항목에 낸 금액이라 누적해도 결제 금액을 넘지 않고, 환급 지연배상금은 카드 환불에 더하지 않고 환불 계좌로 따로 보냅니다(<a class="xref" href="#PG-22">PG-22</a>, 2026-10-16 결정).</p></div><div><h5>원하는 답</h5><p>반영 기간 안내, 실패 웹훅, 초과 거절.</p></div><div><h5>안 되면</h5><p>서버 검증만으로 처리합니다.</p></div></div>
+  <div class="q-grid"><div><h5>왜 묻나</h5><p>여러 번 나눠 환불할 때 원 단위 오차로 승인 금액을 넘지 않도록 서버에서도 막습니다. 부분 취소·반품의 환불액은 그 항목에 낸 금액이라 누적해도 결제 금액을 넘지 않고, 관리자가 금액을 정하는 환불도 그 항목에 낸 금액 중 아직 돌려주지 않은 몫을 넘지 못하게 막습니다(2026-10-17 결정). 환급 지연배상금은 카드 환불에 더하지 않고 관리자가 정한 금액을 환불 계좌로 따로 보냅니다(<a class="xref" href="#PG-22">PG-22</a>).</p></div><div><h5>원하는 답</h5><p>반영 기간 안내, 실패 웹훅, 초과 거절.</p></div><div><h5>안 되면</h5><p>서버 검증만으로 처리합니다.</p></div></div>
   <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a></div>
   <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
   <div class="memo-print"></div>
