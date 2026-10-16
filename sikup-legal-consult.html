@@ -300,10 +300,10 @@ tr.grp td{background:var(--surface-2)}
   <p class="lead">전자상거래·플랫폼 분야 변호사에게 보낼 질문 목록입니다. 질문마다 지금 설계와, 답에 따라 바뀌는 기능을 함께 적었습니다. <b>1순위</b>는 개발 설계(상태 머신·환불 계산·정산 구조)에 바로 영향을 주므로 먼저 답을 받습니다.</p>
   <div class="meta-row"><span>작성일 2026-10-12</span><span>대상: 대표·개발(본인)·운영</span><span>근거: 기획서 07장, 기능 명세서의 “법률 검토 필요” 항목</span><span>금액·요율은 관리자 설정값의 임시 기본값</span></div>
   <div class="kpis">
-    <div class="kpi"><div class="k">질문</div><div class="v">60개</div><div class="s">+ 세무 9개 · 변리 3개</div></div>
-    <div class="kpi"><div class="k">1순위 · 설계 영향</div><div class="v">28개</div><div class="s">해당 기능 개발 전에 답 필요</div></div>
+    <div class="kpi"><div class="k">질문</div><div class="v">61개</div><div class="s">+ 세무 9개 · 변리 3개</div></div>
+    <div class="kpi"><div class="k">1순위 · 설계 영향</div><div class="v">29개</div><div class="s">해당 기능 개발 전에 답 필요</div></div>
     <div class="kpi"><div class="k">새로 추가할 내용</div><div class="v">4건</div><div class="s">현재 문서에 없는 법적 장치</div></div>
-    <div class="kpi"><div class="k">확인 진행</div><div class="v" data-progress>0 / 60</div><div class="s">체크·메모는 이 브라우저에 저장</div></div>
+    <div class="kpi"><div class="k">확인 진행</div><div class="v" data-progress>0 / 61</div><div class="s">체크·메모는 이 브라우저에 저장</div></div>
   </div>
 </section>
 <div class="filters" role="group" aria-label="질문 필터">
@@ -550,6 +550,15 @@ tr.grp td{background:var(--surface-2)}
   <p class="ask"><span class="ask-l">물어볼 말</span>취소 거부·반품 분쟁에서 본사 중재 결과를 최종으로 하는 조항이 고객과 파트너에게 유효한가요? 고객의 소비자원 피해구제·분쟁조정 신청 권리와 어떻게 함께 써야 하나요?</p>
   <div class="q-grid"><div><h5>지금 설계</h5><p>거절 통지 뒤 3일 안에 고객이 거절 통지 화면이나 주문 상세의 [이의 제기] 버튼을 누르면 바로 ‘이의 제기됨’이 되고 본사가 중재합니다(MVP부터, 2026-10-14 결정).</p></div><div><h5>받아야 할 답</h5><p>유효 범위와 문구.</p></div><div><h5>답에 따라 바뀌는 것</h5><p>분쟁 중재 기능, 약관.</p></div></div>
   <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#A-ORD-02">A-ORD-02</a></div>
+  <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
+  <div class="memo-print"></div>
+</article>
+<article class="q" id="L-61" data-pri="must" data-title="출고 지연을 알리지 않았을 때의 고지와 취소">
+  <div class="q-h"><span class="qid">L-61</span><span class="b must">1순위 · 설계 영향</span><h4>출고 지연을 알리지 않았을 때의 고지와 취소</h4>
+    <label class="done"><input type="checkbox"> 확인함</label></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span>일반 상품은 결제 후 영업일 2일 안에 출고하고, 늦어지면 파트너가 [출고 지연 안내](사유·새 출고 예정일, 주문당 1번·최대 영업일 10일)로 알리며, 안내를 받은 고객은 파트너 승인 없이 바로 취소·전액 환불할 수 있습니다. 파트너가 안내하지 않고 약속 출고일을 넘기면, 다음 영업일까지 기다린 뒤에도 송장이 없을 때 플랫폼이 고객에게 지연을 알리고 바로 취소를 열려고 합니다. 이 방식이 전자상거래법 제15조(재화등의 공급)의 ‘공급이 곤란하다는 것을 알면 지체 없이 사유를 알릴 의무’와 공급 기한·환급 의무에 맞나요? 하루 유예를 두어도 되나요? 통신판매중개자인 플랫폼이 판매자 대신 알려도 되나요, 플랫폼에도 알릴 의무가 있나요? 늦게 출고된 상품을 받은 고객이 반품하면 판매자 귀책(반품 배송비 판매자 부담)으로 봐야 하나요?</p>
+  <div class="q-grid"><div><h5>지금 설계</h5><p>2026-10-16 결정: 약속 출고일 다음 영업일까지 송장이 없으면 시스템이 고객에게 지연을 알리고 [바로 취소]를 엽니다(지연 안내를 받은 주문과 같음, 송장 등록 전까지). 파트너에게는 ‘무단 지연’으로 기록합니다(페널티는 2차). 지금 명세(P-ORD-03)는 안내 없이 늦으면 기록만 하고, 고객 취소는 일반 취소 요청(파트너 승인 또는 1영업일 뒤 자동 승인)을 거칩니다. 약속 출고일(지연 안내를 했으면 새 출고 예정일)을 넘겨 출고된 상품을 고객이 반품하면 일단 판매자 귀책으로 보고 반품 배송비를 판매자가 냅니다(2026-10-16).</p></div><div><h5>받아야 할 답</h5><p>판매자·플랫폼의 지연 고지 의무와 시점, 유예 허용 여부, 늦게 받은 상품 반품의 귀책.</p></div><div><h5>답에 따라 바뀌는 것</h5><p>출고 지연 판정·고객 알림, 주문 상태 전이(바로 취소가 열리는 시점), 반품 배송비 부담.</p></div></div>
+  <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#P-ORD-03">P-ORD-03</a><a class="sid" href="sikup-spec.html#C-STATE-01">C-STATE-01</a><a class="sid" href="sikup-spec.html#U-MY-02">U-MY-02</a><a class="sid" href="sikup-spec.html#C-NOTI-01">C-NOTI-01</a></div>
   <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
   <div class="memo-print"></div>
 </article>
