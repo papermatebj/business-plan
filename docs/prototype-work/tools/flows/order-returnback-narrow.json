@@ -1,0 +1,14 @@
+[
+ {"click":"#ord-scn [data-scn=\"inspect\"]","after":400},
+ {"role":"partner"},{"act":"partialReturn","after":400},
+ {"role":"customer"},{"act":"objection"},
+ {"role":"hq","shot":"order-101-narrow-returnback-mediation","full":true},
+ {"eval":"(()=>{ const s=document.querySelector('#backBy'); if(!s) throw new Error('되돌림 배송비 부담 선택 없음'); s.value='partner'; return s.value; })()"},
+ {"act":"mediate","attr":"data-r=\"partner\"","after":400},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,10).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('판매자 부담으로 되돌려 보내요')||!log.includes('NOTI_PARTNER_RETURN_BACK')) throw new Error('파트너 귀책 되돌려 보내기 기록 없음: '+log); if(log.includes('NOTI_RETURN_BACK_DUE')) throw new Error('파트너 부담인데 고객에게 결제 안내가 감'); const t=document.querySelector('#gc-turn .turn-what').textContent; if(!t.includes('송장을 넣으세요')) throw new Error('파트너 송장 차례 아님: '+t); return [t, log]; })()"},
+ {"role":"customer","shot":"order-102-narrow-returnback-free","el":"#gc-device"},
+ {"eval":"(()=>{ if(document.querySelector('#gc-device [data-act=\"rbSend\"]')) throw new Error('파트너 부담인데 결제 버튼이 보임'); const t=document.querySelector('#gc-device').innerText.split(String.fromCharCode(10)).join(' '); if(!t.includes('본사 판정으로 판매자가 배송비를 내고')) throw new Error('판매자 부담 안내 없음'); return 'ok'; })()"},
+ {"role":"partner","shot":"order-103-narrow-returnback-partner","full":true},
+ {"act":"rbShip","after":400},
+ {"eval":"document.querySelector('#gc-turn .turn-done, #gc-turn .turn-what').textContent"}
+]

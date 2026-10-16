@@ -225,3 +225,93 @@
 - 페이지 안에 따로 둔 정책값 상수
 
 커밋하지 마세요.
+
+
+---
+
+# S12 페이지 지시문 (2026-10-17, D66~D72 · S12 맞춤 목록)
+
+> S12 세션에서 general-purpose 서브에이전트 5개에 보낸 지시문입니다. 아래 ‘공통’ 블록을 각 지시문 앞에 붙여 보냈습니다. 결과는 `prototype-impact.md` ‘S12 결과’.
+
+## 공통 (모든 지시문 앞에 붙임)
+
+식업(외식업 소모품 B2B 오픈마켓 + 본사 디자인팀 맞춤 인쇄) 대표 보고용 프로토타입에서 **아래 ‘맡은 파일’만** 고쳐 2026-10-17 S12 결정을 반영해 주세요. 작업 폴더(저장소 루트): `C:\MyProject\Papermate\Sikup\business-plan`. 한국어로 일하고 한국어로 보고합니다.
+
+### 먼저 읽을 것
+- 공통 지침: `docs/prototype-work/agent-brief.md` — 새 페이지가 아니라 기존 페이지 수정입니다. 화면 원칙·검증 방법·금지 사항은 그대로 따릅니다.
+- 결정: `docs/revision-work/decisions.md` 맨 아래 ‘S12 남은 확인 거리 — D66~D72’, ‘S12 맞춤 목록’, ‘S12 엔진 제안 판단’.
+- 명세 텍스트 `docs/prototype-work/texts/spec.txt`(2026-10-17 다시 뽑음). 기능 시작 줄: U-MEM-02 212 · U-MEM-05 281 · U-ORD-02 663 · U-MY-01 794 · U-MY-02 816 · U-MY-03 838 · D-APV-02 1465 · D-PRD-02 1654 · D-PRD-03 1673 · P-ONB-04 1928 · P-ORD-01 2238 · P-ORD-03 2278 · P-ORD-04 2299 · P-ORD-05 2320 · P-ORD-06 2345 · P-STL-01 2605 · A-MEM-02 2757 · A-PTN-02 2819 · A-ORD-01 2965 · A-ORD-02 2987 · A-STL-01 3034 · A-MKT-01 3096 · A-REV-04 3256 · A-SYS-03 3420 · C-PRICE-03 3702 · C-PAY-02 3762 · C-STL-01 3856 · C-STL-02 3928 · C-STATE-01 3954 · C-STATE-02 4034 · C-STATE-03 4113 · C-NOTI-01 4186 · C-FILE-01 4450 · C-SEC-01 4489. 기획서 `plan.txt`·디자인 요청서 `brief.txt`도 고쳐졌습니다(고객 문구는 brief를 따름).
+- 수정 금지(읽기만): `prototype/assets/engine.js`·`gc.css`·`ui.js`, 맡지 않은 페이지. 엔진에 바라는 점은 보고에 제안으로만 적습니다.
+
+### 엔진에서 이미 바뀐 것 (engine.js를 읽어 확인, 엔진 검사 45개 통과)
+- **정책값 키 142개.** S12에서 더한 키는 POLICY의 ‘2026-10-17 S12’ 주석 아래에 있습니다(예: `order.cart_keep_days`·`order.checkout_hold_minutes`·`order.accept_remind_bd`·`order.accept_alert_bd`·`claim.mediation_bd`·`claim.pickup_register_bd`·`claim.exchange_ship_bd`·`claim.late_return_days`·`claim.return_back_pay_days`·`claim.return_back_ship_bd`·`production.hold_reply_hours`·`partner.apply_draft_keep_days`·`partner.shipping_info_days`·`partner.circumvent_reply_days`·`partner.circumvent_penalty_multiple`·`settlement.receivable_weeks`·`settlement.receivable_pay_days`·`settlement.cycle`·`member.identity_daily_max`·`member.biz_verify_fail_max`·`security.member_*`·`security.pii_view_lock_per_hour`·`batch.biz_recheck_schedule`·`product.ship_lead_max_bd`·`product.doc_valid_months`·`product.detail_slice_px`·`product.detail_html_max_kb`·`product.revision_keep_months`·`design.*` 여럿, 새 묶음 ‘광고·검색·앱’). **페이지 안에 따로 둔 상수 가운데 엔진 키가 생긴 것은 `GC.Policy.get(키)`로 바꾸고 페이지 상수를 지웁니다.** 법정 값(단순 변심 7일·불량 3개월·30일·야간 21~08시)과 화면 설계 값은 키가 아니므로 상수로 두되 주석에 ‘법정 값’·‘화면 설계 값’이라고 적습니다.
+- `GC.production.printDue(handedAt, bd?)` — [인쇄 가능] 확인 기한(D66·D67: 다시 전달한 것으로 보는 때를 handedAt으로 넘김).
+- `GC.order.overdueAt(promisedAt, bd?)`, `GC.order.inNotice(now, notice)`, `GC.order.afterNotice({ judgeAt, notice, bd? })`, `GC.order.isOverdue({ promisedAt, now, shipped, notice })` — `notice = { start, end }`는 본사 일괄 공지(‘지연 예외 기간’, D72). 공지 중에는 판정하지 않고, 끝나면 판정 시각이 기간 안에 들었거나 끝나기 전에 지난 건만 ‘끝난 날 + 1영업일의 끝’.
+- `GC.refund.dueAt(startAt, bd?)`.
+- `GC.refund.partialCancel({ …, fault, keptBefore })` — D70. `fault`는 반품이 파트너 귀책인지(불량·오배송·표시와 다름·늦게 받음·중재에서 파트너 귀책), `keptBefore`는 앞선 취소·반품 결과의 `kept`를 더한 값(주문 기록에 쌓아 넘김). 결과에 `shipRefund`·`shipKept`·`shipKeptLines`·`kept`가 더해졌고, 마지막 건은 잔액에서 이번 공제·돌려주지 않는 처음 배송비·`keptBefore`를 뺀 금액입니다. 예: 냅킨 2박스 60,000 + 배송비 4,000, 반품 배송비 4,000 → 파트너 귀책 64,000(나눠도 30,000 + 34,000) / 단순 변심 56,000(나누면 26,000 + 26,000).
+- `GC.Policy.legalOk(key, value)` → `{ ok, dir, bound }`, `GC.Policy.meta(key).legal`(`'min'` 이율 · `'max'` 환불 기한).
+- `GC.claim.RETURN_REASONS`: LATE의 `days`는 정책값 `claim.late_return_days`, CHANGE_MIND에 `legal: true`.
+- `GC.claim.step('CLAIM_RETURN', state, 'REMAKE')` = 재제작 요청됨 · 확정본 대조 검수 중 · 재제작 승인 · 판매자 거부 · 재제작품 출고.
+- 알림 코드(C-NOTI-01 새 행 — 채널: 알림톡 · SMS 대체 · 앱 푸시 · 이메일 · 알림센터 · Slack): `NOTI_INT_CHANNEL_MESSAGE`(담당 디자이너 · — · — · — · — · ● · ○ 10분 동안 안 읽으면 묶어 1회, 협의 룸과 따로 셈), `NOTI_PARTNER_ITEM_CANCELED`(파트너 주문 담당 · ● · ● · — · — · ● · —), `NOTI_BULK_DELAY_NOTICE`(고객 · ● · ● · ● · — · ● · —), `NOTI_PARTNER_BULK_DELAY_NOTICE`(파트너 · ● · ● · — · — · ● · —), `NOTI_BIZ_STATUS_RESTORED`(고객 · ● · ● · ○ · ● · ● · —), `NOTI_RETURN_BACK_DUE`(고객 · ● · ● · ○ · ● · ● · —), `NOTI_PARTNER_RETURN_BACK`(파트너 · ● · ● · — · — · ● · —).
+- **이메일 칸의 조건 없는 ○가 없어졌습니다(⑩).** ● = `NOTI_VBANK_EXPIRED`·`NOTI_ITEM_STOCKOUT_CANCELED`·`NOTI_PAYMENT_AUTO_CANCELED`·`NOTI_PARTNER_ORDER_NEW`·`NOTI_PARTNER_ADDRESS_CHANGED`·`NOTI_PARTNER_PACKAGE_HANDED_OFF`·`NOTI_PARTNER_PRODUCTION_HOLD`, 조건 ○ = `NOTI_CLAIM_UPDATED`(거부·환불 완료 때)·`NOTI_FILE_REVIEWED`(반려 때)·`NOTI_FILE_SCAN_REJECTED`(화면을 떠났을 때)·`NOTI_PARTNER_CLAIM_NEW`(요청 접수 때 — `CLAIM_DUE`는 —)·`NOTI_PARTNER_AD_BUDGET`(결제 실패·일시 중지 때). 맡은 페이지가 이 코드를 보낼 때 채널을 표대로 맞춥니다.
+
+### 검증
+- 로컬 서버 `http://127.0.0.1:8765/`가 떠 있습니다. 끄지 마세요.
+- 흐름은 `docs/prototype-work/tools`에서 `bash runone.sh flows/<이름>.json`(PASS/FAIL 출력). 다른 에이전트 4개도 서버를 쓰므로 **동시에 2개까지만** 돌립니다. ERR_CONNECTION_REFUSED 같은 일시 오류는 한 번 더 돌려 보고 판단합니다.
+- 맡은 페이지의 기존 흐름(`flows/<페이지>-*.json`)을 모두 PASS로 만듭니다. 바뀐 규칙에 맞춰 흐름의 기대값·단계를 고치는 것은 괜찮습니다(무엇을 왜 고쳤는지 보고).
+- 새 장면마다 흐름을 추가합니다. 이름은 페이지 이름으로 시작하고 좁은 폭은 `-narrow`, 다크는 `-dark`(runone.sh가 이름으로 폭·테마를 정함).
+- 인라인 스크립트는 `node --check`로 검사합니다. 스크린샷 몇 장을 직접 열어 겹침·잘림을 봅니다.
+- 임시 스크립트는 세션 scratchpad 아래 `<페이지>_agent\` 폴더에 둡니다(다른 에이전트와 겹치지 않게).
+
+### 보고(400단어 이내)
+반영한 것(결정·맞춤 번호별) · 흐름 목록과 결과(전부 PASS인지, 새 흐름 이름, 기대값을 고친 흐름) · 판단해서 넣은 것 · 새로 찾은 명세 확인 거리(기능 ID와 함께) · 엔진 제안 · 아직 페이지 안에 남긴 정책값 상수. 커밋하지 마세요.
+
+## 1. order.html
+
+맡은 파일: `prototype/order.html` 하나.
+1. **D70 처음 배송비**: 반품 환불 미리보기·처리에서 `partialCancel`에 `fault`(반품 사유 귀책 — DEFECT·LATE·중재 파트너 귀책이면 true)와 `keptBefore`(앞선 결과 `kept`의 누적, 주문 기록에 저장)를 넘깁니다. 묶음 전부 반품이면 파트너 귀책은 ‘돌려받는 배송비(처음 낸 배송비)’ 줄을, 고객 사정은 ‘처음 배송비는 돌려드리지 않아요(판매자 몫)’를 보여 줍니다. 무료배송으로 받은 묶음을 변심으로 전부 반품하면 왕복 반품 배송비(템플릿 교환 배송비)를 뺍니다(C-PRICE-03 — 지금 편도만 뺌). 새 장면 또는 기존 반품 장면에 ‘반품 배송비 비교’(냅킨 2박스 60,000 + 배송비 4,000: 귀책 64,000 / 변심 56,000 / 나눠서 26,000 + 26,000 / 30,000 + 34,000)를 넣고, 돌려주지 않은 처음 배송비는 정산 ‘클레임 완료(+)’로 파트너 몫이라는 문장을 둡니다.
+2. **D71 거부 수량 되돌려 보내기**: 일부 승인 뒤 거부가 확정되면(이의 기한 지남·중재 거부 유지) 고객에게 [되돌려 받기](되돌림 배송비 따로 결제 — 모의 결제 단계)·[폐기]와 남은 기한(`claim.return_back_pay_days` 14일)을 보여 줍니다. 시계로 기한 3일 전 `NOTI_RETURN_BACK_DUE`, 기한이 지나면 폐기로 보고 파트너 폐기 기록과 `NOTI_PARTNER_RETURN_BACK`. 결제되면 파트너에게 `NOTI_PARTNER_RETURN_BACK` + 송장 기한(`claim.return_back_ship_bd` 2영업일). 중재에서 파트너 귀책이면 결제 없이 보냄. 지금의 ‘추가 결제라고 기록만’ 하는 부분을 바꿉니다. 반품 배송비는 일부 승인 때 한 번(지금 그대로).
+3. **⑰** 출고 지연 안내 뒤·무단 지연 뒤 고객 [바로 취소] → 파트너에게 `NOTI_PARTNER_ITEM_CANCELED`(지금 order.html의 바로 취소 갈래는 파트너 알림이 없음).
+4. **⑳** 카드 환불 지연배상금: 환불 계좌가 없는 갈래를 시연(‘반품 검수 · 환불 지연’ 장면에 토글 정도). 지연 일수는 PG 취소 성공일에 끝나 금액이 정해지고, `NOTI_REFUND_ACCOUNT_REQUIRED`로 계좌 입력을 요청해 등록되면 송금합니다. 7일 넘게 안 넣으면 한 번 더 알리고 재무 모니터링에 ‘지연배상금 송금 대기’.
+5. **㉑** 발주 확인 전(PAID)도 판정 시각을 넘기면 무단 지연 기록·알림, [바로 취소]는 따로 열지 않음(원래 즉시 취소). 모니터링 줄과 `isOverdueRec`이 ACCEPTED만 보던 것을 PAID까지. 발주 확인 리마인드·운영팀 알림은 `order.accept_remind_bd`·`order.accept_alert_bd`.
+6. **D72** 무단 지연 장면에 본사 일괄 공지 시연(공지 중에는 판정하지 않음, 끝나면 `GC.order.isOverdue({ notice })` 하루 유예, 공지 전에 이미 열린 [바로 취소]는 그대로, 시작·끝 때 고객 `NOTI_BULK_DELAY_NOTICE`). 길게 만들 필요는 없습니다.
+7. **㉒·⑫** `LOCAL.lateDays` → `claim.late_return_days`(또는 `RETURN_REASONS`의 days). `cartKeepDays`·`checkoutHoldMin`·`acceptRemindBd`·`acceptAlertBd`·`mediationBd`·`pickupBd` 등 엔진 키가 생긴 상수를 `GC.Policy.get`으로. 변심 7일·불량 기한은 법정 값 상수로 두고 주석.
+8. **⑩** 이 페이지가 보내는 알림의 이메일 채널을 표대로(`NOTI_VBANK_EXPIRED` ●, `NOTI_CLAIM_UPDATED` 거부·환불 완료 때만, `NOTI_PARTNER_CLAIM_NEW` 요청 접수 때 ●, 그 밖 위 목록).
+
+## 2. design.html + room.html
+
+맡은 파일: `prototype/design.html`, `prototype/room.html`.
+1. **D66** 생산 보류가 고객 철회·취소 중재 기각으로 풀리면 `GC.production.printDue(풀린 시각)`로 [인쇄 가능] 기한을 새로 세고 파트너 주문 담당자에게 `NOTI_PARTNER_PACKAGE_HANDED_OFF`(새 기한)를 다시 보냅니다(지금은 원래 기한 그대로라 풀리자마자 지연 알림). 보류 중 알림 멈춤은 그대로. 철회 때 파트너에게 보내던 고객 코드 `NOTI_CLAIM_WITHDRAWN`은 이 알림으로 바꿉니다. 페이지의 [인쇄 가능] 기한 계산(`startPrintCheck` 등)은 `GC.production.printDue`로.
+2. **D72** 본사 일괄 공지 토글: 공지 기간(시작·끝)을 기록하고, 공지 중에는 생산 지연 판정을 하지 않으며, 끝나면 `GC.order.afterNotice`로 ‘끝난 날 + 1영업일의 끝’까지 유예합니다(지금은 ‘저장한 판정 시각으로 다시 판정’). 공지 전에 이미 열린 [취소 요청]은 그대로. 시작·끝 때 고객 `NOTI_BULK_DELAY_NOTICE`·파트너 `NOTI_PARTNER_BULK_DELAY_NOTICE`. 흐름 `design-delay-narrow`는 ‘공지 끝 → 바로 생산 지연’을 기대하므로 공지 끝 뒤 1영업일 넘게 시계를 보내도록 고칩니다.
+3. 페이지 상수 `REMAKE_STEP`을 지우고 `GC.claim.step('CLAIM_RETURN', rc, 'REMAKE')`만 씁니다(‘재제작품 보내는 중’ → ‘재제작품 출고’).
+4. **⑯** 생산 지연 취소 요청 중 출고된 건을 승인·회수하면 디자인 요청은 COMPLETED(지금 그대로). 회수품은 파트너가 받아 폐기 확인한다는 안내를 그 갈래에 넣습니다.
+5. **room ③** 생산 협의 채널에서 파트너가 답하면 담당 디자이너에게 `NOTI_INT_CHANNEL_MESSAGE`(알림센터 바로, Slack은 10분 동안 안 읽으면 묶어 1회 — 협의 룸의 고객 메시지와 따로 셈, `notify.room_digest_minutes`). 지금 room은 파트너 답에 디자이너 알림이 없습니다.
+6. **⑫·⑩** 두 페이지의 상수 가운데 엔진 키가 생긴 것(`production.hold_reply_hours`·`claim.mediation_bd`·`design.max_first_drafts`·`design.pins_per_version_max`·`design.room_violation_alert_*`·`design.reorder_free_fixes` 등)을 `GC.Policy.get`으로, 보내는 알림의 이메일 채널을 표대로.
+
+## 3. partner.html
+
+맡은 파일: `prototype/partner.html` 하나.
+1. **D68 정지 사유 여러 개**: 한 칸(`suspendReason`)을 사유 목록(사유 · 주체 본사/시스템 · 시각 · 메모 · 해소 시각 · 해소 사유)으로 바꿉니다. 정지 중에도 본사가 사유를 더할 수 있고(지금 휴·폐업 정지 중엔 [본사 정지]가 숨음), 정기 재조회에서 휴·폐업이 나오면 사유를 더하고 대표자에게 `NOTI_PARTNER_ACCOUNT_SUSPENDED`(지금은 로그만 남기고 저장 안 함 — 아무 해제 사유로 풀면 폐업 파트너가 ACTIVE로 돌아가는 구멍). 사유별 [사유 해소](해제 사유 목록), **마지막 사유가 풀릴 때만** ACTIVE + `NOTI_PARTNER_ACCOUNT_REINSTATED` + 변경 제안 거두기 + 아래 D67. 휴·폐업 사유는 D48 그대로(재조회 정상 → MD 알림 → MD가 그 사유만 해소). 폐업은 자동 종료 없이 MD [계약 종료](종료 사유에 ‘사업자 폐업’ — 지금은 ‘기타’만 됨). 배너·처리 대기·안내에 남은 사유를 모두 보여 줍니다.
+2. **⑧** 정지·계약 종료·해소에 메모 입력 칸(200자). 정지·종료 ‘기타’면 필수, 해소 ‘기타’·‘본사 오처리 정정’이면 필수. 메모를 알림·감사 로그·배너에.
+3. **D67** 정지(또는 판매 중지)가 풀릴 때 변경 제안이 없던 디자인 확정 건([인쇄 가능] 전)도 handedAt = 풀린 시각으로 새로 세고(`GC.production.printDue`) 주문 담당자에게 `NOTI_PARTNER_PACKAGE_HANDED_OFF`(새 기한). 제안이 있던 건은 지금처럼 거두기 + `NOTI_PARTNER_CHANGE_WITHDRAWN`(한 건에 알림 하나). 지금은 제안 없던 건이 원래 기한이라 해제 직후 지연 알림이 나갑니다.
+4. **⑰** 고객 바로 취소를 알릴 때 쓰던 `NOTI_PARTNER_CLAIM_NEW` → `NOTI_PARTNER_ITEM_CANCELED`.
+5. **D72** 파트너 주문 탭 출고 기한에 본사 일괄 공지를 반영(공지 중 ‘본사 일괄 공지 — 지연으로 보지 않아요’, 끝나면 새 판정 시각), `NOTI_PARTNER_BULK_DELAY_NOTICE`. 작게.
+6. **⑫·⑩** `draft_keep_days`·`ship_info_days`·`reply_days`·`penalty_x` 등 엔진 키가 생긴 상수 → `GC.Policy.get`(`partner.apply_draft_keep_days`·`partner.shipping_info_days`·`partner.circumvent_reply_days`·`partner.circumvent_penalty_multiple`), 보내는 알림의 이메일 채널(`CH_PT_CLAIM` 등)을 표대로.
+
+## 4. member.html + benefit.html + catalog.html
+
+맡은 파일: `prototype/member.html`, `prototype/benefit.html`, `prototype/catalog.html`.
+1. **member D69** 정기 재조회 응답에 ‘휴업’을 더합니다. 휴업도 폐업처럼 ‘확인 필요’ + 30일 유예(사업자가 그대로) + 해제 예정일 알림(`NOTI_BIZ_STATUS_CHECK`). 다음 조회에서 계속사업자면 자동으로 지우고 **`NOTI_BIZ_STATUS_RESTORED`(⑪ — 지금은 알림 없이 배너만 사라짐)**, 유예가 끝나면 혜택 해제 + 알림 + 다시 인증. 세금계산서는 폐업만 ‘확인 필요’ 때부터 막고, 휴업은 발행하되 ‘세무 확인 필요’ 표시. 문구를 휴업·폐업에 맞게(휴업은 ‘영업을 다시 시작했다면 [다시 인증하기]’ — ‘새 사업자등록번호로’는 폐업에만). 결제가 끝난 주문은 결제 때 금액 그대로라는 안내 한 줄.
+2. **member ⑫** 페이지 상수 6개(`biz_verify_fail_max`·`biz_recheck_day`·`email_code_minutes`·`email_code_fail_max`·`password_rule`·`identity_daily_max`) → `member.biz_verify_fail_max`·`batch.biz_recheck_schedule`·`security.member_email_code_minutes`·`security.member_email_code_fail_max`·`security.member_password_rule`·`member.identity_daily_max`. 그 밖에 엔진 키가 생긴 상수도.
+3. **benefit ④** 디자인비 쿠폰의 최소 주문이 `design.free_threshold`(지금 값과 예약된 새 값 중 큰 값) 이상이면 승인 요청을 막습니다(지금은 경고만). 경고 문구를 오류 문구로.
+4. **catalog ⑫** `ship_days_max`·`doc_valid_months`·`detail_slice_px`·`detail_html_kb`·`detail_ver_keep` → `product.ship_lead_max_bd`·`product.doc_valid_months`·`product.detail_slice_px`·`product.detail_html_max_kb`·`product.revision_keep_months`. `detail_fold_px`(처음 1,200px)는 화면 설계 값이라 상수 그대로, 주석.
+5. **⑩** 세 페이지가 보내는 알림의 이메일 채널을 표대로.
+
+## 5. settlement.html + system.html
+
+맡은 파일: `prototype/settlement.html`, `prototype/system.html`.
+1. **settlement ⑬** ‘중재 판정’ 파트너 부담을 본사 청구 ‘분쟁 조정’으로 빼고 모자라면 미수금 — 지금 화면 동작 그대로가 명세가 됐으므로, ‘확인 필요’ 안내(명세와 다를 수 있다는 문장)를 지우고 명세 문장으로 바꿉니다. 이 문구를 검사하는 흐름(settlement-delay 등)을 고칩니다.
+2. **settlement D70** 정산 예시에 ‘클레임 완료(+) 돌려주지 않은 처음 배송비’ 한 줄(고객 사정으로 묶음을 전부 반품하면 처음 배송비가 파트너 몫으로 남음). 작게.
+3. **settlement ⑫** `recv_*`·`schedule` 상수 → `settlement.receivable_weeks`·`settlement.receivable_limit`·`settlement.receivable_pay_days`·`settlement.cycle`·`settlement.period`(2차 플랜 강등 주기는 그대로).
+4. **system 정책값 화면**: 새 키 41개쯤이 목록에 나타납니다. 새 단위(건/시간·px·KB·배·주·안·건) 값 범위를 `RANGE_UNIT`(또는 `RANGE_KEY`)에, 새 글자 값 키(`batch.biz_recheck_schedule`·`security.member_password_rule`·`design.room_link_allowlist`·`design.file_retention`·`settlement.cycle`·`settlement.period`·`search.rank_weights`·`app.min_os`)의 안내를 `TEXT_HOW`에. 페이지 상수 `LEGAL`을 `GC.Policy.meta(key).legal`·`GC.Policy.legalOk`로 바꾸고(이유 문구는 페이지에 남겨도 됨), 환불·출고 미리보기에서 다시 짠 계산을 `GC.order.overdueAt(at, nv)`·`GC.refund.dueAt(start, nv)`로. `K` 상수: `PII_MAX` → `security.pii_view_lock_per_hour`, `PRESIGN_*`·`CONVERT_MIN`은 ‘보안 고정값(키 아님)’, `NOTICE_*`는 ‘약관·계약 조항에 고정’, `NIGHT_*`는 ‘법정 값’으로 표시.
+5. **system 알림 매트릭스**: 새 코드 7개 행, 이메일 칸에 조건 없는 ○가 없어진 것을 반영(지금 ‘조건부 · 이번엔 안 보냄’으로 처리하는 곳을 조건 문구로), 이벤트 목록의 채널 값.

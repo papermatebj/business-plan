@@ -46,6 +46,8 @@
   .pol td:first-child { min-width: 9em; }
   .tbl td.tv .code { text-align: right; }
   .scan4 td:first-child { min-width: 8em; }
+  /* 정책값 키가 아닌 고정값(법정 값·약관 조항·보안 고정값): 점선 없이 근거만 작게 */
+  .fx-k { font-size: 11px; color: var(--ink-3); white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -58,33 +60,62 @@
   const { won, fmtDate } = GC;
   const esc = UI.esc, pv = UI.pv;
 
-  /* ── 엔진에 없는 정책값: 페이지 안 상수(임시 기본값) ── */
-  const K = { NOTICE_FAVOR: 7, NOTICE_UNFAVOR: 30, NIGHT_FROM: 21, NIGHT_TO: 8, PII_MAX: 100, PRESIGN_UP: 10, PRESIGN_DOWN: 5, CONVERT_MIN: 5 };
+  /* ── 정책값 키가 아닌 고정값(2026-10-17 S12 ⑫ — 키로 두지 않고 근거를 적음, 관리자 화면에서 바꾸지 않음) ──
+     NOTICE_*: 약관·계약 조항에 고정(정책·수수료·약관 변경 공지 7일, 불리하면 30일 — A-MKT-04 · P-ONB-03)
+     NIGHT_*: 법정 값(야간 21~08시 광고 수신 동의 — C-NOTI-02)
+     PRESIGN_*·CONVERT_MIN: 보안 고정값(업로드 주소 10분 · 다운로드 주소 5분 · 변환 작업 5분 — C-FILE-01)
+     개인정보 조회 몰림 기준은 엔진 키 security.pii_view_lock_per_hour로 옮김 */
+  const K = { NOTICE_FAVOR: 7, NOTICE_UNFAVOR: 30, NIGHT_FROM: 21, NIGHT_TO: 8, PRESIGN_UP: 10, PRESIGN_DOWN: 5, CONVERT_MIN: 5 };
+  const FIXED = { legal: '법정 값', terms: '약관·계약 조항에 고정', sec: '보안 고정값' };
+  const fx = (text, kind) => `<span class="fx" title="${FIXED[kind]} — 정책값 키가 아니라 운영 설정에서 바꾸지 않아요">${text}</span> <span class="fx-k">${FIXED[kind]}</span>`;
+  const piiMax = () => GC.Policy.get('security.pii_view_lock_per_hour');
+  /* 값 범위 검증용 페이지 상수(화면 설계 값)는 점선 표시 */
   const ppv = (text, label) => `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(label)} — 엔진에 없어 이 페이지 안 상수로 둔 값">${text}</span>`;
   /* 값 범위 검증(A-SYS-03 "무료 수정 0~10회" 같은 범위). 키별 → 단위별 순서로 찾음. [최소, 최대, 소수 허용] */
   const RANGE_KEY = { 'commission.default_rate': [0, 30, 1], 'commission.custom_rate': [0, 30, 1], 'commission.floor': [0, 30, 1], 'design.free_threshold': [0, 5000000, 0], 'settlement.final_holdback': [0, 50, 0], 'notify.notice_min_hours': [24, 72, 0], 'batch.stale_grace': [1, 24, 0],
     'security.login_fail_lock': [3, 10, 0], 'security.idle_logout_minutes': [5, 60, 0], 'product.addon_max': [1, 50, 0], 'promo.instant_discount_max_targets': [1, 5000, 0],
     'product.option_combo_max': [10, 500, 0], 'product.review_bd': [1, 5, 0], 'product.review_priority_hours': [1, 24, 0],
-    'order.overdue_grace_bd': [0, 5, 0] }; // 출고 지연 판정 유예(2026-10-16 D58·D59) — 0이면 약속 출고일·출고 예정일이 끝나자마자
-  /* 법정 값(2026-10-16 D57 · 법률 자문 전 초안): 고객에게 불리한 쪽으로는 저장을 막음. 기준은 엔진 기본값(명세의 법정 값).
-     dir 'min' = 기본값보다 낮추면 불리(지연배상금 이율), 'max' = 기본값보다 늘리면 불리(환불 기한) */
-  const LEGAL = {
-    'claim.refund_delay_rate': { dir: 'min', why: '지연배상금 이율은 법정 값이라 고객에게 불리하게 낮출 수 없어요' },
-    'claim.refund_due_bd': { dir: 'max', why: '환불 기한은 법정 값이라 늘리면 고객이 환불을 늦게 받아 불리해요' },
+    'order.overdue_grace_bd': [0, 5, 0], // 출고 지연 판정 유예(2026-10-16 D58·D59) — 0이면 약속 출고일·출고 예정일이 끝나자마자
+    // 2026-10-17 S12 새 키: 단위 기본 범위가 맞지 않는 것만
+    'security.member_login_fail_lock': [3, 10, 0], 'security.member_email_code_fail_max': [3, 10, 0], 'security.member_email_code_minutes': [3, 30, 0],
+    'member.biz_verify_fail_max': [1, 10, 0], 'member.identity_daily_max': [1, 20, 0], 'member.address_max': [5, 50, 0], 'design.pins_per_version_max': [5, 100, 0],
+    'claim.return_back_pay_days': [4, 60, 0] }; // 되돌려 받기 기한: 3일 전에 한 번 더 알리므로(P-ORD-05) 4일 이상
+  /* 법정 값(2026-10-16 D57 · 법률 자문 전 초안): 고객에게 불리한 쪽으로는 저장을 막음. 방향·기준은 엔진 GC.Policy.meta(key).legal · GC.Policy.legalOk(2026-10-17 S12).
+     'min' = 기본값보다 낮추면 불리(지연배상금 이율), 'max' = 기본값보다 늘리면 불리(환불 기한). 아래는 이유 문구만 */
+  const LEGAL_WHY = {
+    'claim.refund_delay_rate': '지연배상금 이율은 법정 값이라 고객에게 불리하게 낮출 수 없어요',
+    'claim.refund_due_bd': '환불 기한은 법정 값이라 늘리면 고객이 환불을 늦게 받아 불리해요',
   };
-  const legalBad = (key, v) => { const L = LEGAL[key]; if (!L || Number.isNaN(v)) return false; const d = meta(key).def; return L.dir === 'min' ? v < d : v > d; };
-  const legalMsg = (key) => `${LEGAL[key].why}(법정 ${fmtV(key, meta(key).def)} · 법률 자문 전 초안). 자문 답으로 법정 값이 바뀌면 기본값부터 고쳐요.`;
-  const RANGE_UNIT = { '%': [0, 100, 1], '%p': [0, 10, 1], '원': [0, 10000000, 0], '원/월': [0, 1000000, 0], '일': [1, 365, 0], '영업일': [1, 30, 0], '영업시간': [1, 40, 0], '시간': [0, 168, 0], '회': [0, 10, 0], '개월': [1, 60, 0], '세': [14, 40, 0], '개': [1, 10, 0], '장/월': [0, 30, 0], '장': [1, 200, 0], '분': [1, 60, 0], '자': [8, 64, 0], 'MB': [1, 2000, 0] };
+  const legalDir = (key) => (meta(key) || {}).legal || null;
+  const legalBad = (key, v) => !Number.isNaN(v) && !GC.Policy.legalOk(key, v).ok;
+  const legalMsg = (key, v) => {
+    const r = v == null ? {} : GC.Policy.legalOk(key, v); const bound = r.bound != null ? r.bound : meta(key).def; // 기준 = 엔진 기본값(명세의 법정 값)
+    const why = LEGAL_WHY[key] || `법정 값이라 고객에게 불리하게 ${legalDir(key) === 'min' ? '낮출' : '늘릴'} 수 없어요`;
+    return `${why}(법정 ${fmtV(key, bound)} · 법률 자문 전 초안). 자문 답으로 법정 값이 바뀌면 기본값부터 고쳐요.`;
+  };
+  const RANGE_UNIT = { '%': [0, 100, 1], '%p': [0, 10, 1], '원': [0, 10000000, 0], '원/월': [0, 1000000, 0], '일': [1, 365, 0], '영업일': [1, 30, 0], '영업시간': [1, 40, 0], '시간': [0, 168, 0], '회': [0, 10, 0], '개월': [1, 60, 0], '세': [14, 40, 0], '개': [1, 10, 0], '장/월': [0, 30, 0], '장': [1, 200, 0], '분': [1, 60, 0], '자': [8, 64, 0], 'MB': [1, 2000, 0],
+    // 2026-10-17 S12 새 단위
+    '건/시간': [20, 1000, 0], 'px': [1000, 10000, 0], 'KB': [50, 1000, 0], '배': [1, 10, 1], '주': [1, 12, 0], '안': [1, 5, 0], '건': [1, 50, 0] };
   /* 문자열 값(엔진 text: true)은 숫자 편집 칸 대신 보기만. 실제로 어디서 넣는지 안내 */
   const TEXT_HOW = { 'calendar.holidays': '관리자 화면의 공휴일 달력에서 등록', 'calendar.business_hours': '요일·시간대로 입력(이 화면은 보기만)', 'notify.ad_send_hours': '카카오 정책을 확인한 뒤 입력', 'claim.tolerance': '수량 %·위치 mm 두 값 · 상품마다 더 엄격하게만 정해요(이 화면은 기본값 보기만)', 'product.option_extra_range': '내림 %·올림 % 두 값(기본가 대비) · 상품 등록 때 이 범위로 검증(이 화면은 보기만)',
-    'product.price_change_alert': '직전 가격 대비 변화율 두 값 — −50%는 절반 이하, +200%는 3배 이상이면 오입력 경고 · 사업자가 변경도 같은 기준(이 화면은 보기만)' };
+    'product.price_change_alert': '직전 가격 대비 변화율 두 값 — −50%는 절반 이하, +200%는 3배 이상이면 오입력 경고 · 사업자가 변경도 같은 기준(이 화면은 보기만)',
+    // 2026-10-17 S12 새 글자 값 키
+    'batch.biz_recheck_schedule': '날짜·시각(한국 시간)으로 배치 일정에 등록 · 회원·파트너 정기 재조회가 같은 일정을 써요(이 화면은 보기만)',
+    'security.member_password_rule': '길이 범위·조합 종류 두 값 · 다음 가입·비밀번호 변경 때부터 따져요(이 화면은 보기만)',
+    'design.room_link_allowlist': '도메인 목록에서 더하고 빼요 · 목록 밖 링크는 협의 룸 대화·핀 코멘트에서 가려요(이 화면은 보기만)',
+    'design.file_retention': '기준 시점(마지막 주문)·기간 두 값 · 확정 스냅샷·동의 기록 5년은 법정 보관이라 따로예요(이 화면은 보기만)',
+    'settlement.cycle': '마감·확정·지급 요일 셋 · 연휴면 지급일 전 영업일까지 확정, 지급일이 공휴일이면 앞 영업일(이 화면은 보기만)',
+    'settlement.period': '시작 요일·시각(한국 시간) · 이벤트는 기록될 때 열려 있는 주기에 들어가요(이 화면은 보기만)',
+    'search.rank_weights': '항목별 가중치 · 값은 오픈 전에 정하고, 리뷰·출고 준수율은 2차에 켜요(이 화면은 보기만)',
+    'app.min_os': '플랫폼별 버전 두 값 · 그보다 낮으면 실행 때 안내(이 화면은 보기만)' };
   /* 영향이 큰 값(수수료·디자인비·환불 기준): 최고관리자 승인 + 공지. cost=올리면 불리, benefit=내리면 불리 */
   const HIGH = {};
   ['commission.default_rate', 'commission.custom_rate', 'commission.floor', 'design.fee', 'design.multi_item_fee', 'design.free_threshold', 'design.extra_revision_fee', 'design.source_file_fee', 'design.own_file_fix_fee', 'membership.price_monthly', 'membership.price_yearly', 'partner.circumvent_penalty_min'].forEach((k) => { HIGH[k] = 'cost'; });
   ['commission.plan_discount_pro', 'commission.plan_discount_premium', 'commission.new_partner_discount', 'commission.reorder_discount'].forEach((k) => { HIGH[k] = 'benefit'; });
   ['claim.cancel_auto_approve_bd', 'claim.return_ship_days', 'claim.inspect_bd', 'claim.objection_days', 'order.overdue_grace_bd'].forEach((k) => { HIGH[k] = 'neutral'; });
-  // 환불 기준(2026-10-16 D57): 기한은 늘리면 불리, 지연배상금 이율은 낮추면 불리(둘 다 법정 값이라 불리한 쪽은 LEGAL이 막음)
+  // 환불 기준(2026-10-16 D57): 기한은 늘리면 불리, 지연배상금 이율은 낮추면 불리(둘 다 법정 값이라 불리한 쪽은 GC.Policy.legalOk가 막음)
   HIGH['claim.refund_due_bd'] = 'cost'; HIGH['claim.refund_delay_rate'] = 'benefit';
+  HIGH['partner.circumvent_penalty_multiple'] = 'cost'; // 2026-10-17 위약금 키를 배수·최소액으로 나눔 — 최소액과 같게 영향 큰 값(계약 버전에 고정)
   const IMPACT = [
     [/^design\.free_threshold$/, '주문서·맞춤 제작 화면의 "디자인비 무료" 판정이 바뀌어요. 적용 시작 이후 결제한 주문부터 쓰고, 이미 결제한 주문은 결제 때 정한 디자인비를 유지해요.'],
     [/^design\./, '디자인 요청의 비용·횟수·기한 계산이 바뀌어요. 진행 중인 디자인 요청은 시작 시점 값을 유지해요.'],
@@ -92,12 +123,17 @@
     [/^order\.auto_confirm_days$/, '자동 구매 확정일이 바뀌면 정산 이벤트가 생기는 날, 곧 정산 시점이 달라져요.'],
     [/^order\.overdue_grace_bd$/, '출고 지연 판정 시각(약속 출고일·출고 예정일 + 이 기간, 그날 끝)이 바뀌어요. 지나면 일반 상품·추가 구성품은 고객 [바로 취소](무단 지연 기록), 맞춤 제작은 [취소 요청](생산 지연 취소, 본사 중재)이 열리고 고객 NOTI_SHIP_OVERDUE·NOTI_PRODUCTION_OVERDUE, 파트너 NOTI_PARTNER_SHIP_OVERDUE가 가요. 판정 시각은 출고일이 정해질 때 저장하므로 이미 정해진 주문은 그대로예요.'],
     [/^claim\.refund_due_bd$/, '환불 기한이 바뀌어요(반품은 회수 완료 뒤, 출고 전 취소·확정 후 취소·생산 지연 취소는 승인·확정 뒤부터). 기한은 환불할 일이 생길 때 저장하므로 이미 저장된 기한은 그대로이고, 기한 전날·넘김 때 재무에게 NOTI_INT_REFUND_DUE·NOTI_INT_REFUND_OVER가 가요. 검수 기한(claim.inspect_bd)보다 길어야 해요.'],
-    [/^claim\.refund_delay_rate$/, '환불 기한을 넘긴 건의 지연배상금(환불액 × 연 이율 × 지연 일수 ÷ 365, 원 단위 내림)이 바뀌어요. 늦게 만든 쪽이 내고, 파트너 거부가 중재에서 뒤집힌 건은 정산 ‘중재 판정’ 이벤트로 빼요.'],
+    [/^claim\.refund_delay_rate$/, '환불 기한을 넘긴 건의 지연배상금(환불액 × 연 이율 × 지연 일수 ÷ 365, 원 단위 내림)이 바뀌어요. 늦게 만든 쪽이 내고, 파트너 거부가 중재에서 뒤집힌 건은 그 파트너 정산에서 본사 청구 ‘분쟁 조정’(정산서 ‘중재 판정’ 줄)으로 빼요.'],
+    [/^claim\.return_back_/, '검수 거부 수량을 되돌려 보내는 기한이 바뀌어요(P-ORD-05). 고르는 기한 3일 전에 고객에게 NOTI_RETURN_BACK_DUE를 한 번 더 보내고, 지나면 폐기로 봐 파트너에게 NOTI_PARTNER_RETURN_BACK이 가요. 이미 거부가 확정된 건은 확정 때 계산한 기한을 유지해요.'],
+    [/^order\.accept_(remind|alert)_bd$/, '발주 확인을 기다리는 동안 파트너 리마인드(NOTI_PARTNER_ACCEPT_LATE)와 운영팀 알림이 나가는 시점이 바뀌어요. 자동 취소는 없어요. 리마인드가 운영팀 알림보다 먼저여야 해요.'],
     [/^(order|payment|claim)\./, '주문·클레임 자동 처리 기한이 바뀌어요. 이미 열린 클레임은 열릴 때 값을 유지해요.'],
     [/^settlement\./, '주간 정산 계산이 바뀌어요. 이미 확정된 정산에는 쓰지 않아요.'],
     [/^notify\.notice_min_hours$/, '디자인 무응답 보류·자동 취소가 예고를 보낸 뒤 이 시간이 지나야 처리돼요(D-ROOM-07). 예고 시각은 건마다 저장해요.'],
     [/^batch\./, '배치 지연 알림(NOTI_INT_BATCH_STALE)이 나가는 시점이 바뀌어요.'],
+    [/^security\.member_/, '고객 이메일 회원의 로그인·인증 규칙이 바뀌어요(U-MEM-02). 관리자·파트너 규칙과는 따로예요. 이미 잠긴 계정·보낸 인증번호는 그때 값을 유지해요.'],
+    [/^security\.pii_view_lock_per_hour$/, '관리자 계정의 개인정보 조회 몰림 잠금 기준(1시간 조회 건수)이 바뀌어요(C-SEC-01). 이 화면 감사 로그 탭의 잠금 시연에 바로 반영돼요.'],
     [/^security\./, '관리자 화면과 파트너 센터의 로그인 규칙이 함께 바뀌어요(C-SEC-01). 비밀번호 길이는 다음 비밀번호 변경 때부터 따져요.'],
+    [/^production\./, '생산 보류 답변·[인쇄 가능] 확인 같은 생산 기한 계산이 바뀌어요. 이미 전달·요청된 건은 그때 계산한 기한을 유지해요.'],
     [/^file\.max_size_/, '업로드 주소(presigned POST)의 크기 조건이 바뀌어요. 이미 올린 파일은 그대로 두고 새로 올리는 파일부터 써요. 이 화면 파일 처리 탭에 바로 반영돼요.'],
     [/^file\./, '파일 악성코드 검사의 시간 초과 판단이 바뀌어요. 이 화면 파일 처리 탭에 바로 반영돼요.'],
     [/^product\.review_/, '본사 상품 검수의 처리 목표가 바뀌어요. 넘기면 검수 담당·팀장에게 NOTI_INT_PRODUCT_REVIEW_LATE가 가요. 이미 검수 대기 중인 상품은 들어올 때 계산한 기한을 유지해요.'],
@@ -108,7 +144,7 @@
     [/^partner\.onboard_/, '입점 심사 단계별 처리 목표와 파트너 센터 진행 화면의 예상 소요 기간이 바뀌어요. 이미 접수된 신청은 접수 때 값을 써요.'],
     [/^(member|partner)\./, '가입·입점 조건이 바뀌어요. 이미 접수된 신청은 접수 때 값을 써요.'],
   ];
-  const PAGES = [[/^design\.|^production\./, 'design.html', '맞춤 디자인'], [/^commission\.|^settlement\./, 'settlement.html', '정산'], [/^(order|claim|payment)\./, 'order.html', '주문·결제'], [/^(promo|membership)\./, 'benefit.html', '쿠폰·멤버십'], [/^member\./, 'member.html', '회원·인증'], [/^partner\.|^security\./, 'partner.html', '파트너 입점'], [/^product\./, 'catalog.html', '상품·카탈로그'], [/^notify\.notice_min_hours$/, 'room.html', '협의 룸'], [/^notify\./, '#', '이 화면 알림 탭'], [/^file\.max_size_chat$/, 'room.html', '협의 룸'], [/^file\./, '#', '이 화면 파일 처리 탭']];
+  const PAGES = [[/^design\.|^production\./, 'design.html', '맞춤 디자인'], [/^commission\.|^settlement\./, 'settlement.html', '정산'], [/^(order|claim|payment)\./, 'order.html', '주문·결제'], [/^(promo|membership)\./, 'benefit.html', '쿠폰·멤버십'], [/^member\.|^security\.member_/, 'member.html', '회원·인증'], [/^security\.pii_/, '#', '이 화면 감사 로그 탭'], [/^partner\.|^security\./, 'partner.html', '파트너 입점'], [/^product\./, 'catalog.html', '상품·카탈로그'], [/^notify\.notice_min_hours$/, 'room.html', '협의 룸'], [/^notify\./, '#', '이 화면 알림 탭'], [/^file\.max_size_chat$/, 'room.html', '협의 룸'], [/^file\./, '#', '이 화면 파일 처리 탭']];
   const REASONS = ['오픈 프로모션: 맞춤 주문 문턱 낮추기', '최근 4주 운영 데이터 반영', '법률 자문 결과 반영'];
 
   /* ── 권한 (A-SYS-01 표 그대로) ── */
@@ -140,29 +176,43 @@
   const SECS = ['정책값', '권한', '알림', '감사 로그', '파일 처리'];
   const SEC_SLUG = { '정책값': 'policies', '권한': 'roles', '알림': 'notifications', '감사 로그': 'audit', '파일 처리': 'files' };
 
-  /* ── 알림 이벤트 (C-NOTI-01에서 발췌) ── */
+  /* ── 알림 이벤트 (C-NOTI-01에서 발췌 · 채널은 표 그대로) ──
+     2026-10-17 S12 ⑩: 이메일·Slack 칸에는 조건 없는 ○가 없음(이메일 ● = 돈·계약·결과처럼 기록이 남아야 하는 알림, — = 진행 안내·기한 리마인드).
+     앱 푸시 칸의 조건 없는 ○ = 앱 설치·알림 권한이 있을 때 */
   const EVENTS = [
     { code: 'NOTI_ORDER_PAID', label: '주문·결제 완료', to: '고객', ch: ['●', '●', '●', '●', '●', '—'], tab: '주문·배송', target: 'GC-20261012-0412', msg: '주문·결제가 완료됐어요' },
     { code: 'NOTI_SHIPPED', label: '출고(송장 등록)', to: '고객', ch: ['●', '●', '●', '—', '●', '—'], tab: '주문·배송', target: 'GC-20261012-0412', msg: '상품이 출고됐어요 · 배송 조회' },
     // 2026-10-16 취소·환불(D57·D58·D59) — 채널은 C-NOTI-01 표 그대로
     { code: 'NOTI_SHIP_OVERDUE', label: '안내 없는 출고 지연(약속 출고일 다음 영업일까지 송장 없음 · 바로 취소)', to: '고객', ch: ['●', '●', '●', '—', '●', '—'], tab: '주문·배송', target: 'GC-20261012-0412', msg: '약속한 출고일이 지났어요 · 바로 취소할 수 있어요' },
     { code: 'NOTI_PRODUCTION_OVERDUE', label: '맞춤 제작 생산 지연(출고 예정일 다음 영업일까지 송장 없음 · 취소 요청)', to: '고객', ch: ['●', '●', '●', '—', '●', '—'], tab: '주문·배송', target: 'GC-20260921-0288', msg: '맞춤 제작이 출고 예정일을 넘겼어요 · [취소 요청]을 할 수 있어요' },
+    // 2026-10-17 S12 D72 — 본사 일괄 공지(지연 예외 기간) 시작·끝
+    { code: 'NOTI_BULK_DELAY_NOTICE', label: '본사 일괄 공지 지연 시작·끝(지연 예외 기간 · 끝 때는 다시 판정하는 시각 안내)', to: '고객', ch: ['●', '●', '●', '—', '●', '—'], tab: '공지', target: '지연 예외 기간 DX-1019', msg: '택배사 사정으로 출고가 늦어지고 있어요 · 이 기간에는 지연으로 보지 않아요' },
     { code: 'NOTI_REFUND_DELAY_PAID', label: '환불 지연배상금 지급', to: '고객', ch: ['●', '●', '●', '●', '●', '—'], tab: '주문·배송', target: 'GC-20260914-0151', msg: '환불이 늦어져 지연배상금을 환불 계좌로 보냈어요', draft: true },
+    // 2026-10-17 S12 D71 — 검수 거부 수량 되돌려 받기
+    { code: 'NOTI_RETURN_BACK_DUE', label: '반품 검수 거부 수량 되돌려 받기 안내(거부 확정 · 결제 · 기한 3일 전 · 폐기 예정)', to: '고객', ch: ['●', '●', '○', '●', '●', '—'], tab: '주문·배송', target: 'GC-20261009-0533', msg: '검수에서 거부된 수량을 [되돌려 받기]나 [폐기]로 골라 주세요', draft: true },
     { code: 'NOTI_DELIVERED', label: '배송 완료', to: '고객', ch: ['○ 앱 푸시 못 받을 때', '—', '●', '—', '●', '—'], lazy: true, tab: '주문·배송', target: 'GC-20261012-0412', msg: '배송이 완료됐어요 · 7일 뒤 자동 구매 확정' },
+    // 2026-10-17 S12 D69 ⑪ — 사업자 '확인 필요' 자동 해제
+    { code: 'NOTI_BIZ_STATUS_RESTORED', label: '사업자 상태 재조회 결과 다시 계속사업자(‘확인 필요’ 해제 · 사업자가 그대로)', to: '고객', ch: ['●', '●', '○', '●', '●', '—'], tab: '공지', target: 'BV-1088', msg: '사업자 상태가 다시 계속사업자로 확인돼 ‘확인 필요’ 표시를 지웠어요' },
     { code: 'NOTI_DESIGN_PROPOSED', label: '시안 도착', to: '고객', ch: ['●', '●', '●', '●', '●', '—'], tab: '디자인', target: 'DR-24118', msg: '시안 v2가 도착했어요' },
     { code: 'NOTI_ROOM_MESSAGE', label: '협의 룸 새 메시지', to: '고객', ch: ['○ 10분 동안 안 읽으면 묶어 1회', '—', '● 앱 밖에 있을 때', '—', '●', '—'], tab: '디자인', target: 'DR-24118', msg: '디자이너가 메시지를 보냈어요' },
     { code: 'NOTI_DESIGN_REMIND', label: '무응답 리마인드(3일)', to: '고객', ch: ['●', '●', '●', '—', '●', '—'], lazy: true, tab: '디자인', target: 'DR-24118', msg: '시안 확인을 기다리고 있어요 (3일째)' },
     { code: 'NOTI_DESIGN_AUTO_CANCELED', label: '디자인 자동 취소(30일)', to: '고객', ch: ['●', '●', '●', '●', '●', '—'], tab: '디자인', target: 'DR-24118', msg: '응답이 없어 디자인 요청이 자동 취소됐어요 · 공제·환불 내역' },
-    { code: 'NOTI_FILE_SCAN_REJECTED', label: '올린 파일 검사 결과(악성코드 발견·검사 불가)', to: '고객', ch: ['●', '●', '●', '○', '●', '—'], tab: '디자인', target: 'u/2026/10/파일 키', msg: '올린 파일을 쓸 수 없어 다시 올려 주셔야 해요' },
-    { code: 'NOTI_PARTNER_ORDER_NEW', label: '신규 주문', to: '파트너', ch: ['●', '●', '—', '○', '●', '—'], target: 'GC-20261012-0412', msg: '신규 주문이 들어왔어요' },
+    { code: 'NOTI_FILE_SCAN_REJECTED', label: '올린 파일 검사 결과(악성코드 발견·검사 불가)', to: '고객', ch: ['●', '●', '●', '○ 화면을 떠났을 때', '●', '—'], tab: '디자인', target: 'u/2026/10/파일 키', msg: '올린 파일을 쓸 수 없어 다시 올려 주셔야 해요' },
+    { code: 'NOTI_PARTNER_ORDER_NEW', label: '신규 주문', to: '파트너', ch: ['●', '●', '—', '●', '●', '—'], target: 'GC-20261012-0412', msg: '신규 주문이 들어왔어요' },
     { code: 'NOTI_PARTNER_SHIP_OVERDUE', label: '출고 기한 넘김(안내 없는 지연은 무단 지연 기록 · 맞춤은 생산 지연)', to: '파트너', ch: ['●', '●', '—', '—', '●', '—'], target: 'GC-20261012-0412', msg: '약속 출고일 다음 영업일까지 송장이 없어요 · 고객이 바로 취소(맞춤 제작은 취소 요청)할 수 있어요' },
-    { code: 'NOTI_PARTNER_PACKAGE_HANDED_OFF', label: '인쇄 파일 도착', to: '파트너', ch: ['●', '●', '—', '○', '●', '—'], target: 'DR-24118', msg: '인쇄 파일이 도착했어요' },
+    // 2026-10-17 S12 ⑰·D72·D71 — 파트너 주문 담당자
+    { code: 'NOTI_PARTNER_ITEM_CANCELED', label: '발주 확인 뒤 고객 바로 취소(출고 지연 안내 뒤 · 안내 없는 지연 뒤 · 송장 등록 막힘)', to: '파트너 주문 담당자', ch: ['●', '●', '—', '—', '●', '—'], target: 'GC-20261012-0412', msg: '고객이 주문 항목을 바로 취소했어요 · 송장을 등록하지 마세요' },
+    { code: 'NOTI_PARTNER_BULK_DELAY_NOTICE', label: '본사 일괄 공지 지연 시작·끝(끝 때는 다시 판정하는 시각 안내)', to: '파트너 주문 담당자', ch: ['●', '●', '—', '—', '●', '—'], target: '지연 예외 기간 DX-1019', msg: '본사 일괄 공지 기간이에요 · 이 기간에는 지연으로 보지 않아요' },
+    { code: 'NOTI_PARTNER_RETURN_BACK', label: '거부 수량 되돌려 보내기 요청(되돌림 배송비 결제됨 · 송장 기한) · 폐기 확정', to: '파트너 주문 담당자', ch: ['●', '●', '—', '—', '●', '—'], target: 'GC-20261009-0533', msg: '고객이 되돌림 배송비를 냈어요 · 송장 기한 안에 거부 수량을 보내 주세요', draft: true },
+    { code: 'NOTI_PARTNER_PACKAGE_HANDED_OFF', label: '인쇄 파일 도착(생산 보류·정지가 풀려 다시 전달한 것으로 볼 때 포함 · 새 [인쇄 가능] 기한)', to: '파트너', ch: ['●', '●', '—', '●', '●', '—'], target: 'DR-24118', msg: '인쇄 파일이 도착했어요 · [인쇄 가능] 확인 기한은 지금부터 새로 시작해요' },
     { code: 'NOTI_PARTNER_CHANGE_WITHDRAWN', label: '제작 파트너 변경 제안 거둠 · 이어서 제작', to: '파트너 주문 담당자', ch: ['●', '●', '—', '●', '●', '—'], target: 'GC-20261012-0412', msg: '제작 파트너 변경 제안을 거뒀어요 · 이어서 만들어 주세요([인쇄 가능] 확인 기한은 지금부터 새로 셈)' },
     { code: 'NOTI_PARTNER_PAYOUT_DONE', label: '지급 완료', to: '파트너', ch: ['○ 지급 완료·실패', '○', '—', '●', '●', '—'], target: 'ST-2026-W42', msg: '이번 주 정산금을 지급했어요' },
     { code: 'NOTI_INT_SLA_OVER', label: 'SLA 초과', to: '담당 디자이너 · 디자인 리드', ch: ['—', '—', '—', '—', '●', '●'], target: 'DR-24118', msg: '첫 시안 SLA를 넘겼어요' },
     { code: 'NOTI_INT_ROOM_MESSAGE', label: '협의 룸 고객 메시지', to: '담당 디자이너', ch: ['—', '—', '—', '—', '●', '○ 10분 동안 안 읽으면 묶어 1회'], target: 'DR-24118', msg: '고객이 협의 룸에 메시지를 보냈어요' },
+    // 2026-10-17 S12 ③ — 생산 협의 채널 파트너 메시지(협의 룸과 읽음·묶음을 따로 셈)
+    { code: 'NOTI_INT_CHANNEL_MESSAGE', label: '생산 협의 채널 파트너 메시지(사양 답변 · 판 제작 증빙 회신)', to: '담당 디자이너', ch: ['—', '—', '—', '—', '●', '○ 10분 동안 안 읽으면 묶어 1회'], target: 'DR-24118 생산 협의', msg: '파트너가 생산 협의 채널에 답했어요' },
     { code: 'NOTI_INT_ONBOARD_NEW', label: '입점 신청 접수', to: '운영팀 · 담당 MD', ch: ['—', '—', '—', '—', '●', '●'], target: 'PA-0412', msg: '새 입점 신청이 들어왔어요' },
-    { code: 'NOTI_INT_PARTNER_BIZ_RESUMED', label: '정지 파트너 사업자 상태 정상(정기 조회)', to: '담당 MD', ch: ['—', '—', '—', '—', '●', '●'], target: '파트너 대성포장', msg: '휴·폐업으로 정지한 파트너가 계속사업자로 확인됐어요 · 다른 정지 사유를 본 뒤 [정지 해제]' },
+    { code: 'NOTI_INT_PARTNER_BIZ_RESUMED', label: '정지 파트너 사업자 상태 정상(정기 조회)', to: '담당 MD', ch: ['—', '—', '—', '—', '●', '●'], target: '파트너 대성포장', msg: '휴·폐업으로 정지한 파트너가 계속사업자로 확인됐어요 · 그 사유만 [사유 해소] · 다른 정지 사유가 남아 있으면 정지 그대로' },
     { code: 'NOTI_INT_BIZ_VERIFY_NEW', label: '사업자 인증 수동 검토 대기', to: '운영팀(사업자 인증 담당)', ch: ['—', '—', '—', '—', '●', '—'], target: 'BV-1088', msg: '사업자 인증 수동 검토 건이 들어왔어요' },
     { code: 'NOTI_INT_BIZ_VERIFY_LATE', label: '사업자 인증 수동 검토 처리 목표 초과', to: '운영팀(사업자 인증 담당)', ch: ['—', '—', '—', '—', '●', '—'], target: 'BV-1088', msg: '사업자 인증 수동 검토가 처리 목표를 넘겼어요' },
     { code: 'NOTI_INT_PRODUCT_REVIEW_LATE', label: '상품 검수 기한 초과', to: '검수 담당 MD · 팀장', ch: ['—', '—', '—', '—', '●', '●'], target: 'PRD-30217', msg: '상품 검수가 처리 목표를 넘겼어요' },
@@ -187,7 +237,7 @@
   /* 파일 종류(C-FILE-01 표 · 2026-10-15 크기 키 나눔 · 2026-10-16 인쇄 원본 AI·PDF로 좁힘). 크기는 정책값 키, 장수는 명세 값 */
   const KINDS = {
     chat: { name: '협의 룸·생산 협의 채널 첨부', short: '룸·채널 첨부', fmt: ['AI', 'PDF', 'PSD', 'PNG', 'JPG', 'SVG'], key: 'file.max_size_chat', keep: '룸 기록과 같이: 분쟁 기록 3년 · 계약·확정 기록 5년' },
-    original: { name: '인쇄 원본(디자이너, D-ROOM-03)', short: '인쇄 원본', fmt: ['AI', 'PDF'], extra: '+ 미리보기 PNG', key: 'file.max_size_original', keep: '확정 디자인: 마지막 주문 후 3년(확정 스냅샷·동의 기록 5년) · 미확정·취소: 취소 후 1년' },
+    original: { name: '인쇄 원본(디자이너, D-ROOM-03)', short: '인쇄 원본', fmt: ['AI', 'PDF'], extra: '+ 미리보기 PNG', key: 'file.max_size_original', keep: () => `확정 디자인: ${pv('design.file_retention')}(확정 스냅샷·동의 기록 5년) · 미확정·취소: 취소 후 1년` }, // 보관 기간은 정책값(2026-10-17 S12 ⑫)
     own: { name: '고객 자체 인쇄 파일', short: '자체 인쇄 파일', fmt: ['AI', 'PDF', 'PSD', 'SVG', 'PNG', 'JPG'], extra: '래스터는 300dpi 이상 검수', key: 'file.max_size_original', keep: '인쇄 원본과 같음' },
     logo: { name: '고객 로고(D-REQ-02·03)', short: '고객 로고', fmt: ['AI', 'PDF', 'SVG', 'PNG', 'JPG'], key: 'file.max_size_logo', count: '1개', keep: '디자인 요청과 같음' },
     ref: { name: '참고 파일(참고 이미지 — AI·PDF·SVG 포함)', short: '참고 파일', fmt: ['AI', 'PDF', 'PNG', 'JPG', 'SVG'], key: 'file.max_size_image', per: true, count: '최대 10장', keep: '디자인 요청과 같음' },
@@ -199,7 +249,7 @@
   const limitHtml = (kind) => { const k = KINDS[kind]; return `${k.per ? '장당 ' : ''}${pv(k.key)}${k.count ? ` · ${k.count}` : ''}`; };
   /* 올린 사람에게 보내는 검사 결과 알림(발견·검사 불가 같은 코드, C-FILE-01 · C-NOTI-01) */
   const SCAN_NOTI = {
-    '고객': { code: 'NOTI_FILE_SCAN_REJECTED', to: '고객(올린 사람)', ch: ['알림톡', '앱 푸시', '알림센터'] },
+    '고객': { code: 'NOTI_FILE_SCAN_REJECTED', to: '고객(올린 사람)', ch: ['알림톡', '앱 푸시', '알림센터', '이메일(화면을 떠났을 때)'] },
     '파트너': { code: 'NOTI_PARTNER_FILE_SCAN_REJECTED', to: '파트너(올린 사람)', ch: ['파트너 센터 알림센터', '이메일(화면을 떠났을 때)'] },
     '디자이너': { code: 'NOTI_INT_FILE_SCAN_REJECTED', to: '올린 디자이너', ch: ['관리자 알림센터'] },
   };
@@ -260,7 +310,7 @@
     domain: 'system',
     title: '운영 설정',
     lede: '금액·요율·기한 같은 운영 숫자는 코드에 박지 않고 관리자가 바꿉니다. 여기서 바꾼 값은 이 브라우저에 저장돼 다른 도메인 화면 계산에 바로 쓰여요. 역할별 권한, 알림 발송 규칙, 개인정보 접근 기록, 올린 파일의 격리 변환도 함께 봅니다.',
-    meta: '근거: 기능 명세서 A-SYS-01~03 · C-NOTI-01·02 · C-FILE-01 · C-SEC-01 · U-MY-06 · 기획서 실행 앱 구성(convert) · 2026-10-16 D57~D59(출고 지연 유예·환불 기한·지연배상금 정책값과 알림)',
+    meta: '근거: 기능 명세서 A-SYS-01~03 · C-NOTI-01·02 · C-FILE-01 · C-SEC-01 · U-MY-06 · 기획서 실행 앱 구성(convert) · 2026-10-16 D57~D59(출고 지연 유예·환불 기한·지연배상금 정책값과 알림) · 2026-10-17 S12(⑫ 새 정책값 키·법정 값 방향, ⑩ 이메일 칸 조건, 새 알림 코드 7개)',
     actors: [
       { id: 'hq', nav: SECS, navOn: '정책값', url: 'admin.sikup.co.kr/settings', place: '통합 관리자 · 역할별 권한으로 접속' },
       { id: 'system' },
@@ -315,8 +365,8 @@
   const weekStart = (d) => { const x = startOfDay(d); return x.getTime() - ((x.getDay() + 6) % 7) * GC.DAY; };
   const next8 = (at) => { const d = new Date(at); if (d.getHours() >= K.NIGHT_TO) d.setDate(d.getDate() + 1); d.setHours(K.NIGHT_TO, 0, 0, 0); return d; };
   const inflight = () => !!S().edit || ['PENDING', 'SCHEDULED'].includes(app.state('policy'));
-  /* 법정 값(LEGAL)은 기본값이 고객에게 불리한 쪽의 끝: 이율은 하한, 환불 기한은 상한 */
-  const rangeOf = (key) => { const r = RANGE_KEY[key] || RANGE_UNIT[meta(key).unit] || [0, 1e9, 0]; const L = LEGAL[key]; if (!L) return r; const d = meta(key).def; return L.dir === 'min' ? [Math.max(r[0], d), r[1], r[2]] : [r[0], Math.min(r[1], d), r[2]]; };
+  /* 법정 값(엔진 meta.legal)은 기본값이 고객에게 불리한 쪽의 끝: 이율은 하한, 환불 기한은 상한 */
+  const rangeOf = (key) => { const r = RANGE_KEY[key] || RANGE_UNIT[meta(key).unit] || [0, 1e9, 0]; const L = legalDir(key); if (!L) return r; const d = meta(key).def; return L === 'min' ? [Math.max(r[0], d), r[1], r[2]] : [r[0], Math.min(r[1], d), r[2]]; };
   const impactText = (key) => (IMPACT.find(([re]) => re.test(key)) || [null, '이 값을 쓰는 화면의 계산이 바뀌어요.'])[1];
   function pageLink(key) {
     const p = PAGES.find(([re]) => re.test(key));
@@ -332,7 +382,7 @@
     return `${Number.isInteger(v) ? GC.num(v) : Math.round(v * 10) / 10}${m.unit}`;
   }
   function parseVal(str) {
-    const t = String(str == null ? '' : str).replace(/[,\s]/g, '').replace(/(원\/월|원|%p|%|영업일|영업시간|일|회|개월|시간|분|세|개|장\/월|장)$/, '');
+    const t = String(str == null ? '' : str).replace(/[,\s]/g, '').replace(/(원\/월|원|%p|%|영업일|영업시간|일|회|개월|건\/시간|시간|분|세|개|장\/월|장|자|MB|px|KB|배|주|안|건)$/i, '');
     return t === '' ? NaN : Number(t);
   }
   function noticeDays(key, from, to) {
@@ -364,7 +414,9 @@
     if (/^membership\.price_/.test(key) && g('membership.price_yearly') > g('membership.price_monthly') * 12) return '연간 요금이 월간 요금 12개월치보다 비싸요.';
     // 검수 2영업일은 법정 환불 기한 안에 환불하려고 둔 값(명세 C-STATE-02) — 검수 기한이 환불 기한보다 짧아야 함
     if (/^claim\.(inspect_bd|refund_due_bd)$/.test(key) && g('claim.inspect_bd') >= g('claim.refund_due_bd')) return `회수 뒤 검수 기한(영업일 ${g('claim.inspect_bd')}일)이 환불 기한(영업일 ${g('claim.refund_due_bd')}일)보다 짧지 않아요. 검수가 끝나기 전에 환불 기한이 지나니 검수 기한을 더 짧게 넣어 주세요.`;
-    if (/^product\.review_/.test(key) && g('product.review_priority_hours') >= g('product.review_bd') * bizHoursPerDay()) return `우선 검수 목표(영업시간 ${g('product.review_priority_hours')}시간)가 일반 검수 목표(영업일 ${g('product.review_bd')}일 = 영업시간 ${g('product.review_bd') * bizHoursPerDay()}시간)보다 짧지 않아요. 우선 검수를 더 짧게 넣어 주세요.`;
+    // 발주 확인 리마인드(파트너)가 운영팀 알림보다 먼저(P-ORD-01, 2026-10-17 ㉑)
+    if (/^order\.accept_(remind|alert)_bd$/.test(key) && g('order.accept_remind_bd') >= g('order.accept_alert_bd')) return `발주 확인 리마인드(영업일 ${g('order.accept_remind_bd')}일)가 운영팀 알림(영업일 ${g('order.accept_alert_bd')}일)보다 빠르지 않아요. 리마인드를 더 짧게 넣어 주세요.`;
+    if (/^product\.review_/.test(key) && g('product.review_priority_hours') >= g('product.review_bd') * bizHoursPerDay())return `우선 검수 목표(영업시간 ${g('product.review_priority_hours')}시간)가 일반 검수 목표(영업일 ${g('product.review_bd')}일 = 영업시간 ${g('product.review_bd') * bizHoursPerDay()}시간)보다 짧지 않아요. 우선 검수를 더 짧게 넣어 주세요.`;
     return null;
   }
   /* 맞춤 수저집 예시 장바구니(design.html과 같은 사양) — 엔진으로 계산 */
@@ -414,13 +466,13 @@
     { k: '권한 표 행', v: esc(permLabel(key)) },
     { k: '바꿀 수 있는 역할', v: esc(editorsText(key)) },
     { k: '변경 승인', v: esc(approverText(key)) },
-    { k: '공지 기간(유리 · 불리)', v: ppv(`${K.NOTICE_FAVOR}일 · ${K.NOTICE_UNFAVOR}일`, '공지 기간(A-MKT-04 약관 규칙 차용)') },
+    { k: '공지 기간(유리 · 불리)', v: fx(`${K.NOTICE_FAVOR}일 · ${K.NOTICE_UNFAVOR}일`, 'terms') },
     { k: '적용 대상', v: '적용 시작 이후 생긴 건' },
   ];
   const rulesPerm = () => [{ k: '돈이 나가는 승인', v: '팀장 플래그 필수' }, { k: '지급 요청자 = 승인자', v: '서버가 막음' }, { k: '정산 계좌 수정', v: '관리자 화면 불가' }, { k: '계좌 변경 후 첫 지급 보류', policy: 'settlement.account_change_hold_hours' }];
-  const rulesNoti = () => [{ k: '야간(급하지 않은 정보성은 08시)', v: ppv(`${K.NIGHT_FROM}~0${K.NIGHT_TO}시`, '야간 시간대') }, { k: '광고 하루 최대', policy: 'notify.ad_daily_max' }, { k: '광고 주 최대', policy: 'notify.ad_weekly_max' }, { k: '광고 채널', v: '푸시·브랜드 메시지·이메일' }];
-  const rulesAudit = () => [{ k: '조회 몰림 → 계정 잠금', v: ppv(`1시간 ${K.PII_MAX}건`, '개인정보 조회 몰림 기준') }, { k: '잠금 알림 · 해제', v: '최고관리자' }, { k: '마스킹 해제', v: '사유 필수 · 기록' }, { k: '접속 기록 보관', v: ppv('1년(5만 명 이상 2년)', '접속 기록 보관') }, { k: '로그 수정·삭제', v: '최고관리자도 불가' }];
-  const rulesFile = () => [{ k: '검사 결과 4종 중 열리는 것', v: '통과만' }, { k: '검사 시간 초과(재검사 1회)', policy: 'file.scan_timeout_minutes' }, { k: '검사 중 디자인 SLA', v: '멈춤' }, { k: '협의 룸·채널 첨부', policy: 'file.max_size_chat' }, { k: '인쇄 원본(AI·PDF만)·자체 인쇄 파일·칼선', policy: 'file.max_size_original' }, { k: '고객 로고(1개)', policy: 'file.max_size_logo' }, { k: '참고 파일(AI·PDF·SVG 포함)·간판·클레임 사진(장당)', policy: 'file.max_size_image' }, { k: '변환 작업 상한', v: ppv(`${K.CONVERT_MIN}분`, 'convert 실행 시간 상한') }];
+  const rulesNoti = () => [{ k: '야간(급하지 않은 정보성은 08시)', v: fx(`${K.NIGHT_FROM}~0${K.NIGHT_TO}시`, 'legal') },{ k: '광고 하루 최대', policy: 'notify.ad_daily_max' }, { k: '광고 주 최대', policy: 'notify.ad_weekly_max' }, { k: '광고 채널', v: '푸시·브랜드 메시지·이메일' }];
+  const rulesAudit = () => [{ k: '조회 몰림 → 계정 잠금', policy: 'security.pii_view_lock_per_hour' }, { k: '잠금 알림 · 해제', v: '최고관리자' }, { k: '마스킹 해제', v: '사유 필수 · 기록' }, { k: '접속 기록 보관', v: fx('1년(5만 명 이상 2년)', 'legal') },{ k: '로그 수정·삭제', v: '최고관리자도 불가' }];
+  const rulesFile = () => [{ k: '검사 결과 4종 중 열리는 것', v: '통과만' }, { k: '검사 시간 초과(재검사 1회)', policy: 'file.scan_timeout_minutes' }, { k: '검사 중 디자인 SLA', v: '멈춤' }, { k: '협의 룸·채널 첨부', policy: 'file.max_size_chat' }, { k: '인쇄 원본(AI·PDF만)·자체 인쇄 파일·칼선', policy: 'file.max_size_original' }, { k: '고객 로고(1개)', policy: 'file.max_size_logo' }, { k: '참고 파일(AI·PDF·SVG 포함)·간판·클레임 사진(장당)', policy: 'file.max_size_image' }, { k: '변환 작업 상한', v: fx(`${K.CONVERT_MIN}분`, 'sec') }];
 
   const rulesLogin = () => [{ k: '연속 실패 → 계정 잠금', policy: 'security.login_fail_lock' }, { k: '잠금 알림', v: '본인 · 최고관리자' }, { k: '해제(비밀번호 다시 정함)', v: '최고관리자' }, { k: '최고관리자가 잠기면', v: '다른 최고관리자' }];
 
@@ -459,7 +511,7 @@
     }
     if (!s.unlockDone) {
       if (!s.unmaskDone) return app.turn('hq', '감사 로그 탭에서 CS(윤가람)로 바꿔 해제 사유를 고르고 첫 회원의 [마스킹 해제]를 누르세요', { hint: '사유 없이 누르면 막혀요. [개인정보 다운로드]는 마스킹 해제와 다른 권한이라 CS 계정엔 따로 없어요.', rules: rulesAudit() });
-      return app.turn('hq', `[회원 상세 20건 열기]를 여러 번 눌러 1시간 안에 ${K.PII_MAX}건을 넘겨 보세요. 계정이 잠겨요`, { rules: rulesAudit() });
+      return app.turn('hq', `[회원 상세 20건 열기]를 여러 번 눌러 1시간 안에 ${piiMax()}건을 넘겨 보세요. 계정이 잠겨요`, { hint: '잠금 기준은 정책값 security.pii_view_lock_per_hour예요(공통 · 보안 묶음, 최고관리자만).', rules: rulesAudit() });
     }
     if (!s.fileReady) return app.turn('hq', '파일 처리 탭에서 [오늘밥상_로고.ai 올리기]를 누르세요', { hint: '오늘밥상 사장님(고객)이 올린 로고로 시연해요. 서버를 거치지 않고 S3로 바로 올라가요.', rules: rulesFile() });
     if (!s.fileQuar) return app.turn('hq', '이번엔 [견적서_스캔.pdf 올리기]로 악성코드 샘플을 올려 보세요', { hint: '[메뉴판_사진.jpg]는 장당 한도를 넘어 S3가 업로드부터 거부해요. [수저집_인쇄원본.psd]는 인쇄 원본이 AI·PDF만이라 주소 발급부터 막혀요. [단가표_암호.pdf](파트너)는 검사 불가, [간판_원본.pdf]는 검사 실패 → 재검사 갈래예요.', rules: rulesFile() });
@@ -493,6 +545,7 @@
     const nOver = Object.keys(GC.Policy.overrides()).length;
     return `<div class="split"><h3>정책값</h3><span class="small muted">기본값과 다른 값 ${nOver}개 · 이 브라우저에 저장</span></div>
       <p class="xsmall faint">${WHO_EDITS}</p>
+      <p class="xsmall faint">키로 두지 않는 값(A-SYS-03 · 2026-10-17 S12 ⑫): 법정 값(단순 변심 반품 7일 · 불량 3개월·안 날부터 30일 · 야간 광고 21~08시 · 접속 기록 1년), 약관·계약 조항에 고정한 값(변경 공지 7일 · 불리하면 30일), 보안 고정값(업로드 주소 10분 · 다운로드 주소 5분 · 변환 작업 5분)은 이 목록에 없고 화면에 근거를 붙여 보여 줘요.</p>
       ${s.edit ? editPanel(s) : changePanel(s)}
       <div class="stack">${policyTable(s)}</div>
       ${histHtml(s)}
@@ -512,8 +565,11 @@
     const hl = (k) => c && c.key === k && ['PENDING', 'SCHEDULED', 'APPLIED'].includes(st);
     const last = (k) => s.history.find((h) => h.key === k);
     const common = s.group === '공통 · 영업일·배치' ? '<p class="xsmall faint">영업일은 평일 중 본사 공휴일 달력에 없는 날이에요. 디자인 SLA·파트너 기한·정산 확정일·지급일이 모두 이 달력 하나를 쓰고, 달력을 바꾸면 그 뒤 시작하는 기한부터 적용해요. 날짜·시각은 모두 한국 시간이에요.</p>'
-      : s.group === '공통 · 보안' ? '<p class="xsmall faint">이 묶음은 최고관리자만 보고 바꿔요(D42). 관리자 화면과 파트너 센터는 같은 비밀번호·잠금·자동 로그아웃 규칙을 써요(C-SEC-01). 둘 다 OTP 2단계 인증이 필수이고, 접속 IP 제한은 관리자만 해요. 파트너 계정이 잠기면 대표자에게(NOTI_PARTNER_ACCOUNT_LOCKED), 관리자 계정이 잠기면 잠긴 본인과 최고관리자에게 알리고(NOTI_INT_ADMIN_ACCOUNT_LOCKED) 최고관리자가 풀어요. 고객 이메일 회원 비밀번호는 가입 규칙(U-MEM-02)을 따라요.</p>'
-      : s.group === '주문·클레임·CS' ? `<p class="xsmall faint">주문·클레임 키는 권한 표 '관리자 계정 · 권한 · 정책값' 행이라 최고관리자만 바꿔요(A-SYS-03). 2026-10-16 취소·환불 결정으로 세 키가 생겼어요: 출고 지연 판정 유예(order.overdue_grace_bd), 환불 기한(claim.refund_due_bd), 지연배상금 연 이율(claim.refund_delay_rate). 뒤의 둘은 법정 값이라 <span class="tag tag-phase">법률 자문 전 초안</span>이고, 고객에게 불리한 쪽(기한을 늘리거나 이율을 낮춤)으로는 저장을 막아요. 회수 뒤 검수 기한은 환불 기한보다 짧아야 해요.</p>` : '';
+      : s.group === '공통 · 보안' ? '<p class="xsmall faint">이 묶음은 최고관리자만 보고 바꿔요(D42). 관리자 화면과 파트너 센터는 같은 비밀번호·잠금·자동 로그아웃 규칙을 써요(C-SEC-01). 둘 다 OTP 2단계 인증이 필수이고, 접속 IP 제한은 관리자만 해요. 파트너 계정이 잠기면 대표자에게(NOTI_PARTNER_ACCOUNT_LOCKED), 관리자 계정이 잠기면 잠긴 본인과 최고관리자에게 알리고(NOTI_INT_ADMIN_ACCOUNT_LOCKED) 최고관리자가 풀어요. 2026-10-17부터 고객 이메일 회원의 비밀번호 규칙·로그인 잠금·인증번호(security.member_*, U-MEM-02)와 관리자 개인정보 조회 몰림 잠금 기준(security.pii_view_lock_per_hour)도 이 묶음에서 바꿔요. 고객 규칙은 관리자·파트너 규칙과 따로예요.</p>'
+      : s.group === '주문·클레임·CS' ? `<p class="xsmall faint">주문·클레임 키는 권한 표 '관리자 계정 · 권한 · 정책값' 행이라 최고관리자만 바꿔요(A-SYS-03). 2026-10-16 취소·환불 결정으로 세 키가 생겼어요: 출고 지연 판정 유예(order.overdue_grace_bd), 환불 기한(claim.refund_due_bd), 지연배상금 연 이율(claim.refund_delay_rate). 뒤의 둘은 법정 값이라 <span class="tag tag-phase">법률 자문 전 초안</span>이고, 고객에게 불리한 쪽(기한을 늘리거나 이율을 낮춤)으로는 저장을 막아요. 회수 뒤 검수 기한은 환불 기한보다 짧아야 해요. 2026-10-17 S12로 장바구니 보관·주문서 유지, 발주 확인 리마인드·운영팀 알림(자동 취소 없음 — 리마인드가 먼저), 회수 접수·교환 출고·중재 판정 목표, ‘늦게 받음’ 반품 신청 기한, 검수 거부 수량 되돌려 받기·되돌림 송장 기한도 키가 됐어요. 단순 변심 7일·불량 3개월(안 날부터 30일)은 법정 값이라 키로 두지 않아요.</p>`
+      : s.group === '정산' ? '<p class="xsmall faint">정산 주기·집계 기간(settlement.cycle·settlement.period)은 글자 값이라 이 화면은 보기만 해요(2026-10-17 키). 미수금은 기준 금액을 넘거나 연속 미수 주 수에 닿으면 청구서를 보내고, 납부 기한이 지나면 판매를 멈춰요(C-STL-02). 계약 종료 유보는 비율만 키이고 90일 기간은 명세 값 그대로예요.</p>'
+      : s.group === '디자인·파일' ? '<p class="xsmall faint">2026-10-17 S12로 생산 보류 답변 기한, 첫 시안 최대 개수, 자체 파일 검수·무료 재검수, 무응답 기한 연장, 핀 최대, 협의 룸 위반 반복 알림·링크 허용 목록, 수정 재주문 무료 수정, 디자이너 동시 진행 상한, 확정 디자인 보관 기간이 키가 됐어요. 업로드·다운로드·변환 시간은 보안 고정값이라 키가 아니에요(파일 처리 탭).</p>'
+      : s.group === '광고·검색·앱' ? '<p class="xsmall faint">2026-10-17에 생긴 묶음이에요. 검색·카테고리 기본 정렬 가중치와 앱 지원 최저 OS는 글자 값이라 보기만 해요. 광고 단가·신용 한도 같은 광고 키(ads.*)는 3차에 더해요.</p>' : '';
     const nHid = items.length - vis.length;
     const hid = nHid ? `<p class="xsmall faint">이 묶음의 다른 키 ${nHid}개(${hidRows.map((r) => (r === ADMIN_ROW ? '최고관리자만' : `권한 표 '${esc(rowShort(r))}' 행`)).join(' · ')})는 이 계정에 보이지 않아요. 예: ${esc(items.find((p) => keyLv(p.key) === '—').label)}</p>` : '';
     return `${seg}${common}<div class="tbl-wrap"><table class="tbl small pol"><thead><tr><th>정책값</th><th class="num">지금 값</th><th></th></tr></thead><tbody>
@@ -524,7 +580,7 @@
           <td class="act"><span class="xsmall faint" title="문자열 값이라 숫자 편집 칸으로 바꾸지 않아요">보기만</span></td></tr>`;
         }
         const h = last(p.key);
-        return `<tr${hl(p.key) ? ' class="is-hl"' : ''}><td>${esc(p.label)}${p.phase ? ` <span class="tag tag-phase">${p.phase}</span>` : ''}${p.draft ? ' <span class="tag tag-phase">법률 자문 전 초안</span>' : ''}${LEGAL[p.key] ? ` <span class="tag">법정 값 · ${LEGAL[p.key].dir === 'min' ? '낮추지 않음' : '늘리지 않음'}</span>` : ''}${HIGH[p.key] ? ' <span class="tag tag-warn">영향 큼</span>' : ''}<span class="code">${esc(p.key)} · 권한: ${esc(permLabel(p.key))}${h ? ` · ${fmtDate(h.at, false)} ${esc(h.status)}` : ''}</span></td>
+        return `<tr${hl(p.key) ? ' class="is-hl"' : ''}><td>${esc(p.label)}${p.phase ? ` <span class="tag tag-phase">${p.phase}</span>` : ''}${p.draft ? ' <span class="tag tag-phase">법률 자문 전 초안</span>' : ''}${p.legal ? ` <span class="tag">법정 값 · ${p.legal === 'min' ? '낮추지 않음' : '늘리지 않음'}</span>` : ''}${HIGH[p.key] ? ' <span class="tag tag-warn">영향 큼</span>' : ''}<span class="code">${esc(p.key)} · 권한: ${esc(permLabel(p.key))}${h ? ` · ${fmtDate(h.at, false)} ${esc(h.status)}` : ''}</span></td>
           <td class="num">${pv(p.key)}<span class="code">${p.changed ? `<span class="diff">기본 ${fmtV(p.key, p.def)}과 다름</span>` : `기본 ${fmtV(p.key, p.def)}`}</span></td>
           <td class="act">${canEdit(p.key) ? `<button class="btn btn-sm" data-act="pvEdit" data-k="${p.key}" ${busy ? 'disabled title="진행 중인 변경이 끝나면 바꿀 수 있어요"' : ''}>변경</button>` : '<span class="xsmall faint">조회만</span>'}</td></tr>`;
       }).join('')}</tbody></table></div>${hid}`;
@@ -533,24 +589,24 @@
   const REFUND_KEYS = /^(order\.overdue_grace_bd|claim\.refund_due_bd|claim\.refund_delay_rate)$/;
   const PV_SHIP = [{ name: '일반 상품 · 약속 출고일', at: new Date(2026, 9, 14, 18, 0) }, { name: '맞춤 제작 · 출고 예정일', at: new Date(2026, 9, 16, 18, 0) }];
   const PV_REFUND = { amount: 480000, start: new Date(2026, 8, 28, 15, 0), doneAt: new Date(2026, 9, 8, 10, 40) }; // 반품 회수 완료 → 중재 뒤 환불 마침
-  const endOfDay = (d) => { const x = new Date(d); x.setHours(23, 59, 59, 0); return x; };
+  /* 새 값 미리보기도 엔진에 영업일 인자를 넘겨 계산(2026-10-17 S12 — 페이지에서 다시 짜던 계산을 지움) */
   function refundPreview(key, nv) {
     const has = nv != null && !Number.isNaN(nv);
     const head = (a, cap) => `${cap ? `<p class="xsmall">${cap}</p>` : ''}<div class="tbl-wrap"><table class="tbl small"><thead><tr><th>${a}</th><th class="num">지금 값</th>${has ? '<th class="num">새 값이면</th>' : ''}</tr></thead><tbody>`;
     const c3 = (html) => (has ? `<td class="num">${html}</td>` : '');
     if (key === 'order.overdue_grace_bd') {
-      const rows = PV_SHIP.map((x) => { const nx = has ? endOfDay(GC.addBusinessDays(x.at, nv)) : null; return `<tr><td>${x.name} ${fmtDate(x.at, false)}</td><td class="num">${fmtDate(GC.order.overdueAt(x.at), false)} 끝</td>${c3(nx ? `${fmtDate(nx, false)} 끝` : '-')}</tr>`; }).join('');
-      return `${head('예시', '송장 없이 이때를 넘기면 출고 지연으로 봐요')}${rows}</tbody></table></div><p class="xsmall faint">GC.order.overdueAt(약속 출고일·출고 예정일 + 유예 영업일, 그날 끝)으로 계산했어요. 프로토타입은 주말만 빼고 셈해요.</p>`;
+      const rows = PV_SHIP.map((x) => { const nx = has ? GC.order.overdueAt(x.at, nv) : null; return `<tr><td>${x.name} ${fmtDate(x.at, false)}</td><td class="num">${fmtDate(GC.order.overdueAt(x.at), false)} 끝</td>${c3(nx ? `${fmtDate(nx, false)} 끝` : '-')}</tr>`; }).join('');
+      return `${head('예시', '송장 없이 이때를 넘기면 출고 지연으로 봐요')}${rows}</tbody></table></div><p class="xsmall faint">GC.order.overdueAt(약속 출고일·출고 예정일 + 유예 영업일, 그날 끝)으로 계산했어요(새 값은 영업일 인자로 넘김). 본사 일괄 공지 기간에는 판정하지 않고, 끝나면 끝난 날 + 이 유예의 끝으로 다시 판정해요(GC.order.afterNotice, D72). 프로토타입은 주말만 빼고 셈해요.</p>`;
     }
     const dueNow = GC.refund.dueAt(PV_REFUND.start);
-    const dueNew = key === 'claim.refund_due_bd' && has ? endOfDay(GC.addBusinessDays(PV_REFUND.start, nv)) : dueNow;
+    const dueNew = key === 'claim.refund_due_bd' && has ? GC.refund.dueAt(PV_REFUND.start, nv) : dueNow;
     const cNow = GC.refund.delayComp({ amount: PV_REFUND.amount, dueAt: dueNow, doneAt: PV_REFUND.doneAt });
     const cNew = has ? GC.refund.delayComp({ amount: PV_REFUND.amount, dueAt: dueNew, doneAt: PV_REFUND.doneAt, rate: key === 'claim.refund_delay_rate' ? nv : undefined }) : null;
     return `${head('예시', `예시: 반품 ${won(PV_REFUND.amount)} · 회수 완료 ${fmtDate(PV_REFUND.start)} · 중재 뒤 환불 마침 ${fmtDate(PV_REFUND.doneAt, false)}`)}
       <tr><td>환불 기한</td><td class="num">${fmtDate(dueNow, false)} 끝</td>${c3(cNew ? `${fmtDate(dueNew, false)} 끝` : '-')}</tr>
       <tr><td>지연 일수(달력일)</td><td class="num">${cNow.days}일</td>${c3(cNew ? `${cNew.days}일` : '-')}</tr>
       <tr><td>지연배상금(연 이율 · 원 단위 내림)</td><td class="num">${cNow.rate}% · ${won(cNow.comp)}</td>${c3(cNew ? `${cNew.rate}% · <b>${won(cNew.comp)}</b>` : '-')}</tr></tbody></table></div>
-      <p class="xsmall faint">GC.refund.dueAt · delayComp로 계산했어요. 지연배상금 = 환불액 × 연 이율 × 지연 일수 ÷ 365이고, 파트너 거부가 중재에서 뒤집혀 늦어진 건이면 파트너가 내요(정산 ‘중재 판정’ 이벤트). <span class="tag tag-phase">법률 자문 전 초안</span></p>`;
+      <p class="xsmall faint">GC.refund.dueAt · delayComp로 계산했어요. 지연배상금 = 환불액 × 연 이율 × 지연 일수 ÷ 365이고, 파트너 거부가 중재에서 뒤집혀 늦어진 건이면 파트너가 내요(본사 청구 ‘분쟁 조정’ · 정산서 ‘중재 판정’ 줄). <span class="tag tag-phase">법률 자문 전 초안</span></p>`;
   }
   function previewHtml(key, nv) {
     if (REFUND_KEYS.test(key)) return refundPreview(key, nv);
@@ -578,10 +634,10 @@
       <div class="field"><label for="pvNew">새 값 (${esc(m.unit)})</label><input class="input" id="pvNew" data-input="pvVal" inputmode="decimal" autocomplete="off" value="${esc(e.val)}" placeholder="예: ${({ 'design.fee': 29000, 'design.free_threshold': 300000 })[e.key] || m.def}">
         ${valid && nv !== cur ? `<span class="hint">${fmtV(e.key, cur)} → <b>${fmtV(e.key, nv)}</b>${HIGH[e.key] ? ` · ${nd === K.NOTICE_UNFAVOR ? '고객·파트너에게 불리한 변경' : '불리하지 않은 변경'}이라 공지 ${nd}일 뒤부터` : ''}</span>` : ''}</div>
       <div class="field"><span class="lbl">적용 시작</span><div class="seg">${opts.map((o) => `<button data-act="pvStart" data-k="${o.k}" aria-pressed="${e.start === o.k}" ${o.ok ? '' : 'disabled title="공지 기간이 모자라요"'}>${o.label}</button>`).join('')}</div>
-        <span class="hint">${nd ? `영향이 큰 값이라 즉시 적용할 수 없어요. 공지(A-MKT-04) ${ppv(nd + '일', '공지 기간')} 뒤부터 적용해요.` : '즉시 또는 예약 적용을 고를 수 있어요.'} 새 값은 적용 시작 이후 생긴 건에만 써요.</span></div>
+        <span class="hint">${nd ? `영향이 큰 값이라 즉시 적용할 수 없어요. 공지(A-MKT-04) ${fx(nd + '일', 'terms')} 뒤부터 적용해요.` : '즉시 또는 예약 적용을 고를 수 있어요.'} 새 값은 적용 시작 이후 생긴 건에만 써요.</span></div>
       <div class="field"><label for="pvReason">사유 (필수)</label><textarea class="textarea" id="pvReason" data-input="pvReason" placeholder="변경 이력과 감사 로그에 남아요">${esc(e.reason)}</textarea>
         <div class="cluster">${REASONS.map((t) => `<button class="tag" data-act="pvReasonPreset" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>
-      ${valid && legalBad(e.key, nv) ? `<div class="note note-warn small"><b>법정 값보다 고객에게 불리해요</b> · ${esc(legalMsg(e.key))} 이 값으로는 승인 요청을 보낼 수 없어요.</div>` : LEGAL[e.key] ? `<div class="note small"><span class="tag tag-phase">법률 자문 전 초안</span> 법정 값(${fmtV(e.key, m.def)})이라 ${LEGAL[e.key].dir === 'min' ? '낮출' : '늘릴'} 수 없고, 고객에게 유리한 쪽(${LEGAL[e.key].dir === 'min' ? '더 높게' : '더 짧게'})으로만 바꿀 수 있어요.</div>` : ''}
+      ${valid && legalBad(e.key, nv) ? `<div class="note note-warn small"><b>법정 값보다 고객에게 불리해요</b> · ${esc(legalMsg(e.key, nv))} 이 값으로는 승인 요청을 보낼 수 없어요.</div>` : m.legal ? `<div class="note small"><span class="tag tag-phase">법률 자문 전 초안</span> 법정 값(${fmtV(e.key, m.def)})이라 ${m.legal === 'min' ? '낮출' : '늘릴'} 수 없고, 고객에게 유리한 쪽(${m.legal === 'min' ? '더 높게' : '더 짧게'})으로만 바꿀 수 있어요. 막는 기준은 엔진 GC.Policy.legalOk가 정해요.</div>` : ''}
       <div class="note small"><b>영향 범위</b> · ${impactText(e.key)}</div>
       ${previewHtml(e.key, valid ? nv : null)}
       ${e.err ? `<div class="note note-stop small">${e.err.map(esc).join('<br>')}</div>` : ''}
@@ -698,9 +754,10 @@
             if (ev.ch[1] !== '—') { res = '실패 → 같은 내용을 SMS·LMS로 대체'; r.send.push('SMS'); r.sms = true; } else res = '실패 → 이메일·알림센터에 남김';
           }
         } else if (i === 2) {
-          if (!pushOk) { ok = false; res = '안 보냄 (기기 알림 권한 꺼짐)'; } else if (cell.length > 1) res = `보냄 (${cell.slice(2)})`;
+          if (!pushOk) { ok = false; res = '안 보냄 (기기 알림 권한 꺼짐)'; } else if (cell.length > 1) res = `보냄 (${cell.slice(2)})`; else if (cell === '○') res = '보냄 (앱 설치·알림 권한이 있어서)';
         } else if (i === 5 && /10분/.test(cell)) { ok = false; res = `${GC.Policy.get('notify.room_digest_minutes')}분 묶음 대기 (관리자 화면에서 안 읽으면 1회)`; }
-        else if ((i === 3 || i === 5) && cell.startsWith('○')) { ok = false; res = '조건부 · 이번엔 안 보냄'; }
+        // 이메일·Slack 칸의 ○는 늘 조건이 적혀 있음(2026-10-17 S12 ⑩) — 시뮬레이터는 조건을 모르는 화면이라 조건을 보여 주고 이번엔 보내지 않음
+        else if ((i === 3 || i === 5) && cell.startsWith('○')) { ok = false; res = `조건부 — ${cell.slice(2) || '조건'}에만 보냄 · 이번엔 안 보냄`; }
         if (ok) r.send.push(i === 5 ? 'Slack' : CH6[i]);
         r.rows.push([CH6[i], res, ok]);
       });
@@ -754,7 +811,7 @@
       <div class="panel"><div class="panel-h"><h2>알림 이벤트 매트릭스 (${EVENTS.length}개 발췌)</h2><span class="xsmall faint">● 항상 · ○ 조건부 · — 안 보냄</span></div><div class="panel-b stack">
         <div class="tbl-wrap"><table class="tbl small mx"><thead><tr><th>이벤트 · 받는 사람</th>${['알림톡', 'SMS', '푸시', '메일', '센터', 'Slack'].map((h) => `<th class="sym">${h}</th>`).join('')}</tr></thead><tbody>
           ${EVENTS.map((e) => `<tr><td>${esc(e.label)} <span class="faint">· ${esc(e.to)}</span>${e.lazy ? ' <span class="tag">야간엔 08시</span>' : ''}${e.draft ? ' <span class="tag tag-phase">법률 자문 전 초안</span>' : ''}<span class="code">${e.code.replace(/_/g, '_<wbr>')}</span></td>${e.ch.map((x) => `<td class="sym"${x.length > 1 ? ` title="${esc(x)}"` : ''}>${x.charAt(0)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
-        <p class="xsmall faint">○ 조건: 배송 완료 알림톡은 앱 푸시를 못 받을 때, 협의 룸 알림톡은 ${pv('notify.room_digest_minutes')} 동안 안 읽으면 묶어 1회, 앱 푸시는 앱 설치·권한이 있을 때, ‘마케팅 수신 동의자만’ 행의 앱 푸시·이메일은 고객이 마케팅 채널로 켰을 때. 내부 Slack ○는 담당 디자이너의 협의 룸 알림(NOTI_INT_ROOM_MESSAGE) 하나로, 고객 룸·생산 협의 채널 알림과 같은 규칙이에요 — 관리자 화면에서 ${pv('notify.room_digest_minutes')} 동안 안 읽은 고객 메시지가 있으면 묶어 1회 보내요. 관리자 계정 잠금은 잠긴 본인에게 이메일만, 최고관리자에게 이메일·알림센터·Slack으로 보내요. 표의 알림은 ‘마케팅 수신 동의자만’이라고 적은 행(예: NOTI_COUPON_EXPIRE_SOON)을 빼면 모두 정보성이라, 고객이 끄거나 채널을 고를 수 없고 표대로 보내요(알림톡 → 실패 시 문자). 고객이 고르는 건 마케팅 알림의 채널뿐이에요. 알림 문구에 고객 전화번호·주소를 넣지 않아요.</p></div></div>`;
+        <p class="xsmall faint">○ 조건: 배송 완료 알림톡은 앱 푸시를 못 받을 때, 협의 룸 알림톡은 ${pv('notify.room_digest_minutes')} 동안 안 읽으면 묶어 1회, 앱 푸시 칸의 조건 없는 ○는 앱 설치·알림 권한이 있을 때, SMS 대체 칸의 ○는 알림톡 칸 조건을 따라요, ‘마케팅 수신 동의자만’ 행의 앱 푸시·이메일은 고객이 마케팅 채널로 켰을 때. 이메일·내부 Slack 칸에는 조건 없는 ○를 쓰지 않아요(2026-10-17): 이메일 ●는 돈·계약·결과처럼 기록이 남아야 하는 알림, —는 진행 안내·기한 리마인드이고, 이메일 ○에는 조건을 적어요(자체 파일 반려 때 · 파일 검사 결과는 화면을 떠났을 때 · 클레임은 거부·환불 완료 때 · 파트너 클레임은 요청 접수 때 · 광고비는 결제 실패·일시 중지 때). 내부 Slack ○는 담당 디자이너 알림 둘 — 협의 룸 고객 메시지(NOTI_INT_ROOM_MESSAGE)와 생산 협의 채널 파트너 메시지(NOTI_INT_CHANNEL_MESSAGE) — 로, 관리자 화면에서 ${pv('notify.room_digest_minutes')} 동안 안 읽은 메시지가 있으면 묶어 1회 보내고 두 채널의 읽음·묶음은 따로 계산해요. 관리자 계정 잠금은 잠긴 본인에게 이메일만, 최고관리자에게 이메일·알림센터·Slack으로 보내요. 표의 알림은 ‘마케팅 수신 동의자만’이라고 적은 행(예: NOTI_COUPON_EXPIRE_SOON)을 빼면 모두 정보성이라, 고객이 끄거나 채널을 고를 수 없고 표대로 보내요(알림톡 → 실패 시 문자). 고객이 고르는 건 마케팅 알림의 채널뿐이에요. 알림 문구에 고객 전화번호·주소를 넣지 않아요.</p></div></div>`;
   }
 
   /* 감사 로그 */
@@ -771,9 +828,9 @@
       ${locked.length ? `<div class="note note-stop small"><b>잠긴 계정</b> ${locked.map((r) => `<span class="cluster" style="margin-top:6px">${esc(who(r))} · 최근 1시간 ${countRecent(r)}건 <button class="btn btn-sm" data-act="unlock" data-r="${r}">잠금 풀기</button></span>`).join('')}</div>` : ''}
       <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>누가 · 언제 · 어디서</th><th>무엇을 · 왜</th></tr></thead><tbody>
         ${s.audit.slice(0, 14).map((a) => `<tr><td>${esc(a.who)}<span class="code nw">${fmtDate(a.at)} · ${esc(a.ip)}</span></td><td><b>${esc(a.menu)}</b>${a.target ? ` · ${esc(a.target)}` : ''}${a.flag ? ` <span class="flag">${esc(a.flag)}</span>` : ''}${a.before || a.after ? `<br><span class="chg">${esc(a.before || '-')} → ${esc(a.after || '-')}</span>` : ''}${a.reason ? `<span class="code">사유: ${esc(a.reason)}</span>` : ''}</td></tr>`).join('')}</tbody></table></div>
-      <div class="cluster"><button class="btn btn-sm" data-act="auditDel">이 기록 지우기 시도</button><span class="xsmall faint">전체 ${s.audit.length}건 · 쓰고 나면 고칠 수 없는 저장소 · 보관 ${ppv('1년(5만 명 이상 2년)', '접속 기록 보관')}</span></div>`;
+      <div class="cluster"><button class="btn btn-sm" data-act="auditDel">이 기록 지우기 시도</button><span class="xsmall faint">전체 ${s.audit.length}건 · 쓰고 나면 고칠 수 없는 저장소 · 보관 ${fx('1년(5만 명 이상 2년)', 'legal')}</span></div>`;
     return `<div class="split"><h3>개인정보 조회 · 감사 로그</h3><span class="small muted">A-SYS-02 · C-SEC-01</span></div>
-      <div class="panel"><div class="panel-h"><h2>회원 조회 (기본 가림)</h2><span class="xsmall faint">최근 1시간 ${n} / ${ppv(K.PII_MAX + '건', '개인정보 조회 몰림 기준')}</span></div><div class="panel-b stack">${member}</div></div>
+      <div class="panel"><div class="panel-h"><h2>회원 조회 (기본 가림)</h2><span class="xsmall faint">최근 1시간 ${n} / ${pv('security.pii_view_lock_per_hour', `${GC.num(piiMax())}건`)}</span></div><div class="panel-b stack">${member}</div></div>
       <div class="panel"><div class="panel-h"><h2>감사 로그</h2><span class="xsmall faint">누가 · 언제 · 어디서 · 무엇을 · 왜</span></div><div class="panel-b stack">${tbl}</div></div>`;
   }
 
@@ -783,7 +840,7 @@
     return `<div class="panel"><div class="panel-h"><h2>convert 작업 격리</h2><span class="xsmall faint">남이 올린 AI·PDF·PSD·SVG를 여는 곳</span></div><div class="panel-b stack">
       <dl class="kv small"><dt>실행</dt><dd>batch가 파일마다 띄우는 ECS 작업(RunTask) · 끝나면 종료</dd><dt>받는 것</dt><dd>이 파일 읽기 서명 주소 1개 · 결과(미리보기·썸네일·결과 JSON) 쓰기 서명 주소</dd>
         <dt>DB 계정</dt><dd>${no}</dd><dt>Redis</dt><dd>${no}</dd><dt>PG 키</dt><dd>${no}</dd><dt>S3 권한</dt><dd>${no} 작업 역할에 권한 없음</dd>
-        <dt>도구 설정</dt><dd>Ghostscript -dSAFER · ImageMagick policy.xml로 PS·EPS·PDF·XPS·외부 URL 차단</dd><dt>상한</dt><dd>실행 ${ppv(K.CONVERT_MIN + '분', 'convert 실행 시간 상한')} · 메모리 제한 · 넘으면 실패, 자동 재시도 없음</dd></dl>
+        <dt>도구 설정</dt><dd>Ghostscript -dSAFER · ImageMagick policy.xml로 PS·EPS·PDF·XPS·외부 URL 차단</dd><dt>상한</dt><dd>실행 ${fx(K.CONVERT_MIN + '분', 'sec')} · 메모리 제한 · 넘으면 실패, 자동 재시도 없음</dd></dl>
       <p class="xsmall faint">이유: 변환 도구는 악성 PDF·PS로 서버 명령이 실행되는 취약점이 해마다 나오고, 악성코드 검사로는 못 걸러요. batch에는 DB 쓰기와 지급대행 키가 있어 같은 곳에서 변환하면 파일 하나로 정산까지 뚫릴 수 있어요.</p></div></div>`;
   }
   function pipeHtml(fst) {
@@ -803,7 +860,7 @@
   }
   const QUAR = ['QUARANTINED', 'UNSCANNABLE', 'SCAN_FAILED'];
   function openText(fst) {
-    if (fst === 'READY') return `권한 확인 뒤 ${ppv(K.PRESIGN_DOWN + '분', '다운로드 서명 주소 유효')}짜리 서명 주소로만 · files.sikup.co.kr · attachment`;
+    if (fst === 'READY') return `권한 확인 뒤 ${fx(K.PRESIGN_DOWN + '분', 'sec')}짜리 서명 주소로만 · files.sikup.co.kr · attachment`;
     if (fst === 'NO_PREVIEW') return '원본은 받을 수 있지만 미리보기 없음 · 디자이너가 PNG를 따로 올려요';
     if (fst === 'SCAN_FAILED') return '격리 · 누구에게도 주소를 주지 않음 · 운영팀이 확인해요';
     if (QUAR.includes(fst)) return '격리 · 누구에게도 주소를 주지 않음';
@@ -843,7 +900,7 @@
       ${s.files.length ? `<div class="panel"><div class="panel-h"><h2>처리 기록</h2></div><div class="panel-b"><table class="tbl small"><thead><tr><th>파일</th><th>크기</th><th>결과</th><th>시각</th></tr></thead><tbody>${s.files.map((x) => `<tr><td>${esc(x.name)}</td><td class="num">${x.size}MB</td><td>${esc(x.result)}</td><td class="xsmall">${fmtDate(x.at)}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
       <div class="panel"><div class="panel-h"><h2>파일 종류별 형식 · 크기 · 보관</h2><span class="xsmall faint">C-FILE-01이 단일 기준 · 크기는 정책값</span></div><div class="panel-b stack">
         <div class="tbl-wrap"><table class="tbl small ftypes"><thead><tr><th>파일 종류 · 허용 형식</th><th>최대 크기 · 보관</th></tr></thead><tbody>
-          ${Object.keys(KINDS).map((k) => { const x = KINDS[k]; return `<tr${f && f.kind === k ? ' class="is-hl"' : ''}><td>${esc(x.name)}<span class="code">${x.fmt.join(' · ')}${x.extra ? ` (${esc(x.extra)})` : ''}</span></td><td>${limitHtml(k)}<span class="code">${esc(x.keep)}</span></td></tr>`; }).join('')}</tbody></table></div>
+          ${Object.keys(KINDS).map((k) => { const x = KINDS[k]; return `<tr${f && f.kind === k ? ' class="is-hl"' : ''}><td>${esc(x.name)}<span class="code">${x.fmt.join(' · ')}${x.extra ? ` (${esc(x.extra)})` : ''}</span></td><td>${limitHtml(k)}<span class="code">${typeof x.keep === 'function' ? x.keep() : esc(x.keep)}</span></td></tr>`; }).join('')}</tbody></table></div>
         <p class="xsmall faint">인쇄 원본은 AI·PDF만 받아요(2026-10-16). PSD·SVG는 고객 자체 인쇄 파일과 협의 룸 첨부에서만 받아요. 형식이 맞지 않으면 서버가 업로드 주소를 주지 않고, 크기는 S3가 content-length-range 조건으로 막아요.</p></div></div>`;
   }
 
@@ -851,7 +908,7 @@
   VIEWS.system = (f) => {
     const s = S(); const c = s.change; const st = app.state('policy'); const fst = app.state('file'); const now = app.clock.now();
     const sched = c && st === 'SCHEDULED';
-    const watch = ROLES.filter((r) => (s.lookups[r] || []).length).map((r) => `${ACCT[r].name} ${countRecent(r)}/${K.PII_MAX}`);
+    const watch = ROLES.filter((r) => (s.lookups[r] || []).length).map((r) => `${ACCT[r].name} ${countRecent(r)}/${pv('security.pii_view_lock_per_hour', GC.num(piiMax()))}`);
     const rows = [
       ['정책값 예약 적용', sched ? `${esc(c.id)} ${esc(meta(c.key).label)} ${fmtV(c.key, c.from)} → ${fmtV(c.key, c.to)} · ${fmtDate(c.startAt)}` : '예약된 변경 없음', sched ? `<span class="sla sla-warn">${leftText(c.startAt - now)} 남음</span>` : '<span class="faint">-</span>'],
       ['알림 08:00 예약 큐', s.queue.length ? s.queue.map((q) => `${q.ev.code} → ${fmtDate(q.sendAt)}`).join('<br>') : '쌓인 메시지 없음', s.queue.length ? `<span class="sla sla-warn">${s.queue.length}건 대기</span>` : '<span class="faint">-</span>'],
@@ -967,7 +1024,7 @@
       if (!canEdit(e.key)) { block(`${who()} 계정은 이 정책값을 바꿀 권한이 없어요(권한 표 '${rowShort(rowOf(e.key))}' 행)`, '정책값 변경', e.key); refresh(); return; }
       const cur = GC.Policy.get(e.key); const nv = parseVal(e.val); const [mn, mx, dec] = rangeOf(e.key); const errs = [];
       if (Number.isNaN(nv)) errs.push('새 값을 숫자로 넣어 주세요.');
-      else if (legalBad(e.key, nv)) errs.push(legalMsg(e.key));
+      else if (legalBad(e.key, nv)) errs.push(legalMsg(e.key, nv));
       else if (nv < mn || nv > mx) errs.push(`허용 범위(${fmtV(e.key, mn)} ~ ${fmtV(e.key, mx)})를 벗어났어요. 범위 안의 값으로 다시 넣어 주세요.`);
       else if (!dec && !Number.isInteger(nv)) errs.push('이 값은 정수만 받아요. 소수점을 빼 주세요.');
       else if (dec && Math.abs(Math.round(nv * 10) - nv * 10) > 1e-9) errs.push('소수점은 한 자리까지만 받아요.');
@@ -1094,12 +1151,13 @@
       if (level('회원 조회(마스킹)') === '—') { block(`${who()} 계정에는 회원 조회 권한이 없어요`, '회원 조회', '회원 목록'); refresh(); return; }
       app.clock.pass(4 * 60000);
       const n = addLookups(20);
-      audit('회원 상세 조회', '회원 20명', '', '', '업무 조회(시연)', n >= K.PII_MAX * 0.6 ? '조회 몰림 주의' : '');
+      const max = piiMax();
+      audit('회원 상세 조회', '회원 20명', '', '', '업무 조회(시연)', n >= max * 0.6 ? '조회 몰림 주의' : '');
       app.log('user', `${esc(who())} 회원 상세 20건 조회 · 최근 1시간 ${n}건`);
-      if (n >= K.PII_MAX) {
+      if (n >= max) {
         s.locked[s.role] = true; s.lockWhy[s.role] = 'pii'; s.unmask = null;
         audit('계정 잠금', who(), '사용 중', '잠김', `1시간 ${n}건 조회`, '이상 행위', '보안 감시(batch)');
-        app.log('warn', `${esc(who())} 1시간 ${n}건 조회 → 계정 잠금`);
+        app.log('warn', `${esc(who())} 1시간 ${n}건 조회 → 계정 잠금(security.pii_view_lock_per_hour ${GC.num(max)}건)`);
         app.notify('NOTI_INT_PII_ACCESS_LOCKED', '최고관리자', ['이메일', '관리자 알림센터', 'Slack'], `${esc(ACCT[s.role].name)} 계정 1시간 ${n}건 조회 → 잠금 · 조회 사유를 확인한 뒤 풀어 주세요`);
       }
       refresh();
@@ -1153,7 +1211,7 @@
         app.toast(`${kd.short}은 ${kd.fmt.join('·')} 파일만 올릴 수 있어요. ${ext} 파일은 ${kd.fmt.join('나 ')}로 저장해 다시 올려 주세요`);
         refresh(); return;
       }
-      await app.ext({ service: 'AWS S3', what: `${smp.name} 업로드 주소 발급`, lines: [`서버가 권한·형식(${kd.fmt.join('·')})을 확인하고 ${K.PRESIGN_UP}분짜리 presigned POST를 줘요`, `크기 조건 content-length-range ${kd.per ? '장당 ' : ''}${pv(kd.key)} 이하 (${esc(kd.name)} · 올린 사람 ${esc(smp.up)})`, '파일 이름은 무작위 키로 바꿔 저장하고, 원래 이름은 표시용으로만 둬요'], result: big ? 'S3가 크기 조건으로 거부한 것으로 처리해요' : '업로드가 끝난 것으로 처리해요' });
+      await app.ext({ service: 'AWS S3', what: `${smp.name} 업로드 주소 발급`, lines: [`서버가 권한·형식(${kd.fmt.join('·')})을 확인하고 ${K.PRESIGN_UP}분짜리(보안 고정값) presigned POST를 줘요`, `크기 조건 content-length-range ${kd.per ? '장당 ' : ''}${pv(kd.key)} 이하 (${esc(kd.name)} · 올린 사람 ${esc(smp.up)})`, '파일 이름은 무작위 키로 바꿔 저장하고, 원래 이름은 표시용으로만 둬요'], result: big ? 'S3가 크기 조건으로 거부한 것으로 처리해요' : '업로드가 끝난 것으로 처리해요' });
       const rec = { ...smp, at: app.clock.now(), key: storeKey(smp.name), result: '' };
       if (big) {
         rec.result = '업로드 거부(크기 초과)'; s.files.unshift(rec);
@@ -1194,14 +1252,14 @@
     },
     async fileConvert() {
       const s = S(); const f = s.file; if (!f || app.state('file') !== 'CONVERTING') return;
-      await app.ext({ service: 'AWS ECS RunTask · convert', what: '미리보기 변환 결과 JSON', lines: ['Ghostscript -dSAFER · ImageMagick policy.xml(PS·EPS·PDF·XPS·외부 URL 차단)', `작업당 실행 ${K.CONVERT_MIN}분 · 메모리 상한`, 'batch가 결과 JSON(성공·실패·사유)을 읽어 상태를 바꿔요'], result: f.convert === 'fail' ? '변환 실패(PDF 호환 저장 아님)로 처리해요' : '미리보기 PNG(긴 변 2,000px)와 썸네일(400px)이 생긴 것으로 처리해요' });
+      await app.ext({ service: 'AWS ECS RunTask · convert', what: '미리보기 변환 결과 JSON', lines: ['Ghostscript -dSAFER · ImageMagick policy.xml(PS·EPS·PDF·XPS·외부 URL 차단)', `작업당 실행 ${K.CONVERT_MIN}분(보안 고정값) · 메모리 상한`, 'batch가 결과 JSON(성공·실패·사유)을 읽어 상태를 바꿔요'], result: f.convert === 'fail' ? '변환 실패(PDF 호환 저장 아님)로 처리해요' : '미리보기 PNG(긴 변 2,000px)와 썸네일(400px)이 생긴 것으로 처리해요' });
       app.clock.pass(4 * 60000);
       if (f.convert === 'fail') {
         app.go('file', 'convert_fail', { by: 'PDF 호환 저장이 아닌 AI → 미리보기 없음' }); f.result = '미리보기 없음';
         app.log('rule', '같은 파일은 자동으로 다시 돌리지 않아요 · 운영 알림 · 디자이너에게 PNG를 따로 올리라고 안내');
       } else {
         app.go('file', 'converted', { by: '미리보기 PNG·썸네일 생성' }); f.result = '사용 가능'; s.fileReady = true;
-        app.log('rule', `이제 권한 있는 사람만 ${K.PRESIGN_DOWN}분짜리 서명 주소로 내려받아요 · 별도 도메인 files.sikup.co.kr · attachment`);
+        app.log('rule', `이제 권한 있는 사람만 ${K.PRESIGN_DOWN}분짜리(보안 고정값) 서명 주소로 내려받아요 · 별도 도메인 files.sikup.co.kr · attachment`);
       }
       refresh();
     },

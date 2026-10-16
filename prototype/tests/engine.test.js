@@ -746,3 +746,53 @@ test('TC-44 취소·환불 D53~D60(2026-10-16) — 첫 시안 뒤 공제는 낸 
   const g = (k) => GC.Policy.get(k);
   assert.deepEqual([g('order.overdue_grace_bd'), g('claim.refund_due_bd'), g('claim.refund_delay_rate')], [1, 3, 15]);
 });
+
+test('TC-45 S12(2026-10-17) — 처음 배송비(D70), 인쇄 확인 기한(D66·D67), 일괄 공지 뒤 판정(D72), 법정 값, 새 키, 재제작 단계', () => {
+  // D70: 냅킨 2박스 60,000 + 배송비 4,000(고정), 반품 배송비 4,000 — 반품 순서와 상관없이 같은 금액
+  const nap = { items: [{ id: 'n', name: '냅킨', partnerId: 'A', shipKey: 'A', qty: 2, tiers: [{ min: 1, price: 30000 }] }], shipping: { A: { name: 'A', type: 'fixed', base: 4000 } } };
+  const paid = { pg: 64000, points: 0 };
+  assert.equal(GC.price.calcOrder(nap).totals.customerTotal, 64000);
+  const pc = (o) => GC.refund.partialCancel({ input: nap, paid, mode: 'return', ...o });
+  // 고객 사정 한 번에 전부: 처음 배송비는 남김(파트너 몫) → 56,000
+  const m1 = pc({ cancel: [{ id: 'n' }], deduction: 4000 });
+  assert.deepEqual([m1.last, m1.refund, m1.shipKept, m1.kept], [true, 56000, 4000, 8000]);
+  // 고객 사정 나눠서: 26,000 + 26,000 (앞서 뺀 반품 배송비를 마지막에 다시 돌려주지 않음)
+  const m2a = pc({ cancel: [{ id: 'n', qty: 1 }], deduction: 4000 });
+  assert.deepEqual([m2a.last, m2a.refund, m2a.kept], [false, 26000, 4000]);
+  const m2b = pc({ cancel: [{ id: 'n' }], alreadyCanceled: { n: 1 }, refunded: { pg: 26000, points: 0 }, deduction: 4000, keptBefore: m2a.kept });
+  assert.deepEqual([m2b.last, m2b.refund], [true, 26000]);
+  // 파트너 귀책 전부: 처음 배송비까지 64,000, 나눠도 30,000 + 34,000
+  assert.equal(pc({ cancel: [{ id: 'n' }], fault: true }).refund, 64000);
+  const f1 = pc({ cancel: [{ id: 'n', qty: 1 }], fault: true });
+  const f2 = pc({ cancel: [{ id: 'n' }], alreadyCanceled: { n: 1 }, refunded: { pg: 30000, points: 0 }, fault: true, keptBefore: f1.kept });
+  assert.deepEqual([f1.refund, f2.refund, f2.shipRefund], [30000, 34000, 4000]);
+  // 앞은 고객 사정, 마지막은 파트너 귀책: 26,000 + 34,000(처음 배송비는 돌려줌, 앞서 뺀 반품 배송비는 그대로)
+  const x2 = pc({ cancel: [{ id: 'n' }], alreadyCanceled: { n: 1 }, refunded: { pg: 26000, points: 0 }, fault: true, keptBefore: m2a.kept });
+  assert.equal(x2.refund, 34000);
+  // 출고 전 전부 취소는 그대로 배송비까지
+  assert.equal(GC.refund.partialCancel({ input: nap, paid, cancel: [{ id: 'n' }] }).refund, 64000);
+  // D66·D67: [인쇄 가능] 확인 기한 = 다시 전달한 것으로 보는 때 + 1영업일
+  const fri = new Date(2026, 9, 16, 15, 0);
+  assert.equal(GC.production.printDue(fri).getDate(), 19); // 금 → 월
+  assert.equal(GC.production.printDue(fri, 2).getDate(), 20);
+  // D72: 일괄 공지(10/19 월 ~ 10/21 수 18시) 동안은 판정하지 않고, 끝난 뒤 하루 유예
+  const notice = { start: new Date(2026, 9, 19, 0, 0), end: new Date(2026, 9, 21, 18, 0) };
+  const promised = new Date(2026, 9, 16, 18, 0); // 금 → 판정 월요일 끝(기간 안)
+  assert.equal(GC.order.afterNotice({ judgeAt: GC.order.overdueAt(promised), notice }).getDate(), 22); // 수 + 1영업일 = 목요일 끝
+  assert.equal(GC.order.isOverdue({ promisedAt: promised, now: new Date(2026, 9, 20, 9), notice }), false); // 공지 중
+  assert.equal(GC.order.isOverdue({ promisedAt: promised, now: new Date(2026, 9, 22, 20), notice }), false); // 유예 중
+  assert.equal(GC.order.isOverdue({ promisedAt: promised, now: new Date(2026, 9, 23, 0, 1), notice }), true);
+  const early = new Date(2026, 9, 14, 18, 0); // 수 → 판정 목요일 끝(공지 전) — 그대로
+  assert.equal(+GC.order.afterNotice({ judgeAt: GC.order.overdueAt(early), notice }), +GC.order.overdueAt(early));
+  assert.equal(GC.order.overdueAt(promised, 0).getDate(), 16); // 영업일 인자(미리보기)
+  assert.equal(GC.refund.dueAt(fri, 1).getDate(), 19);
+  // 법정 값 방향(A-SYS-03): 이율은 낮추지 않고 환불 기한은 늘리지 않음
+  assert.deepEqual([GC.Policy.legalOk('claim.refund_delay_rate', 12).ok, GC.Policy.legalOk('claim.refund_delay_rate', 18).ok], [false, true]);
+  assert.deepEqual([GC.Policy.legalOk('claim.refund_due_bd', 5).ok, GC.Policy.legalOk('claim.refund_due_bd', 2).ok, GC.Policy.legalOk('order.overdue_grace_bd', 9).ok], [false, true, true]);
+  // 새 키(D71·㉑·㉒)와 '늦게 받음' 기한은 정책값에서
+  const g = (k) => GC.Policy.get(k);
+  assert.deepEqual([g('claim.late_return_days'), g('claim.return_back_pay_days'), g('claim.return_back_ship_bd'), g('order.accept_remind_bd'), g('order.accept_alert_bd')], [7, 14, 2, 1, 2]);
+  assert.equal(GC.claim.RETURN_REASONS.find((r) => r.code === 'LATE').days, 7);
+  // 재제작 단계 이름(design 페이지 상수를 엔진으로)
+  assert.deepEqual(['RETURN_REQUESTED', 'RETURN_INSPECTING', 'EXCHANGE_SHIPPED'].map((st) => GC.claim.step('CLAIM_RETURN', st, 'REMAKE')), ['재제작 요청됨', '확정본 대조 검수 중', '재제작품 출고']);
+});

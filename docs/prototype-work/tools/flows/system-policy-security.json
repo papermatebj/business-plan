@@ -2,7 +2,7 @@
  {"act":"grp","attr":"data-g=\"공통 · 보안\"","shot":"system-s01-security-designer"},
  {"act":"role","attr":"data-r=\"최고관리자\""},
  {"act":"grp","attr":"data-g=\"공통 · 보안\"","shot":"system-s02-security"},
- {"eval":"Array.from(document.querySelectorAll('#gc-device table.pol tbody tr')).map(r=>r.querySelector('.code').textContent.split(' ')[0]+'='+r.querySelector('td.num .pv').textContent+(r.querySelector('[data-act=pvEdit]')?' edit':' view'))"},
+ {"eval":"Array.from(document.querySelectorAll('#gc-device table.pol tbody tr')).map(r=>r.querySelector('.code').textContent.split(' ')[0]+'='+(r.querySelector('td.num .pv, td.tv .pv')||{}).textContent+(r.querySelector('[data-act=pvEdit]')?' edit':' view'))"},
  {"act":"pvEdit","attr":"data-k=\"security.login_fail_lock\""},
  {"type":{"sel":"#pvNew","text":"2"},"after":700},
  {"act":"pvReasonPreset","idx":1},

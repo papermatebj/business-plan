@@ -1,0 +1,63 @@
+[
+{
+"role": "design"
+},
+{
+"act": "assign"
+},
+{
+"act": "propose",
+"after": 400
+},
+{
+"wait": 2300
+},
+{
+"act": "dnav",
+"attr": "data-k=\"prd\""
+},
+{
+"act": "askQ",
+"idx": 0
+},
+{
+"role": "partner"
+},
+{
+"act": "exP",
+"attr": "data-i=\"0\""
+},
+{
+"act": "sendP"
+},
+{
+"role": "design"
+},
+{
+"role": "partner"
+},
+{
+"act": "exP",
+"attr": "data-i=\"2\""
+},
+{
+"act": "sendP"
+},
+{
+"role": "system",
+"shot": "room-c1-system-prd-digest"
+},
+{
+"adv": "3600000"
+},
+{
+"role": "design",
+"shot": "room-c2-design-prd"
+},
+{
+"eval": "[...document.querySelectorAll('#gc-log li')].map(l=>l.innerText.replace(/\\s+/g,' ')).filter(t=>/CHANNEL_MESSAGE|생산 협의 채널에서/.test(t)).reverse().join(' || ')"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+}
+]

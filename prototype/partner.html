@@ -60,6 +60,10 @@
   .chg-kv dd { font-weight: 400; }
   .chg-demo { margin-top: 6px; padding: 6px 8px; gap: 6px; }
   .chg-demo .btn { white-space: nowrap; }
+  .stop-list { margin: 6px 0; padding-left: 18px; display: grid; gap: 2px; }
+  .stop-tbl td:first-child { min-width: 120px; }
+  .stop-tbl tr.is-off td { color: var(--ink-3); }
+  .memo-field .input { max-width: 100%; }
 </style>
 </head>
 <body>
@@ -73,21 +77,19 @@
   const esc = UI.esc, pv = UI.pv;
   const DAY = GC.DAY, HOUR = GC.HOUR;
 
-  /* ── 엔진에 아직 없는 정책값: 페이지 상수(관리자 설정값으로 바뀔 값) ── */
+  /* ── 엔진에 아직 없는 정책값: 페이지 상수(관리자 설정값으로 바뀔 값) ──
+     2026-10-17 S12 ⑫: 엔진 키가 생긴 4개(임시 저장 보관·소명 기한·위약금 배수·배송 정보 열람)는 GC.Policy.get으로 옮기고 지움 */
   const LOCAL = {
-    draft_keep_days: { v: 30, unit: '일', label: '임시 저장 신청서 보관(P-ONB-01)' },
     sample_wait_days: { v: 14, unit: '일', label: '인쇄 샘플 미도착 → MD 연락·보류(P-ONB-02)' },
     contract_sign_days: { v: 14, unit: '일', label: '전자 계약 서명 기한(P-ONB-03)' },
     acct_max_fail: { v: 3, unit: '회', label: '계좌 인증 실패 허용 → 통장 사본 수동 확인(P-ONB-01)' },
     acct_fee: { v: 50, unit: '원', label: '계좌 유효성 인증 비용 건당(P-ONB-01)' },
     doc_max_mb: { v: 20, unit: 'MB', label: '서류 파일당 최대 용량(P-ONB-01)' },
-    reply_days: { v: 7, unit: '일', label: '직거래 조사 소명 기한 partner.circumvent_reply_days(A-PTN-02)' },
-    penalty_x: { v: 3, unit: '배', label: '직거래 위약금 배수 partner.circumvent_penalty(초안)' },
     new_months: { v: 3, unit: '개월', label: '신규 입점 인하 기간(commission.new_partner_discount)' },
     holdback_days: { v: 90, unit: '일', label: '계약 종료 최종 정산 유보 기간(settlement.final_holdback)' },
-    ship_info_days: { v: 90, unit: '일', label: '파트너 고객 배송 정보 열람 partner.shipping_info_days' },
-    notice_days: { v: 30, unit: '일', label: '파트너에게 불리한 계약 변경 사전 고지(P-ONB-03)' },
   };
+  /* 파트너에게 불리한 계약 변경 사전 고지(P-ONB-03): 약관·계약 조항에 고정 — 정책값 키가 아님(S12 ⑫) */
+  const CONTRACT_NOTICE_DAYS = 30;
   const REMIND_DAYS = [3, 7, 11]; // 서명 리마인드 3회 시점(명세서에 간격 없음 · 임시)
   const L = (k) => LOCAL[k].v;
   /* 로그인 보안은 관리자와 같은 정책값(공통 · 보안, C-SEC-01 · P-ONB-04) */
@@ -96,17 +98,24 @@
   /* 입점 처리 목표(A-PTN-01 · P-ONB-02, 2026-10-16 엔진 키로 옮김) · [인쇄 가능] 확인 기한(D-PRD-02 · P-ORD-06) */
   const OB_REVIEW = 'partner.onboard_review_bd', OB_SAMPLE = 'partner.onboard_sample_bd', OB_TOTAL = 'partner.onboard_total_bd';
   const PRINT_BD = 'production.print_check_bd';
-  /* 알림: 보안·계정 알림은 담당자가 아니라 대표자에게(C-NOTI-01 · D32) · 내부 알림(입점 신청·샘플 미도착·계약 미서명·OTP 다시 등록 요청)은 관리자 알림센터 + Slack(C-NOTI-01, 2026-10-16) */
+  /* 2026-10-17 S12 ⑫ 엔진 키로 옮긴 값 */
+  const DRAFT_KEEP = 'partner.apply_draft_keep_days', REPLY_DAYS = 'partner.circumvent_reply_days', PENALTY_X = 'partner.circumvent_penalty_multiple', SHIP_INFO = 'partner.shipping_info_days';
+  /* 알림 채널(C-NOTI-01 표, 2026-10-17 ⑩ 이메일 칸 맞춤 — 이메일 ● = 돈·계약·결과처럼 기록이 남아야 하는 알림, — = 진행 안내·기한 리마인드)
+     보안·계정 알림은 담당자가 아니라 대표자에게(D32) · 내부 알림은 관리자 알림센터 + Slack */
   const CH_CEO = ['알림톡', 'SMS 대체', '이메일', '알림센터'];
   const CH_CUST = ['알림톡', 'SMS 대체', '앱 푸시', '이메일', '알림센터'];
   const CH_INT = ['관리자 알림센터', 'Slack'];
-  /* 파트너 주문 담당자: 제안 거둠·이어서 제작(NOTI_PARTNER_CHANGE_WITHDRAWN) · [인쇄 가능] 확인 기한 리마인드(NOTI_PARTNER_PRINT_CHECK_DUE) — C-NOTI-01 표 */
+  /* 파트너 · 이메일 ●: 제안 거둠·이어서 제작(NOTI_PARTNER_CHANGE_WITHDRAWN) · 인쇄 패키지 도착(NOTI_PARTNER_PACKAGE_HANDED_OFF) · 중재 결과(NOTI_PARTNER_MEDIATION_DECIDED)
+     · 입점 심사 진행(NOTI_PARTNER_ONBOARD_RESULT) · 지급 완료(NOTI_PARTNER_PAYOUT_DONE) */
   const CH_PT_WD = ['알림톡', 'SMS 대체', '이메일', '알림센터'];
+  /* 파트너 · 이메일 —: 출고 기한 넘김(NOTI_PARTNER_SHIP_OVERDUE) · [인쇄 가능] 확인 기한 리마인드(NOTI_PARTNER_PRINT_CHECK_DUE)
+     · 고객 바로 취소(NOTI_PARTNER_ITEM_CANCELED, ⑰) · 본사 일괄 공지(NOTI_PARTNER_BULK_DELAY_NOTICE, D72) */
   const CH_PT_DUE = ['알림톡', 'SMS 대체', '알림센터'];
-  /* 출고 기한 넘김·생산 지연 취소(P-ORD-03·04 · C-NOTI-01 표, 2026-10-16): 고객 NOTI_SHIP_OVERDUE·NOTI_PRODUCTION_OVERDUE · 파트너 NOTI_PARTNER_SHIP_OVERDUE(= CH_PT_DUE)
-     · 파트너 클레임 NOTI_PARTNER_CLAIM_NEW · 중재 결과 고객 NOTI_MEDIATION_DECIDED(= CH_CUST)·파트너 NOTI_PARTNER_MEDIATION_DECIDED(= CH_PT_WD) */
+  /* 파트너 클레임 요청 접수(NOTI_PARTNER_CLAIM_NEW): 이메일 ‘○ 요청 접수 때’ → 접수 알림이라 보냄 */
+  const CH_PT_CLAIM = ['알림톡', 'SMS 대체', '이메일', '알림센터'];
+  /* 고객 · 이메일 —: 출고·생산 지연(NOTI_SHIP_OVERDUE·NOTI_PRODUCTION_OVERDUE) · 배송 시작(NOTI_SHIPPED) · 본사 일괄 공지(NOTI_BULK_DELAY_NOTICE)
+     · 클레임 진행(NOTI_CLAIM_UPDATED — 이메일은 거부·환불 완료 때만이라 교환품 발송은 안 보냄). 중재 결과(NOTI_MEDIATION_DECIDED)는 CH_CUST */
   const CH_CUST_LATE = ['알림톡', 'SMS 대체', '앱 푸시', '알림센터'];
-  const CH_PT_CLAIM = ['알림톡', 'SMS 대체', '알림센터'];
   function lpv(k, text) {
     const m = LOCAL[k];
     return `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(m.label)} — 엔진에 아직 없는 값이라 이 페이지 상수로 둠">${text != null ? text : GC.num(m.v) + m.unit}</span>`;
@@ -143,6 +152,8 @@
   /* 정지·계약 종료 사유(A-PTN-02, 2026-10-16 맞춤): sys = 시스템이 정지(수동 선택 없음) · phase = 2차 · termOnly = 계약 종료 사유에만.
      서류 유효기간 만료는 계정 정지가 아니라 해당 품목 판매 중지라 여기 없음 */
   const BIZ_REASON = '사업자 휴업·폐업';
+  const BIZ_CLOSED_TERM = '사업자 폐업';
+  /* needClosed = 국세청 조회로 폐업이 확인된 정지 사유가 있을 때만(2026-10-17 D68 — 시스템이 자동으로 계약을 끝내지 않고 MD가 고름) */
   const STOP_REASONS = [
     { v: '직거래 위반' },
     { v: '미수금 미납' },
@@ -150,12 +161,30 @@
     { v: '페널티 판매 중지', phase: true },
     { v: '기타' },
     { v: '파트너 요청', termOnly: true },
+    { v: BIZ_CLOSED_TERM, termOnly: true, needClosed: true },
   ];
   const stopMeta = (v) => STOP_REASONS.find((r) => r.v === v) || {};
-  /* 정지 해제 사유(A-PTN-02, 2026-10-16 맞춤 · 감사 로그 · 대표자에게 알림) */
+  /* 정지 해제 사유(A-PTN-02, 2026-10-16 맞춤 · 감사 로그 · 대표자에게 알림) — 2026-10-17 D68부터 사유마다 [사유 해소] */
   const REL_REASONS = ['정지 사유 해소', '파트너 소명 인정', '사업자 상태 정상 확인', '본사 오처리 정정', '기타'];
   const REL_LABEL = { '정지 사유 해소': '정지 사유 해소(미수금 납부 등)' };
   const BIZ_OK = '사업자 상태 정상 확인';
+  /* 메모(텍스트 200자, S12 ⑧): 정지·종료 ‘기타’면 필수, 해소 ‘기타’·‘본사 오처리 정정’이면 필수. 메모는 사유와 함께 파트너 알림·감사 로그·배너에 */
+  const MEMO_MAX = 200;
+  const memoNeed = (kind, reason) => (kind === 'rel' ? ['기타', '본사 오처리 정정'].includes(reason) : reason === '기타');
+  const memoTxt = (m) => (m ? ` · 메모 “${esc(m)}”` : '');
+  /* 정지 사유 기록(A-PTN-02 · 2026-10-17 D68): 계정 상태는 SUSPENDED 하나, 사유는 사유마다 한 줄
+     { id, reason, by: 'hq'|'system', at, memo, detail(휴업·폐업), resumed(재조회 계속사업자), clearedAt, clearReason, clearMemo }. 같은 사유는 겹쳐 쌓지 않음 */
+  const liveStops = (s) => s.stops.filter((x) => !x.clearedAt);
+  const bizStop = (s) => liveStops(s).find((x) => x.reason === BIZ_REASON);
+  const stopName = (x) => `${x.reason}${x.detail ? `(${x.detail})` : ''}`;
+  const stopsTxt = (s) => liveStops(s).map(stopName).join(' · ') || '-';
+  const stopBy = (x) => (x.by === 'system' ? '시스템 · 국세청 정기 조회' : '본사');
+  /* 해소 사유: 휴·폐업 사유는 '사업자 상태 정상 확인'으로만(D48), 다른 사유에는 그 해소 사유를 쓰지 않음 */
+  const relFor = (s, x) => (x && x.reason === BIZ_REASON ? BIZ_OK : s.relReason === BIZ_OK ? REL_REASONS[0] : s.relReason || REL_REASONS[0]);
+  function addStop(s, reason, by, memo, detail) {
+    const x = { id: s.stops.length + 1, reason, by, at: app.clock.now(), memo: memo || '', detail: detail || null, resumed: null, clearedAt: null, clearReason: null, clearMemo: '' };
+    s.stops.push(x); return x;
+  }
   const INV_AMTS = { a: { v: 1200000, label: '확인된 직거래 120만원' }, b: { v: 8000000, label: '확인된 직거래 800만원' }, c: { v: 3600000, label: '금액 확인 불가 · 직전 12개월 플랫폼 거래액' } };
   const STEPS = ['담당자 인증', '사업자 확인', '회사·판매 정보', '서류', '정산 계좌', '확인·제출'];
 
@@ -201,8 +230,8 @@
   const liveAddons = (o) => addonsOf(o).filter((x) => ADDON_LIVE.includes(x.st));
   const addonsPaid = (o) => liveAddons(o).reduce((a, x) => a + x.paid, 0);
   /* [인쇄 가능] 확인 기한(D47): 인쇄 패키지가 전달된 때(디자인 HANDED_OFF · o.handedAt)부터 production.print_check_bd — 내려받은 때가 아님.
-     정지가 풀려 변경 제안을 거두면 그때를 다시 전달한 때로 보고 새로 셈(D46) */
-  const printDue = (o) => (o.handedAt ? GC.addBusinessDays(o.handedAt, P(PRINT_BD)) : null);
+     정지가 풀리면 다시 전달한 때로 보고 새로 셈 — 변경 제안을 거둔 건(D46, o.handedFrom 'withdrawn')도, 제안이 없던 건(2026-10-17 D67, 'reinstated')도 */
+  const printDue = (o) => (o.handedAt ? GC.production.printDue(o.handedAt) : null);
   const printWaiting = (o) => o.kind === 'custom' && o.st === 'DESIGN_CONFIRMED' && o.design === 'HANDED_OFF' && !!o.handedAt && !o.movedAway;
   /* 출고 기한(P-ORD-03 · 2026-10-16 D58·D59): 약속 출고일(일반, 결제 후 영업일 2일)·출고 예정일(맞춤, [인쇄 가능] + 리드타임) 다음 영업일 끝
      (GC.order.overdueAt = + order.overdue_grace_bd)까지 송장이 없으면 일반은 '출고 지연'(무단 지연 기록 · 고객 [바로 취소]), 맞춤은 '생산 지연'(고객 [취소 요청] → DELAY_CANCEL 본사 중재).
@@ -213,6 +242,11 @@
   const dcOpen = (o) => !!(o.dc && !o.dc.result); // 생산 지연 취소(DELAY_CANCEL) 요청이 열려 있음 — 생산은 계속(보류 없음)
   const dueName = (o) => (o.kind === 'custom' ? '출고 예정일' : '약속 출고일');
   const withDue = (o, due, from) => Object.assign(o, { due, overdueAt: GC.order.overdueAt(due), overdue: null, dueFrom: from });
+  /* 본사 일괄 공지(지연 예외 기간, A-ORD-01 · P-ORD-03 · 2026-10-17 D72): 기간 안에는 판정하지 않고, 끝나면 판정 시각이 기간 안에 들었거나
+     끝나기 전에 지난 주문만 '끝난 날 + order.overdue_grace_bd 영업일의 끝'(GC.order.afterNotice). 공지 전에 이미 판정된 건(o.overdue)은 그대로 */
+  const noticeOn = (s, now) => s.notices.find((n) => !n.end && GC.order.inNotice(now || app.clock.now(), n));
+  const judgeAt = (s, o) => s.notices.filter((n) => n.end).reduce((j, n) => GC.order.afterNotice({ judgeAt: j, notice: n }), o.overdueAt);
+  const judgeMoved = (s, o) => !!o.overdueAt && +judgeAt(s, o) !== +o.overdueAt;
   /* 체험용 주문: 2단계 인증 뒤 검수를 마친 상품에 들어온 주문이라고 가정 (P-ORD-01). 맞춤 주문은 맞춤 인쇄 파트너만 */
   function seedOrders(now, custom) {
     const t = now.getTime();
@@ -256,7 +290,7 @@
     domain: 'partner',
     title: '파트너 입점·계약',
     lede: '제조사·인쇄소가 입점을 신청하면 MD가 서류와 품질을 심사하고, 맞춤 인쇄 파트너는 인쇄 샘플까지 확인합니다. 승인 뒤 전자 계약에서 직거래 금지·판 소유권·디자인 저작권 조항에 하나씩 동의해야 계정이 열려요.',
-    meta: '근거: 기능 명세서 P-ONB-01~05 · A-PTN-01·02(계정 상태별 열람) · A-ORD-01(제작 파트너 변경) · C-STATE-01~03 · P-ORD-01·06([인쇄 가능] 확인 기한) · P-ORD-03·04(출고 기한 넘김·무단 지연·생산 지연 취소, 2026-10-16 D58·D59) · A-ORD-02 · C-SEC-01 · C-NOTI-01 · A-SYS-03 정책값 · 기획서 07장 B·J(입점 계약 보호 조항 초안)',
+    meta: '근거: 기능 명세서 P-ONB-01~05 · A-PTN-01·02(계정 상태별 열람) · A-ORD-01(제작 파트너 변경) · C-STATE-01~03 · P-ORD-01·06([인쇄 가능] 확인 기한) · P-ORD-03·04(출고 기한 넘김·무단 지연·생산 지연 취소, 2026-10-16 D58·D59 · 본사 일괄 공지 2026-10-17 D72) · 정지 사유 여러 개·사유별 해소·메모(2026-10-17 D68·⑧) · 정지가 풀릴 때 [인쇄 가능] 기한 새로 셈(D67) · A-ORD-02 · C-SEC-01 · C-NOTI-01 · A-SYS-03 정책값 · 기획서 07장 B·J(입점 계약 보호 조항 초안)',
     actors: [
       { id: 'partner', nav: ['입점 신청'], url: 'partner.sikup.co.kr/apply', place: '파트너 센터 · 대성포장 담당자' },
       { id: 'hq', name: '본사 MD·운영', nav: ['입점 심사', '파트너 관리', '수수료율'], url: 'admin.sikup.co.kr/partners', place: '통합 관리자 · MD·운영팀' },
@@ -283,7 +317,7 @@
       contractAt: null, reminded: 0, mdCall: false, clauses: {}, prior: false, signer: 'ceo', proxyDoc: false,
       activeAt: null, mfa: false, newEnded: false, hqTab: 'review', trail: [],
       rp: { kind: 'custom', reorder: 0, plan: 'BASIC', when: 'now', exc: 0, promo: 0 },
-      stopReason: null, suspendReason: null, suspendKind: null, bizResumed: null, relReason: REL_REASONS[0], reinstated: null, term: null, inv: null, invAmt: 'a', invEv: false,
+      stopReason: null, stops: [], clrPick: null, memo: { stop: '', rel: '' }, relReason: REL_REASONS[0], reinstated: null, term: null, inv: null, invAmt: 'a', invEv: false, notices: [],
       ptTab: 'info', orders: [], shipOpen: null, pkg: {}, claim: null, maskedLogged: false, chgPick: {},
       sec: { out: false, why: null, step: 'pw', fails: 0, lastAt: null, otpAt: null, pwSetAt: null, lostAt: null, devices: [] },
     });
@@ -348,7 +382,7 @@
     const s = S(); const amt = INV_AMTS[s.invAmt];
     const newPartner = app.clock.now() < newUntil();
     const fr = GC.settle.finalRate({ base: GC.Policy.get('commission.custom_rate'), newPartner });
-    const raw = Math.floor((amt.v * Math.round(fr.rate * 10) * L('penalty_x')) / 1000);
+    const raw = Math.floor((amt.v * Math.round(fr.rate * 10) * P(PENALTY_X)) / 1000);
     const min = GC.Policy.get('partner.circumvent_penalty_min');
     return { amt, fr, newPartner, raw, min, penalty: Math.max(raw, min), minApplied: raw < min };
   }
@@ -376,7 +410,7 @@
     const done = (msg, opt) => (out ? loginTurn(null) : app.done(msg, opt));
     if (s.inv && !s.inv.decided && ac && ac !== 'TERMINATED') {
       const lapsed = app.clock.now() >= s.inv.due;
-      const rules = [{ k: '소명 기한', v: lpv('reply_days') }, { k: '위약금 최소액', policy: 'partner.circumvent_penalty_min' }, { k: '위약금 조건', v: '외부 거래 증빙 1개 이상' }];
+      const rules = [{ k: '소명 기한', v: pv(REPLY_DAYS) }, { k: '위약금 최소액', policy: 'partner.circumvent_penalty_min' }, { k: '위약금 조건', v: '외부 거래 증빙 1개 이상' }];
       if (!s.inv.replied && !lapsed) return turn('partner', '직거래 조사 통지를 받았어요. 소명 기한 안에 [소명 자료 제출]을 누르세요', { rules, hint: '소명하지 않고 +7일을 보내면 기한이 지나 운영팀이 바로 판단해요.' });
       return turn('hq', '증빙을 확인하고 위반이면 [위반 판단·위약금 청구]를, 증빙이 없으면 [혐의 없음 종결]을 누르세요', { rules });
     }
@@ -401,8 +435,12 @@
       const waiting = targets.filter(chgPending);
       const chgRules = [{ k: '답변 기한', policy: 'order.partner_change_reply_days' }, { k: '무응답', v: `하루 전 다시 알림 → 예고 뒤 ${pv('notify.notice_min_hours')} 지나 전액 환불` }, { k: '차액', v: '상품 + 판비 합계로 비교 · 싸면 환불 · 비싸도 더 안 받음' }, { k: '붙은 구성품', v: '함께 취소 · 전액 환불' }, { k: '비용', v: '파트너 귀책(디자인비까지 환불)' }];
       if (ac === 'SUSPENDED') chgRules.push({ k: '정지가 풀리면', v: '답 안 한 제안은 거둠' });
-      /* D48: 휴업·폐업으로 정지된 파트너가 재조회에서 다시 계속사업자 → 자동 해제 없이 담당 MD가 확인 뒤 [정지 해제] */
-      if (ac === 'SUSPENDED' && s.bizResumed) return turn('hq', `국세청 재조회에서 대성포장이 다시 계속사업자로 확인됐어요. 자동으로 풀지 않아요. 담당 MD가 미수금·서류 같은 다른 정지 사유가 없는지 확인한 뒤 [파트너 관리]에서 [정지 해제]를 누르세요`, { rules: [{ k: '자동 해제', v: '안 함 · MD에게 알림만' }, { k: '확인', v: '미수금·서류·직거래 조사' }, { k: '해제 사유(기본)', v: BIZ_OK }, { k: '해제하면', v: '대표자 알림 · 제안 거둠' }], hint: '다른 정지 사유가 있으면 해제 사유를 바꾸거나 그 사유가 풀릴 때까지 정지를 유지해요.' });
+      /* D48 · D68: 휴업·폐업 사유가 재조회에서 다시 계속사업자 → 자동 해제 없이 담당 MD가 확인 뒤 그 사유만 [사유 해소] · 다른 사유가 남으면 정지 그대로 */
+      const bz = ac === 'SUSPENDED' && bizStop(s);
+      if (bz && bz.resumed) {
+        const others = liveStops(s).filter((x) => x !== bz);
+        return turn('hq', `국세청 재조회에서 대성포장이 다시 계속사업자로 확인됐어요. 자동으로 풀지 않아요. 담당 MD가 확인한 뒤 [파트너 관리]에서 '${BIZ_REASON}' 사유를 골라 [사유 해소]를 누르세요.${others.length ? ` 다른 정지 사유 ${others.length}개(${others.map(stopName).join(', ')})가 남아 있어 그 사유가 풀릴 때까지 정지는 그대로예요` : ' 남은 다른 사유가 없어 이 사유를 풀면 정지가 풀려요'}`, { rules: [{ k: '자동 해제', v: '안 함 · MD에게 알림만' }, { k: '이 사유의 해소 사유', v: BIZ_OK }, { k: '남은 정지 사유', v: `${liveStops(s).length}개` }, { k: '정지가 풀리는 때', v: '마지막 사유를 해소할 때' }, { k: '풀리면', v: '대표자 알림 · 제안 거둠 · [인쇄 가능] 기한 새로' }], hint: '정지 사유는 사유마다 따로 쌓고 따로 풀어요(D68). 하나를 풀어도 다른 사유가 남으면 상품 노출·다운로드는 막힌 그대로예요.' });
+      }
       if (fresh.length) return turn('hq', `[인쇄 가능] 전 맞춤 항목 ${fresh.length}건은 대성포장이 인쇄 패키지를 받을 수 없어 만들 수 없어요. [파트너 관리]의 '제작 파트너 변경'에서 같은 사양 상품을 고르고 [고객에게 제안]을 누르세요`, { rules: chgRules, hint: '이미 [인쇄 가능]을 누른 생산 중 항목은 옮기지 않고 대성포장이 마저 만들어 출고해요.' });
       const lateN = toShip.filter(isLate).length;
       if (toShip.length) return turn('partner', `${nm} 중이에요. 남은 주문 ${toShip.length}건은 [주문]에서 [송장 등록]으로 마저 출고하세요.${lateN ? ` 그중 ${lateN}건은 출고 기한을 넘겨 고객에게 취소 길이 열렸어요.` : ''} 엑셀·인쇄 패키지는 받을 수 없어요`, { rules: lateN ? rules.concat([{ k: '출고 기한 넘김', v: '일반 [바로 취소] · 맞춤 [취소 요청]' }]) : rules, hint: `고객 배송 정보는 목록에서 가려지고 [배송 정보 보기]로 한 건씩만 열려요.${toShip.some((o) => o.kind === 'custom') ? ' 생산 중인 맞춤 항목은 [인쇄 가능] 뒤라 다른 파트너로 옮기지 않아요.' : ''}` });
@@ -419,26 +457,32 @@
       return done(`계약이 종료됐어요. 최종 정산액의 ${GC.Policy.get('settlement.final_holdback')}%를 ${L('holdback_days')}일 유보해요.`, { next: `${s.orders.length ? '남은 주문은 모두 배송 완료돼 고객 정보를 가렸어요. ' : ''}+7일을 여러 번 눌러 유보 기간을 보내면 남은 유보금이 지급돼요.` });
     }
     if (ac === 'SUSPENDED') {
-      const biz = s.suspendKind === 'biz';
-      return turn('hq', biz ? `사업자 휴업·폐업으로 시스템이 정지했어요.${s.orders.length ? ' 남은 주문이 모두 배송 완료돼 고객 정보를 가렸어요.' : ''} 국세청 정기 조회(월 1회)에서 다시 계속사업자로 나오면 담당 MD에게 알려요. 파트너가 사업을 다시 시작했다고 연락하면 [파트너 관리]의 [국세청 바로 다시 조회]를 누르세요`
-        : `본사 정지 중이에요.${s.orders.length ? ' 남은 주문이 모두 배송 완료돼 고객 정보를 가렸어요.' : ''} 사유가 풀리면 [정지 해제]를, 계속 문제면 [계약 종료]를 누르세요`, {
-        rules: [{ k: '정지 사유', v: biz ? '휴업·폐업(시스템)' : esc(s.suspendReason || '-') }, { k: '상품 노출', v: '즉시 중단' }, biz ? { k: '다시 계속사업자면', v: 'MD 확인 뒤 해제' } : { k: '정지 해제하면', v: '열람 원래대로 · 답 안 한 변경 제안 거둠' }, { k: '해제 사유', v: '감사 로그 · 대표자에게 알림' }],
-        hint: biz ? '시스템 화면의 [재조회 · 계속사업자 결과]는 월 1회 정기 조회를 대신 눌러 보는 버튼이에요.' : s.orders.length && !s.claim ? '[파트너 관리]의 [교환 클레임 열기 · 체험]으로 그 건만 다시 보이는 예외를 볼 수 있어요.' : null,
+      /* D68: 정지 사유를 모두 보여 줌 · 마지막 사유가 풀릴 때만 정지가 풀림 */
+      const live = liveStops(s); const bzs = bizStop(s); const onlyBiz = live.length === 1 && !!bzs;
+      const masked = s.orders.length ? ' 남은 주문이 모두 배송 완료돼 고객 정보를 가렸어요.' : '';
+      return turn('hq', onlyBiz ? `사업자 ${bzs.detail || '휴업·폐업'}으로 시스템이 정지했어요.${masked} 국세청 정기 조회(${P('batch.biz_recheck_schedule')})에서 다시 계속사업자로 나오면 담당 MD에게 알려요. 파트너가 사업을 다시 시작했다고 연락하면 [파트너 관리]의 [국세청 바로 다시 조회]를 누르세요${bzs.detail === '폐업' ? '. 폐업이 이어지면 남은 주문·정산을 본 뒤 [계약 종료](사유 ‘사업자 폐업’)를 누르세요' : ''}`
+        : `본사 정지 중이에요(정지 사유 ${live.length}개).${masked} 풀린 사유는 골라서 [사유 해소]를 누르세요. 마지막 사유가 풀릴 때만 정지가 풀려요. 계속 문제면 [계약 종료]를 누르세요`, {
+        rules: [{ k: '남은 정지 사유', v: esc(stopsTxt(s)) }, { k: '상품 노출', v: '즉시 중단' }, bzs ? { k: '휴·폐업 사유', v: '재조회 정상 → MD 확인 뒤 해소' } : { k: '사유 더하기', v: '정지 중에도 · 같은 사유는 한 번만' }, { k: '정지가 풀리는 때', v: '마지막 사유를 해소할 때' }, { k: '해소 사유·메모', v: '감사 로그 · 풀릴 때 대표자에게 알림' }],
+        hint: onlyBiz ? '시스템 화면의 [재조회 · 계속사업자 결과]는 정기 조회를 대신 눌러 보는 버튼이에요. 정지 중에 [본사 정지]로 사유를 더할 수도 있어요.' : s.orders.length && !s.claim ? '[파트너 관리]의 [교환 클레임 열기 · 체험]으로 그 건만 다시 보이는 예외를 볼 수 있어요.' : '시스템 화면의 [재조회 · 폐업 결과]를 누르면 휴·폐업 사유가 하나 더 쌓여요.',
       });
     }
     if (ac === 'PAUSED') return turn('partner', '휴점 중이에요. 상품 노출은 멈췄고 진행 중 주문·클레임은 계속 처리해요. [재개]를 누르면 다시 팔아요', { rules: [{ k: '휴점·재개', v: '파트너가 직접' }, { k: '엑셀·인쇄 패키지', v: '받을 수 있음' }] });
     if (ac === 'ACTIVE') {
       if (!s.mfa) return turn('partner', '대표 계정의 2단계 인증을 등록하세요. 등록하면 상품 등록·주문·정산 메뉴가 열려요', { rules: [{ k: '대표 계정', v: '1개(부계정은 2차)' }, { k: '2단계 인증', v: 'OTP 앱(TOTP) 필수' }, secRules[0], secRules[3]] });
-      /* 정지가 풀려 거둔 제안(D40): 확정된 건은 [인쇄 가능]이 다시 열려 대성포장이 이어서 만듦 */
-      const back = s.orders.filter((o) => chgWithdrawn(o) && o.st === 'DESIGN_CONFIRMED');
+      /* 정지가 풀려 다시 전달한 것으로 본 확정 건: 거둔 제안(D40·D46) · 제안이 없던 건(D67) — [인쇄 가능]이 다시 열려 대성포장이 이어서 만듦 */
+      const back = s.orders.filter((o) => o.handedFrom && printWaiting(o));
       if (back.length) {
         const b0 = back[0]; const due = printDue(b0);
-        return turn('partner', `정지가 풀려 ${back.map((o) => o.id).join(', ')}의 제작 파트너 변경 제안을 거뒀어요. [주문]에서 [인쇄 패키지 받기]를 누르고 확인 기한 안에 [인쇄 가능]을 눌러 이어서 만드세요`, { rules: [{ k: '거둔 제안', v: '표시 내림 · 기한 멈춤' }, { k: '인쇄 확인 기한', v: due ? fmtDate(due) : pv(PRINT_BD) }, { k: '기한 시작(다시 전달)', v: `거둔 때 · ${pv(PRINT_BD)}` }, { k: '붙은 구성품', v: '함께 발주 확인' }, { k: '동의·환불된 건', v: '그대로' }], hint: '+1일로 기한을 넘기면 파트너 리마인드와 운영팀 지연 알림이 가요(지연은 기록만, 평가 반영은 2차).' });
+        const wd = back.filter((o) => o.handedFrom === 'withdrawn'); const rh = back.filter((o) => o.handedFrom === 'reinstated');
+        return turn('partner', `정지가 풀려 ${[wd.length ? `${wd.map((o) => o.id).join(', ')}의 제작 파트너 변경 제안을 거뒀고` : '', rh.length ? `${rh.map((o) => o.id).join(', ')}는 인쇄 패키지를 다시 전달한 것으로 봐` : ''].filter(Boolean).join(' ')} [인쇄 가능] 확인 기한을 새로 셌어요. [주문]에서 [인쇄 패키지 받기]를 누르고 기한 안에 [인쇄 가능]을 눌러 이어서 만드세요`, { rules: [{ k: '인쇄 확인 기한', v: due ? fmtDate(due) : pv(PRINT_BD) }, { k: '기한 시작(다시 전달)', v: `정지가 풀린 때 · ${pv(PRINT_BD)}` }, { k: '알림', v: wd.length && rh.length ? '거둔 건 제안 거둠 · 나머지 패키지 도착' : wd.length ? '제안 거둠 · 이어서 제작' : '인쇄 패키지 도착(새 기한)' }, { k: '한 건에 알림', v: '하나만' }, { k: '붙은 구성품', v: '함께 발주 확인' }], hint: '+1일로 기한을 넘기면 파트너 리마인드와 운영팀 지연 알림이 가요(지연은 기록만, 평가 반영은 2차). 정지 중에는 이 알림을 보내지 않았어요.' });
       }
       /* 출고 기한 넘김(P-ORD-03 · D58·D59): 일반은 무단 지연 기록 + 고객 [바로 취소], 맞춤은 고객 [취소 요청] */
       const lateRules = [{ k: '판정', v: '출고일 다음 영업일 끝까지 송장 없음' }, { k: '유예', policy: 'order.overdue_grace_bd' }, { k: '일반 상품', v: '무단 지연 기록 · 고객 [바로 취소]' }, { k: '맞춤 제작', v: '고객 [취소 요청] · 본사 중재' }, { k: '평가·페널티', v: 'MVP는 기록만 · 2차' }];
       const late = s.orders.filter(isLate);
       if (late.length) return turn('partner', `출고 기한을 넘긴 주문이 ${late.length}건 있어요(${late.map((o) => o.id).join(', ')}). [주문]에서 송장을 등록해 출고하세요`, { rules: lateRules, hint: '[주문]의 체험 버튼으로 고객의 [바로 취소](일반)·[취소 요청](맞춤)을 대신 눌러 볼 수 있어요. 늦게 출고된 일반 상품은 고객이 ‘늦게 받음’ 사유로 반품할 수 있고 반품 배송비는 파트너가 내요.' });
+      /* D72: 본사 일괄 공지 중에는 출고·생산 지연으로 판정하지 않음 → 끝내면 새 판정 시각 */
+      const nt = noticeOn(s);
+      if (nt) return turn('hq', `본사 일괄 공지(${esc(nt.scope)}) 중이에요. 이 기간에는 출고 지연·생산 지연으로 보지 않아요. +1일로 시간을 보내 본 뒤 [파트너 관리]의 '대성포장 주문'에서 [공지 끝]을 누르세요`, { rules: [{ k: '공지 중', v: '지연 판정 안 함 · 지연 기록에서 뺌' }, { k: '끝나면', v: `판정 시각이 기간 안에 든 주문만 끝난 날 + ${pv('order.overdue_grace_bd')} 끝` }, { k: '공지 전에 열린 취소 길', v: '그대로' }, { k: '알림', v: '시작·끝 때 고객·파트너 주문 담당' }], hint: '파트너 [주문]의 출고 기한 칸에 ‘본사 일괄 공지 — 지연으로 보지 않아요’가 붙어요.' });
       const pushed = s.orders.find((o) => dueLive(o) && o.dueFrom === 'dismiss');
       if (pushed) return turn('partner', `본사가 ${pushed.id} 생산 지연 취소를 기각하고 출고를 독촉했어요. 새 출고 예정일(${fmtDate(pushed.due, false)})까지 [송장 등록]으로 출고하세요`, { rules: lateRules.slice(0, 2).concat([{ k: '새 예정일도 넘기면', v: '고객 [취소 요청] 다시 열림' }]), hint: '+1일로 새 예정일 다음 영업일 끝을 넘기면 고객의 [취소 요청]이 다시 열려요(D59 ③).' });
       return done('입점이 끝났어요. 대성포장 계정이 판매 가능 상태이고 상품 등록·주문·정산 메뉴가 열렸어요.', { next: `본사 화면의 [수수료율]에서 적용 요율을 미리 보고, [파트너 관리]에서 직거래 위약금 예시·본사 정지·계약 종료를 눌러 보세요.${s.custom ? ' 정지·종료하면 [인쇄 가능] 전 맞춤 항목의 제작 파트너 변경(제안 → 고객 동의·전액 환불)을 볼 수 있어요.' : ''} 파트너 화면에서는 [주문]의 엑셀·인쇄 패키지 받기, [휴점], 로그인 보안의 [로그아웃]을 눌러 볼 수 있어요.` });
@@ -450,7 +494,7 @@
           3: ['회사 정보와 판매 카테고리를 확인하세요. 카테고리에 따라 필수 서류가 바뀌어요', [{ k: '판매 카테고리', v: '1개 이상' }, { k: '식품 접촉 품목', v: '시험성적서 필수' }, { k: '위생용품', v: '신고증 필수' }, { k: '맞춤 인쇄 가능', v: '인쇄 샘플 필수' }], '맞춤 인쇄를 "불가"로 바꾸면 위쪽 상태 칩에서 샘플 확인 단계가 빠져요.'],
           4: ['필수 서류를 올리세요. 고른 카테고리에 맞춰 목록이 정해졌어요', [{ k: '형식', v: 'PDF·JPG·PNG' }, { k: '파일당 최대', v: lpv('doc_max_mb') }]],
           5: ['정산 계좌를 넣고 [예금주 확인]을 누르세요', [{ k: '예금주', v: '상호 또는 대표자명과 같아야 함' }, { k: '인증 실패', v: `${lpv('acct_max_fail')} → 통장 사본 수동 확인` }, { k: '인증 비용', v: lpv('acct_fee', '건당 50원') }], '"담당자 개인 계좌"를 고르고 세 번 확인하면 통장 사본 수동 확인으로 바뀌어요.'],
-          6: ['입력 내용을 확인하고 동의한 뒤 [제출]하세요', [{ k: '임시 저장 보관', v: lpv('draft_keep_days') }, reapply]],
+          6: ['입력 내용을 확인하고 동의한 뒤 [제출]하세요', [{ k: '임시 저장 보관', v: pv(DRAFT_KEEP) }, reapply]],
         };
         const m = map[s.step] || map[2];
         return app.turn('partner', m[0], { rules: m[1], hint: m[2] });
@@ -476,11 +520,11 @@
       <tr><td>신규 입점 프로모션</td><td class="num">−${pv('commission.new_partner_discount')}</td><td>${s.activeAt ? '' : '서명일부터 '}${lpv('new_months')}${s.activeAt ? ` · ${fmtLong(newUntil())}까지` : ''}</td></tr>
       <tr><td>같은 판 재주문</td><td class="num">−${pv('commission.reorder_discount')}</td><td>수수료 부록 · 재주문 단가는 같은 수량 구간 현재 판매가 이하 ${draftTag}</td></tr>
       <tr><td>최종 요율 하한</td><td class="num">${pv('commission.floor')}</td><td>인하를 합쳐도 이 아래로 내려가지 않아요</td></tr>
-      <tr><td>정산 주기</td><td>주 1회</td><td>화요일 마감 · 금요일 지급 · 구매 확정 후 10일 안 지급 목표</td></tr>
+      <tr><td>정산 주기</td><td>${pv('settlement.cycle')}</td><td>구매 확정 후 10일 안 지급 목표</td></tr>
       <tr><td>출고 기한</td><td>출고일 + ${pv('order.overdue_grace_bd')}</td><td>약속 출고일(맞춤은 출고 예정일) 다음 영업일이 끝날 때까지 송장이 없으면 고객에게 알려요. 일반 상품은 무단 지연으로 기록하고 고객이 바로 취소할 수 있고, 맞춤 제작은 고객이 취소를 요청하면 본사가 판단해요(승인되면 공제 없이 전액 환불, 돌려준 디자인비는 파트너 부담) ${draftTag}</td></tr>
       <tr><td>평가·페널티</td><td>기록만</td><td>출고 지연·품절 취소·클레임율 기준으로 경고·노출 제한·계약 해지 <span class="tag tag-phase">적용 2차</span></td></tr>
       <tr><td>계약 종료</td><td class="num">${pv('settlement.final_holdback')}</td><td>최종 정산액을 ${lpv('holdback_days')} 유보한 뒤 지급</td></tr>
-      <tr><td>계약 변경</td><td>${lpv('notice_days')} 전 고지</td><td>파트너에게 불리한 변경은 다시 동의받아요</td></tr>
+      <tr><td>계약 변경</td><td><span title="약관·계약 조항에 고정 — 정책값이 아니에요">${CONTRACT_NOTICE_DAYS}일</span> 전 고지</td><td>파트너에게 불리한 변경은 다시 동의받아요</td></tr>
     </tbody></table></div>`;
   }
   function seg(act, key, opts, cur) {
@@ -492,15 +536,20 @@
   function printDueHtml(o) {
     const due = printDue(o);
     if (!due) return `<span class="xsmall faint">인쇄 패키지가 전달된 때부터 ${pv(PRINT_BD)} 안에 [인쇄 가능]을 누르면 생산이 시작돼요</span>`;
-    const from = chgWithdrawn(o) ? '변경 제안을 거둔 때(다시 전달한 때로 봄)' : '인쇄 패키지가 전달된 때';
+    const from = o.handedFrom === 'withdrawn' ? '정지가 풀려 변경 제안을 거둔 때(다시 전달한 때로 봄)' : o.handedFrom === 'reinstated' ? '정지가 풀린 때(다시 전달한 때로 봄)' : '인쇄 패키지가 전달된 때';
     return `<span class="cluster">${slaShort(due, '확인 기한')}${o.printLate ? '<span class="tag tag-warn">지연 기록</span>' : ''}</span>
       <span class="xsmall faint">${from} ${fmtDate(o.handedAt)}부터 ${pv(PRINT_BD)} 안에 [인쇄 가능]을 누르면 생산이 시작돼요. 내려받기를 미뤄도 기한은 그대로예요</span>`;
   }
   /* 주문 줄의 출고 기한(P-ORD-03): 출고일과 저장한 판정 시각 */
   function dueHtml(o) {
     if (!dueLive(o)) return '';
-    return `<span class="cluster">${o.overdue ? `<span class="sla sla-over" style="white-space:nowrap">출고 기한 지남</span>` : slaShort(o.overdueAt, '출고 기한')}</span>
-      <span class="xsmall faint">${dueName(o)} ${fmtDate(o.due, false)}${o.dueFrom === 'dismiss' ? '(취소 기각 때 받은 새 예정일)' : o.kind === 'custom' ? `([인쇄 가능] 확인일부터 영업일 ${o.lead || 7}일)` : '(결제 후 영업일 2일)'} · 다음 영업일 끝(${fmtDate(o.overdueAt)})까지 송장이 ${o.overdue ? `없어 ${o.kind === 'custom' ? '생산 지연' : '출고 지연'}이 됐어요` : `없으면 ${o.kind === 'custom' ? '생산 지연' : '출고 지연'}이에요`}</span>`;
+    const s = S(); const nt = !o.overdue && noticeOn(s); const moved = !o.overdue && judgeMoved(s, o); const j = judgeAt(s, o);
+    const lateName = o.kind === 'custom' ? '생산 지연' : '출고 지연';
+    /* D72: 공지 중 · 공지가 끝나 다시 판정하는 시각 */
+    const ntTxt = nt ? `<span class="xsmall">본사 일괄 공지(${esc(nt.scope)}, ${fmtDate(nt.start)}부터) 중이라 ${lateName}으로 보지 않아요. 공지가 끝나면 판정 시각이 기간 안에 든 주문만 끝난 날 다음 영업일 끝으로 다시 판정해요.</span>`
+      : moved ? `<span class="xsmall">본사 일괄 공지가 끝나 다시 판정하는 시각이에요(끝난 날 + ${pv('order.overdue_grace_bd')} 끝 · 원래 ${fmtDate(o.overdueAt)}).</span>` : '';
+    return `<span class="cluster">${o.overdue ? `<span class="sla sla-over" style="white-space:nowrap">출고 기한 지남</span>` : nt ? '<span class="tag tag-spot">본사 일괄 공지 — 지연으로 보지 않아요</span>' : slaShort(j, moved ? '새 판정' : '출고 기한')}</span>
+      <span class="xsmall faint">${dueName(o)} ${fmtDate(o.due, false)}${o.dueFrom === 'dismiss' ? '(취소 기각 때 받은 새 예정일)' : o.kind === 'custom' ? `([인쇄 가능] 확인일부터 영업일 ${o.lead || 7}일)` : '(결제 후 영업일 2일)'} · ${nt ? `원래 판정 시각 ${fmtDate(o.overdueAt)} — 공지 중이라 판정하지 않아요` : `${moved ? `새 판정 시각(${fmtDate(j)})` : `다음 영업일 끝(${fmtDate(o.overdueAt)})`}까지 송장이 ${o.overdue ? `없어 ${lateName}이 됐어요` : `없으면 ${lateName}이에요`}`}</span>${ntTxt}`;
   }
   /* 기한을 넘긴 뒤: 고객에게 열린 길과 체험 버튼(고객 화면은 주문·맞춤 디자인 페이지) */
   function lateHtml(o) {
@@ -669,13 +718,13 @@
   }
   const CLAUSES = [
     { k: 'circ', key: true, draft: true, title: '직거래 금지·고객 비유인', agree: '직거래 금지와 위반 시 위약금·계약 해지를 따로 확인하고 동의해요',
-      body: () => `식업에서 주문·견적·샘플로 처음 연결된 고객과 플랫폼 밖에서 거래하지 않아요. 고객이 먼저 요청해도, 관계사를 통해도 해당해요. 기간은 계약 기간 + 종료 후 ${pv('partner.non_circumvent_months')}. 위반하면 위약금(확인된 직거래 금액 × 그 거래 수수료율 × ${lpv('penalty_x')}, 최소 ${pv('partner.circumvent_penalty_min')})을 정산금에서 빼고, 반복하면 계약을 해지해요.` },
+      body: () => `식업에서 주문·견적·샘플로 처음 연결된 고객과 플랫폼 밖에서 거래하지 않아요. 고객이 먼저 요청해도, 관계사를 통해도 해당해요. 기간은 계약 기간 + 종료 후 ${pv('partner.non_circumvent_months')}. 위반하면 위약금(확인된 직거래 금액 × 그 거래 수수료율 × ${pv(PENALTY_X)}, 최소 ${pv('partner.circumvent_penalty_min')})을 정산금에서 빼고, 반복하면 계약을 해지해요.` },
     { k: 'plate', draft: true, title: '판 소유권·사용 조건', agree: '판 소유·보관·사용 조건에 동의해요',
       body: () => `판은 만든 파트너가 소유·보관하고, 플랫폼 주문으로 만든 판은 그 디자인의 식업 주문에만 써요. 보관 기간(${pv('production.plate_keep_months')}) 동안 잃어버리거나 망가뜨리면 파트너 비용으로 다시 만들어요. 계약이 끝나면 폐기하고 폐기 확인서를 내요.` },
     { k: 'copy', draft: true, title: '회사 디자인 저작권·무단 인쇄 금지', agree: '확정 디자인을 식업 주문에만 쓰는 데 동의해요',
       body: '회사가 저작권을 가진 확정 디자인을 플랫폼 밖에서 인쇄·복제·변형하면 계약 위반이자 저작권 침해예요. 인쇄 패키지 다운로드 기록(계정·시각·해시)을 계약 기록과 함께 보관하고, 계약이 끝나면 내려받은 디자인 파일을 지우고 삭제 확인서를 내요.' },
     { k: 'privacy', title: '고객 개인정보 처리 위탁', agree: '고객 개인정보를 주문 처리에만 쓰는 데 동의해요',
-      body: () => `주문 처리에 필요한 고객 배송 정보만 받아요. 배송 완료 후 ${lpv('ship_info_days')} 동안만 볼 수 있고(클레임이 열려 있으면 끝날 때까지), 다른 목적으로 쓰거나 고객에게 따로 연락하지 않아요.` },
+      body: () => `주문 처리에 필요한 고객 배송 정보만 받아요. 배송 완료 후 ${pv(SHIP_INFO)} 동안만 볼 수 있고(클레임이 열려 있으면 끝날 때까지), 다른 목적으로 쓰거나 고객에게 따로 연락하지 않아요.` },
     { k: 'quality', draft: true, title: '맞춤 제작 품질 기준·생산 지연', agree: '맞춤 제작 품질 기준과 생산 지연 때의 부담에 동의해요',
       body: () => `확정 스냅샷(사양·색상·문구)대로 만들어요. 허용 오차는 결제 시점의 상품 설정값(기본 ${pv('claim.tolerance')})까지이고, 오인쇄·불량은 파트너 비용으로 다시 만들어요. 인쇄 패키지가 전달된 때부터 ${pv(PRINT_BD)} 안에 [인쇄 가능]을 누르고(내려받은 때가 아니라 전달된 때부터 세요), 누른 때부터 생산 책임이 시작돼요. 출고 예정일 다음 영업일까지 출고하지 못해 고객의 생산 지연 취소를 본사가 승인하면, 고객에게 돌려준 디자인비를 파트너 정산에서 빼고 이미 만든 인쇄물·판은 폐기해요.` },
   ];
@@ -722,9 +771,9 @@
       ${ACCESS.map((r) => `<tr${r[0] === cur ? ' class="is-hl"' : ''}><td><b>${r[1]}</b>${r[0] === cur ? ' <span class="tag tag-spot">지금</span>' : ''}</td>${r.slice(2).map((v) => `<td>${c(v)}</td>`).join('')}</tr>`).join('')}
     </tbody></table></div>
     <p class="xsmall faint">남은 주문 처리 = 배송 정보·송장·클레임. 엑셀·인쇄 패키지 = 주문 엑셀과 맞춤 제작 인쇄 패키지 다운로드. 휴점은 파트너가 [재개]로, 본사 정지는 본사만 풀어요.</p>
-    <p class="xsmall faint">정지·계약 종료 중에는 진행 중 건의 배송 정보를 주문 상세에서 건별로만 봐요. 남은 주문이 모두 배송 완료되면 배송 완료 후 ${lpv('ship_info_days')} 규칙을 기다리지 않고 바로 고객 정보를 가려요. 그 뒤 열린 교환·재제작 클레임은 그 건의 배송 정보만 클레임이 끝날 때까지 보여요.</p>
+    <p class="xsmall faint">정지·계약 종료 중에는 진행 중 건의 배송 정보를 주문 상세에서 건별로만 봐요. 남은 주문이 모두 배송 완료되면 배송 완료 후 ${pv(SHIP_INFO)} 규칙을 기다리지 않고 바로 고객 정보를 가려요. 그 뒤 열린 교환·재제작 클레임은 그 건의 배송 정보만 클레임이 끝날 때까지 보여요.</p>
     <p class="xsmall faint">인쇄 패키지를 받을 수 없어 정지·계약 종료 뒤에는 [인쇄 가능]으로 새 생산을 시작할 수 없어요. 그 전 맞춤 항목은 운영팀이 같은 사양의 다른 파트너 상품을 고객에게 제안하고, 고객이 동의하지 않거나 ${pv('order.partner_change_reply_days')} 안에 답이 없으면 전액 환불해요(파트너 귀책). 이미 [인쇄 가능]을 누른 건은 지금 파트너가 마저 만들어요.</p>
-    <p class="xsmall faint">정지가 풀리면 열람도 원래대로 돌아오고, 고객이 아직 답하지 않은 제작 파트너 변경 제안은 거둬 지금 파트너가 이어서 만들어요(이미 동의·환불된 건은 그대로, 계약 종료는 되돌릴 수 없어 해당 없음). 화면과 서버가 모두 이 표로 막고, 열람·다운로드 시도는 접근 기록에 남아요.</p>`;
+    <p class="xsmall faint">정지 사유는 사유마다 따로 쌓고 따로 풀어요. 마지막 사유가 풀려 정지가 풀리면 열람도 원래대로 돌아오고, 고객이 아직 답하지 않은 제작 파트너 변경 제안은 거둬 지금 파트너가 이어서 만들어요. [인쇄 가능] 전 디자인 확정 건은 제안이 있었든 없었든 풀린 때를 인쇄 패키지를 다시 전달한 때로 보고 확인 기한을 새로 세요(이미 동의·환불된 건은 그대로, 계약 종료는 되돌릴 수 없어 해당 없음). 화면과 서버가 모두 이 표로 막고, 열람·다운로드 시도는 접근 기록에 남아요.</p>`;
   }
   function secKv(s) {
     const sec = s.sec;
@@ -758,9 +807,14 @@
         <p class="small">협의 채널 연락처 공유 시도 기록과 고객 신고로 조사가 열렸어요. 기한 안에 소명 자료를 내 주세요. ${draftTag}</p>
         ${s.inv.replied ? '<span class="st st-done">소명 자료 제출함 · 운영팀 판단 대기</span>' : '<div><button class="btn btn-primary btn-ext" data-act="invReply">소명 자료 제출</button></div>'}</div></div>`
       : s.inv && s.inv.decided ? `<div class="note note-stop small">직거래 조사 결과: 위반 · 위약금 ${won(s.inv.penalty)}을 이번 주 정산에서 빼요. 결과 통지 뒤 이의 신청은 1회 할 수 있어요.</div>` : '';
-    const banner = ac === 'SUSPENDED' ? `<div class="note note-stop small">${s.suspendKind === 'biz' ? '국세청 정기 조회에서 사업자 휴업·폐업이 확인돼 판매를 멈췄어요' : `본사가 판매를 멈췄어요 · 사유: ${esc(s.suspendReason || '')}`}. 상품 노출은 멈췄고, 정지 전에 들어온 진행 중 주문·클레임은 [주문]에서 계속 처리해요. 주문 엑셀·인쇄 패키지는 받을 수 없어요. ${s.suspendKind === 'biz' ? (s.bizResumed ? '다시 계속사업자로 확인돼 담당 MD가 다른 정지 사유가 없는지 확인하고 있어요.' : '사업을 다시 시작했다면 담당 MD에게 연락해 주세요. 월 1회 조회를 기다리지 않고 바로 다시 조회해요.') : '담당 MD에게 문의해 주세요.'}</div>`
-      : ac === 'ACTIVE' && s.reinstated ? `<div class="note note-spot small">본사 정지가 풀렸어요(${fmtDate(s.reinstated.at)} · 사유: ${esc(s.reinstated.reason)}). 상품 노출과 주문 엑셀·인쇄 패키지 받기가 원래대로 돌아왔어요.${s.reinstated.withdrawn ? ` 고객이 아직 답하지 않은 제작 파트너 변경 제안 ${s.reinstated.withdrawn}건은 거둬져 대성포장이 이어서 만들어요.` : ''}</div>`
-      : ac === 'TERMINATED' ? `<div class="note note-stop small">계약이 종료됐어요(${esc(s.term ? s.term.reason : '')}). 로그인과 남은 주문 처리·정산 화면은 계속 열려 있고, 주문 엑셀·인쇄 패키지는 받을 수 없어요.</div>` : '';
+    /* 정지 배너(A-PTN-02 · 2026-10-17 D68·⑧): 아직 풀리지 않은 사유를 모두 · 메모 함께 */
+    const live = liveStops(s); const bzs = bizStop(s);
+    const banner = ac === 'SUSPENDED' ? `<div class="note note-stop small"><b>판매가 멈췄어요 · 정지 사유 ${live.length}개</b>
+        <ul class="stop-list">${live.map((x) => `<li>${esc(stopName(x))} · ${stopBy(x)} · ${fmtDate(x.at)}${memoTxt(x.memo)}</li>`).join('')}</ul>
+        상품 노출은 멈췄고, 정지 전에 들어온 진행 중 주문·클레임은 [주문]에서 계속 처리해요. 주문 엑셀·인쇄 패키지는 받을 수 없어요. 사유가 모두 풀려야 정지가 풀려요.
+        ${bzs ? (bzs.resumed ? ' 다시 계속사업자로 확인돼 담당 MD가 확인하고 있어요.' : ' 사업을 다시 시작했다면 담당 MD에게 연락해 주세요. 정기 조회를 기다리지 않고 바로 다시 조회해요.') : ''}${live.some((x) => x !== bzs) ? ' 다른 사유는 담당 MD에게 문의해 주세요.' : ''}</div>`
+      : ac === 'ACTIVE' && s.reinstated ? `<div class="note note-spot small">본사 정지가 풀렸어요(${fmtDate(s.reinstated.at)} · 마지막 사유 해소: ${esc(s.reinstated.reason)}${memoTxt(s.reinstated.memo)}). 상품 노출과 주문 엑셀·인쇄 패키지 받기가 원래대로 돌아왔어요.${s.reinstated.withdrawn ? ` 고객이 아직 답하지 않은 제작 파트너 변경 제안 ${s.reinstated.withdrawn}건은 거둬져 대성포장이 이어서 만들어요.` : ''}${s.reinstated.rehanded ? ` [인쇄 가능] 전 디자인 확정 건 ${s.reinstated.rehanded}건은 인쇄 패키지를 지금 다시 전달한 것으로 보고 확인 기한을 새로 셌어요.` : ''}</div>`
+      : ac === 'TERMINATED' ? `<div class="note note-stop small">계약이 종료됐어요(${esc(s.term ? s.term.reason : '')}${memoTxt(s.term && s.term.memo)}). 로그인과 남은 주문 처리·정산 화면은 계속 열려 있고, 주문 엑셀·인쇄 패키지는 받을 수 없어요.</div>` : '';
     const ctl = ac === 'ACTIVE' ? '<button class="btn" data-act="pause">휴점</button>' : ac === 'PAUSED' ? '<button class="btn btn-primary" data-act="resume">재개</button>'
       : ac === 'SUSPENDED' ? '<span class="xsmall faint">본사 정지는 본사만 풀 수 있어요.</span>' : '<span class="xsmall faint">계약이 끝나 상태를 바꿀 수 없어요.</span>';
     return `<div class="split"><h3>파트너 정보</h3><span class="st ${acCls(ac)}">${acName}</span></div>
@@ -776,13 +830,13 @@
         <dt>지금 수수료</dt><dd>일반 ${nr('commission.default_rate')}% · 맞춤 ${nr('commission.custom_rate')}% ${app.clock.now() < newUntil() ? `(신규 입점 인하 ${fmtLong(newUntil())}까지)` : '(신규 입점 기간 끝)'}</dd>
         <dt>직거래 제외 고객</dt><dd>${s.prior ? '2곳(입점 전 거래 증빙)' : '없음'}</dd>
         <dt>정산 계좌</dt><dd>${s.manualAcct ? '통장 사본 확인 계좌' : 'IBK기업은행 ***-******-01-012 · 대성포장(주)'}</dd></dl>
-        <p class="xsmall faint" style="margin-top:8px">계좌를 바꾸려면 계좌 인증과 대표 계정 본인인증·2단계 인증을 다시 해요. 사업자 상태는 월 1회 국세청에서 다시 조회해요.</p></div></div>`;
+        <p class="xsmall faint" style="margin-top:8px">계좌를 바꾸려면 계좌 인증과 대표 계정 본인인증·2단계 인증을 다시 해요. 사업자 상태는 국세청에서 정기적으로 다시 조회해요(${pv('batch.biz_recheck_schedule')}).</p></div></div>`;
   }
   /* 고객 배송 정보 보이기: full(목록에 보임) · one(주문 상세에서 건별로만) · mask(가림) — P-ORD-01 · A-PTN-02 */
   function shipView(s, ac, o) {
     if (s.claim && !s.claim.done && s.claim.id === o.id) return 'full';
     if (o.movedAway) return 'mask';
-    if (!RESTRICTED(ac)) return o.deliveredAt && app.clock.now() - o.deliveredAt > L('ship_info_days') * DAY ? 'mask' : 'full';
+    if (!RESTRICTED(ac)) return o.deliveredAt && app.clock.now() - o.deliveredAt > P(SHIP_INFO) * DAY ? 'mask' : 'full';
     if (accessCur(s, ac) === 'DONE') return 'mask';
     return ORDER_END.includes(o.st) ? 'mask' : 'one';
   }
@@ -790,8 +844,8 @@
     const R = RESTRICTED(ac); const cur = accessCur(s, ac); const rem = remaining(s);
     const acName = GC.sm.stateName('PARTNER_ACCOUNT', ac);
     const claimOpen = s.claim && !s.claim.done;
-    const top = !R ? `<p class="small muted">내 주문 항목만 보여요. 받는 분 정보는 배송 완료 후 ${lpv('ship_info_days')}까지 보이고(클레임이 열려 있으면 끝날 때까지) 그 뒤에는 가려요.</p>`
-      : cur === 'DONE' ? `<div class="note note-stop small">${acName} 중이고 남은 주문이 모두 배송 완료됐어요. 배송 완료 후 ${lpv('ship_info_days')}을 기다리지 않고 고객 정보를 바로 가렸어요.${claimOpen ? ` 교환 클레임이 열린 <b>${s.claim.id}</b> 한 건만 클레임이 끝날 때까지 배송 정보가 보여요.` : ''}</div>`
+    const top = !R ? `<p class="small muted">내 주문 항목만 보여요. 받는 분 정보는 배송 완료 후 ${pv(SHIP_INFO)}까지 보이고(클레임이 열려 있으면 끝날 때까지) 그 뒤에는 가려요.</p>`
+      : cur === 'DONE' ? `<div class="note note-stop small">${acName} 중이고 남은 주문이 모두 배송 완료됐어요. 배송 완료 후 ${pv(SHIP_INFO)}을 기다리지 않고 고객 정보를 바로 가렸어요.${claimOpen ? ` 교환 클레임이 열린 <b>${s.claim.id}</b> 한 건만 클레임이 끝날 때까지 배송 정보가 보여요.` : ''}</div>`
       : `<div class="note note-warn small">${acName} 중이에요. 남은 주문 ${rem.length}건은 마저 처리할 수 있지만 주문 엑셀·인쇄 패키지는 받을 수 없고, 고객 배송 정보는 [배송 정보 보기]로 한 건씩만 열려요.</div>`;
     const tool = `<div class="cluster"><button class="btn" data-act="excel" ${R ? 'disabled' : ''}>주문 엑셀 받기</button>${R ? '<span class="xsmall stop-txt">본사 정지·계약 종료 중에는 받을 수 없어요. 서버도 막아요</span>' : '<span class="xsmall faint">사유 입력·파일 암호·다운로드 기록이 필요하고, 개인정보 열은 기본으로 가려요</span>'}</div>`;
     const stc = (o) => (ORDER_END.includes(o.st) ? 'st-done' : 'st-now');
@@ -845,7 +899,7 @@
         <p class="xsmall faint" style="margin-top:8px">그 주 정산 이벤트에서 빼고, 정산액이 모자라면 미수금(분쟁 조정)으로 넘겨 다음 정산에서 먼저 빼요. 이 항목은 구매 확정이 없어 상품 대금 정산도 없어요(인쇄물·판 손실은 파트너). ${draftTag}</p></div></div>` : '';
     if (ac !== 'TERMINATED' || !s.term) {
       return `<div class="split"><h3>정산</h3><span class="st ${acCls(ac)}">${acName}</span></div>
-        <div class="note small">정산 화면은 휴점·본사 정지·계약 종료 중에도 열려 있어요. 주 1회(화요일 마감 · 금요일 지급) 정산 흐름은 정산 페이지에서 자세히 볼 수 있어요.</div>${masked}${dedPanel}
+        <div class="note small">정산 화면은 휴점·본사 정지·계약 종료 중에도 열려 있어요. ${pv('settlement.cycle')} 정산 흐름은 정산 페이지에서 자세히 볼 수 있어요.</div>${masked}${dedPanel}
         <div><a class="btn" href="settlement.html">정산 페이지 열기</a></div>`;
     }
     const t = s.term;
@@ -971,29 +1025,57 @@
   function hqManage(s) {
     const ac = app.state('acct');
     const list = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>상호</th><th>유형</th><th>계정 상태</th><th>플랜</th><th>담당 MD</th><th>평가 점수</th></tr></thead><tbody>
-      ${ac ? `<tr class="is-hl"><td>대성포장(주)</td><td>입점 판매</td><td><span class="st ${ac === 'ACTIVE' ? 'st-now' : 'st-stop'}">${GC.sm.stateName('PARTNER_ACCOUNT', ac)}</span></td><td>베이직</td><td>${s.md ? s.md.name : '-'}</td><td><span class="tag tag-phase">2차</span></td></tr>` : ''}
+      ${ac ? `<tr class="is-hl"><td>대성포장(주)</td><td>입점 판매</td><td><span class="st ${ac === 'ACTIVE' ? 'st-now' : 'st-stop'}">${GC.sm.stateName('PARTNER_ACCOUNT', ac)}</span>${ac === 'SUSPENDED' ? `<br><span class="xsmall faint">정지 사유 ${liveStops(s).length}개</span>` : ''}</td><td>베이직</td><td>${s.md ? s.md.name : '-'}</td><td><span class="tag tag-phase">2차</span></td></tr>` : ''}
       <tr><td>한결주방상사</td><td>입점 판매</td><td><span class="st">판매 가능</span></td><td>베이직</td><td>박정우 MD</td><td><span class="tag tag-phase">2차</span></td></tr>
       <tr><td>오성인쇄</td><td>입점 판매</td><td><span class="st st-warn">파트너 휴점</span></td><td>베이직</td><td>이수진 MD</td><td><span class="tag tag-phase">2차</span></td></tr></tbody></table></div>`;
     if (!ac) return `<h3>파트너 관리</h3>${list}<div class="note small">대성포장은 아직 계약 전이에요. 전자 서명을 마치면 파트너 계정이 생겨 여기서 관리해요.</div>`;
-    const reasonOk = !!s.stopReason; const termOnly = !!stopMeta(s.stopReason).termOnly; const pendN = s.orders.filter(chgPending).length;
-    /* 정지·종료 사유(A-PTN-02 맞춤): 시스템 사유·2차 사유는 목록에 보이되 고를 수 없음 */
-    const reasonSeg = `<div class="seg" role="group">${STOP_REASONS.map((r) => `<button data-act="stopReason" data-k="reason" data-v="${r.v}" aria-pressed="${s.stopReason === r.v}"${r.sys || r.phase ? ' disabled' : ''}${r.sys ? ' title="국세청 정기 조회로 시스템이 정지해요 · 수동으로 고르지 않아요"' : r.phase ? ' title="A-PTN-03 페널티 · 2차"' : ''}>${r.v}${r.sys ? ' · 시스템' : r.phase ? ' · 2차' : r.termOnly ? ' · 종료만' : ''}</button>`).join('')}</div>`;
-    const biz = ac === 'SUSPENDED' && s.suspendKind === 'biz';
+    /* 정지·종료 사유(A-PTN-02 맞춤 · 2026-10-17 D68·⑧): 시스템·2차 사유는 보이되 고를 수 없음 · '사업자 폐업'(종료만)은 국세청 조회로 폐업이 확인된 뒤에만 */
+    const live = liveStops(s); const bzs = bizStop(s); const closedOk = !!(bzs && bzs.detail === '폐업');
+    const pick = s.stopReason; const pm = stopMeta(pick);
+    const dup = ac === 'SUSPENDED' && live.some((x) => x.reason === pick);
+    const canSuspend = !!pick && !pm.termOnly && !dup;
+    const canTerm = !!pick && (!pm.needClosed || closedOk);
+    const pendN = s.orders.filter(chgPending).length;
+    const reasonSeg = `<div class="seg" role="group">${STOP_REASONS.map((r) => {
+      const off = r.sys || r.phase || (r.needClosed && !closedOk);
+      const tip = r.sys ? '국세청 정기 조회로 시스템이 넣는 사유예요 · 수동으로 고르지 않아요' : r.phase ? 'A-PTN-03 페널티 · 2차' : r.needClosed ? '국세청 조회로 폐업이 확인된 뒤, MD가 남은 주문·정산을 보고 골라요(자동 종료 없음)' : '';
+      return `<button data-act="stopReason" data-k="reason" data-v="${r.v}" aria-pressed="${pick === r.v}"${off ? ' disabled' : ''}${tip ? ` title="${tip}"` : ''}>${r.v}${r.sys ? ' · 시스템' : r.phase ? ' · 2차' : r.termOnly ? ' · 종료만' : ''}</button>`;
+    }).join('')}</div>`;
+    const memoIn = (k, id, label, need) => `<div class="field memo-field"><label for="${id}">${label} <span class="xsmall faint">텍스트 ${MEMO_MAX}자 · ${need ? '<b>이 사유는 필수</b>' : '선택'} · 파트너 알림·배너에 사유와 함께 보여요</span></label>
+      <input class="input" id="${id}" maxlength="${MEMO_MAX}" data-input="memo" data-k="${k}" value="${esc(s.memo[k] || '')}" autocomplete="off"></div>`;
     const chkRow = (k, ok, txt) => `<tr><td>${k}</td><td><span class="st ${ok ? 'st-done' : 'st-warn'}">${txt}</span></td></tr>`;
-    const bizBox = biz ? `<div class="stack-sm"><b class="small">사업자 상태 · 국세청</b>
-        ${s.bizResumed ? `<div class="note note-spot small">${fmtDate(s.bizResumed.at)} ${esc(s.bizResumed.by)} 결과 <b>계속사업자</b>예요. 시스템은 자동으로 풀지 않고 담당 MD에게 알렸어요. 다른 정지 사유가 없는지 확인한 뒤 [정지 해제]를 누르세요.</div>
-          <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>다른 정지 사유</th><th>확인</th></tr></thead><tbody>${chkRow('미수금(본사 청구 잔액)', true, '없음')}${chkRow('서류 유효기간', true, '모두 유효')}${chkRow('열린 직거래 조사', !(s.inv && !s.inv.decided), s.inv && !s.inv.decided ? '있음' : '없음')}</tbody></table></div>`
-          : '<p class="small">휴업·폐업으로 시스템이 정지했어요. 정기 조회(월 1회)에서 다시 계속사업자로 나오면 담당 MD에게 알려요. 파트너가 사업을 다시 시작했다고 연락하면 기다리지 않고 바로 다시 조회해요.</p>'}
-        <div class="demo"><span class="demo-h">국세청 바로 다시 조회 · 체험 결과</span><button class="btn btn-sm btn-ext" data-act="ntsRe" data-v="ok" data-by="md">계속사업자</button><button class="btn btn-sm btn-ext" data-act="ntsRe" data-v="closed" data-by="md">폐업 그대로</button></div></div><hr class="hr">` : '';
-    const ops = ac === 'TERMINATED' ? `<table class="tbl small"><tbody><tr><td>최종 정산액</td><td class="num">${won(s.term.final)}</td></tr><tr><td>지금 지급</td><td class="num">${won(s.term.final - s.term.hold)}</td></tr><tr><td>유보(${GC.Policy.get('settlement.final_holdback')}%)</td><td class="num">${won(s.term.hold)}</td></tr><tr class="is-sum"><td>유보금 지급일</td><td class="num">${s.term.released ? '지급 완료' : fmtLong(s.term.release)}</td></tr></tbody></table>`
-      : `${bizBox}${ac === 'SUSPENDED' ? `<div class="field"><span class="lbl">정지 사유</span><span class="small">${esc(s.suspendReason || '-')}</span></div>
-        <div class="field"><span class="lbl">해제 사유 (감사 로그 · 대표자에게 알림)</span>${seg('relReason', 'reason', REL_REASONS.map((r) => [r, REL_LABEL[r] || r]), s.relReason)}</div>
-        <div class="cluster"><button class="btn btn-primary" data-act="unsuspend">정지 해제</button>${pendN ? `<span class="xsmall faint">고객이 아직 답하지 않은 제작 파트너 변경 제안 ${pendN}건은 거둬요</span>` : ''}</div><hr class="hr">` : ''}
-        <div class="field"><span class="lbl">사유 (${ac === 'SUSPENDED' ? '계약 종료' : '정지·종료'} 때 필수 · 메모 함께)</span>${reasonSeg}</div>
-        <p class="xsmall faint">사업자 휴업·폐업은 국세청 정기 조회(월 1회)에서 시스템이 정지해요. 페널티 판매 중지(A-PTN-03)는 2차예요. 파트너 요청은 계약 종료 사유예요. 서류 유효기간 만료는 계정 정지가 아니라 해당 품목 판매 중지예요.</p>
-        <div class="cluster">${ac === 'SUSPENDED' ? '' : `<button class="btn" data-act="suspend" ${reasonOk && !termOnly ? '' : 'disabled'}>본사 정지</button>`}
-          <button class="btn btn-danger" data-act="terminate" ${reasonOk ? '' : 'disabled'}>계약 종료</button>${termOnly && ac !== 'SUSPENDED' ? '<span class="xsmall faint">파트너 요청은 계약 종료에만 써요</span>' : ''}</div>
-        <p class="xsmall faint">휴점은 파트너가 직접 켜고 꺼요. 본사 정지·계약 종료는 사유를 남기고 파트너에게 알리며 상품 노출을 바로 멈춰요. 정지 해제도 사유를 감사 로그에 남기고 대표자에게 알려요. 계약 종료는 되돌릴 수 없고 최종 정산액의 ${pv('settlement.final_holdback')}를 ${lpv('holdback_days')} 유보해요.</p>`;
+    /* 정지 사유 기록: 사유 · 주체 · 시각 · 메모 · 해소 시각 · 해소 사유 */
+    const stopTbl = s.stops.length ? `<div class="tbl-wrap"><table class="tbl small stop-tbl"><thead><tr><th>정지 사유</th><th>주체 · 시각</th><th>메모</th><th>해소</th></tr></thead><tbody>
+      ${s.stops.map((x) => `<tr${x.clearedAt ? ' class="is-off"' : ''}><td><b>${esc(stopName(x))}</b>${x.resumed && !x.clearedAt ? '<br><span class="tag tag-spot">재조회 계속사업자</span>' : ''}</td><td>${stopBy(x)}<br><span class="num">${fmtDate(x.at)}</span></td><td>${x.memo ? esc(x.memo) : '<span class="faint">-</span>'}</td>
+        <td>${x.clearedAt ? `<span class="num">${fmtDate(x.clearedAt)}</span> · ${esc(REL_LABEL[x.clearReason] || x.clearReason)}${x.clearMemo ? `<br><span class="xsmall">${esc(x.clearMemo)}</span>` : ''}` : ac === 'TERMINATED' ? '<span class="st">계약 종료로 마감</span>' : '<span class="st st-stop">남음</span>'}</td></tr>`).join('')}</tbody></table></div>` : '';
+    const otherLive = live.filter((x) => x !== bzs);
+    const bizBox = bzs ? `<div class="stack-sm"><b class="small">사업자 상태 · 국세청</b>
+        ${bzs.resumed ? `<div class="note note-spot small">${fmtDate(bzs.resumed.at)} ${esc(bzs.resumed.by)} 결과 <b>계속사업자</b>예요. 시스템은 자동으로 풀지 않고 담당 MD에게 알렸어요. 확인한 뒤 '${BIZ_REASON}' 사유만 [사유 해소]하세요.</div>
+          <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>다른 정지 사유</th><th>확인</th></tr></thead><tbody>${otherLive.map((x) => chkRow(esc(stopName(x)), false, '정지 사유로 남음')).join('')}${otherLive.some((x) => x.reason === '미수금 미납') ? '' : chkRow('미수금(본사 청구 잔액)', true, '없음')}${chkRow('서류 유효기간', true, '모두 유효')}${chkRow('열린 직거래 조사', !(s.inv && !s.inv.decided), s.inv && !s.inv.decided ? '있음' : '없음')}</tbody></table></div>`
+          : `<p class="small">${bzs.detail || '휴업·폐업'}이라 시스템이 정지 사유로 넣었어요. 정기 조회(${pv('batch.biz_recheck_schedule')})에서 다시 계속사업자로 나오면 담당 MD에게 알려요. 파트너가 사업을 다시 시작했다고 연락하면 기다리지 않고 바로 다시 조회해요.${bzs.detail === '폐업' ? ' 폐업이 이어져도 시스템이 계약을 끝내지 않아요. 남은 주문·정산을 본 뒤 [계약 종료](사유 ‘사업자 폐업’)를 눌러요.' : ''}</p>`}
+        <div class="demo"><span class="demo-h">국세청 바로 다시 조회 · 체험 결과</span><button class="btn btn-sm btn-ext" data-act="ntsRe" data-v="ok" data-by="md">계속사업자</button><button class="btn btn-sm btn-ext" data-act="ntsRe" data-v="${bzs.detail === '휴업' ? 'suspended' : 'closed'}" data-by="md">${bzs.detail || '폐업'} 그대로</button></div></div><hr class="hr">` : '';
+    /* 사유별 [사유 해소](D68): 휴·폐업 사유는 재조회 계속사업자 뒤 '사업자 상태 정상 확인'으로만(D48) · 마지막 사유가 풀릴 때만 ACTIVE */
+    const clr = live.find((x) => x.id === s.clrPick) || live[0];
+    const clrBiz = !!clr && clr.reason === BIZ_REASON;
+    const relCur = relFor(s, clr);
+    const relSeg = `<div class="seg" role="group">${REL_REASONS.map((r) => {
+      const off = clrBiz ? r !== BIZ_OK : r === BIZ_OK;
+      return `<button data-act="relReason" data-k="reason" data-v="${r}" aria-pressed="${relCur === r}"${off ? ` disabled title="${clrBiz ? '휴·폐업 사유는 국세청 재조회에서 정상으로 확인된 뒤 이 사유로만 풀어요' : '휴·폐업 사유를 풀 때만 써요'}"` : ''}>${REL_LABEL[r] || r}</button>`;
+    }).join('')}</div>`;
+    const clrBox = ac === 'SUSPENDED' && clr ? `<div class="stack-sm"><b class="small">정지 사유 해소</b>
+        ${live.length > 1 ? `<div class="field"><span class="lbl">해소할 정지 사유</span><div class="seg" role="group">${live.map((x) => `<button data-act="clrPick" data-v="${x.id}" aria-pressed="${x === clr}">${esc(stopName(x))}</button>`).join('')}</div></div>` : `<p class="small">해소할 정지 사유: <b>${esc(stopName(clr))}</b></p>`}
+        <div class="field"><span class="lbl">해소 사유 (감사 로그 · 마지막 사유면 대표자에게 알림)</span>${relSeg}</div>
+        ${memoIn('rel', 'relMemo', '해소 메모', memoNeed('rel', relCur))}
+        <div class="cluster"><button class="btn btn-primary" data-act="unsuspend" ${clrBiz && !clr.resumed ? 'disabled' : ''}>사유 해소</button><span class="xsmall faint">${clrBiz && !clr.resumed ? '국세청 재조회에서 계속사업자로 확인돼야 이 사유를 풀 수 있어요(D48)' : live.length === 1 ? `마지막 사유라 풀면 정지가 풀려요${pendN ? ` · 고객이 아직 답하지 않은 제작 파트너 변경 제안 ${pendN}건은 거둬요` : ''}` : `다른 사유 ${live.length - 1}개가 남아 이 사유를 풀어도 정지는 그대로예요`}</span></div></div><hr class="hr">` : '';
+    const addBox = `<div class="field"><span class="lbl">사유 (${ac === 'SUSPENDED' ? '정지 사유 더하기 · 계약 종료' : '정지·종료'} 때 필수 · 메모 함께)</span>${reasonSeg}</div>
+        ${memoIn('stop', 'stopMemo', `${ac === 'SUSPENDED' ? '정지 사유 더하기·계약 종료' : '정지·계약 종료'} 메모`, memoNeed('stop', pick))}
+        <p class="xsmall faint">사업자 휴업·폐업은 국세청 정기 조회(${pv('batch.biz_recheck_schedule')})에서 시스템이 정지 사유로 넣어요. 페널티 판매 중지(A-PTN-03)는 2차예요. 파트너 요청과 사업자 폐업(폐업이 확인된 뒤 MD가 고름)은 계약 종료 사유예요. 서류 유효기간 만료는 계정 정지가 아니라 해당 품목 판매 중지예요. 내부 판단은 파트너 상세의 내부 메모에 따로 적어요.</p>
+        <div class="cluster"><button class="btn" data-act="suspend" ${canSuspend ? '' : 'disabled'}>${ac === 'SUSPENDED' ? '정지 사유 더하기' : '본사 정지'}</button>
+          <button class="btn btn-danger" data-act="terminate" ${canTerm ? '' : 'disabled'}>계약 종료</button>${pm.termOnly ? '<span class="xsmall faint">이 사유는 계약 종료에만 써요</span>' : dup ? '<span class="xsmall faint">이미 정지 사유예요 · 같은 사유는 겹쳐 쌓지 않아요</span>' : ''}</div>
+        <p class="xsmall faint">휴점은 파트너가 직접 켜고 꺼요. 본사 정지·계약 종료는 사유와 메모를 남기고 대표자에게 알리며 상품 노출을 바로 멈춰요. 정지 중에도 새 사유를 더할 수 있고(대표자에게 알림), 정지는 사유마다 [사유 해소]로 풀어 마지막 사유가 풀릴 때만 판매 가능으로 돌아가요. 계약 종료는 되돌릴 수 없고 최종 정산액의 ${pv('settlement.final_holdback')}를 ${lpv('holdback_days')} 유보해요.</p>`;
+    const ops = ac === 'TERMINATED' ? `<table class="tbl small"><tbody><tr><td>최종 정산액</td><td class="num">${won(s.term.final)}</td></tr><tr><td>지금 지급</td><td class="num">${won(s.term.final - s.term.hold)}</td></tr><tr><td>유보(${GC.Policy.get('settlement.final_holdback')}%)</td><td class="num">${won(s.term.hold)}</td></tr><tr class="is-sum"><td>유보금 지급일</td><td class="num">${s.term.released ? '지급 완료' : fmtLong(s.term.release)}</td></tr></tbody></table>
+        <p class="xsmall faint">종료 사유 ${esc(s.term.reason)}${memoTxt(s.term.memo)}</p>${stopTbl ? `<b class="small">정지 사유 기록</b>${stopTbl}` : ''}`
+      : `${stopTbl}${bizBox}${clrBox}${addBox}`;
     const otp = s.sec.out && s.sec.step === 'otpLost' ? `<div class="panel"><div class="panel-h"><h2>OTP 다시 등록 요청 · 대성포장 대표 계정</h2><span class="st st-todo">확인 필요</span></div><div class="panel-b stack">
         <p class="small">대표자가 휴대폰 본인인증을 마쳤어요(${fmtDate(s.sec.lostAt)}). 입점 서류와 맞는지 대조한 뒤 다시 등록을 허용하세요.</p>
         <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>대조 항목</th><th>입점 서류</th><th>본인인증 결과</th><th></th></tr></thead><tbody>
@@ -1021,8 +1103,16 @@
         ${s.orders.map((o) => `<tr${ORDER_END.includes(o.st) || o.movedAway ? '' : ' class="is-hl"'}><td class="nw">${o.id}</td><td>${itemCell(o)}</td><td>${hqSt(o)}${s.claim && !s.claim.done && s.claim.id === o.id ? ' · 교환 클레임' : ''}</td></tr>`).join('')}</tbody></table></div>
       ${cur === 'DONE' && !s.claim ? '<div class="cluster"><button class="btn" data-act="openClaim">교환 클레임 열기 · 체험</button><span class="xsmall faint">배송 완료된 주문에 고객이 교환을 신청했다고 가정해요</span></div>' : ''}
       ${dcBox(s)}
-      ${s.orders.some((o) => o.overdueAt) ? `<p class="xsmall faint">출고 기한을 넘긴 건은 운영 모니터링 목록(A-ORD-01)에 올라요. 일반 상품은 안내 없이 넘기면 무단 지연으로 기록하고(MVP는 기록만 · 페널티 2차), 맞춤 제작의 생산 지연 취소 요청은 분쟁 중재(A-ORD-02)로 들어와요. 천재지변·택배 파업처럼 본사가 일괄 공지한 지연과 인쇄 반려(디자인팀 원인)는 지연으로 보지 않아요.</p>` : ''}
+      ${s.orders.some((o) => o.overdueAt) ? `<p class="xsmall faint">출고 기한을 넘긴 건은 운영 모니터링 목록(A-ORD-01)에 올라요. 일반 상품은 안내 없이 넘기면 무단 지연으로 기록하고(MVP는 기록만 · 페널티 2차), 맞춤 제작의 생산 지연 취소 요청은 분쟁 중재(A-ORD-02)로 들어와요. 천재지변·택배 파업처럼 본사가 일괄 공지한 지연과 인쇄 반려(디자인팀 원인)는 지연으로 보지 않아요.</p>${noticeBox(s)}` : ''}
       ${!R ? '<p class="xsmall faint">본사 정지·계약 종료가 되면 이 주문들은 파트너가 마저 처리하고, [인쇄 가능] 전 맞춤 항목은 같은 사양의 다른 파트너 상품을 고객에게 제안해요(제작 파트너 변경).</p>' : ''}</div></div>`;
+  }
+  /* 본사 일괄 공지 · 지연 예외 기간(A-ORD-01 본사 개입 · P-ORD-03 · 2026-10-17 D72) 체험: 시작·끝 기록, 시작·끝 때 고객·파트너 알림 */
+  function noticeBox(s) {
+    const nt = noticeOn(s); const past = s.notices.filter((n) => n.end);
+    const rows = s.notices.map((n) => `<tr><td>${esc(n.scope)}</td><td class="num">${fmtDate(n.start)}</td><td class="num">${n.end ? fmtDate(n.end) : '<span class="st st-warn">진행 중</span>'}</td></tr>`).join('');
+    return `<div class="demo"><span class="demo-h">체험 · 본사 일괄 공지(지연 예외 기간)</span>${nt ? '<button class="btn btn-sm" data-act="noticeEnd">공지 끝</button>' : '<button class="btn btn-sm" data-act="noticeStart">공지 시작 · 택배 파업</button>'}
+      <span class="xsmall faint">${nt ? '공지 중에는 출고 지연·생산 지연으로 판정하지 않아요.' : past.length ? '끝난 공지 기간에 판정 시각이 든 주문은 끝난 날 다음 영업일 끝으로 다시 판정했어요.' : '천재지변·택배 파업처럼 전체가 늦어질 때 본사가 기간을 등록해요.'}</span></div>
+      ${rows ? `<div class="tbl-wrap"><table class="tbl small"><thead><tr><th>범위</th><th>시작</th><th>끝</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}`;
   }
   /* 생산 지연 취소(DELAY_CANCEL) 판정 체험(A-ORD-02 · D59). 본사 분쟁 중재 화면 전체는 맞춤 디자인 페이지 */
   function dcBox(s) {
@@ -1127,7 +1217,7 @@
         <dt>새 파트너 정산</dt><dd>동의할 때 정산 기준을 다시 저장해요: 판매가 = 새 상품 대금 + 새 판비, 파트너 부담 할인 0, 요율 = 새 파트너의 그 상품 요율(동의 시점, 재주문 인하 없음). 고객이 낸 금액과의 차이는 플랫폼 부담 할인으로 구매 확정 때 보전해요. 바뀐 뒤 취소되면 판비 공제 상한은 원래 판비 줄 결제 금액이에요</dd>
         <dt>붙은 구성품</dt><dd>원래 판매자 상품이라 동의·전액 환불·무응답 모두 공제 없이 결제 금액 그대로 함께 취소·환불해요. 새 파트너 구성품이 필요하면 고객이 따로 주문해요</dd>
         <dt>전액 환불</dt><dd>파트너 귀책이라 디자인 착수 뒤라도 디자인비·판비까지 공제 없이 돌려주고 이용권·쿠폰을 되살려요(C-PAY-02)</dd>
-        <dt>정지가 풀리면</dt><dd>고객이 아직 답하지 않은 제안은 거둬요. 표시를 내리고 무응답 환불 기한을 멈추며 대성포장이 이어서 만들어요(확정된 건은 [인쇄 가능]이 다시 열림). 확정된 건은 거둔 때를 인쇄 패키지를 다시 전달한 때로 보고 [인쇄 가능] 확인 기한(${pv(PRINT_BD)})을 새로 세요. 정지 중에는 이 기한 알림을 보내지 않아요. 고객과 대성포장 주문 담당자(이어서 제작 안내)에게 알려요. 이미 동의·환불된 건은 그대로, 계약 종료는 해당 없음</dd>
+        <dt>정지가 풀리면</dt><dd>마지막 정지 사유가 풀릴 때 고객이 아직 답하지 않은 제안은 거둬요. 표시를 내리고 무응답 환불 기한을 멈추며 대성포장이 이어서 만들어요(확정된 건은 [인쇄 가능]이 다시 열림). 확정된 건은 거둔 때를 인쇄 패키지를 다시 전달한 때로 보고 [인쇄 가능] 확인 기한(${pv(PRINT_BD)})을 새로 세요. 정지 중에는 이 기한 알림을 보내지 않아요. 고객과 대성포장 주문 담당자(이어서 제작 안내)에게 알려요. 제안하지 않았던 확정 건도 같은 때부터 기한을 새로 세고 인쇄 패키지 도착 알림을 다시 보내요(한 건에 알림 하나, D67). 이미 동의·환불된 건은 그대로, 계약 종료는 해당 없음</dd>
         <dt>원래 파트너 청구</dt><dd>입점 계약을 따라요 ${draftTag}</dd></dl>
       <div class="demo"><span class="demo-h">고객 화면</span><span class="xsmall faint">고객은 주문 상세의 '판매자 변경 확인 필요'에서 [변경 동의]·[전액 환불]을 눌러요. 이 페이지에서는 결과의 체험 버튼으로 대신 눌러요(${days}일 안 무응답은 시계로).</span><a class="btn btn-sm" href="order.html">주문 페이지 열기</a></div>
     </div></div>`;
@@ -1149,13 +1239,13 @@
       <div class="tbl-wrap"><table class="tbl small"><tbody>
         <tr><td>${esc(p.amt.label)}</td><td class="num">${won(p.amt.v)}</td></tr>
         <tr><td>그 거래에 적용됐을 수수료율 <span class="xsmall faint">맞춤 ${p.fr.parts.base}%${p.newPartner ? ` − 신규 입점 ${p.fr.parts.newDisc}%p` : ''}</span></td><td class="num">${p.fr.rate}%</td></tr>
-        <tr><td>배수</td><td class="num">× ${lpv('penalty_x', L('penalty_x'))}</td></tr>
+        <tr><td>배수</td><td class="num">× ${pv(PENALTY_X, P(PENALTY_X))}</td></tr>
         <tr><td>계산값</td><td class="num">${won(p.raw)}</td></tr>
         <tr><td>최소액</td><td class="num">${pv('partner.circumvent_penalty_min')}</td></tr>
         <tr class="is-sum"><td>위약금 ${p.minApplied ? '<span class="tag tag-warn">최소액 적용</span>' : ''}</td><td class="num">${won(p.penalty)}</td></tr></tbody></table></div>
       <label class="check small"><input type="checkbox" data-change="invEv" data-k="ev_proof" ${s.invEv ? 'checked' : ''}><span>외부 거래 증빙이 있어요 (세금계산서·거래명세서·이체 내역·실물·고객 진술 중 하나 이상)</span></label>
       ${!s.invEv ? '<p class="xsmall" style="color:var(--warn)">증빙이 없으면 위약금을 매기지 않아요. 신고나 이탈 신호만으로는 조사만 열어요.</p>' : ''}
-      <ol class="timeline small"><li class="${inv ? 'done' : ''}"><span>조사 통지</span></li><li class="${inv && (inv.replied || lapsed) ? 'done' : inv ? 'now' : ''}"><span>파트너 소명 ${lpv('reply_days')}</span></li><li class="${inv && inv.decided ? 'done' : inv && (inv.replied || lapsed) ? 'now' : ''}"><span>운영팀 판단 · 팀장 승인</span></li><li class="${inv && inv.decided ? 'done' : ''}"><span>결과 통지</span></li><li><span>이의 신청 1회</span></li></ol>
+      <ol class="timeline small"><li class="${inv ? 'done' : ''}"><span>조사 통지</span></li><li class="${inv && (inv.replied || lapsed) ? 'done' : inv ? 'now' : ''}"><span>파트너 소명 ${pv(REPLY_DAYS)}</span></li><li class="${inv && inv.decided ? 'done' : inv && (inv.replied || lapsed) ? 'now' : ''}"><span>운영팀 판단 · 팀장 승인</span></li><li class="${inv && inv.decided ? 'done' : ''}"><span>결과 통지</span></li><li><span>이의 신청 1회</span></li></ol>
       <div class="cluster">${actions}</div>${result}</div></div>`;
   }
   function hqRate(s) {
@@ -1194,28 +1284,30 @@
   VIEWS.system = (f) => {
     const s = S(); const st = app.state('app'); const ac = app.state('acct');
     const rows = [];
-    if (st === 'DRAFT' && s.draftAt) rows.push(['임시 저장 보관', `작성 시작 + ${lpv('draft_keep_days')} 지나면 삭제`, dLeft(addDays(s.draftAt, L('draft_keep_days')))]);
+    if (st === 'DRAFT' && s.draftAt) rows.push(['임시 저장 보관', `작성 시작 + ${pv(DRAFT_KEEP)} 지나면 삭제`, dLeft(addDays(s.draftAt, P(DRAFT_KEEP)))]);
     if (st === 'SUPPLEMENT' && s.sup) rows.push(['보완 응답 기한', `${fmtDate(s.sup.due)} 지나면 자동 반려(${pv('partner.supplement_days')})`, dLeft(s.sup.due)]);
     if (s.custom && s.sampleReqAt && !s.sampleAt && ['SUBMITTED', 'REVIEWING', 'SAMPLE_CHECK', 'SUPPLEMENT'].includes(st)) rows.push(['인쇄 샘플 도착 감시', `발송 안내 + ${lpv('sample_wait_days')} 지나면 MD 연락·보류`, s.sampleHold ? '<span class="sla sla-over">보류 중</span>' : dLeft(addDays(s.sampleReqAt, L('sample_wait_days')))]);
     if (st === 'CONTRACT') rows.push(['전자 계약 서명', `리마인드 ${REMIND_DAYS.join('·')}일째 · ${lpv('contract_sign_days')} 지나면 MD 연락`, `${s.reminded}/${REMIND_DAYS.length}회 · ${dLeft(addDays(s.contractAt, L('contract_sign_days')))}`]);
     if (st === 'REJECTED' && s.rejected) rows.push(['재신청 제한', `${fmtDate(s.rejected.reapplyAt, false)}부터 가능`, dLeft(s.rejected.reapplyAt)]);
     if (ac && ac !== 'TERMINATED') {
       rows.push(['신규 입점 인하 종료', `${fmtLong(newUntil())}부터 기본 요율`, dLeft(newUntil())]);
-      const bizStop = ac === 'SUSPENDED' && s.suspendKind === 'biz';
-      rows.push(['사업자 상태 정기 조회', bizStop ? '월 1회 · 다시 계속사업자면 담당 MD에게 알림(자동 해제 안 함)' : '월 1회 · 휴·폐업이면 판매 정지', bizStop && s.bizResumed ? '<span class="sla sla-warn">MD 확인 대기</span>' : bizStop ? '<span class="sla sla-over">휴·폐업 정지 중</span>' : '<span class="sla sla-ok">대기</span>']);
+      const bz = ac === 'SUSPENDED' && bizStop(s);
+      rows.push(['사업자 상태 정기 조회', `${pv('batch.biz_recheck_schedule')} · ${bz ? '다시 계속사업자면 담당 MD에게 알림(자동 해제 안 함)' : ac === 'SUSPENDED' ? '휴·폐업이면 정지 사유를 더하고 대표자에게 알림(D68)' : '휴·폐업이면 판매 정지'}`, bz && bz.resumed ? '<span class="sla sla-warn">MD 확인 대기</span>' : bz ? `<span class="sla sla-over">${esc(bz.detail || '휴·폐업')} 정지 사유</span>` : '<span class="sla sla-ok">대기</span>']);
     }
+    const ntOn = noticeOn(s);
+    if (ntOn) rows.push(['본사 일괄 공지(지연 예외 기간)', `${esc(ntOn.scope)} · ${fmtDate(ntOn.start)}부터 · 이 기간에는 출고 지연·생산 지연 판정을 하지 않음(D72)`, '<span class="sla sla-warn">공지 중 · 판정 멈춤</span>']);
     /* [인쇄 가능] 확인 기한 감시(D47·D46): 넘기면 파트너 리마인드 + 운영 알림 · 정지 중에는 보내지 않음 */
     s.orders.filter(printWaiting).forEach((o) => rows.push([`[인쇄 가능] 확인 기한 · ${o.id}`, `패키지 전달 ${fmtDate(o.handedAt)} + ${pv(PRINT_BD)} · 넘기면 파트너 리마인드·운영팀 알림(지연은 기록만)`,
       RESTRICTED(ac) || chgPending(o) ? '<span class="sla sla-warn">정지 중 · 알림 멈춤</span>' : o.printLate ? '<span class="sla sla-over">지연 · 알림 보냄</span>' : slaShort(printDue(o), '기한')]));
     /* 출고 기한 감시(P-ORD-03 · D58·D59): 저장한 판정 시각을 넘기면 고객·파트너 알림 · 일반은 무단 지연 기록 + 고객 [바로 취소], 맞춤은 고객 [취소 요청] */
-    s.orders.filter(dueLive).forEach((o) => rows.push([`${o.kind === 'custom' ? '생산' : '출고'} 지연 판정 · ${o.id}`, `${dueName(o)} ${fmtDate(o.due, false)} + ${pv('order.overdue_grace_bd')} 끝 = ${fmtDate(o.overdueAt)} · 송장이 없으면 고객·파트너 알림, ${o.kind === 'custom' ? '고객 [취소 요청](본사 중재)' : '무단 지연 기록 · 고객 [바로 취소]'} · 운영 모니터링 목록`,
-      o.overdue ? '<span class="sla sla-over">지연 · 알림 보냄</span>' : slaShort(o.overdueAt, '판정')]));
+    s.orders.filter(dueLive).forEach((o) => rows.push([`${o.kind === 'custom' ? '생산' : '출고'} 지연 판정 · ${o.id}`, `${dueName(o)} ${fmtDate(o.due, false)} + ${pv('order.overdue_grace_bd')} 끝 = ${fmtDate(o.overdueAt)}${!o.overdue && judgeMoved(s, o) ? ` → 일괄 공지가 끝나 ${fmtDate(judgeAt(s, o))}로 다시 판정` : ''} · 송장이 없으면 고객·파트너 알림, ${o.kind === 'custom' ? '고객 [취소 요청](본사 중재)' : '무단 지연 기록 · 고객 [바로 취소]'} · 운영 모니터링 목록`,
+      o.overdue ? '<span class="sla sla-over">지연 · 알림 보냄</span>' : ntOn ? '<span class="sla sla-warn">공지 중 · 판정 안 함</span>' : slaShort(judgeAt(s, o), '판정')]));
     if (s.inv && !s.inv.decided) rows.push(['직거래 소명 기한', fmtDate(s.inv.due), dLeft(s.inv.due)]);
     if (s.term && !s.term.released) rows.push(['계약 종료 유보금 지급', `${won(s.term.hold)} · ${fmtLong(s.term.release)}`, dLeft(s.term.release)]);
     if (ac && s.mfa) rows.push(['파트너 센터 자동 로그아웃', `${pv(IDLE_MIN)} 동안 쓰지 않으면 로그아웃 · 다시 들어올 때 비밀번호 + OTP`, s.sec.out ? '<span class="sla sla-over">로그아웃됨</span>' : '<span class="sla sla-ok">로그인 중</span>']);
     const shipping = s.orders.filter((o) => o.st === 'SHIPPED').length + (s.claim && !s.claim.done && s.claim.stage === 'SHIPPED' ? 1 : 0);
     if (shipping) rows.push(['배송 조회(스윗트래커)', `배송 중 ${shipping}건 · 다음 날 배송 완료로 바뀜`, '<span class="sla sla-ok">대기</span>']);
-    if (RESTRICTED(ac) && s.orders.length) rows.push(['정지·종료 파트너 고객 정보 가림', `남은 주문이 모두 배송 완료되면 ${lpv('ship_info_days')}을 기다리지 않고 바로 가림`, accessCur(s, ac) === 'DONE' ? '<span class="sla sla-ok">가림</span>' : `<span class="sla sla-warn">남은 ${remaining(s).length}건</span>`]);
+    if (RESTRICTED(ac) && s.orders.length) rows.push(['정지·종료 파트너 고객 정보 가림', `남은 주문이 모두 배송 완료되면 ${pv(SHIP_INFO)}을 기다리지 않고 바로 가림`, accessCur(s, ac) === 'DONE' ? '<span class="sla sla-ok">가림</span>' : `<span class="sla sla-warn">남은 ${remaining(s).length}건</span>`]);
     /* 정지 중에도 재조회(D48: 휴·폐업 정지 파트너가 다시 계속사업자인지 확인) */
     const canRe = (['REVIEWING', 'SAMPLE_CHECK', 'SUPPLEMENT', 'SUBMITTED'].includes(st) && !ac) || ac === 'ACTIVE' || ac === 'PAUSED' || ac === 'SUSPENDED';
     f.body.innerHTML = `<h3>배치·외부 연동</h3>
@@ -1223,8 +1315,8 @@
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th>작업</th><th>기준</th><th>상태</th></tr></thead><tbody>
         ${rows.map((r) => `<tr><td>${r[0]}</td><td class="small">${r[1]}</td><td>${r[2]}</td></tr>`).join('') || '<tr><td colspan="3" class="faint">지금 기다리는 자동 작업이 없어요.</td></tr>'}</tbody></table></div>
       <div class="panel"><div class="panel-h"><h2>국세청 사업자 상태 재조회</h2></div><div class="panel-b stack">
-        <p class="small muted">심사 중인 신청과 계약 파트너를 다시 조회해요. 심사 중에 휴·폐업이 확인되면 자동 반려, 계약 파트너면 판매를 멈춰요(본사 정지). 휴·폐업으로 정지된 파트너가 다시 계속사업자로 나오면 자동으로 풀지 않고 담당 MD에게 알려요.</p>
-        <div class="cluster"><button class="btn btn-ext" data-act="ntsRe" data-v="ok" ${canRe ? '' : 'disabled'}>재조회 · 계속사업자 결과</button><button class="btn btn-ext" data-act="ntsRe" data-v="closed" ${canRe ? '' : 'disabled'}>재조회 · 폐업 결과</button></div>
+        <p class="small muted">심사 중인 신청과 계약 파트너를 다시 조회해요(${pv('batch.biz_recheck_schedule')}). 심사 중에 휴·폐업이 확인되면 자동 반려, 계약 파트너면 판매를 멈춰요(본사 정지). 이미 다른 사유로 정지 중이면 ‘사업자 휴업·폐업’ 사유를 더해요. 폐업이어도 계약은 자동으로 끝내지 않아요. 휴·폐업 사유가 있는 파트너가 다시 계속사업자로 나오면 자동으로 풀지 않고 담당 MD에게 알려요.</p>
+        <div class="cluster"><button class="btn btn-ext" data-act="ntsRe" data-v="ok" ${canRe ? '' : 'disabled'}>재조회 · 계속사업자 결과</button><button class="btn btn-ext" data-act="ntsRe" data-v="suspended" ${canRe ? '' : 'disabled'}>재조회 · 휴업 결과</button><button class="btn btn-ext" data-act="ntsRe" data-v="closed" ${canRe ? '' : 'disabled'}>재조회 · 폐업 결과</button></div>
         <p class="xsmall faint">명세서가 갈려요: 심사 중 휴·폐업은 P-ONB-02에서 "자동 보류", A-PTN-01에서 "자동 반려"예요. 여기서는 A-PTN-01을 따랐어요.</p></div></div>
       <div class="note note-ext small">외부 연동: PASS(휴대폰 본인인증) · 국세청 API(사업자 진위·상태) · 쿠콘(예금주 확인) · AWS S3·GuardDuty(서류 파일) · 모두싸인(전자 계약) · 솔라피(알림톡). 프로토타입에서는 안내 창으로 대신해요.</div>`;
   };
@@ -1251,7 +1343,7 @@
     },
     nextStep() { const s = S(); if (!stepOk(s, s.step)) return; s.step = Math.min(6, s.step + 1); refresh(); },
     prevStep() { const s = S(); s.step = Math.max(2, s.step - 1); refresh(); },
-    saveDraft() { const s = S(); app.log('user', `임시 저장 · ${fmtDate(addDays(s.draftAt || app.clock.now(), L('draft_keep_days')), false)}까지 보관`); app.toast('임시 저장했어요'); },
+    saveDraft() { const s = S(); app.log('user', `임시 저장 · ${fmtDate(addDays(s.draftAt || app.clock.now(), P(DRAFT_KEEP)), false)}까지 보관`); app.toast('임시 저장했어요'); },
     cat(t) {
       const s = S(); const k = t.dataset.k.slice(4); s.cats[k] = t.checked;
       const c = CATS.find((x) => x.k === k);
@@ -1291,9 +1383,9 @@
       if (!app.go('app', 'submit', { by: '파트너 제출' })) return;
       s.submittedAt = app.clock.now(); s.draftAt = null; s.hqTab = 'review';
       trail(`파트너 담당자 ${CO.contact.split(' ')[0]}`, '입점 신청 제출');
-      app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', ['알림톡', '이메일'], `입점 신청 접수 · ${s.appNo}`);
+      app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', CH_PT_WD, `입점 신청 접수 · ${s.appNo}`);
       app.notify('NOTI_INT_ONBOARD_NEW', '운영팀 · 담당 MD', CH_INT, `입점 신청 접수 · 대성포장(주) · ${s.custom ? '맞춤 인쇄' : '일반'} · MD 배정 대기`);
-      if (s.custom) { s.sampleReqAt = app.clock.now(); app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', ['알림톡', '이메일'], `인쇄 샘플 발송 안내 · ${L('sample_wait_days')}일 안 도착`); }
+      if (s.custom) { s.sampleReqAt = app.clock.now(); app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', CH_PT_WD, `인쇄 샘플 발송 안내 · ${L('sample_wait_days')}일 안 도착`); }
       const flags = [s.nts === 'down' ? '사업자 상태' : '', s.manualAcct ? '정산 계좌' : ''].filter(Boolean);
       if (flags.length) app.log('rule', `심사 화면에 '수동 확인 필요' 표시: ${flags.join(', ')}`);
       refresh();
@@ -1316,7 +1408,7 @@
       if (!app.go('app', 'request_supplement', { by: `${s.md.name} · ${items.map(docName).join(', ')}` })) return;
       s.sup = { at: app.clock.now(), due: addDays(app.clock.now(), GC.Policy.get('partner.supplement_days')), items, fixed: {} };
       trail(s.md.name, `보완 요청 · ${items.map(docName).join(', ')}`);
-      app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', ['알림톡', '이메일'], `보완 요청 · ${fmtDate(s.sup.due)}까지 응답`);
+      app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', CH_PT_WD, `보완 요청 · ${fmtDate(s.sup.due)}까지 응답`);
       refresh();
     },
     async fixSup(b) {
@@ -1353,7 +1445,7 @@
       const s = S();
       if (!app.go('app', 'approve', { by: `${s.md.name} 심사 승인` })) return;
       trail(s.md.name, s.custom ? '샘플 평가 통과 · 심사 승인' : '심사 승인');
-      app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', ['알림톡', '이메일'], '입점 심사 승인 · 전자 계약 준비');
+      app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', CH_PT_WD, '입점 심사 승인 · 전자 계약 준비');
       refresh();
     },
     async sendContract() {
@@ -1362,7 +1454,7 @@
       if (!app.go('app', 'send_contract', { by: '전자 계약 발송' })) return;
       s.contractAt = app.clock.now(); s.reminded = 0; s.mdCall = false;
       trail(s.md.name, '전자 계약 발송 · v1.0');
-      app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', ['알림톡', '이메일'], `전자 계약 도착 · ${fmtDate(addDays(s.contractAt, L('contract_sign_days')), false)}까지 서명`);
+      app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', CH_PT_WD, `전자 계약 도착 · ${fmtDate(addDays(s.contractAt, L('contract_sign_days')), false)}까지 서명`);
       refresh();
     },
     clause(t) { S().clauses[t.dataset.k.slice(3)] = t.checked; if (t.checked) app.log('user', `조항 동의 · ${CLAUSES.find((c) => c.k === t.dataset.k.slice(3)).title}`); refresh(); },
@@ -1380,9 +1472,9 @@
       s.activeAt = app.clock.now(); s.hqTab = 'manage';
       app.setState('acct', 'ACTIVE', { by: '계약 완료 · 파트너 계정 생성' });
       trail(s.signer === 'ceo' ? `대표자 ${CO.ceo}` : CO.contact, '전자 서명 · 계약서 v1.0');
-      app.log('rule', `보호 조항 값(종료 후 ${GC.Policy.get('partner.non_circumvent_months')}개월 · ${L('penalty_x')}배 · 최소 ${won(GC.Policy.get('partner.circumvent_penalty_min'))})을 계약 v1.0에 고정 · 정책값을 바꾸면 새 계약부터 적용`);
+      app.log('rule', `보호 조항 값(종료 후 ${GC.Policy.get('partner.non_circumvent_months')}개월 · ${P(PENALTY_X)}배 · 최소 ${won(GC.Policy.get('partner.circumvent_penalty_min'))})을 계약 v1.0에 고정 · 정책값을 바꾸면 새 계약부터 적용`);
       app.log('rule', `신규 입점 인하 −${GC.Policy.get('commission.new_partner_discount')}%p · ${fmtLong(newUntil())}까지`);
-      app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 대표·담당자', ['알림톡', '이메일'], '계약 완료 · 파트너 계정 생성 · 계약서 PDF');
+      app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 대표·담당자', CH_PT_WD, '계약 완료 · 파트너 계정 생성 · 계약서 PDF');
       refresh();
     },
     mfa() {
@@ -1436,7 +1528,7 @@
       if (wasLate) app.log('rule', o.kind === 'custom' ? `${o.id}: 출고 예정일(${fmtDate(o.due, false)})을 넘겨 출고 → 생산 지연으로 기록(MVP는 기록만)` : `${o.id}: 약속 출고일(${fmtDate(o.due, false)})을 넘겨 출고 → 고객이 받은 날부터 7일 안에 '늦게 받음(출고 지연)' 사유로 반품할 수 있고 반품 배송비는 파트너(D58 ①, 법률 자문 전 초안)`);
       if (dcOpen(o)) app.log('rule', `${o.id}: 생산 지연 취소 요청 중 송장 등록 — 막지 않아요. 요청은 그대로 두고 본사가 판정: 승인하면 배송 완료 뒤 플랫폼이 회수해 검수 없이 환불(회수 배송비 파트너), 기각하면 그대로 배송`);
       liveAddons(o).forEach((x) => { if (GC.sm.can('ORDER', x.st, 'ship')) { orderGo(x, 'ship', `본 상품 ${o.id}과 같은 송장(붙은 추가 구성품)`); x.shippedAt = o.shippedAt; } });
-      app.notify('NOTI_SHIPPED', '고객', ['알림톡', '푸시'], `${o.id} 배송 시작`);
+      app.notify('NOTI_SHIPPED', '고객', CH_CUST_LATE, `${o.id} 배송 시작`);
       if (RESTRICTED(ac)) app.log('rule', `${GC.sm.stateName('PARTNER_ACCOUNT', ac)} 중에도 남은 주문 출고는 할 수 있어요`);
       refresh();
     },
@@ -1448,7 +1540,8 @@
       o.cancelWhy = 'overdue';
       app.log('money', `${o.id} 전액 환불 ${won(o.paid)} · 공제 없음 · 취소한 항목에 낸 금액 그대로(C-PAY-02)`);
       app.log('rule', '무단 지연 기록은 그대로 남아요(MVP는 기록만, 페널티 2차 A-PTN-03) · 취소된 항목에는 송장을 넣을 수 없어요');
-      app.notify('NOTI_PARTNER_CLAIM_NEW', PT_ORDER, CH_PT_CLAIM, `${o.id} 고객이 출고 지연으로 바로 취소했어요 · 송장 등록 막힘`);
+      /* S12 ⑰: 고객 바로 취소는 클레임 요청이 아니라 즉시 취소라 NOTI_PARTNER_ITEM_CANCELED(파트너 주문 담당 · 이메일 —) */
+      app.notify('NOTI_PARTNER_ITEM_CANCELED', PT_ORDER, CH_PT_DUE, `${o.id} 고객이 출고 지연으로 바로 취소했어요 · 송장 등록 막힘`);
       refresh();
     },
     /* 체험 · 고객 [취소 요청](맞춤 생산 지연): 생산 지연 취소(DELAY_CANCEL) · 자동 승인 없음 · 생산 보류 없음 */
@@ -1534,14 +1627,14 @@
       if (!o) return;
       s.claim = { id: o.id, stage: 'OPEN', at: app.clock.now(), done: false };
       app.log('rule', `${o.id}에 교환 클레임이 열렸어요 → 이 건의 배송 정보만 클레임이 끝날 때까지 파트너에게 다시 보여요`);
-      app.notify('NOTI_PARTNER_CLAIM_NEW', '파트너 대표·담당자', ['알림톡', '이메일'], `교환 클레임 · ${o.id}`);
+      app.notify('NOTI_PARTNER_CLAIM_NEW', PT_ORDER, CH_PT_CLAIM, `교환 클레임 · ${o.id}`);
       refresh();
     },
     claimShip() {
       const s = S(); if (!s.claim || s.claim.stage !== 'OPEN') return;
       Object.assign(s.claim, { stage: 'SHIPPED', shippedAt: app.clock.now() });
       app.log('state', `교환 클레임 ${s.claim.id}: 교환품 송장 등록 · 배송 중`);
-      app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], '교환품 발송');
+      app.notify('NOTI_CLAIM_UPDATED', '고객', CH_CUST_LATE, '교환품 발송');
       refresh();
     },
     ptLogout() { Object.assign(S().sec, { out: true, why: 'manual', step: 'pw' }); app.log('user', '파트너 센터 로그아웃'); refresh(); },
@@ -1601,49 +1694,87 @@
       app.go('acct', 'pause', { by: '파트너가 휴점' }); app.log('rule', '상품 노출 중단 · 진행 중 주문·클레임은 계속 처리'); refresh();
     },
     resume() { app.go('acct', 'resume', { by: '파트너가 재개' }); refresh(); },
-    stopReason(b) { const m = stopMeta(b.dataset.v); if (m.sys || m.phase) return; S().stopReason = b.dataset.v; refresh(); },
+    stopReason(b) { const m = stopMeta(b.dataset.v); if (m.sys || m.phase) return; if (m.needClosed) { const z = bizStop(S()); if (!z || z.detail !== '폐업') return; } S().stopReason = b.dataset.v; refresh(); },
+    /* 메모 입력(⑧): 다시 그리지 않고 값만 저장 · 필수 여부는 누를 때 확인 */
+    memo(t) { S().memo[t.dataset.k] = String(t.value || '').slice(0, MEMO_MAX); },
+    clrPick(b) { const s = S(); const x = liveStops(s).find((y) => String(y.id) === b.dataset.v); if (!x) return; s.clrPick = x.id; refresh(); },
+    /* 본사 정지(ACTIVE·PAUSED → SUSPENDED) 또는 정지 중 사유 더하기(D68 — 상태는 그대로, 같은 사유는 한 번만) */
     async suspend() {
-      const s = S(); if (!s.stopReason || stopMeta(s.stopReason).termOnly) return;
-      if (!(await app.confirm({ title: '본사 정지할까요?', body: `<p>사유: <b>${esc(s.stopReason)}</b></p><p class="small">파트너에게 사유를 알리고 상품 노출을 바로 멈춰요. 정지 전에 들어온 진행 중 주문은 파트너가 마저 처리하고, 주문 엑셀·인쇄 패키지 다운로드는 막혀요.</p>`, ok: '정지하기', danger: true }))) return;
-      app.go('acct', 'suspend', { by: `본사 정지 · ${s.stopReason}` }); s.suspendReason = s.stopReason; s.shipOpen = null; s.reinstated = null;
-      Object.assign(s, { suspendKind: 'manual', bizResumed: null, relReason: REL_REASONS[0] });
-      app.notify('NOTI_PARTNER_ACCOUNT_SUSPENDED', `파트너 대표자 ${CO.ceo}`, CH_CEO, `본사 정지 · 사유 ${s.stopReason} · 상품 노출 중단`);
-      app.log('rule', '상품 노출 즉시 중단 · 진행 중 주문·클레임은 계속 처리 · 주문 엑셀·인쇄 패키지 다운로드 막음 · 고객 배송 정보는 건별로만');
-      s.stopReason = null; checkMask(); refresh();
+      const s = S(); const ac = app.state('acct'); const pick = s.stopReason;
+      if (!pick || stopMeta(pick).termOnly) return;
+      const adding = ac === 'SUSPENDED';
+      if (adding && liveStops(s).some((x) => x.reason === pick)) return;
+      const memo = (s.memo.stop || '').trim();
+      if (memoNeed('stop', pick) && !memo) { app.log('warn', `정지 사유 ‘${esc(pick)}’는 메모가 필수예요 · 파트너에게 알리는 사유가 메모예요(A-PTN-02 ⑧)`); app.toast('‘기타’는 메모를 적어야 해요'); return; }
+      const body = adding
+        ? `<p>더할 사유: <b>${esc(pick)}</b>${memoTxt(memo)}</p><p class="small">이미 본사 정지 중이라 상태는 그대로이고 정지 사유가 하나 더 쌓여요(지금 ${liveStops(s).length}개: ${esc(stopsTxt(s))}). 대표자에게 알리고, 정지는 모든 사유가 풀려야 풀려요.</p>`
+        : `<p>사유: <b>${esc(pick)}</b>${memoTxt(memo)}</p><p class="small">파트너에게 사유를 알리고 상품 노출을 바로 멈춰요. 정지 전에 들어온 진행 중 주문은 파트너가 마저 처리하고, 주문 엑셀·인쇄 패키지 다운로드는 막혀요.</p>`;
+      if (!(await app.confirm({ title: adding ? '정지 사유를 더할까요?' : '본사 정지할까요?', body, ok: adding ? '사유 더하기' : '정지하기', danger: true }))) return;
+      if (!adding) { app.go('acct', 'suspend', { by: `본사 정지 · ${pick}` }); s.shipOpen = null; s.reinstated = null; }
+      const x = addStop(s, pick, 'hq', memo);
+      s.clrPick = s.clrPick || x.id;
+      app.log('rule', `감사 로그(A-SYS-02): 정지 사유 ${adding ? '추가' : '기록'} · "${esc(pick)}" · 주체 본사(${s.md ? s.md.name : '운영팀'})${memoTxt(memo)} · 남은 정지 사유 ${liveStops(s).length}개`);
+      app.notify('NOTI_PARTNER_ACCOUNT_SUSPENDED', `파트너 대표자 ${CO.ceo}`, CH_CEO, adding ? `정지 사유 추가 · ${esc(pick)}${memoTxt(memo)} · 남은 정지 사유 ${liveStops(s).length}개(${esc(stopsTxt(s))}) · 모두 풀려야 판매가 다시 열려요` : `본사 정지 · 사유 ${esc(pick)}${memoTxt(memo)} · 상품 노출 중단`);
+      if (!adding) app.log('rule', '상품 노출 즉시 중단 · 진행 중 주문·클레임은 계속 처리 · 주문 엑셀·인쇄 패키지 다운로드 막음 · 고객 배송 정보는 건별로만');
+      s.stopReason = null; s.memo.stop = ''; checkMask(); refresh();
     },
     relReason(b) { S().relReason = b.dataset.v; refresh(); },
-    /* 정지 해제(A-PTN-02 · D40): 사유를 감사 로그에 · 대표자에게 NOTI_PARTNER_ACCOUNT_REINSTATED · 답 안 한 제작 파트너 변경 제안은 거둠 */
+    /* 사유 해소(A-PTN-02 · D40 · 2026-10-17 D68·D67·⑧): 고른 사유만 풂 · 해소 사유·메모를 감사 로그에.
+       마지막 사유가 풀릴 때만 ACTIVE + NOTI_PARTNER_ACCOUNT_REINSTATED + 답 안 한 변경 제안 거둠 + 제안 없던 확정 건 [인쇄 가능] 기한 새로 셈 */
     async unsuspend() {
       const s = S(); if (app.state('acct') !== 'SUSPENDED') return;
-      const reason = s.relReason || REL_REASONS[0];
-      const pend = s.orders.filter(chgPending); const settled = s.orders.filter((o) => o.chg && ['agreed', 'refunded'].includes(o.chg.result));
-      const biz = s.suspendKind === 'biz';
-      const bizNote = biz ? `<p class="small">${s.bizResumed ? '국세청 재조회 결과 계속사업자예요. ' : '<b>아직 국세청 재조회에서 계속사업자로 확인되지 않았어요.</b> '}미수금 · 서류 유효기간 · 열린 직거래 조사 같은 다른 정지 사유가 없는지 확인했나요?</p>` : '';
-      if (!(await app.confirm({ title: '정지를 풀까요?', body: `<p>해제 사유: <b>${esc(REL_LABEL[reason] || reason)}</b></p>${bizNote}<p class="small">상품 노출과 주문 엑셀·인쇄 패키지 다운로드가 원래대로 돌아오고, 사유는 감사 로그에 남기고 대표자에게 알려요.${pend.length ? ` 고객이 아직 답하지 않은 제작 파트너 변경 제안 ${pend.length}건(${pend.map((o) => o.id).join(', ')})은 거두고 대성포장이 이어서 만들어요.` : ''}${settled.length ? ` 이미 동의·환불된 ${settled.length}건은 그대로예요.` : ''}</p>`, ok: '정지 해제' }))) return;
-      const prevReason = s.suspendReason;
-      app.go('acct', 'unsuspend', { by: `본사 정지 해제 · ${reason}` }); s.suspendReason = null;
-      if (biz) app.log('rule', `${s.md ? s.md.name : '담당 MD'} 확인: 국세청 ${s.bizResumed ? '계속사업자' : '재조회 전'} · 미수금 없음 · 서류 유효 · 열린 직거래 조사 ${s.inv && !s.inv.decided ? '있음' : '없음'} → 수동 해제(시스템 자동 해제 없음, D48)`);
-      app.log('rule', `감사 로그(A-SYS-02): 정지 해제 · 사유 "${esc(reason)}" · 정지 사유였던 "${esc(prevReason || '-')}" · 처리자 ${s.md ? s.md.name : '운영팀'} · ${fmtDate(app.clock.now())}`);
-      Object.assign(s, { suspendKind: null, bizResumed: null });
-      app.notify('NOTI_PARTNER_ACCOUNT_REINSTATED', `파트너 대표자 ${CO.ceo}`, CH_CEO, `본사 정지 해제 · 사유 ${reason} · 상품 노출 재개 · 열람·다운로드 원래대로`);
+      const live = liveStops(s); const x = live.find((y) => y.id === s.clrPick) || live[0];
+      if (!x) return;
+      const isBiz = x.reason === BIZ_REASON;
+      if (isBiz && !x.resumed) { app.log('warn', `‘${BIZ_REASON}’ 사유 해소 시도 → 국세청 재조회에서 아직 계속사업자로 확인되지 않아 막았어요(D48 · MD가 재조회 정상을 확인한 뒤에만)`); app.toast('국세청 재조회에서 계속사업자로 확인돼야 풀 수 있어요'); return refresh(); }
+      const reason = relFor(s, x); const memo = (s.memo.rel || '').trim();
+      if (memoNeed('rel', reason) && !memo) { app.log('warn', `해소 사유 ‘${esc(reason)}’는 메모가 필수예요(A-PTN-02 ⑧ · 감사 기록)`); app.toast(`‘${reason}’는 메모를 적어야 해요`); return; }
+      const rest = live.filter((y) => y !== x); const last = !rest.length;
+      const pend = last ? s.orders.filter(chgPending) : [];
+      const settled = last ? s.orders.filter((o) => o.chg && ['agreed', 'refunded'].includes(o.chg.result)) : [];
+      /* D67: 제안이 없던 디자인 확정 건([인쇄 가능] 전) — 제안이 있던 건은 거두면서 새로 셈(한 건에 알림 하나) */
+      const rehand = last ? s.orders.filter((o) => printWaiting(o) && !chgPending(o)) : [];
+      const bizNote = isBiz ? `<p class="small">국세청 재조회 결과 계속사업자예요(${esc(x.resumed.by)}). ${rest.length ? '' : '미수금 · 서류 유효기간 · 열린 직거래 조사 같은 다른 문제가 없는지 확인했나요?'}</p>` : '';
+      const tail = last
+        ? `<p class="small">마지막 정지 사유라 정지가 풀려요. 상품 노출과 주문 엑셀·인쇄 패키지 다운로드가 원래대로 돌아오고 대표자에게 알려요.${pend.length ? ` 고객이 아직 답하지 않은 제작 파트너 변경 제안 ${pend.length}건(${pend.map((o) => o.id).join(', ')})은 거두고 대성포장이 이어서 만들어요.` : ''}${rehand.length ? ` 디자인 확정 건 ${rehand.length}건(${rehand.map((o) => o.id).join(', ')})은 지금 인쇄 패키지를 다시 전달한 것으로 보고 [인쇄 가능] 확인 기한을 새로 세요.` : ''}${settled.length ? ` 이미 동의·환불된 ${settled.length}건은 그대로예요.` : ''}</p>`
+        : `<p class="small">다른 정지 사유 ${rest.length}개(${esc(rest.map(stopName).join(', '))})가 남아 계정은 본사 정지 그대로예요. 상품 노출·다운로드도 막힌 그대로예요.</p>`;
+      if (!(await app.confirm({ title: last ? '이 사유를 풀고 정지를 풀까요?' : '이 정지 사유를 풀까요?', body: `<p>정지 사유: <b>${esc(stopName(x))}</b></p><p>해소 사유: <b>${esc(REL_LABEL[reason] || reason)}</b>${memoTxt(memo)}</p>${bizNote}${tail}`, ok: last ? '사유 해소 · 정지 해제' : '사유 해소' }))) return;
+      const now = app.clock.now(); const who = s.md ? s.md.name : '운영팀';
+      Object.assign(x, { clearedAt: now, clearReason: reason, clearMemo: memo, clearBy: who });
+      if (isBiz) app.log('rule', `${who} 확인: 국세청 계속사업자(${esc(x.resumed.by)}) → ‘${BIZ_REASON}’ 사유만 해소(시스템 자동 해제 없음, D48)`);
+      app.log('rule', `감사 로그(A-SYS-02): 정지 사유 해소 · "${esc(stopName(x))}" · 해소 사유 "${esc(reason)}"${memoTxt(memo)} · 처리자 ${who} · ${fmtDate(now)} · 남은 정지 사유 ${rest.length}개${rest.length ? `(${esc(rest.map(stopName).join(', '))})` : ''}`);
+      s.memo.rel = '';
+      if (!last) {
+        app.log('rule', `다른 정지 사유가 남아 계정은 ${GC.sm.stateName('PARTNER_ACCOUNT', 'SUSPENDED')} 그대로 · 상품 노출·주문 엑셀·인쇄 패키지 막힘 그대로 · 대표자 알림(정지 해제)은 마지막 사유가 풀릴 때만`);
+        s.clrPick = rest[0].id; s.relReason = REL_REASONS[0];
+        checkMask(); return refresh();
+      }
+      app.go('acct', 'unsuspend', { by: `마지막 정지 사유 해소 · ${reason}` });
+      app.notify('NOTI_PARTNER_ACCOUNT_REINSTATED', `파트너 대표자 ${CO.ceo}`, CH_CEO, `본사 정지 해제 · 마지막 사유 ${esc(stopName(x))} 해소(${esc(reason)})${memoTxt(memo)} · 상품 노출 재개 · 열람·다운로드 원래대로`);
       app.log('rule', '정지 해제 → 파트너 센터 열람·다운로드가 원래대로 돌아왔어요');
       pend.forEach((o) => chgWithdraw(o, reason));
+      rehand.forEach((o) => rehandOff(o));
       if (settled.length) app.log('rule', `이미 고객이 동의했거나 환불된 건(${settled.map((o) => o.id).join(', ')})은 되돌리지 않아요`);
-      s.reinstated = { at: app.clock.now(), reason, withdrawn: pend.length };
-      s.relReason = REL_REASONS[0]; checkMask(); refresh();
+      s.reinstated = { at: now, reason, memo, withdrawn: pend.length, rehanded: rehand.length };
+      s.clrPick = null; s.relReason = REL_REASONS[0]; checkMask(); refresh();
     },
     async terminate() {
-      const s = S(); if (!s.stopReason) return;
+      const s = S(); const pick = s.stopReason; if (!pick) return;
+      const pm = stopMeta(pick); const z = bizStop(s);
+      if (pm.needClosed && !(z && z.detail === '폐업')) return;
+      const memo = (s.memo.stop || '').trim();
+      if (memoNeed('stop', pick) && !memo) { app.log('warn', `계약 종료 사유 ‘${esc(pick)}’는 메모가 필수예요(A-PTN-02 ⑧)`); app.toast('‘기타’는 메모를 적어야 해요'); return; }
       const final = 1240000; const hold = Math.floor((final * GC.Policy.get('settlement.final_holdback')) / 100);
-      if (!(await app.confirm({ title: '계약을 종료할까요?', body: `<p>사유: <b>${esc(s.stopReason)}</b></p><p class="small">상품 노출을 멈춰요. 파트너는 남은 주문 처리와 정산 화면만 쓰고, 주문 엑셀·인쇄 패키지는 받을 수 없어요. 최종 정산액 ${won(final)} 중 ${won(hold)}(${GC.Policy.get('settlement.final_holdback')}%)를 ${L('holdback_days')}일 유보해요. 판 폐기·디자인 파일 삭제 확인서를 받아요.</p>`, ok: '계약 종료', danger: true }))) return;
+      if (!(await app.confirm({ title: '계약을 종료할까요?', body: `<p>사유: <b>${esc(pick)}</b>${memoTxt(memo)}</p><p class="small">상품 노출을 멈춰요. 파트너는 남은 주문 처리와 정산 화면만 쓰고, 주문 엑셀·인쇄 패키지는 받을 수 없어요. 최종 정산액 ${won(final)} 중 ${won(hold)}(${GC.Policy.get('settlement.final_holdback')}%)를 ${L('holdback_days')}일 유보해요. 판 폐기·디자인 파일 삭제 확인서를 받아요.${pm.needClosed ? ' 국세청 조회로 폐업이 확인됐고 시스템은 자동으로 끝내지 않아요 — 남은 주문·정산을 확인한 뒤 누르는 거예요.' : ''}</p>`, ok: '계약 종료', danger: true }))) return;
       const now = app.clock.now();
-      app.go('acct', 'terminate', { by: `계약 종료 · ${s.stopReason}` });
-      s.term = { at: now, reason: s.stopReason, final, hold, release: addDays(now, L('holdback_days')), released: false };
+      app.go('acct', 'terminate', { by: `계약 종료 · ${pick}` });
+      s.term = { at: now, reason: pick, memo, final, hold, release: addDays(now, L('holdback_days')), released: false };
+      app.log('rule', `감사 로그(A-SYS-02): 계약 종료 · 사유 "${esc(pick)}"${memoTxt(memo)} · 처리자 ${s.md ? s.md.name : '운영팀'}${liveStops(s).length ? ` · 정지 사유 기록 ${liveStops(s).length}개(${esc(stopsTxt(s))})는 그대로 보관` : ''}`);
       app.log('money', `최종 정산 ${won(final)} → 지금 ${won(final - hold)} 지급 · ${won(hold)} 유보(${fmtLong(s.term.release)} 지급)`);
       app.log('rule', `직거래 금지는 ${fmtLong(addMonths(now, GC.Policy.get('partner.non_circumvent_months')))}까지 이어져요 · 판 폐기·디자인 파일 삭제 확인서 요청`);
-      app.notify('NOTI_PARTNER_TERMINATED', `파트너 대표자 ${CO.ceo}`, CH_CEO, `계약 종료 · 사유 ${s.stopReason} · 최종 정산 유보 안내`);
+      app.notify('NOTI_PARTNER_TERMINATED', `파트너 대표자 ${CO.ceo}`, CH_CEO, `계약 종료 · 사유 ${esc(pick)}${memoTxt(memo)} · 최종 정산 유보 안내`);
       app.log('rule', '계약 종료 뒤에도 로그인·남은 주문 처리·정산 화면은 열려 있어요 · 주문 엑셀·인쇄 패키지 다운로드 막음');
-      s.stopReason = null; s.shipOpen = null; checkMask(); refresh();
+      s.stopReason = null; s.memo.stop = ''; s.shipOpen = null; checkMask(); refresh();
     },
     hqTab(b) { S().hqTab = b.dataset.t; refresh(); },
     rp(b) { const r = S().rp; const k = b.dataset.k; const v = b.dataset.v; r[k] = ['reorder', 'exc', 'promo'].includes(k) ? Number(v) : v; if (k === 'kind' && v === 'normal') r.reorder = 0; refresh(); },
@@ -1651,7 +1782,7 @@
     invEv(t) { S().invEv = t.checked; refresh(); },
     invOpen() {
       const s = S(); const now = app.clock.now();
-      s.inv = { at: now, due: addDays(now, L('reply_days')), replied: false, decided: false };
+      s.inv = { at: now, due: addDays(now, P(REPLY_DAYS)), replied: false, decided: false };
       app.log('rule', '직거래 조사 건 열림(계기: 고객 신고 · 협의 채널 마스킹 검출 기록) · 내부 메모·첨부로 기록');
       app.notify('NOTI_PARTNER_INVESTIGATION_NOTICE', `파트너 대표자 ${CO.ceo}`, CH_CEO, `직거래 조사 통지 · ${fmtDate(s.inv.due)}까지 소명 · 법률 자문 전 초안`);
       refresh();
@@ -1672,37 +1803,67 @@
     },
     invClose() { const s = S(); s.inv = null; app.log('user', '직거래 조사 종결 · 혐의 없음(증빙 부족) · 기록은 보관'); refresh(); },
     async ntsRe(b) {
-      const s = S(); const closed = b.dataset.v === 'closed'; const byMd = b.dataset.by === 'md';
+      const s = S(); const v = b.dataset.v; const closed = v !== 'ok'; const detail = v === 'suspended' ? '휴업' : '폐업'; const byMd = b.dataset.by === 'md';
       const who = byMd ? `${s.md ? s.md.name : '담당 MD'} 바로 다시 조회` : '정기 조회';
-      await app.ext({ service: '국세청 사업자 상태 조회 API', what: byMd ? '사업자 상태 바로 다시 조회(담당 MD)' : '사업자 상태 재조회', lines: [byMd ? '파트너가 사업을 다시 시작했다고 연락해 월 1회 정기 조회를 기다리지 않고 바로 조회해요' : '심사 중 신청과 계약 파트너를 다시 조회해요(계약 파트너는 월 1회)', `결과: ${closed ? '폐업' : '계속사업자'}`], result: '이 결과를 받은 것으로 처리해요' });
-      const st = app.state('app'); const ac = app.state('acct');
+      await app.ext({ service: '국세청 사업자 상태 조회 API', what: byMd ? '사업자 상태 바로 다시 조회(담당 MD)' : '사업자 상태 재조회', lines: [byMd ? '파트너가 사업을 다시 시작했다고 연락해 정기 조회를 기다리지 않고 바로 조회해요' : `심사 중 신청과 계약 파트너를 다시 조회해요(계약 파트너는 ${esc(P('batch.biz_recheck_schedule'))})`, `결과: ${closed ? detail : '계속사업자'}`], result: '이 결과를 받은 것으로 처리해요' });
+      const st = app.state('app'); const ac = app.state('acct'); const z = ac === 'SUSPENDED' ? bizStop(s) : null;
       if (!closed) {
-        /* D48: 휴·폐업으로 정지된 파트너가 다시 계속사업자 → 자동 해제 없이 담당 MD에게 알림 · 해제 사유 기본값 '사업자 상태 정상 확인' */
-        if (ac === 'SUSPENDED' && s.suspendKind === 'biz') {
-          if (s.bizResumed) app.log('rule', `${who} 결과도 계속사업자 · 담당 MD 확인 대기 그대로`);
+        /* D48 · D68: 휴·폐업 사유가 다시 계속사업자 → 자동 해제 없이 담당 MD에게 알림 · MD가 그 사유만 해소 */
+        if (z) {
+          if (z.resumed) app.log('rule', `${who} 결과도 계속사업자 · 담당 MD 확인 대기 그대로`);
           else {
-            s.bizResumed = { at: app.clock.now(), by: who }; s.relReason = BIZ_OK; s.hqTab = 'manage';
-            app.log('rule', `${who} 결과 계속사업자 → 시스템은 정지를 자동으로 풀지 않아요(D48) · 담당 MD가 미수금·서류 같은 다른 정지 사유를 확인한 뒤 [정지 해제] · 해제 사유 기본값 '${BIZ_OK}'`);
-            app.notify('NOTI_INT_PARTNER_BIZ_RESUMED', `담당 ${s.md ? s.md.name : 'MD'}`, CH_INT, `대성포장(주) 사업자 상태 정상(계속사업자, ${who}) · 휴업·폐업 정지 해제 검토 · 미수금·서류 등 다른 정지 사유 확인 필요`);
+            const others = liveStops(s).filter((x) => x !== z);
+            z.resumed = { at: app.clock.now(), by: who }; s.clrPick = z.id; s.hqTab = 'manage';
+            app.log('rule', `${who} 결과 계속사업자 → 시스템은 정지를 자동으로 풀지 않아요(D48) · 담당 MD가 확인한 뒤 ‘${BIZ_REASON}’ 사유만 [사유 해소](해소 사유 '${BIZ_OK}')${others.length ? ` · 다른 정지 사유 ${others.length}개(${esc(others.map(stopName).join(', '))})는 그대로라 풀어도 정지 유지` : ''}`);
+            app.notify('NOTI_INT_PARTNER_BIZ_RESUMED', `담당 ${s.md ? s.md.name : 'MD'}`, CH_INT, `대성포장(주) 사업자 상태 정상(계속사업자, ${who}) · ‘${BIZ_REASON}’ 정지 사유 해소 검토${others.length ? ` · 다른 정지 사유 ${others.length}개 남음(${esc(others.map(stopName).join(', '))})` : ' · 미수금·서류 등 다른 문제 확인 필요'}`);
           }
-        } else app.log('rule', ac === 'SUSPENDED' ? `재조회 결과 계속사업자 · 정지 사유(${esc(s.suspendReason || '-')})와 관계없어 정지는 그대로` : '재조회 결과 계속사업자 · 바뀐 것 없음');
+        } else app.log('rule', ac === 'SUSPENDED' ? `재조회 결과 계속사업자 · 정지 사유(${esc(stopsTxt(s))})와 관계없어 정지는 그대로` : '재조회 결과 계속사업자 · 바뀐 것 없음');
         refresh(); return;
       }
       if (ac === 'ACTIVE' || ac === 'PAUSED') {
-        app.go('acct', 'biz_closed', { by: '정기 재조회 · 폐업' });
-        Object.assign(s, { suspendReason: `${BIZ_REASON} · 국세청 정기 조회(시스템)`, suspendKind: 'biz', bizResumed: null, reinstated: null, relReason: BIZ_OK, shipOpen: null });
-        app.notify('NOTI_PARTNER_ACCOUNT_SUSPENDED', `파트너 대표자 ${CO.ceo}`, CH_CEO, '사업자 폐업 확인(국세청 정기 조회) · 판매 정지 · 사업을 다시 시작하면 담당 MD에게 연락');
-        app.log('rule', '상품 노출 즉시 중단 · 진행 중 주문·클레임은 계속 처리 · 주문 엑셀·인쇄 패키지 다운로드 막음 · 다시 계속사업자로 확인돼도 자동으로 풀지 않고 MD가 확인 뒤 해제');
+        app.go('acct', 'biz_closed', { by: `정기 재조회 · ${detail}` });
+        const x = addStop(s, BIZ_REASON, 'system', '', detail); s.clrPick = x.id;
+        Object.assign(s, { reinstated: null, shipOpen: null });
+        app.notify('NOTI_PARTNER_ACCOUNT_SUSPENDED', `파트너 대표자 ${CO.ceo}`, CH_CEO, `사업자 ${detail} 확인(국세청 ${who}) · 판매 정지 · 사업을 다시 시작하면 담당 MD에게 연락`);
+        app.log('rule', `상품 노출 즉시 중단 · 진행 중 주문·클레임은 계속 처리 · 주문 엑셀·인쇄 패키지 다운로드 막음 · 다시 계속사업자로 확인돼도 자동으로 풀지 않고 MD가 확인 뒤 그 사유를 해소${detail === '폐업' ? ' · 폐업이어도 계약은 자동으로 끝내지 않아요(MD가 [계약 종료] · 사유 ‘사업자 폐업’)' : ''}`);
         checkMask();
       } else if (ac === 'SUSPENDED') {
-        if (s.suspendKind === 'biz') { s.bizResumed = null; s.relReason = BIZ_OK; app.log('rule', `${who} 결과 폐업 그대로 · 정지 유지`); }
-        else app.log('warn', `이미 본사 정지 중(${esc(s.suspendReason || '-')}) · 재조회 결과 폐업도 정지 사유로 함께 기록 · 해제 전에 사업자 상태도 확인`);
+        if (z) {
+          const was = z.detail; z.detail = detail; z.resumed = null;
+          app.log('rule', `${who} 결과 ${detail}${was && was !== detail ? `(이전 ${was})` : ' 그대로'} · ‘${BIZ_REASON}’ 정지 사유 유지${detail === '폐업' ? ' · 계약은 자동으로 끝내지 않아요(MD가 남은 주문·정산을 보고 [계약 종료])' : ''}`);
+        } else {
+          /* D68: 이미 다른 사유로 정지 중 → 휴·폐업 사유를 더하고 대표자에게 알림(지금까지는 로그만 남아 아무 해제 사유로 풀면 ACTIVE로 돌아가는 구멍) */
+          const x = addStop(s, BIZ_REASON, 'system', '', detail);
+          app.log('rule', `이미 본사 정지 중(${esc(liveStops(s).filter((y) => y !== x).map(stopName).join(', '))}) → 정지 사유 ‘${BIZ_REASON}(${detail})’를 더했어요 · 주체 시스템 · 남은 정지 사유 ${liveStops(s).length}개 · 이 사유는 재조회 정상 확인 뒤에만 풀려요`);
+          app.notify('NOTI_PARTNER_ACCOUNT_SUSPENDED', `파트너 대표자 ${CO.ceo}`, CH_CEO, `정지 사유 추가 · 사업자 ${detail} 확인(국세청 ${who}) · 남은 정지 사유 ${liveStops(s).length}개(${esc(stopsTxt(s))}) · 사업을 다시 시작하면 담당 MD에게 연락`);
+        }
       } else if (['REVIEWING', 'SAMPLE_CHECK', 'SUPPLEMENT'].includes(st)) {
-        doReject('기타', '국세청 재조회 결과 폐업이라 자동으로 반려했어요', '시스템 · 휴·폐업 자동 반려');
+        doReject('기타', `국세청 재조회 결과 ${detail}이라 자동으로 반려했어요`, '시스템 · 휴·폐업 자동 반려');
       } else if (st === 'SUBMITTED') {
         app.log('warn', '입점 심사 상태표에 "접수 → 반려" 이동이 없어 직접 반려 상태로 바꿔요(명세 보완 필요)');
-        doReject('기타', '국세청 재조회 결과 폐업이라 자동으로 반려했어요', '시스템 · 휴·폐업 자동 반려', true);
+        doReject('기타', `국세청 재조회 결과 ${detail}이라 자동으로 반려했어요`, '시스템 · 휴·폐업 자동 반려', true);
       }
+      refresh();
+    },
+    /* 본사 일괄 공지(지연 예외 기간 · D72): 시작·끝 기록 · 고객 NOTI_BULK_DELAY_NOTICE · 파트너 NOTI_PARTNER_BULK_DELAY_NOTICE */
+    noticeStart() {
+      const s = S(); if (noticeOn(s)) return;
+      const now = app.clock.now(); const n = { start: now, end: null, scope: '전체 · 택배 파업' }; s.notices.push(n);
+      const open = s.orders.filter((o) => dueLive(o) && !o.overdue); const already = s.orders.filter((o) => isLate(o));
+      app.log('rule', `감사 로그: 지연 예외 기간 등록(A-ORD-01 본사 개입) · 범위 ${esc(n.scope)} · ${fmtDate(now)}부터 · 이 기간에는 출고 지연·생산 지연 판정을 하지 않고 지연 기록에서 빼요${already.length ? ` · 공지 전에 이미 판정된 ${already.map((o) => o.id).join(', ')}는 [바로 취소]·[취소 요청]이 그대로(그때는 파트너 사정)` : ''}`);
+      if (open.length) app.notify('NOTI_BULK_DELAY_NOTICE', `고객(진행 중 주문 ${open.length}건)`, CH_CUST_LATE, '택배 파업으로 배송이 늦어질 수 있어요 · 이 기간에는 판매자 지연으로 보지 않아요 · 끝나면 다시 알려 드려요');
+      app.notify('NOTI_PARTNER_BULK_DELAY_NOTICE', PT_ORDER, CH_PT_DUE, `본사 일괄 공지 시작 · ${esc(n.scope)} · 이 기간에는 출고 지연·생산 지연으로 보지 않아요 · 끝나면 다시 판정하는 시각을 알려 드려요`);
+      refresh();
+    },
+    noticeEnd() {
+      const s = S(); const n = noticeOn(s); if (!n) return;
+      const now = app.clock.now(); n.end = now;
+      const moved = s.orders.filter((o) => dueLive(o) && !o.overdue && judgeMoved(s, o));
+      const list = moved.map((o) => `${o.id} ${fmtDate(judgeAt(s, o))}`).join(', ');
+      app.log('rule', `지연 예외 기간 끝(${fmtDate(n.start)} ~ ${fmtDate(now)}) · ${moved.length ? `판정 시각이 기간 안에 들었거나 지난 ${moved.length}건은 끝난 날 + ${P('order.overdue_grace_bd')}영업일의 끝으로 다시 판정(GC.order.afterNotice): ${list}` : '판정 시각이 기간 안에 든 주문이 없어 그대로'} · 공지와 상관없던 주문은 원래 판정 시각 그대로`);
+      const open = s.orders.filter((o) => dueLive(o) && !o.overdue);
+      if (open.length) app.notify('NOTI_BULK_DELAY_NOTICE', `고객(진행 중 주문 ${open.length}건)`, CH_CUST_LATE, `택배 파업 공지가 끝났어요${moved.length ? ` · 출고가 늦어지는지 다시 보는 시각 ${list}` : ''}`);
+      app.notify('NOTI_PARTNER_BULK_DELAY_NOTICE', PT_ORDER, CH_PT_DUE, `본사 일괄 공지 끝 · ${moved.length ? `다시 판정하는 시각 ${list} · 그때까지 송장을 등록해 주세요` : '다시 판정할 주문 없음'}`);
       refresh();
     },
     reapply() {
@@ -1756,7 +1917,7 @@
     app.log('state', `주문 ${o.id}: ${stLabel(o)} 그대로 · 제작 파트너 ${CO.name} → ${esc(c.offer.seller)} · 상품 → ${esc(c.offer.name)} · 이력에 이전 파트너·상품 기록`);
     if (['APPROVED', 'HANDED_OFF', 'PREFLIGHT_REJECTED'].includes(o.design)) {
       designGo(o, 'partner_changed', `확정 디자인 그대로 ${esc(c.offer.seller)}에 인쇄 패키지 다시 전달`);
-      app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', `새 파트너 ${esc(c.offer.seller)}`, ['알림톡', '이메일', '알림센터'], `${o.id} 인쇄 패키지 도착 · 전달된 지금부터 ${P(PRINT_BD)}영업일 안(${fmtDate(GC.addBusinessDays(app.clock.now(), P(PRINT_BD)))}까지) [인쇄 가능]`);
+      app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', `새 파트너 ${esc(c.offer.seller)}`, CH_PT_WD, `${o.id} 인쇄 패키지 도착 · 전달된 지금부터 ${P(PRINT_BD)}영업일 안(${fmtDate(GC.production.printDue(app.clock.now()))}까지) [인쇄 가능]`);
       app.log('rule', `${CO.name}는 이 인쇄 패키지를 더 받을 수 없어요(다운로드 막힘 · 시도는 접근 기록) · 이미 받은 파일은 계약 종료 때 삭제 확인서로 정리`);
     } else app.log('rule', `디자인이 아직 확정 전(${GC.sm.stateName('DESIGN', o.design)})이라 디자인은 그대로 진행하고, 확정되면 인쇄 패키지는 ${esc(c.offer.seller)}에 가요`);
     if (m.refund) app.log('money', `차액 부분 환불 ${won(m.refund)} = 상품 + 판비 합계(할인 전 ${won(m.oldBase)} − ${won(m.newBase)}) × 결제 비율(${won(o.paid)} ÷ ${won(m.oldBase)}), 원 단위 내림 · 원래 결제 수단으로`);
@@ -1788,7 +1949,7 @@
     let dueTxt = '디자인이 확정되면 인쇄 패키지가 와요';
     if (o.st === 'DESIGN_CONFIRMED' && o.design === 'HANDED_OFF') {
       const before = printDue(o);
-      Object.assign(o, { handedAt: app.clock.now(), printLate: false });
+      Object.assign(o, { handedAt: app.clock.now(), printLate: false, handedFrom: 'withdrawn' });
       const due = printDue(o); dueTxt = `[인쇄 가능] 확인 기한 ${fmtDate(due)}`;
       app.log('rule', `${o.id}: 디자인이 확정된 건이라 [인쇄 패키지 받기]·[인쇄 가능]이 다시 열려요 · 거둔 때를 인쇄 패키지를 다시 전달한 때로 보고 확인 기한을 새로 셈${before ? `(처음 기한 ${fmtDate(before)} → ` : '('}${fmtDate(due)}, ${P(PRINT_BD)}영업일)`);
     }
@@ -1797,13 +1958,22 @@
     app.notify('NOTI_ITEM_PARTNER_CHANGE_WITHDRAWN', '고객', CH_CUST, `${o.id} 판매자 변경 제안을 거뒀어요 · 원래 판매자가 이어서 만들어요 · 따로 하실 일은 없어요`);
     app.notify('NOTI_PARTNER_CHANGE_WITHDRAWN', PT_ORDER, CH_PT_WD, `이어서 제작 안내 · ${o.id} ${esc(o.item)} · 제작 파트너 변경 제안을 거둬 대성포장이 이어서 만들어요 · ${dueTxt}`);
   }
+  /* 정지가 풀릴 때 변경 제안이 없던 디자인 확정 건([인쇄 가능] 전)(D-PRD-02 · A-PTN-02 · 2026-10-17 D67): 풀린 때를 '인쇄 패키지를 다시 전달한 때'로 보고
+     GC.production.printDue로 기한을 새로 세고 주문 담당자에게 NOTI_PARTNER_PACKAGE_HANDED_OFF(새 기한). 제안이 있던 건은 chgWithdraw가 맡음(한 건에 알림 하나) */
+  function rehandOff(o) {
+    const before = printDue(o); const now = app.clock.now();
+    Object.assign(o, { handedAt: now, printLate: false, handedFrom: 'reinstated' });
+    const due = printDue(o);
+    app.log('rule', `${o.id}: 정지가 풀려 인쇄 패키지를 지금 다시 전달한 것으로 봐요 · 변경 제안이 없던 확정 건이라 [인쇄 가능] 확인 기한을 새로 셈(처음 기한 ${before ? fmtDate(before) : '-'} → ${fmtDate(due)}, ${P(PRINT_BD)}영업일) · 풀리자마자 지연 알림이 가지 않아요`);
+    app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', PT_ORDER, CH_PT_WD, `${o.id} ${esc(o.item)} 인쇄 패키지 다시 전달(정지 해제) · [인쇄 가능] 확인 기한 ${fmtDate(due)} · 내려받기를 미뤄도 기한은 그대로예요`);
+  }
   /* 정지·계약 종료 뒤 남은 주문이 모두 배송 완료되면 고객 정보를 바로 가림(한 번만 기록) */
   function checkMask() {
     const s = S(); const ac = app.state('acct');
     if (!RESTRICTED(ac)) { s.maskedLogged = false; return; }
     if (s.orders.length && !remaining(s).length && !s.maskedLogged) {
       s.maskedLogged = true; s.shipOpen = null;
-      app.log('rule', `남은 주문이 모두 배송 완료 → 배송 완료 후 ${L('ship_info_days')}일을 기다리지 않고 고객 정보를 바로 가렸어요(${GC.sm.stateName('PARTNER_ACCOUNT', ac)})`);
+      app.log('rule', `남은 주문이 모두 배송 완료 → 배송 완료 후 ${P(SHIP_INFO)}일을 기다리지 않고 고객 정보를 바로 가렸어요(${GC.sm.stateName('PARTNER_ACCOUNT', ac)})`);
     }
   }
 
@@ -1822,15 +1992,15 @@
     s.rejected = { at: now, reason, memo, reapplyAt: addDays(now, GC.Policy.get('partner.reapply_days')) };
     s.sup = null;
     trail(by, `반려 · ${reason}`);
-    app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', ['알림톡', '이메일'], `입점 심사 반려 · ${reason} · 재신청 ${fmtDate(s.rejected.reapplyAt, false)}부터`);
+    app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 담당자', CH_PT_WD, `입점 심사 반려 · ${reason} · 재신청 ${fmtDate(s.rejected.reapplyAt, false)}부터`);
     app.log('rule', `재신청 제한 ${GC.Policy.get('partner.reapply_days')}일 → ${fmtDate(s.rejected.reapplyAt, false)}부터 같은 사업자등록번호로 다시 신청 가능`);
   }
 
   /* ── 시간이 흐를 때: 보완 기한·샘플·서명 리마인드·재신청·유보 ── */
   app.onAdvance((prev, now) => {
     const s = S(); const st = app.state('app'); const ac = app.state('acct');
-    if (st === 'DRAFT' && s.draftAt && now - s.draftAt >= L('draft_keep_days') * DAY) {
-      app.log('warn', `임시 저장 신청서를 ${L('draft_keep_days')}일 보관한 뒤 삭제했어요 · 신청용 로그인은 남아요`);
+    if (st === 'DRAFT' && s.draftAt && now - s.draftAt >= P(DRAFT_KEEP) * DAY) {
+      app.log('warn', `임시 저장 신청서를 ${P(DRAFT_KEEP)}일 보관한 뒤 삭제했어요 · 신청용 로그인은 남아요`);
       app.strips.app.current = null; app.strips.app.lastMainIdx = null; s.step = 0; s.draftAt = null; s.docs = {};
     }
     if (st === 'SUPPLEMENT' && s.sup && now >= s.sup.due) doReject('서류 미비', `보완 요청에 ${GC.Policy.get('partner.supplement_days')}일 동안 응답이 없어 자동으로 반려했어요`, '시스템 · 보완 기한 지남 자동 반려');
@@ -1843,7 +2013,7 @@
       const days = Math.floor((now - s.contractAt) / DAY);
       while (s.reminded < REMIND_DAYS.length && days >= REMIND_DAYS[s.reminded]) {
         s.reminded += 1;
-        app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 대표·담당자', ['알림톡', '이메일'], `전자 계약 서명 리마인드 ${s.reminded}/${REMIND_DAYS.length}`);
+        app.notify('NOTI_PARTNER_ONBOARD_RESULT', '파트너 대표·담당자', CH_PT_WD, `전자 계약 서명 리마인드 ${s.reminded}/${REMIND_DAYS.length}`);
       }
       if (!s.mdCall && days >= L('contract_sign_days')) {
         s.mdCall = true;
@@ -1857,7 +2027,7 @@
     if (ac === 'TERMINATED' && s.term && !s.term.released && now >= s.term.release) {
       s.term.released = true;
       app.log('money', `유보 기간 ${L('holdback_days')}일 끝 · 그 사이 반품·분쟁 0원 → 유보금 ${won(s.term.hold)} 지급`);
-      app.notify('NOTI_PARTNER_PAYOUT_DONE', '파트너 정산 담당', ['알림톡', '이메일'], `계약 종료 유보금 ${won(s.term.hold)} 지급`);
+      app.notify('NOTI_PARTNER_PAYOUT_DONE', '파트너 정산 담당', CH_PT_WD, `계약 종료 유보금 ${won(s.term.hold)} 지급`);
     }
     /* 파트너 주문: 배송 완료(다음 날) · 교환품 배송 완료 → 클레임 끝 · 정지·종료 뒤 가림 */
     if (ac) {
@@ -1881,12 +2051,15 @@
       });
       /* 출고 기한 넘김(P-ORD-03 · D58·D59): 저장한 판정 시각(출고일 다음 영업일 끝)을 넘겼는데 송장이 없으면 한 번 알림.
          일반은 무단 지연 기록 + 고객 [바로 취소], 맞춤은 '생산 지연' + 고객 [취소 요청]. 정지·종료 중에도 남은 주문은 같은 규칙 */
+      /* D72: 본사 일괄 공지 중에는 판정하지 않고, 끝난 공지가 있으면 GC.order.afterNotice로 미룬 판정 시각을 씀 */
+      const ntNow = noticeOn(s, now);
       s.orders.forEach((o) => {
-        if (!dueLive(o) || o.overdue || now <= o.overdueAt) return;
+        if (!dueLive(o) || o.overdue || ntNow || now <= judgeAt(s, o)) return;
         o.overdue = { at: now }; o.lateRound = (o.lateRound || 0) + 1;
         const custom = o.kind === 'custom'; const again = o.lateRound > 1;
-        app.log('warn', custom ? `${o.id} 생산 지연: 출고 예정일 ${fmtDate(o.due, false)} 다음 영업일 끝(${fmtDate(o.overdueAt)})까지 송장 없음 → 고객 [취소 요청]${again ? '이 다시(기각 때 받은 새 예정일도 넘김, D59 ③)' : ''} 열림 · 운영 모니터링 목록(A-ORD-01)`
-          : `${o.id} 출고 지연: 약속 출고일 ${fmtDate(o.due, false)} 다음 영업일 끝(${fmtDate(o.overdueAt)})까지 송장도 지연 안내도 없음 → 무단 지연 기록(MVP는 기록만, 페널티 2차) · 고객 [바로 취소] 열림 · 운영 모니터링 목록(A-ORD-01)`);
+        const jTxt = judgeMoved(s, o) ? `일괄 공지가 끝나 다시 판정한 시각(${fmtDate(judgeAt(s, o))})` : `다음 영업일 끝(${fmtDate(o.overdueAt)})`;
+        app.log('warn', custom ? `${o.id} 생산 지연: 출고 예정일 ${fmtDate(o.due, false)} ${jTxt}까지 송장 없음 → 고객 [취소 요청]${again ? '이 다시(기각 때 받은 새 예정일도 넘김, D59 ③)' : ''} 열림 · 운영 모니터링 목록(A-ORD-01)`
+          : `${o.id} 출고 지연: 약속 출고일 ${fmtDate(o.due, false)} ${jTxt}까지 송장도 지연 안내도 없음 → 무단 지연 기록(MVP는 기록만, 페널티 2차) · 고객 [바로 취소] 열림 · 운영 모니터링 목록(A-ORD-01)`);
         app.notify(custom ? 'NOTI_PRODUCTION_OVERDUE' : 'NOTI_SHIP_OVERDUE', '고객', CH_CUST_LATE, custom ? `${o.id} 제작이 늦어지고 있어요 · [취소 요청] — 본사가 확인해 승인하면 낸 금액 전부를 돌려드려요` : `${o.id} 출고가 늦어지고 있어요 · [바로 취소] — 공제 없이 바로 취소할 수 있어요`);
         app.notify('NOTI_PARTNER_SHIP_OVERDUE', PT_ORDER, CH_PT_DUE, `${o.id} 출고 기한 넘김(${dueName(o)} ${fmtDate(o.due, false)}) · ${custom ? '고객 [취소 요청]이 열렸어요' : '무단 지연으로 기록 · 고객 [바로 취소]가 열렸어요'} · 바로 송장을 등록해 주세요`);
       });

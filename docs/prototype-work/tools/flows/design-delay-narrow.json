@@ -108,6 +108,15 @@
 "act": "bulkNotice"
 },
 {
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+},
+{
+"adv": "86400000"
+},
+{
+"adv": "86400000"
+},
+{
 "role": "customer"
 },
 {

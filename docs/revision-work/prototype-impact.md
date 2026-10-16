@@ -1,4 +1,4 @@
-# 프로토타입 영향 목록 (S7 입력 · S9 입력·결과 · S10 입력·결과 · S11 입력은 맨 아래)
+# 프로토타입 영향 목록 (S7 입력 · S9~S12 입력·결과 · S13 입력은 맨 아래)
 
 > 작성: 2026-10-14 S6. 근거: 부록 B 반영(S2~S5)과 S6 교차 검사·결정(D17~D19)으로 바뀐 명세 규칙을 지금 프로토타입(`prototype/`)과 대조한 결과입니다.
 > S7 진행 방법(서버·검증 도구·흐름 재실행·재게시)은 `docs/prototype-work/HANDOFF.md`를 그대로 따릅니다. 줄 번호는 2026-10-14 기준이라 고치다 보면 밀립니다. 함수 이름으로 찾으세요.
@@ -465,3 +465,73 @@
 | 20 | 카드 환불 고객이 환불 계좌를 안 넣었을 때 지연배상금 송금 대기와 지연 일수의 관계(고객 사정 기간으로 빼는지) | 맞춤 | C-PAY-02 | order |
 | 21 | 발주 확인 전(PAID)에 약속 출고일을 넘긴 주문도 무단 지연으로 기록하는지 | 맞춤 | P-ORD-03 | order |
 | 22 | ‘늦게 받음’ 반품 기한 7일이 정책값 키가 없음(프로토타입 `LOCAL.lateDays`) — 12번(키 없는 정책값)과 함께 | 맞춤 | A-SYS-03·C-STATE-02 | order |
+
+# S12 결과 (2026-10-17, 결정·반영·재게시 끝)
+
+> 시작: 원본 HTML·프로토타입이 커밋 c3b0b06 뒤 바뀌지 않음(작업 트리 깨끗), 엔진 검사 44개·문서 다섯 검사 통과. 법률·PG 문의는 아직 보내기 전(사용자 확인)이라 S12를 그대로 진행.
+> 조사(읽기 전용 서브에이전트 4갈래: 디자인·생산 1·2·3·16·17·18·19 / 파트너·회원 7·8·9·11 / 주문·클레임·정산 13·14·15·20·21·22 / 알림·정책값·쿠폰 4·10·12) → 결정 **D66~D72**(AskUserQuestion 2번, 7건 모두 추천안) + 12번 범위(추천안: MVP 키 + 프로토타입 상수). `decisions.md` 맨 아래.
+> 진행: 명세(결정·맞춤)·엔진·index는 메인, 기획서·요청서·법률 질문서는 포크 1개, 명세 12번(정책값 키)은 포크 1개(메인이 엔진을 고치는 동안), 페이지는 서브에이전트 5개(order / design+room / partner / member+benefit+catalog / settlement+system — 지시문은 `page-agent-prompts.md` 맨 아래 ‘S12 페이지 지시문’).
+
+## 끝난 것
+**문서**
+- 명세(메인): D66·D67(D-APV-02·D-PRD-02·A-ORD-01 ⑦·A-SYS-03 `production.print_check_bd`·C-STATE-03 보류 해제 줄·C-NOTI-01 `NOTI_PARTNER_PACKAGE_HANDED_OFF` 행) · D68·⑧(A-PTN-02 정지 사유 여러 개·메모·[사유 해소]·열람 표 ‘남은 사유가 모두 풀릴 때’·계약 종료 사유 ‘사업자 폐업’, P-ONB-04, A-STL-01, 알림 행 이름) · D69·⑪(U-MEM-05·A-MEM-01·A-MEM-02 휴업 30일 유예·세금계산서 폐업만·U-MEM-07·U-ORD-02 회원 유형 바뀜·키 설명, `NOTI_BIZ_STATUS_RESTORED`) · D70(C-PRICE-03·C-PAY-02 처음 배송비·‘마지막 = 잔액 전부’ 고침·예시, U-MY-03, 정산 이벤트 ‘돌려주지 않은 처음 배송비’ 3곳·배송비 정산 시점 2곳) · D71(P-ORD-05 새 줄 ‘거부 수량 되돌려 보내기’, U-MY-03, C-STATE-02 두 행, 키 `claim.return_back_pay_days`·`claim.return_back_ship_bd`, `NOTI_RETURN_BACK_DUE`·`NOTI_PARTNER_RETURN_BACK`) · D72·⑰·㉑(P-ORD-03 예외·무단 지연·바로 취소 알림, P-ORD-01 키 2개·자동 취소 없음, A-ORD-01 ‘지연 예외 기간’, A-PTN-03, U-CS-04, C-STATE-01·02, `NOTI_BULK_DELAY_NOTICE`·`NOTI_PARTNER_BULK_DELAY_NOTICE`·`NOTI_PARTNER_ITEM_CANCELED`) · ③(D-PRD-03, `NOTI_INT_CHANNEL_MESSAGE`, 묶음 규칙·키 설명) · ④(A-MKT-01 저장 막기, A-REV-04 영향 범위) · ⑩(C-NOTI-01 이메일 조건 없는 ○ 11행·범례) · ⑬(C-STL-01 ‘중재 판정’ = 받을 돈 +만·파트너 부담은 본사 청구 ‘분쟁 조정’, P-STL-01·C-STL-02 본사 청구 목록·세금계산서, C-PAY-02·A-ORD-02 문장 4곳) · ⑯(C-STATE-03 SHIPPED 줄, D-STU-01·D-PRD-04) · ⑱(C-STATE-02 두 행·쓰는 상태 칸·공통 용어 — 기각은 바로 완료) · ⑳(C-PAY-02·A-ORD-01 송금 대기) · ㉒(`claim.late_return_days` 키·본문 4곳·C-STATE-02 키 목록). `#g-dec4`에 ‘남은 확인 거리 S12’ 묶음 7행 + 표 위 ‘함께 맞춘 것’. 알림 코드 새로 7개.
+- 명세 12번(포크): A-SYS-03 키 120 → **164개**(MVP 키 35개 + 한 키에 여러 값이던 7개를 16개로 나눔 + `settlement.payout_min`), 키 없이 남은 MVP ‘(정책값)’ 0, 2·3차 20곳은 ‘(정책값, 2차에 키)’, 키로 두지 않을 것(법정·약관·계약·화면 설계·배포 설정·D53 원칙)은 근거 표시. 기능 162 그대로, 검사 통과.
+- 기획서·요청서·법률 질문서(포크): 기획 15장 ‘확정 (2026-10-17 추가 · 남은 확인 거리 S12)’ 절 7행·머리말 건수, 07장 E(D72)·F(D70·D71). 요청서 S-04(휴업 배너)·S-25(일괄 공지 안내)·S-26(처음 배송비·되돌려 받기/폐기 14일)·법률 초안 상자. 법률 L-21(처음 배송비 반환 의무·14일 뒤 폐기·소액 지연배상금 송금)·L-61(늦게 받음과 3개월·30일) 덧붙임, 질문 61·1순위 29 그대로. 메인 마무리: 기획 15장 기본값 ‘부분 취소 시 포인트’ 행의 ‘계산 없이 잔액 전부’ 고침.
+- 정리본 `refund-policy.html`: ‘2026-10-17에 정한 것’ 상자(D70·D71·D72·카드 환불 송금 대기), R3·R8·X4 상자, T13 키 이름, T15·T16 새 행 → 게시본 **버전 14**.
+- 다섯 문서 검사 통과(명세 기능 162 = 119·34·9, 중복 ID 없음, 태그 맞음), texts spec·plan·brief·legal-consult 다시 뽑음.
+
+**엔진**(검사 44 → **45개 통과**, TC-45 새로)
+- `partialCancel` D70: `fault`(파트너 귀책 반품이면 묶음이 빌 때 처음 배송비 환불)·`keptBefore`(앞서 남긴 금액), 결과 `shipKept`·`shipKeptLines`·`kept`, 마지막 건 = 잔액 − 이번 공제 − 돌려주지 않는 처음 배송비 − 앞서 남긴 금액(모자라면 `shortfall`). 품목 디자인비 몫은 그 품목의 마지막 수량이 빠질 때(예전엔 처음부터 전부 취소할 때만).
+- `GC.production.printDue`(D66·D67), `GC.order.inNotice`·`afterNotice`·`isOverdue({ notice })`(D72), `overdueAt`·`refundDueAt` 영업일 인자, `Policy.legalOk`·메타 `legal`('min'·'max'), `RETURN_REASONS` LATE 기한을 정책값에서·CHANGE_MIND `legal`, `CLAIM_STEP_BY_TYPE.REMAKE` 단계 5개, DESIGN `complete`·CLAIM_CANCEL `collected_refund` 설명.
+- 정책값 키 87 → **142개**(S12 키 55개쯤 — 새 묶음 ‘광고·검색·앱’). 명세 A-SYS-03에만 남은 22개는 2·3차 기능 키이고 프로토타입이 쓰지 않음.
+
+**페이지**(흐름 122 → **145개**, hub 제외 144 — 마무리 때 전체 3개씩 실행 **모두 PASS**, 엔진 검사 45개 통과. 엔진·공통 자산은 페이지 에이전트가 바꾸지 않음)
+| 페이지 | 반영 | 흐름 | 새 흐름 |
+| --- | --- | --- | --- |
+| order | D70(`fault`·`keptBefore` 누적 `o.kept`, ‘돌려받는 배송비’/‘판매자 몫’ 줄, 무료배송 묶음 전부 변심 반품 왕복, 정산 ‘클레임 완료(+)’, ‘묶음 전부 반품’ 장면·본사 비교 64,000 / 56,000 / 30,000 + 34,000 / 26,000 + 26,000), D71(거부 확정 뒤 [되돌려 받기] 모의 결제·[폐기]·남은 기한·3일 전 알림·기한 뒤 폐기·파트너 송장 2영업일·폐기 확인), ⑰, ⑳(계좌 있음/없음 옵션·7일 뒤 재알림·모니터링 ‘송금 대기’), ㉑(PAID 무단 지연·모니터링), D72(출고 지연 장면에 일괄 공지), ㉒·⑫ 상수 → 키, ⑩ | 19개 PASS(`order-inspect-split` 거부 확정 뒤 [폐기] 순서로 고침) | order-retall(+narrow), order-returnback(+narrow), order-refund-noacct, order-paid-overdue, order-bulk-notice-dark |
+| design·room | D66(철회·기각 때 `printDue` 새로·`NOTI_PARTNER_PACKAGE_HANDED_OFF`, 고객 코드 `NOTI_CLAIM_WITHDRAWN` 뺌, 보류 중 ‘기한 알림 멈춤’), D72(공지 시작·끝 기록, `isOverdue({notice})`·`afterNotice`, 고객 공지 카드는 요청서 S-25 문구), `REMAKE_STEP` 지움, ⑯ [폐기 확인 올리기], room ③ `NOTI_INT_CHANNEL_MESSAGE`(협의 룸과 따로 셈), ⑫·⑩ | 23개 PASS(`design-delay-narrow` 공지 끝 뒤 +1일 두 번, `design-delay-dismiss` 폐기 확인 단계) | design-hold-release, design-hold-withdraw-narrow, design-bulk(+dark), room-channel |
+| partner | D68(사유 목록·[정지 사유 더하기]·재조회 휴업/폐업 사유 추가·사유별 [사유 해소]·마지막만 ACTIVE·종료 사유 ‘사업자 폐업’·배너·목록), ⑧ 메모 200자, D67(제안 없던 확정 건도 새 기한·알림 하나), D72 [공지 시작]·[공지 끝] 체험, ⑰, ⑩, ⑫ 상수 4개 → 키 | 13개 PASS(기대값 안 고침) | partner-stops(+narrow), partner-notice-dark |
+| member·benefit·catalog | member D69(재조회 ‘휴업’·30일 유예·`NOTI_BIZ_STATUS_RESTORED`·세금계산서 폐업만·휴업/폐업 문구 나눔·결제 끝난 주문 안내) + 상수 6개(와 로그인 잠금·개인정보 조회 잠금) → 키, benefit ④ 입력 즉시 오류·[승인 요청] 막음(체험용 ‘무료 기준 올림 예약’ 토글), catalog 상수 5개 → `product.*`(1,200px는 화면 설계 값), ⑩ | 37개 PASS(`benefit-design-coupon-min`(+narrow) 경고 → 오류 검사) | member-suspend(+narrow), benefit-design-coupon-block(+narrow) |
+| settlement·system | settlement ⑬ ‘확인 필요’ 안내 → 명세 문장·표 나눔, D70 ‘돌려주지 않은 처음 배송비’ 줄(엔진으로 계산 — 환불 56,000원·클레임 완료 +8,000원), ⑫ 상수 → 키. system 새 단위 범위·글자 키 안내 8개·`LEGAL` → 엔진 `legal`/`legalOk`·미리보기 영업일 인자·`K` 상수 정리(조회 잠금 → 키, 나머지 ‘보안 고정값’·‘약관·계약 조항에 고정’·‘법정 값’), 알림 매트릭스 새 코드 7행·이메일 조건 문구 | 29개 PASS(`settlement-delay`(+dark·narrow) 새 문장 검사, `system-policy-security`(+narrow) 글자 값 행 — 고치기 전부터 FAIL) | settlement-s12(+narrow), system-s12(+narrow) |
+| index(메인) | 개요 ‘근거’ D53~D61·S12(D66~D72), 도메인 설명 4줄(order·design·partner·member) | — | — |
+
+**재게시**: 게시본 12개가 커밋 c3b0b06 `prototype/`과 같음을 확인(해시, 줄바꿈 무시)한 뒤 `build_publish.py` → https://claude.ai/artifact/WcNnk7zXsAEJq6jwuhPjDd **버전 11**. 정리본 게시본 **버전 14**.
+
+## 판단해서 넣은 것(결정과 다르면 고칠 것)
+- 명세: ⑧ 해제 사유 ‘본사 오처리 정정’도 메모 필수(감사 기록), ⑯ 회수품은 파트너가 받아 폐기 확인, D71 송장 기한 키 `claim.return_back_ship_bd` 2영업일·3일 전 재알림, D72 공지 범위 ‘전체 또는 택배사’, `NOTI_PARTNER_ITEM_CANCELED` 이메일 —(파트너 출고 지연 행과 같게), `NOTI_RETURN_BACK_DUE` 이메일 ●. 12번(포크): 룸 위반 반복 기준을 디자이너·고객 두 키로, 고객 로그인 잠금 5회·10분도 키로, 재조회 시각은 `batch.` 접두어, U-CS-02 `cs.answer_bd`를 MVP 키로, 단순 변심 7일은 법정 값이라 키로 두지 않음.
+- 엔진: 마지막 건의 끝전 정리는 호출하는 쪽이 넘긴 `keptBefore`에 기댐(넘기지 않으면 앞서 뺀 공제를 다시 돌려줌 — 예전과 같음).
+- order: 출고 뒤 취소 이의가 인정돼 회수하는 건은 판매자 귀책으로 보고 묶음이 비면 처음 배송비도 환불, ‘무료배송 묶음’은 템플릿 기본 배송비 0원만(쿠폰으로 0원은 제외), 되돌려 보낸 물건의 고객 알림은 `NOTI_SHIPPED`.
+- design: 확정 후 **변경** 요청이 기각돼도 D66 적용, 패키지를 아직 안 보냈거나(APPROVED) 파트너가 반려한(PREFLIGHT_REJECTED) 건은 보류만 풀고 기한은 다음 전달 때, 중재 기각 때 파트너는 중재 결과 + 새 기한 두 알림, 생산 지연 취소를 고객이 철회하면 파트너 알림 없이 기록만.
+- partner: 휴·폐업 사유는 재조회가 정상일 때 ‘사업자 상태 정상 확인’으로만 해소(다른 사유에는 이 해소 사유를 못 씀), ‘사업자 폐업’ 종료는 국세청 폐업 확인 때만, 계약 종료 때 남은 정지 사유는 ‘계약 종료로 마감’.
+- member·benefit: 유예 중 휴업↔폐업이 바뀌면 해제 예정일은 그대로, 세금계산서 기준만 바꾸고 `NOTI_BIZ_STATUS_CHECK` 다시. 고객이 [다시 인증하기]로 직접 풀면 `NOTI_BIZ_STATUS_RESTORED`를 보내지 않음.
+- settlement·system: 접속 기록 보관(1년, 5만 명 이상 2년)도 법정 값 표시, 발주 확인 리마인드가 운영팀 알림보다 늦으면 저장 막음, 되돌려 받기 기한 최솟값 4일, 직거래 위약금 배수 ‘영향 큼’, 판매 중지 예고는 납부 기한 3일 전(아래 S13 1번).
+
+## S12 마무리
+- 전체 흐름 144개(hub 제외) 3개씩 다시 실행 — 모두 PASS(엔진 검사 45개 통과). 다섯 문서·정리본 검사 통과.
+- 남은 페이지 상수(키 없음 — 아래 S13 12번): order `rbRemind` 3일·`acctRemind` 7일, partner `sample_wait_days`·`contract_sign_days` 14·`acct_max_fail` 3·`acct_fee` 50·`doc_max_mb` 20·`new_months` 3·`holdback_days` 90·`REMIND_DAYS`, settlement 판매 중지 예고 3일·대사 불일치 팀장 알림 3일·유보 90일, catalog `doc_notice_days`·`fix_repeat_md`, benefit `codeFailMax`·`codeLockMin`·`expireNoticeDays`(2차 값과 법정 값은 주석으로 성격 표시).
+
+# S13 입력 — S12에서 새로 찾은 확인 거리 (2026-10-17 작성)
+
+> 급하지 않은 것들입니다. 결정 번호는 **D73~**. 범위 밖으로 남는 큰 것은 법률·PG 자문 답 반영(아직 문의 전).
+
+| # | 요약 | 종류(대강) | 명세 | 찾은 곳 |
+| --- | --- | --- | --- | --- |
+| 1 | 미수금 청구서 미납 때 판매 중지 예고(`NOTI_PARTNER_SALES_STOP_NOTICE`)를 언제 보내는지 없음(페이지는 납부 기한 3일 전) | 맞춤 | C-STL-02·C-NOTI-01 | settlement |
+| 2 | 한 키에 두 값: `settlement.final_holdback`(30% · 90일), `commission.new_partner_discount`(−2%p · 3개월) — 기간 키를 나눌지 | 맞춤 | A-SYS-03 | settlement·partner |
+| 3 | 유예 중 회원 사업자 상태가 휴업↔폐업으로 바뀔 때(해제 예정일·세금계산서·다시 알림), 정지 중 파트너의 재조회 결과가 휴업↔폐업으로 바뀔 때 다시 알릴지 | 결정 | U-MEM-05·A-MEM-02·P-ONB-04 | member·partner |
+| 4 | 폐업 ‘확인 필요’ 중 새 사업자등록번호로 바꾸는 경로가 없음(같은 번호 재조회만) | 결정 | U-MEM-05·A-MEM-02 | member |
+| 5 | `NOTI_MEMBERSHIP_PAY_FAILED` 재시도 실패 알림도 이메일 ● — ‘리마인드는 —’ 원칙과 맞는지 | 맞춤 | C-NOTI-01 | benefit |
+| 6 | 서류 만료 사전 알림 30일·같은 사유 보완 3회 → MD(MVP)에 키·‘(정책값)’ 표시 없음 | 맞춤 | P-PRD-06·P-PRD-07·A-SYS-03 | catalog |
+| 7 | 고객이 확정 후 취소·생산 지연 취소 요청을 철회할 때 파트너에게 보낼 알림 코드가 없음 | 맞춤 | P-ORD-04·C-NOTI-01 | design |
+| 8 | D-PRD-03 ‘파트너 답변 기한 영업일 1일’이 `partner.confirm_request_days`와 같은 값인지 | 맞춤 | D-PRD-03·A-SYS-03 | design |
+| 9 | D67 ‘한 건에 알림 하나’와 중재 기각 때 파트너가 받는 두 알림(중재 결과 + 새 기한)을 하나로 묶을지 | 결정 | D-APV-02·C-NOTI-01 | design |
+| 10 | 정지 사유가 일부만 풀리고 다른 사유가 남을 때 파트너 알림이 없음(지금 감사 로그만) | 맞춤 | A-PTN-02·C-NOTI-01 | partner |
+| 11 | `NOTI_PARTNER_ONBOARD_RESULT` 알림센터 ●가 계약 전(신청용 로그인만 있는) 신청자에게 맞는지 | 맞춤 | C-NOTI-01·P-ONB-01 | partner |
+| 12 | 키 없는 페이지 상수 남은 것(위 ‘S12 마무리’ 목록 — 샘플 도착·서명 기한 14일, 되돌려 받기·계좌 입력 재알림 3일·7일 등) | 맞춤 | A-SYS-03·P-ONB-02·03 등 | 여러 페이지 |
+| 13 | D71 ‘거부 유지 + 파트너 귀책’과 `claim.return_back_ship_bd` 설명 ‘파트너 귀책이면 거부가 뒤집힌 뒤’의 뜻이 서로 모호 | 맞춤 | P-ORD-05·A-SYS-03 | order |
+| 14 | 되돌림 배송비 결제 건의 정산 귀속(파트너 몫인지)·증빙이 없음 | 결정 | P-STL-01·C-STL-01 | order |
+| 15 | 되돌려 보내기 송장 기한(영업일 2일)을 파트너가 넘겼을 때 처리 없음 | 맞춤 | P-ORD-05 | order |
+| 16 | C-PRICE-03 ‘무료배송으로 받은 묶음’이 쿠폰으로 0원이 된 경우를 포함하는지(페이지는 템플릿 기본 0원만) | 결정 | C-PRICE-03 | order |
+| 17 | 판단 확인: 출고 뒤 취소 이의 인정 회수 = 판매자 귀책으로 처음 배송비 환불(order), 확정 후 **변경** 요청 기각에도 D66(design) | 확인 | C-PAY-02·D-APV-02 | order·design |
+
+엔진 제안(S13에서 판단): C-NOTI-01 채널 표를 엔진 데이터로(페이지마다 CH 표를 두지 않게), `calendar.business_hours`를 시각 숫자로 읽는 도우미, 공지 여러 개를 받는 `isOverdue`/`afterNotice`, 정지 사유 도우미 `GC.partner.stops`, 정책값 메타에 값 범위(min·max·소수), 반품 배송비(편도·왕복)와 묶음이 비는지 계산하는 함수, 거부 수량 되돌려 보내기 상태 기계, 다시 알림 간격 키. S12에서 보류한 것: `priceChangeInfo`, `claim.tolerance` 두 키, `GC.notice.dueAt`, DISCARDED 사유, `designCancel` 되살릴 혜택 목록, `GC.settle.sumEvents`, 기한 전날 도우미, [인쇄 가능] 전이 항목 연결 메타, `partialCancel` `lines` 할인 안분, `calcOrder` 고객용 단계 이름.

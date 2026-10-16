@@ -1,0 +1,21 @@
+[
+{"act":"fKind","attr":"data-v=\"design\""},
+{"eval":"(()=>{const el=document.querySelector('#f_name'); el.value='맞춤 디자인비 50% 할인'; el.dispatchEvent(new Event('change',{bubbles:true})); return 'name';})()"},
+{"eval":"(()=>{const el=document.querySelector('#f_value'); el.value='50'; el.dispatchEvent(new Event('change',{bubbles:true})); return 'value 50';})()"},
+{"eval":"(()=>{const t=document.querySelector('#gc-device').innerText.replace(/\\s+/g,' ');if(!t.includes('디자인비 무료 기준 (A-REV-04)')||!t.includes('예약된 변경 없음')||!t.includes('500,000원 이상이면 승인 요청을 막아요'))throw new Error('무료 기준 안내 '+t.slice(0,200));return 'base ok'})()"},
+{"eval":"(()=>{const el=document.querySelector('#f_minOrder'); el.value='550000'; el.dispatchEvent(new Event('change',{bubbles:true})); return 'minOrder 550000';})()","shot":"benefit-dcb-01-error"},
+{"eval":"(()=>{const er=[...document.querySelectorAll('#gc-device .err')].map(x=>x.textContent).join(' ');if(!er.includes('맞춤 품목 500,000원 이상이면 디자인비가 이미 무료라')||!er.includes('500,000원보다 낮게')||!document.querySelector('#gc-device #f_minOrder').classList.contains('is-err'))throw new Error('오류 문구 '+er);return er})()"},
+{"act":"submitCoupon","after":150,"shot":"benefit-dcb-02-blocked"},
+{"eval":"(()=>{const form=!!document.querySelector('#gc-device [data-act=submitCoupon]');const toast=[...document.querySelectorAll('.toast')].map(x=>x.textContent).join(' ');if(!form||!toast.includes('최소 주문이 디자인비 무료 기준 이상'))throw new Error('막힘 '+JSON.stringify({form,toast}));return toast})()"},
+{"act":"freeNext","attr":"data-v=\"up\"","shot":"benefit-dcb-03-reserved"},
+{"eval":"(()=>{const t=document.querySelector('#gc-device').innerText.replace(/\\s+/g,' ');const er=[...document.querySelectorAll('#gc-device .err')].map(x=>x.textContent).join(' ');if(er.includes('디자인비가 이미 무료')||!t.includes('11/1(일)부터 600,000원으로 올림')||!t.includes('600,000원 이상이면 승인 요청을 막아요'))throw new Error('예약 뒤 '+JSON.stringify({er,t:t.slice(0,300)}));return 'reserved ok'})()"},
+{"eval":"(()=>{const el=document.querySelector('#f_minOrder'); el.value='600000'; el.dispatchEvent(new Event('change',{bubbles:true})); return 'minOrder 600000';})()"},
+{"eval":"(()=>{const er=[...document.querySelectorAll('#gc-device .err')].map(x=>x.textContent).join(' ');if(!er.includes('맞춤 품목 600,000원 이상이면')||!er.includes('지금 기준 500,000원과 11/1(일)부터 적용할 새 기준 600,000원 중 큰 값'))throw new Error('예약 값 오류 '+er);return er})()"},
+{"eval":"(()=>{const el=document.querySelector('#f_minOrder'); el.value='550000'; el.dispatchEvent(new Event('change',{bubbles:true})); return 'minOrder 550000';})()"},
+{"act":"submitCoupon"},
+{"eval":"(()=>{if(document.querySelector('#gc-device [data-act=submitCoupon]')||!document.querySelector('#gc-device [data-act=approveCoupon]'))throw new Error('승인 요청이 안 됨');return 'pending'})()"},
+{"act":"acct","attr":"data-v=\"seo\""},
+{"act":"approveCoupon"},
+{"eval":"(()=>{const kv=document.querySelector('#gc-device .kv').innerText;if(!kv.includes('맞춤 품목 550,000원 이상'))throw new Error('관리자 상세 '+kv);return 'approved'})()","shot":"benefit-dcb-04-approved"},
+{"eval":"document.querySelector('#gc-turn .turn-what').textContent"}
+]

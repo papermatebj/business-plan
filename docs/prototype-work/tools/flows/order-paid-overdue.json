@@ -1,0 +1,23 @@
+[
+ {"check":"cup"},{"act":"toCheckout"},{"check":"agree"},{"act":"pay","after":400},
+ {"adv":"86400000"},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,6).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('NOTI_PARTNER_ACCEPT_LATE')) throw new Error('발주 확인 리마인드 없음: '+log); return log; })()"},
+ {"adv":"86400000"},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,6).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('운영팀 알림')) throw new Error('운영팀 알림 없음: '+log); if(log.includes('NOTI_SHIP_OVERDUE')) throw new Error('판정 시각 전에 출고 지연'); return log; })()"},
+ {"adv":"86400000"},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,8).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); ['NOTI_SHIP_OVERDUE','NOTI_PARTNER_SHIP_OVERDUE','무단 지연 기록','발주 확인 전'].forEach((k)=>{ if(!log.includes(k)) throw new Error(k+' 없음: '+log); }); const t=document.querySelector('#gc-turn .turn-what').textContent; if(!t.includes('무단 지연')) throw new Error('파트너 차례에 무단 지연 안내 없음: '+t); return [t, log]; })()"},
+ {"role":"customer"},{"act":"cs","attr":"data-to=\"detail\""},
+ {"wait":100,"shot":"order-106-paid-overdue-customer"},
+ {"eval":"(()=>{ const tags=Array.from(document.querySelectorAll('#gc-device .oitem .tag-stop')).map(x=>x.textContent); if(!tags.includes('출고 지연')) throw new Error('발주 확인 전 항목에 출고 지연 표시 없음'); const b=Array.from(document.querySelectorAll('#gc-device [data-act=\"openCancel\"]')).map(x=>x.textContent); if(!b.length||b.some(x=>x!=='취소')) throw new Error('발주 확인 전이라 [취소]만(따로 [바로 취소] 없음): '+b.join(',')); const t=document.querySelector('#gc-device .app-sec').innerText.split(String.fromCharCode(10)).join(' '); if(!t.includes('판매자가 아직 주문을 확인하지 않았어요')) throw new Error('발주 확인 전 출고 지연 안내 없음: '+t); return [b.join(','), t]; })()"},
+ {"role":"hq"},
+ {"eval":"(()=>{ const p=Array.from(document.querySelectorAll('#gc-device .panel')).find(x=>x.querySelector('h2').textContent==='모니터링'); if(!p||!p.innerText.includes('발주 확인 전')) throw new Error('모니터링에 발주 확인 전 출고 지연 없음'); return p.innerText.split(String.fromCharCode(10)).join(' ').split(String.fromCharCode(9)).join(' '); })()"},
+ {"role":"partner","shot":"order-107-paid-overdue-partner"},
+ {"eval":"(()=>{ const t=document.querySelector('#gc-device .note-stop').innerText; if(!t.includes('발주 확인 없이 출고 기한을 넘겼어요')) throw new Error('파트너 화면 안내 없음: '+t); return t; })()"},
+ {"act":"accept"},
+ {"role":"customer"},
+ {"eval":"(()=>{ const b=Array.from(document.querySelectorAll('#gc-device [data-act=\"openCancel\"]')).map(x=>x.textContent); if(!b.length||b.some(x=>x!=='바로 취소')) throw new Error('발주 확인 뒤에는 [바로 취소]: '+b.join(',')); return b.join(','); })()"},
+ {"act":"openCancel","attr":"data-id=\"napkin\""},
+ {"act":"doCancel","after":400},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,14).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('NOTI_PARTNER_ITEM_CANCELED')||!log.includes('delay_cancel')) throw new Error('바로 취소 파트너 알림(NOTI_PARTNER_ITEM_CANCELED) 없음: '+log); return log; })()"},
+ {"role":"system"}
+]

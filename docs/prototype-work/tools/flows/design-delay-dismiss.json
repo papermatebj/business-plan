@@ -199,6 +199,15 @@
 "full": true
 },
 {
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+},
+{
+"act": "discardDone",
+"after": 400,
+"shot": "ddl-15b-partner-discarded",
+"full": true
+},
+{
 "role": "hq"
 },
 {

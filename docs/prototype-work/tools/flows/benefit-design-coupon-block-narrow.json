@@ -1,0 +1,11 @@
+[
+{"act":"fKind","attr":"data-v=\"design\""},
+{"eval":"(()=>{const el=document.querySelector('#f_value'); el.value='50'; el.dispatchEvent(new Event('change',{bubbles:true})); return 'value 50';})()"},
+{"eval":"(()=>{const el=document.querySelector('#f_minOrder'); el.value='550000'; el.dispatchEvent(new Event('change',{bubbles:true})); return 'minOrder 550000';})()"},
+{"eval":"(()=>{const el=document.querySelector('#gc-device #f_minOrder');el.scrollIntoView({block:'center'});return 'scrolled'})()","shot":"benefit-dcbn-01-error"},
+{"act":"submitCoupon","after":150},
+{"eval":"(()=>{if(!document.querySelector('#gc-device [data-act=submitCoupon]'))throw new Error('막히지 않음');return 'blocked'})()"},
+{"act":"freeNext","attr":"data-v=\"up\""},
+{"eval":"(()=>{const el=document.querySelector('#gc-device [data-act=freeNext]');el.scrollIntoView({block:'center'});return 'scrolled'})()","shot":"benefit-dcbn-02-reserved"},
+{"eval":"(()=>{const er=[...document.querySelectorAll('#gc-device .err')].map(x=>x.textContent).join(' ');if(er.includes('디자인비가 이미 무료'))throw new Error('예약 뒤에도 오류 '+er);return 'ok'})()"}
+]

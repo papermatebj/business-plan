@@ -1,0 +1,131 @@
+[
+{
+"act": "toMethod"
+},
+{
+"act": "toRequest"
+},
+{
+"check": "rights"
+},
+{
+"check": "stage"
+},
+{
+"check": "own"
+},
+{
+"act": "toCheckout"
+},
+{
+"check": "co_stage"
+},
+{
+"check": "co_plate"
+},
+{
+"act": "pay",
+"after": 500
+},
+{
+"role": "design"
+},
+{
+"act": "assign"
+},
+{
+"act": "startWork"
+},
+{
+"act": "propose",
+"after": 500
+},
+{
+"role": "customer"
+},
+{
+"act": "cs",
+"attr": "data-to=\"proposal\""
+},
+{
+"act": "cs",
+"attr": "data-to=\"approve\""
+},
+{
+"check": "ap_typo"
+},
+{
+"check": "ap_contact"
+},
+{
+"check": "ap_color"
+},
+{
+"check": "ap_qty"
+},
+{
+"check": "ap_nocancel"
+},
+{
+"act": "doApprove",
+"after": 600
+},
+{
+"role": "design"
+},
+{
+"act": "handOff"
+},
+{
+"role": "partner"
+},
+{
+"act": "download"
+},
+{
+"act": "printable"
+},
+{
+"adv": "604800000"
+},
+{
+"adv": "604800000"
+},
+{
+"role": "system"
+},
+{
+"act": "bulkNotice"
+},
+{
+"role": "customer"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .app-card')].find(c=>/늦어지고/.test(c.innerText));if(!c)return 'none';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ').slice(0,400)})()",
+"after": 200
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .note')].find(c=>/택배 파업/.test(c.innerText));if(!c)return 'none';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ')})()",
+"after": 200,
+"shot": "dbk-01-customer-preopened"
+},
+{
+"act": "delayReq"
+},
+{
+"role": "system"
+},
+{
+"act": "bulkNotice",
+"shot": "dbk-02-system-ended"
+},
+{
+"eval": "[...document.querySelectorAll('#gc-log li')].map(l=>l.innerText.replace(/\\s+/g,' ')).filter(t=>/BULK_DELAY|일괄 공지/.test(t)).reverse().join(' || ')"
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+}
+]

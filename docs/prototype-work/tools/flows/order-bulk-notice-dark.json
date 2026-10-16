@@ -1,0 +1,19 @@
+[
+ {"click":"#ord-scn [data-scn=\"late\"]","after":400},
+ {"role":"hq"},
+ {"act":"noticeStart","after":400},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,6).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); ['지연 예외 기간 등록','NOTI_BULK_DELAY_NOTICE','NOTI_PARTNER_BULK_DELAY_NOTICE'].forEach((k)=>{ if(!log.includes(k)) throw new Error(k+' 없음: '+log); }); return log; })()"},
+ {"adv":"86400000"},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,10).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(log.includes('NOTI_SHIP_OVERDUE')) throw new Error('공지 중인데 출고 지연 판정: '+log); const r=Array.from(document.querySelectorAll('#gc-rules .rule-row')).map(e=>e.innerText.split(String.fromCharCode(10)).join(': ')).join(' | '); if(!r.includes('일괄 공지')) throw new Error('규칙에 일괄 공지 없음: '+r); return r; })()"},
+ {"role":"customer","shot":"order-108-dark-notice-customer"},
+ {"eval":"(()=>{ const t=document.querySelector('#gc-device .app-sec').innerText.split(String.fromCharCode(10)).join(' '); if(!t.includes('택배 파업으로 식업이 배송 지연을 공지했어요')) throw new Error('고객 공지 안내 없음: '+t); if(Array.from(document.querySelectorAll('#gc-device [data-act=\"openCancel\"]')).some(b=>b.textContent==='바로 취소')) throw new Error('공지 중인데 [바로 취소]'); return t; })()"},
+ {"role":"hq","shot":"order-109-dark-notice-hq"},
+ {"act":"noticeEnd","after":400},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,8).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('끝난 날 + 영업일 1일 끝')||!log.includes('10/14(수) 23:59')) throw new Error('새 판정 시각(10/14 끝) 기록 없음: '+log); return log; })()"},
+ {"adv":"86400000"},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,10).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(log.includes('NOTI_SHIP_OVERDUE')) throw new Error('하루 유예 중인데 출고 지연: '+log); return document.getElementById('gc-clock').textContent; })()"},
+ {"adv":"86400000"},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,10).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('NOTI_SHIP_OVERDUE')) throw new Error('유예가 끝났는데 출고 지연 없음: '+log); const t=document.querySelector('#gc-turn .turn-what').textContent; if(!t.includes('[바로 취소]')) throw new Error('차례가 고객 바로 취소 아님: '+t); return [t, log]; })()"},
+ {"role":"partner","shot":"order-110-dark-notice-partner"},
+ {"role":"system"}
+]

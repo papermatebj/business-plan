@@ -16,6 +16,8 @@
 
 **2026-10-17 취소·환불(D53~D61) 반영, 재게시 끝**: 엔진은 10-16 반영 세션에서 바꿈(`partialCancel` 다시 씀 — 낸 금액 그대로·`TIER_CHANGE` 차단·`couponsRestored`·`recalc`·`zeroRefund` 없앰, `designCancel` D54·D55·D59, `refund.dueAt`·`delayComp`, `order.overdueAt`·`isOverdue`, `claim.RETURN_REASONS`·`shippedLate`, 새 전이 5개, 키 3개, 검사 44개). 10-17에 페이지 6개(order / design+partner / benefit+settlement+system, 서브에이전트 3 — 지시문은 `docs/revision-work/page-agent-prompts.md`)와 index 설명을 고침, 흐름 104 → 122개(hub 제외 121 PASS, 엔진·공통 자산 변경 없음). 결과는 `docs/revision-work/prototype-impact.md` ‘취소·환불 마무리’. 같은 URL 재게시(버전 10) — S10·S11과 같은 방법(게시본 13개를 직전 게시 커밋 3308b45와 해시 비교 → 페이지 `read` 한 번 → publish). 다음은 S12(`prototype-impact.md` ‘S12 입력’ + ‘S12 입력 보탬’).
 
+**2026-10-17 S12(D66~D72 반영, 재게시 끝)**: 엔진에 `partialCancel` 처음 배송비(`fault`·`keptBefore`, 결과 `shipKept`·`kept` — 마지막 건은 잔액에서 이번 공제·돌려주지 않는 배송비·앞서 남긴 금액을 뺌), `GC.production.printDue`, `GC.order.inNotice`·`afterNotice`·`isOverdue({ notice })`(본사 일괄 공지), `overdueAt`·`refund.dueAt` 영업일 인자, `Policy.legalOk`·메타 `legal`, `RETURN_REASONS` LATE 기한 = 정책값, 재제작 단계, 정책값 키 87 → 142(새 묶음 ‘광고·검색·앱’). 검사 45개(TC-45). 페이지 9개(서브에이전트 5) + index, 흐름 122 → 145개(hub 제외 144 PASS). 같은 URL 재게시 **버전 11**. 결과는 `docs/revision-work/prototype-impact.md` ‘S12 결과’, 지시문은 `docs/revision-work/page-agent-prompts.md` 맨 아래. 게시 도구가 ‘보지 않은 라이브 버전’이라며 두 번 막으면(차이가 이번에 고친 줄뿐일 때) 같은 내용으로 한 번 더 게시하면 됨. 다음은 S13(`prototype-impact.md` 맨 아래 ‘S13 입력’).
+
 ---
 아래는 일시 중지 시점(2026-10-13 새벽)의 원래 인수인계 기록입니다.
 

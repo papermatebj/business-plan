@@ -1,0 +1,127 @@
+[
+{
+"act": "toMethod"
+},
+{
+"act": "toRequest"
+},
+{
+"check": "rights"
+},
+{
+"check": "stage"
+},
+{
+"check": "own"
+},
+{
+"act": "toCheckout"
+},
+{
+"check": "co_stage"
+},
+{
+"check": "co_plate"
+},
+{
+"act": "pay",
+"after": 500
+},
+{
+"role": "design"
+},
+{
+"act": "assign"
+},
+{
+"act": "startWork"
+},
+{
+"act": "propose",
+"after": 500
+},
+{
+"role": "customer"
+},
+{
+"act": "cs",
+"attr": "data-to=\"proposal\""
+},
+{
+"act": "cs",
+"attr": "data-to=\"approve\""
+},
+{
+"check": "ap_typo"
+},
+{
+"check": "ap_contact"
+},
+{
+"check": "ap_color"
+},
+{
+"check": "ap_qty"
+},
+{
+"check": "ap_nocancel"
+},
+{
+"act": "doApprove",
+"after": 600
+},
+{
+"role": "design"
+},
+{
+"act": "handOff"
+},
+{
+"role": "partner"
+},
+{
+"act": "download"
+},
+{
+"role": "customer"
+},
+{
+"act": "afterReq",
+"attr": "data-kind=\"change\""
+},
+{
+"role": "partner"
+},
+{
+"act": "plate",
+"attr": "data-v=\"0\""
+},
+{
+"adv": "86400000"
+},
+{
+"role": "customer"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .note')].find(c=>/본사가 확인하고/.test(c.innerText));if(!c)return 'none';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ').slice(0,400)})()",
+"after": 200
+},
+{
+"act": "afterWithdraw",
+"after": 400
+},
+{
+"role": "partner",
+"shot": "dhn-01-partner-released"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .note')].find(c=>/생산 보류가 풀렸어요/.test(c.innerText));if(!c)return 'none';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ').slice(0,400)})()",
+"after": 200
+},
+{
+"eval": "[...document.querySelectorAll('#gc-log li')].map(l=>l.innerText.replace(/\\s+/g,' ')).filter(t=>/PACKAGE_HANDED_OFF|CLAIM_WITHDRAWN|생산 보류/.test(t)).reverse().join(' || ')"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+}
+]

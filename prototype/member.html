@@ -67,24 +67,28 @@
   const esc = UI.esc, pv = UI.pv;
   const MIN = 60000;
 
-  /* ── 엔진에 아직 없는 정책값: 이 페이지 상수(임시 기본값) ──
-     엔진 키로 옮긴 것(2026-10-16 S11 맞춤 ⑩): 서류 심사 처리 목표 member.biz_manual_bd · 폐업 확인 뒤 혜택 해제 유예 member.biz_closed_grace_days → GC.Policy.get · UI.pv */
-  const LP = {
-    'member.biz_verify_fail_max': { v: 3, unit: '회', label: '국세청 진위 불일치 → 서류 심사 요청 가능 횟수' },
-    'member.biz_recheck_day': { v: 1, unit: '일', label: '사업자 상태 월 재조회 날짜(매월 n일 03:00)' },
-    'member.email_code_minutes': { v: 5, unit: '분', label: '이메일 인증번호 유효 시간' },
-    'member.email_code_fail_max': { v: 5, unit: '회', label: '이메일 인증번호 오입력 한도' },
-    'member.password_rule': { v: '8~20자 · 2종 이상', unit: '', label: '비밀번호 규칙(영문·숫자·특수문자 중)' },
-    'member.identity_daily_max': { v: 5, unit: '회', label: '같은 사람 본인인증 하루 한도' },
-  };
-  const lp = (k) => LP[k].v;
-  /* 엔진 정책값 읽기: 서류 심사 처리 목표(영업일) · 폐업 확인 뒤 혜택 해제까지 유예(일) */
-  const bizManualBd = () => GC.Policy.get('member.biz_manual_bd');
-  const graceDays = () => GC.Policy.get('member.biz_closed_grace_days');
-  function lpv(k, text) {
-    const m = LP[k];
-    return `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(m.label)} (${k}) · 엔진에 아직 없어 이 페이지 상수로 둠">${text != null ? text : `${m.v}${m.unit}`}</span>`;
+  /* ── 정책값: 모두 엔진 키(GC.Policy.get · UI.pv) ──
+     엔진 키로 옮긴 것(2026-10-16 S11 맞춤 ⑩): 서류 심사 처리 목표 member.biz_manual_bd · 휴업·폐업 확인 뒤 혜택 해제 유예 member.biz_closed_grace_days
+     (2026-10-17 S12 ⑫) 페이지 상수 6개를 지움: 진위 불일치 → 서류 심사 member.biz_verify_fail_max · 정기 재조회 시각 batch.biz_recheck_schedule ·
+     이메일 인증번호 security.member_email_code_minutes · security.member_email_code_fail_max · 비밀번호 규칙 security.member_password_rule ·
+     본인인증 하루 한도 member.identity_daily_max — 그 밖에 로그인 잠금 security.member_login_fail_lock·member_login_lock_minutes, 개인정보 조회 몰림 잠금 security.pii_view_lock_per_hour */
+  const P = (k) => GC.Policy.get(k);
+  const bizManualBd = () => P('member.biz_manual_bd');
+  const graceDays = () => P('member.biz_closed_grace_days');
+  /* 정기 재조회 시각(batch.biz_recheck_schedule '매월 1일 03:00')을 읽어 날짜·시각으로 — 글자 값이라 형식이 다르면 매월 1일 03:00 */
+  function recheckRule() {
+    const m = /(\d{1,2})일\s*(\d{1,2}):(\d{2})/.exec(String(P('batch.biz_recheck_schedule'))) || [];
+    return { day: +(m[1] || 1), h: +(m[2] || 3), min: +(m[3] || 0) };
   }
+  /* 비밀번호 규칙(security.member_password_rule '8~20자, 영문·숫자·특수문자 중 2종 이상')을 읽어 검사 기준으로 */
+  function pwRule() {
+    const t = String(P('security.member_password_rule')); const len = /(\d+)\s*~\s*(\d+)\s*자/.exec(t) || []; const k = /(\d)\s*종/.exec(t) || [];
+    return { min: +(len[1] || 8), max: +(len[2] || 20), kinds: +(k[1] || 2) };
+  }
+  /* 휴업·폐업(D69): 둘 다 '확인 필요' + 같은 유예, 세금계산서는 폐업만 '확인 필요' 때부터 막음(둘 다 세무 확인 필요) */
+  const KIND_NAME = { suspended: '휴업', closed: '폐업' };
+  const kindName = (g) => KIND_NAME[(g && g.kind) || 'closed'];
+  const taxBlocked = (g) => !!g && g.kind === 'closed';
 
   /* ── 상태 머신: 가입 화면 단계 / 회원 계정 ── */
   GC.sm.define('MEMBER_JOIN', {
@@ -114,7 +118,7 @@
       { from: 'BIZ_MANUAL', event: 'manual_approve', to: 'BIZ_MEMBER', actor: 'hq', label: '서류 심사 승인' },
       { from: 'BIZ_MANUAL', event: 'manual_reject', to: 'BIZ_DENIED', actor: 'hq', label: '서류 심사 반려(사유 코드)' },
       { from: 'BIZ_DENIED', event: 'retry', to: 'BIZ_VERIFY', actor: 'customer', label: '다시 신청' },
-      { from: 'BIZ_MEMBER', event: 'benefit_off', to: 'JOINED', actor: 'system', label: '폐업 유예 끝 · 사업자 혜택 해제' },
+      { from: 'BIZ_MEMBER', event: 'benefit_off', to: 'JOINED', actor: 'system', label: '휴업·폐업 유예 끝 · 사업자 혜택 해제' },
       { from: ['JOINED', 'BIZ_VERIFY', 'BIZ_MANUAL', 'BIZ_DENIED', 'BIZ_MEMBER'], event: 'withdraw', to: 'LOGIN', actor: 'customer', label: '회원 탈퇴 · 즉시 로그아웃' },
     ],
   });
@@ -207,14 +211,14 @@
     if (now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d)) age -= 1;
     return age;
   }
-  const firstOfNextMonth = (d) => new Date(d.getFullYear(), d.getMonth() + 1, lp('member.biz_recheck_day'), 3, 0);
+  const firstOfNextMonth = (d) => { const r = recheckRule(); return new Date(d.getFullYear(), d.getMonth() + 1, r.day, r.h, r.min); };
   const mmss = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
   function pwCheck(e) {
     const pw = e.pw || ''; const kinds = [/[A-Za-z]/, /\d/, /[^A-Za-z0-9]/].filter((r) => r.test(pw)).length;
-    const local = (e.addr.split('@')[0] || '').toLowerCase();
+    const local = (e.addr.split('@')[0] || '').toLowerCase(); const r = pwRule();
     return [
-      ['8~20자', pw.length >= 8 && pw.length <= 20],
-      ['영문·숫자·특수문자 중 2종 이상', kinds >= 2],
+      [`${r.min}~${r.max}자`, pw.length >= r.min && pw.length <= r.max],
+      [`영문·숫자·특수문자 중 ${r.kinds}종 이상`, kinds >= r.kinds],
       ['이메일 아이디를 그대로 쓰지 않음', !!pw && !(local.length >= 4 && pw.toLowerCase().includes(local))],
       ['비밀번호 확인과 일치', !!pw && pw === e.pw2],
     ];
@@ -237,7 +241,7 @@
     domain: 'member',
     title: '회원·사업자 인증',
     lede: '사장님이 카카오로 가입하고 휴대폰 본인인증을 거친 뒤, 사업자등록번호를 국세청에 확인하면 사업자 회원이 되어 사업자가가 열립니다. 본사는 개인정보를 가려서 보고, 매달 사업자 상태를 다시 확인합니다.',
-    meta: '근거: 기능 명세서 U-MEM-01(로그인 유지·모든 기기 로그아웃)~05·08 · A-MEM-01~03 · C-SEC-01(본인인증 결과 저장) · C-NOTI-01 · 디자인 요청서 S-02~S-04·S-33 · 가격 표기 규칙',
+    meta: '근거: 기능 명세서 U-MEM-01(로그인 유지·모든 기기 로그아웃)~05·08 · A-MEM-01~03 · C-SEC-01(본인인증 결과 저장) · C-NOTI-01 · 디자인 요청서 S-02~S-04·S-33 · 가격 표기 규칙 · 2026-10-17 D69(휴업도 폐업처럼 30일 유예, 세금계산서는 폐업만 막음)',
     actors: [
       { id: 'customer', title: '로그인' },
       { id: 'hq', nav: ['대시보드', '회원', '사업자 인증', '제재'], navOn: '회원', url: 'admin.sikup.co.kr/members' },
@@ -258,7 +262,7 @@
     Object.assign(app.S, {
       cs: 'login', via: null, notice: null, consent: {}, consents: [], idScn: 'ok', person: null, member: null, oldMember: null,
       biz: freshBiz(), bizForm: freshForm(), bizInfo: null, manual: null, denied: null, limitBlocked: 0,
-      ntsAnswer: 'active', nextRecheck: firstOfNextMonth(app.clock.now()), rechecks: [], grace: null, revoked: false,
+      ntsAnswer: 'active', nextRecheck: firstOfNextMonth(app.clock.now()), rechecks: [], grace: null, revoked: false, revokedKind: null,
       order: null, wdReason: null, withdrawn: null, rejoined: false,
       sessions: [], out: null,
       hqTab: 'member', hqOpen: false, unmasked: false, maskReason: null, maskNote: '', audit: [], hqDone: false, rejCode: null, rejNote: '',
@@ -270,7 +274,7 @@
   /* ── 지금 차례 안내 ── */
   function guide() {
     const s = S(); const j = app.state('join'); const a = app.state('acct');
-    const max = lp('member.biz_verify_fail_max');
+    const max = P('member.biz_verify_fail_max');
     if (s.out && s.member) {
       const how = s.out === 'expired' ? `앱을 ${GC.Policy.get('member.app_keep_login_days')}일 동안 쓰지 않아 자동 로그인이 끝났어요` : '모든 기기에서 로그아웃됐어요';
       return app.turn('customer', `${how}. 가입한 방식(${SNS[s.member.via].name})으로 다시 로그인하세요`, { hint: '기존 회원은 약관·본인인증 없이 바로 로그인하고, 보던 화면으로 돌아가요.', rules: [{ k: '웹 로그인 유지', policy: 'member.web_keep_login_days' }, { k: '앱 자동 로그인', policy: 'member.app_keep_login_days', v: `마지막 사용부터 ${GC.Policy.get('member.app_keep_login_days')}일` }, { k: '기존 회원', v: '바로 로그인' }] });
@@ -287,17 +291,17 @@
         if (s.withdrawn && !s.withdrawn.expired) return app.turn('customer', '탈퇴했어요. 같은 사람이 [카카오로 시작하기]로 다시 가입해 보세요. 본인인증 단계에서 재가입 제한에 걸려요', { rules: [{ k: '재가입 제한', policy: 'member.rejoin_block_days' }, { k: '가입 가능일', v: fmtDate(s.withdrawn.until, false) }, { k: '남겨 두는 값', v: 'CI 해시만' }] });
         if (s.cs === 'email') {
           const e = s.email;
-          const expired = e.sentAt && !e.verified && app.clock.now() - e.sentAt >= lp('member.email_code_minutes') * MIN;
+          const expired = e.sentAt && !e.verified && app.clock.now() - e.sentAt >= P('security.member_email_code_minutes') * MIN;
           return app.turn('customer', !e.sentAt ? '이메일을 넣고 [인증번호 받기]를 누르세요' : expired ? '인증번호가 만료됐어요. [다시 받기]로 새 번호를 받으세요' : !e.verified ? '메일로 받은 6자리 인증번호를 넣고 [확인]을 누르세요' : '비밀번호를 규칙에 맞게 넣고 [다음: 약관 동의]를 누르세요', {
             hint: e.sentAt && !e.verified && !expired ? '+1시간을 눌러 보면 유효 시간이 지나 인증번호가 만료돼요.' : null,
-            rules: [{ k: '인증번호', v: `6자리 · ${lpv('member.email_code_minutes')} 유효` }, { k: '재발송', v: '1분 간격 · 하루 10회' }, { k: '비밀번호', v: lpv('member.password_rule') }, { k: '로그인 5회 실패', v: '10분 잠금' }],
+            rules: [{ k: '인증번호', v: `6자리 · ${pv('security.member_email_code_minutes')} 유효` }, { k: '재발송', v: '1분 간격 · 하루 10회' }, { k: '비밀번호', v: pv('security.member_password_rule') }, { k: '로그인 연속 실패', v: `${pv('security.member_login_fail_lock')} → ${pv('security.member_login_lock_minutes')} 잠금` }],
           });
         }
         if (s.cs === 'browse') return app.turn('customer', '로그인하지 않아 일반가와 "사업자가 보기" 안내만 보여요. [로그인하고 사업자가 보기]를 누르세요', { rules: [{ k: '비로그인 가격', v: '일반가(VAT 포함)' }, { k: '사업자 전용가', v: '인증 회원만' }] });
         return app.turn('customer', '로그인 화면에서 [카카오로 시작하기]를 누르세요', { hint: '이메일 가입, 로그인 없이 둘러보기도 눌러 볼 수 있어요.', rules: [{ k: 'MVP 로그인', v: '카카오 · Apple' }, { k: '네이버 · 구글', v: '2차' }, { k: '웹 로그인 유지', policy: 'member.web_keep_login_days' }, { k: '앱 자동 로그인', policy: 'member.app_keep_login_days', v: `마지막 사용부터 ${GC.Policy.get('member.app_keep_login_days')}일` }] });
       }
       case 'TERMS': return app.turn('customer', '필수 3개에 동의하고 [동의하고 본인인증하기]를 누르세요. 선택 항목은 처음에 모두 꺼져 있어요', { rules: [{ k: '필수', v: '이용약관 · 개인정보 · 만 19세' }, { k: '마케팅 수신', v: '채널별 · 야간 따로' }, { k: '광고성 동의 재확인', v: '2년마다' }, { k: '알림톡', v: '광고에 안 씀' }] });
-      case 'IDENTITY': return app.turn('customer', '[휴대폰 본인인증 하기]를 누르세요. 체험용으로 본인확인기관이 돌려줄 결과를 고를 수 있어요', { rules: [{ k: '가입 가능 나이', policy: 'member.min_age', v: `만 ${GC.Policy.get('member.min_age')}세 이상` }, { k: '1인 1계정', v: 'CI로 확인' }, { k: '탈퇴 후 재가입', policy: 'member.rejoin_block_days' }, { k: '같은 사람 인증', v: `하루 ${lpv('member.identity_daily_max')}` }] });
+      case 'IDENTITY': return app.turn('customer', '[휴대폰 본인인증 하기]를 누르세요. 체험용으로 본인확인기관이 돌려줄 결과를 고를 수 있어요', { rules: [{ k: '가입 가능 나이', policy: 'member.min_age', v: `만 ${GC.Policy.get('member.min_age')}세 이상` }, { k: '1인 1계정', v: 'CI로 확인' }, { k: '탈퇴 후 재가입', policy: 'member.rejoin_block_days' }, { k: '같은 사람 인증', v: `하루 ${pv('member.identity_daily_max')}` }] });
       case 'UNDERAGE': return app.turn('customer', '만 19세 미만이라 가입이 멈췄어요. [로그인 화면으로]를 눌러 다른 갈래를 해 보세요', { rules: [{ k: '인증 결과', v: '저장하지 않음' }, { k: '이유', v: '미성년자 계약 취소 위험' }] });
       case 'DUP_CI': return app.turn('customer', '이미 가입된 계정이 있다는 안내를 확인하세요. 기존 계정으로 로그인해야 해요', { rules: [{ k: '1인 1계정', v: 'CI 기준' }, { k: '가입 방식 안내', v: '일부 가려 보여줌' }] });
       case 'REJOIN_BLOCKED':
@@ -310,8 +314,8 @@
       case 'BIZ_VERIFY':
         if (s.cs === 'bizManual') return app.turn('customer', '사업자등록증을 올리고 사업자 정보를 채워 [서류 심사 요청]을 누르세요', { rules: [{ k: '처리 목표', policy: 'member.biz_manual_bd' }, { k: '등록증', v: '이미지·PDF 10MB' }] });
         if (s.cs === 'bizDetail') return app.turn('customer', '업종을 고르고 [주소 검색]으로 사업장 주소를 넣은 뒤 [사업자 회원으로 전환]을 누르세요', { rules: [{ k: '업종', v: '공통 코드 10개 중 하나' }, { k: '입력한 정보', v: '세금계산서 기본값' }, { k: '등록증 업로드', v: '선택' }] });
-        if (s.biz.fails >= max) return app.turn('customer', `국세청 정보와 ${max}번 맞지 않았어요. [서류 심사 요청하기]로 사업자등록증을 올리세요`, { rules: [{ k: '진위 불일치', v: `${lpv('member.biz_verify_fail_max')} → 서류 심사` }, { k: '처리 목표', policy: 'member.biz_manual_bd' }] });
-        return app.turn('customer', '사업자등록번호·대표자명·개업일자를 넣고 [국세청에서 확인하기]를 누르세요', { hint: '체험용 예시로 띄어쓰기 불일치·폐업·계정 수 초과·검증번호 오류 갈래도 볼 수 있어요.', rules: [{ k: '형식 검사', v: '검증번호 계산' }, { k: '진위 불일치', v: `${lpv('member.biz_verify_fail_max')} → 서류 심사` }, { k: '휴업·폐업', v: '인증 불가' }, { k: '사업자번호당 계정', policy: 'member.biz_accounts_max' }] });
+        if (s.biz.fails >= max) return app.turn('customer', `국세청 정보와 ${max}번 맞지 않았어요. [서류 심사 요청하기]로 사업자등록증을 올리세요`, { rules: [{ k: '진위 불일치', v: `${pv('member.biz_verify_fail_max')} → 서류 심사` }, { k: '처리 목표', policy: 'member.biz_manual_bd' }] });
+        return app.turn('customer', '사업자등록번호·대표자명·개업일자를 넣고 [국세청에서 확인하기]를 누르세요', { hint: '체험용 예시로 띄어쓰기 불일치·폐업·계정 수 초과·검증번호 오류 갈래도 볼 수 있어요.', rules: [{ k: '형식 검사', v: '검증번호 계산' }, { k: '진위 불일치', v: `${pv('member.biz_verify_fail_max')} → 서류 심사` }, { k: '휴업·폐업', v: '인증 불가' }, { k: '사업자번호당 계정', policy: 'member.biz_accounts_max' }] });
       case 'BIZ_MANUAL': return app.turn('hq', '사업자 인증 대기열에서 제출한 등록증과 국세청 조회 결과를 비교해 [승인]하거나 사유 코드를 골라 [반려]하세요', { rules: [{ k: '처리 목표', policy: 'member.biz_manual_bd' }, { k: '반려 사유 코드', v: '5종 + 직접 입력' }, { k: '결과 안내', v: '알림톡' }] });
       case 'BIZ_DENIED': {
         const d = s.denied || {};
@@ -319,12 +323,12 @@
         return app.turn('customer', what, { rules: [{ k: '사업자번호당 계정', policy: 'member.biz_accounts_max' }, { k: '직원 계정', v: '3차' }] });
       }
       case 'BIZ_MEMBER':
-        if (a === 'BIZ_CHECK') return app.turn('system', `국세청에서 폐업으로 확인돼 사업자 혜택을 유예 중이에요. +7일로 ${fmtDate(s.grace.until, false)} 뒤까지 시간을 보내세요`, { hint: '고객 홈 위쪽에 안내가 떠요. 다음 월 재조회에서 계속사업자로 나오면 ‘확인 필요’가 자동으로 풀려요(배치·외부 연동에서 "계속사업자로 응답" → [재조회 지금 실행]). 고객이 [다시 인증하기]로 먼저 풀 수도 있어요.', rules: [{ k: '해제까지 유예', policy: 'member.biz_closed_grace_days' }, { k: '세금계산서', v: '지금부터 발행 막음' }, { k: '진행 중 주문', v: '영향 없음' }] });
+        if (a === 'BIZ_CHECK') return app.turn('system', `국세청에서 ${kindName(s.grace)}으로 확인돼 사업자 혜택을 유예 중이에요. +7일로 ${fmtDate(s.grace.until, false)} 뒤까지 시간을 보내세요`, { hint: '고객 홈 위쪽에 안내가 떠요. 다음 월 재조회에서 계속사업자로 나오면 ‘확인 필요’가 자동으로 풀리고 고객에게 알려요(배치·외부 연동에서 "계속사업자로 응답" → [재조회 지금 실행]). 고객이 [다시 인증하기]로 먼저 풀 수도 있어요.', rules: [{ k: '해제까지 유예', policy: 'member.biz_closed_grace_days', v: `${pv('member.biz_closed_grace_days')} · 휴업·폐업 같음` }, { k: '세금계산서', v: taxBlocked(s.grace) ? '폐업 · 지금부터 발행 막음' : '휴업 · 그대로 발행(세무 확인 필요)' }, { k: '결제가 끝난 주문', v: '결제 때 금액 그대로' }] });
         if (s.cs === 'bizDone') return app.turn('customer', '같은 상품 카드의 가격이 일반가에서 사업자가(공급가 함께)로 바뀐 걸 확인하고 [홈에서 보기]를 누르세요', { rules: [{ k: '사업자가', v: 'VAT 포함 + 공급가' }, { k: '배지', v: '사업자' }, { k: '인증 전 결제한 주문', v: '차액 환급 없음' }] });
         if (!s.order) return app.turn('customer', '홈에서 [사업자가로 1박스 바로 구매]를 눌러 주문을 하나 만들어 두세요', { hint: '구매 확정 전에 마이 > 회원 탈퇴로 가 보면 탈퇴가 막혀요.', rules: [{ k: '증빙 기본값', v: '세금계산서(사업자 정보)' }] });
         if (!s.hqDone) return app.turn('hq', '회원 조회에서 [상세]를 열고, 사유를 골라 개인정보 가림(마스킹)을 풀어 보세요', { rules: [{ k: '목록·상세', v: '기본으로 가림' }, { k: '가림 해제', v: '권한자 · 사유 필수' }, { k: '접근 기록 보관', v: '1년 이상' }] });
-        if (s.rechecks[0] && /자동 해제/.test(s.rechecks[0].res)) return app.turn('system', `계속사업자로 다시 확인돼 ‘확인 필요’가 자동으로 풀렸어요. 혜택 해제 갈래를 보려면 다시 "폐업으로 응답"을 고르고 [재조회 지금 실행]을 누르세요`, { rules: [{ k: '다시 정상 확인', v: '확인 필요 자동 해제 · 혜택 그대로' }, { k: '폐업 확인 후 유예', policy: 'member.biz_closed_grace_days' }, { k: '유예 끝난 뒤', v: '고객이 다시 인증 신청' }] });
-        return app.turn('system', `국세청 응답을 "폐업으로 응답"으로 고르고 [재조회 지금 실행]을 누르세요. 그냥 두면 ${fmtDate(s.nextRecheck)}에 자동으로 돌아요`, { rules: [{ k: '재조회 주기', v: lpv('member.biz_recheck_day', '매월 1일 03:00') }, { k: '폐업 확인 후 유예', policy: 'member.biz_closed_grace_days' }, { k: '휴면 회원', v: '건너뜀' }] });
+        if (s.rechecks[0] && /자동 해제/.test(s.rechecks[0].res)) return app.turn('system', `계속사업자로 다시 확인돼 ‘확인 필요’가 자동으로 풀렸어요. 혜택 해제 갈래를 보려면 다시 "휴업으로 응답" 또는 "폐업으로 응답"을 고르고 [재조회 지금 실행]을 누르세요`, { rules: [{ k: '다시 정상 확인', v: '확인 필요 자동 해제 · 혜택 그대로 · 고객 알림' }, { k: '휴업·폐업 확인 후 유예', policy: 'member.biz_closed_grace_days' }, { k: '유예 끝난 뒤', v: '고객이 다시 인증 신청' }] });
+        return app.turn('system', `국세청 응답을 "휴업으로 응답" 또는 "폐업으로 응답"으로 고르고 [재조회 지금 실행]을 누르세요. 그냥 두면 ${fmtDate(s.nextRecheck)}에 자동으로 돌아요`, { rules: [{ k: '재조회 주기', v: pv('batch.biz_recheck_schedule') }, { k: '휴업·폐업 확인 후 유예', policy: 'member.biz_closed_grace_days' }, { k: '세금계산서', v: '폐업만 확인 때부터 막음' }, { k: '휴면 회원', v: '건너뜀' }] });
     }
     app.turn('customer', '고객 화면을 확인하세요');
   }
@@ -349,10 +353,17 @@
     else price = `<div class="pc-price"><span class="app-price">${won(g[0].price)}</span><span class="small muted">· 1매당 ${per(g)}원~</span></div><span class="xsmall faint">일반가 · VAT 포함</span>`;
     return `<div class="app-card"><div class="pc-row"><div class="pc-thumb" aria-hidden="true"></div><div class="stack-sm"><span class="small strong">${esc(PRODUCT.name)}</span><span class="xsmall faint">${esc(PRODUCT.partner)} · ${PRODUCT.unit}</span>${price}</div></div>${extra}</div>`;
   }
+  /* 사업자가로 결제한 주문의 증빙: 휴업은 그대로 발행(세무 확인 필요), 폐업은 '확인 필요' 때부터 막고 현금영수증(지출증빙)·카드 전표 (D69) */
+  function receiptLine(s, o) {
+    if (!o.biz) return '';
+    const g = app.state('acct') === 'BIZ_CHECK' ? s.grace : s.revoked ? { kind: s.revokedKind } : null;
+    const tax = !g ? '세금계산서(사업자 정보)' : taxBlocked(g) ? '세금계산서는 폐업이 확인돼 발행하지 않아요 → 현금영수증(지출증빙)·카드 전표로 드려요' : '세금계산서 그대로 발행 <span class="tag tag-warn">세무 확인 필요</span>';
+    return `<span class="xsmall">증빙: ${tax}</span>`;
+  }
   function orderCard(s) {
     const o = s.order;
     return `<div class="app-card"><div class="split"><b class="small">최근 주문</b><span class="st ${o.status === 'CONFIRMED' ? 'st-done' : 'st-now'}">${orderLabel(o.status)}</span></div>
-      <span class="small">${esc(PRODUCT.name)} 1박스 · ${won(o.price)} (${o.biz ? '사업자가 · 세금계산서' : '일반가'})</span>
+      <span class="small">${esc(PRODUCT.name)} 1박스 · ${won(o.price)} (${o.biz ? '사업자가' : '일반가'})</span>${receiptLine(s, o)}
       ${o.status === 'SHIPPED' ? '<span class="xsmall faint">배송 완료 뒤 7일이 지나면 자동으로 구매 확정돼요.</span>' : ''}
       ${o.status === 'DELIVERED' ? '<button class="btn btn-sm btn-primary" data-act="confirmOrder">구매 확정</button>' : ''}</div>`;
   }
@@ -417,12 +428,12 @@
   }
   function email(f, s) {
     f.title('이메일로 가입'); f.tab(null); f.back();
-    const e = s.email; const ttl = lp('member.email_code_minutes') * MIN;
+    const e = s.email; const ttl = P('security.member_email_code_minutes') * MIN;
     const left = e.sentAt ? e.sentAt.getTime() + ttl - app.clock.now().getTime() : 0;
-    const expired = e.sentAt && left <= 0; const locked = e.fails >= lp('member.email_code_fail_max');
+    const expired = e.sentAt && left <= 0; const locked = e.fails >= P('security.member_email_code_fail_max');
     const codeMsg = e.verified ? '<span class="st st-done">이메일 인증 완료</span>'
-      : expired ? `<span class="err">인증번호가 만료됐어요(${lp('member.email_code_minutes')}분). [다시 받기]를 눌러 새 번호를 받아 주세요</span>`
-      : e.err && e.err.f === 'code' ? `<span class="err">${e.err.msg}</span>` : `<span class="hint">남은 시간 ${mmss(left)} · ${lpv('member.email_code_minutes')} 안에 넣어 주세요</span>`;
+      : expired ? `<span class="err">인증번호가 만료됐어요(${P('security.member_email_code_minutes')}분). [다시 받기]를 눌러 새 번호를 받아 주세요</span>`
+      : e.err && e.err.f === 'code' ? `<span class="err">${e.err.msg}</span>` : `<span class="hint">남은 시간 ${mmss(left)} · ${pv('security.member_email_code_minutes')} 안에 넣어 주세요</span>`;
     f.body.innerHTML = `
       <div class="app-pad">
         <p class="small muted">SNS를 쓰지 않는 매장 공용 계정 등을 위한 가입이에요. 이메일 인증 → 약관 동의 → 휴대폰 본인인증 순서로 진행해요.</p>
@@ -514,7 +525,7 @@
   }
   function biz(f, s) {
     f.title('사업자 인증'); f.tab('마이'); f.back();
-    const b = s.biz; const st = bizNoState(b.no); const max = lp('member.biz_verify_fail_max');
+    const b = s.biz; const st = bizNoState(b.no); const max = P('member.biz_verify_fail_max');
     f.body.innerHTML = `
       <div class="app-pad">
         <div class="steps-mini"><span class="on">1 번호 확인</span><span>2 사업자 정보</span></div>
@@ -558,7 +569,7 @@
     f.title('서류 심사 요청'); f.tab('마이'); f.back();
     f.body.innerHTML = `
       <div class="app-pad">
-        <div class="note note-warn small">국세청 진위 확인이 ${lp('member.biz_verify_fail_max')}번 맞지 않아 사업자등록증으로 확인할게요. 운영팀이 ${pv('member.biz_manual_bd')} 안에 결과를 알려 드려요.</div>
+        <div class="note note-warn small">국세청 진위 확인이 ${P('member.biz_verify_fail_max')}번 맞지 않아 사업자등록증으로 확인할게요. 운영팀이 ${pv('member.biz_manual_bd')} 안에 결과를 알려 드려요.</div>
         <dl class="kv small"><dt>사업자등록번호</dt><dd>${fmtBizNo(s.biz.no)}</dd><dt>대표자명(입력)</dt><dd>${esc(s.biz.rep)}</dd><dt>개업일자(입력)</dt><dd>${esc(s.biz.open)}</dd></dl>
         ${bizFields(s, true)}
       </div>`;
@@ -595,12 +606,20 @@
     f.title('식업'); f.tab('홈');
     const a = app.state('acct'); const j = app.state('join'); const bz = isBiz();
     const ban = [];
-    if (a === 'BIZ_CHECK') ban.push(`<div class="warn-banner"><b>사업자 상태를 확인해 주세요</b><br><span class="small">국세청에서 폐업으로 확인됐어요. ${fmtDate(s.grace.until, false)}까지 다시 확인되지 않으면 사업자가와 세금계산서가 해제돼요. 세금계산서는 지금부터 발행할 수 없어 현금영수증·카드 전표로 드려요. 다음 정기 조회(매월 1일)에서 계속사업자로 확인되면 이 안내는 자동으로 사라지고 사업자가는 그대로예요.</span>
+    if (a === 'BIZ_CHECK') {
+      const until = fmtDate(s.grace.until, false); const closed = taxBlocked(s.grace);
+      const body = closed
+        ? `국세청에서 폐업으로 확인됐어요. ${until}까지 다시 확인되지 않으면 사업자가가 해제돼요. 그때까지 사업자가는 그대로지만, 세금계산서는 지금부터 발행할 수 없어 현금영수증(지출증빙)·카드 전표로 드려요. 폐업이 아니라면 [다시 인증하기]로 다시 확인해 주세요. 다시 개업했다면 새 사업자등록번호로 인증해야 해요.`
+        : `국세청에서 휴업으로 확인됐어요. ${until}까지 다시 확인되지 않으면 사업자가와 세금계산서가 해제돼요. 그때까지 사업자가와 세금계산서는 그대로예요. 영업을 다시 시작했다면 [다시 인증하기]를 눌러 주세요.`;
+      ban.push(`<div class="warn-banner"><b>사업자 상태를 확인해 주세요</b><br><span class="small">${body} 다음 정기 조회(${pv('batch.biz_recheck_schedule')})에서 계속사업자로 확인되면 이 안내는 자동으로 사라지고 알려 드려요. 결제가 끝난 주문은 결제 때 금액 그대로예요.</span>
       <div class="cluster" style="margin-top:8px"><button class="btn btn-sm btn-ext" data-act="reverify">다시 인증하기</button><button class="btn btn-sm btn-ext" data-act="consult">상담하기</button></div></div>`);
-    if (s.revoked && a === 'ACTIVE') ban.push(`<div class="note note-warn small">폐업 확인 뒤 ${graceDays()}일이 지나 사업자 혜택이 해제됐어요. 지금은 일반가로 보여요. 계속사업자로 확인되거나 다시 개업했다면 아래 [사업자 인증하기]로 다시 신청해 주세요.</div>`);
+    }
+    if (s.revoked && a === 'ACTIVE') ban.push(`<div class="note note-warn small">${KIND_NAME[s.revokedKind]} 확인 뒤 ${graceDays()}일이 지나 사업자 혜택이 해제됐어요. 지금은 일반가로 보여요. ${s.revokedKind === 'closed' ? '다시 개업했다면 새 사업자등록번호로 아래 [다시 인증하기]를 눌러 인증해 주세요.' : '영업을 다시 시작했다면 아래 [다시 인증하기]로 다시 신청해 주세요.'} 결제가 끝난 주문은 결제 때 금액 그대로예요.</div>`);
     if (j === 'BIZ_MANUAL') ban.push(`<div class="note note-spot small">사업자 서류를 심사하고 있어요. ${fmtDate(s.manual.due)}까지 알림톡으로 결과를 알려 드려요.</div>`);
     if (j === 'BIZ_DENIED') ban.push(`<div class="note note-stop small">사업자 인증을 하지 못했어요. <button class="linkish" data-act="cs" data-to="bizDenied">자세히 보기</button></div>`);
-    if (j === 'JOINED') ban.push('<div class="app-card"><b class="small">사업자 인증하고 사업자가 보기</b><span class="xsmall muted">사업자 전용가와 세금계산서가 열려요</span><button class="btn btn-sm btn-primary" data-act="toBiz">사업자 인증하기</button></div>');
+    if (j === 'JOINED') ban.push(s.revoked
+      ? '<div class="app-card"><b class="small">사업자 인증 다시 하기</b><span class="xsmall muted">국세청에서 계속사업자로 확인되면 사업자 전용가와 세금계산서가 다시 열려요</span><button class="btn btn-sm btn-primary" data-act="toBiz">다시 인증하기</button></div>'
+      : '<div class="app-card"><b class="small">사업자 인증하고 사업자가 보기</b><span class="xsmall muted">사업자 전용가와 세금계산서가 열려요</span><button class="btn btn-sm btn-primary" data-act="toBiz">사업자 인증하기</button></div>');
     const who = bz ? `${esc(s.bizInfo.name)} 사장님 <span class="tag tag-spot">사업자</span>` : `${esc(s.person.name)}님`;
     f.body.innerHTML = `
       <div class="app-pad">
@@ -619,7 +638,7 @@
       <div class="app-pad">
         <div class="app-card"><div class="split"><b>${esc(p.name)}님 ${bz ? '<span class="tag tag-spot">사업자</span>' : ''}</b><span class="xsmall faint">${m.no}</span></div>
           <dl class="kv small"><dt>가입 방식</dt><dd>${SNS[m.via].name}</dd><dt>휴대폰</dt><dd>${p.phone} · 바꾸려면 다시 본인인증</dd><dt>이메일</dt><dd>${esc(m.email)}</dd><dt>쿠폰·포인트</dt><dd>${m.coupon ? '쿠폰 1장' : '쿠폰 0장'} · 0원</dd></dl></div>
-        <div class="app-card"><b class="small">사업자 정보</b>${bi && bz ? `<dl class="kv small"><dt>상호</dt><dd>${esc(bi.name)}</dd><dt>사업자등록번호</dt><dd>${fmtBizNo(bi.no)}</dd><dt>업종</dt><dd>${esc(bi.industry)}</dd><dt>세금계산서</dt><dd>${esc(bi.tax)}</dd></dl>` : '<span class="xsmall muted">아직 사업자 인증을 하지 않았어요.</span>'}</div>
+        <div class="app-card"><b class="small">사업자 정보</b>${bi && bz ? `<dl class="kv small"><dt>상호</dt><dd>${esc(bi.name)}</dd><dt>사업자등록번호</dt><dd>${fmtBizNo(bi.no)}</dd>${s.grace ? `<dt>사업자 상태</dt><dd><span class="st st-warn">확인 필요 · ${kindName(s.grace)}</span> ${fmtDate(s.grace.until, false)} 해제 예정</dd>` : ''}<dt>업종</dt><dd>${esc(bi.industry)}</dd><dt>세금계산서</dt><dd>${esc(bi.tax)}${s.grace ? (taxBlocked(s.grace) ? '<br><span class="xsmall faint">폐업 확인으로 발행을 멈췄어요 · 현금영수증(지출증빙)·카드 전표</span>' : '<br><span class="xsmall faint">그대로 발행 · 세무 확인 필요</span>') : ''}</dd></dl>` : `<span class="xsmall muted">${s.revoked ? `${KIND_NAME[s.revokedKind]} 확인 뒤 유예가 끝나 사업자 혜택이 해제됐어요.` : '아직 사업자 인증을 하지 않았어요.'}</span>`}</div>
         <div class="app-card"><b class="small">알림 설정 · 바꿀 수 있는 건 마케팅 알림뿐이에요</b><div class="blk"><div class="li"><span>필수 알림 · 주문·배송·결제·디자인·클레임</span><span class="tag">필수</span></div>${mk}</div><span class="xsmall faint">필수 알림은 끄거나 받을 채널을 고를 수 없어요. 알림톡으로 보내고, 못 받으면 문자로 다시 보내요. 채널을 고를 수 있는 건 마케팅 알림(앱 푸시·브랜드 메시지·이메일)뿐이에요.</span></div>
         ${s.order ? orderCard(s) : ''}
         <div class="app-card"><b class="small">계정 연결</b><div class="blk"><div class="li"><span>연결된 SNS</span><span>${SNS[m.via].name}</span></div><div class="li"><span>Apple 계정 연결</span><button class="btn btn-sm" disabled>연결</button></div></div></div>
@@ -691,7 +710,7 @@
           <div class="cluster"><button class="btn btn-ink" data-act="unmask" ${s.maskReason ? '' : 'disabled'}>마스킹 해제</button><span class="xsmall faint">개인정보 다운로드는 별도 권한이고 사유·파일 암호가 필요해요.</span></div></div>`;
     const consent = s.consents.length ? `<table class="tbl small"><thead><tr><th>항목</th><th>버전</th><th>동의</th><th>시각 · 채널</th></tr></thead><tbody>${s.consents.map((c) => `<tr><td>${c.item}</td><td>${c.ver}</td><td>${c.on ? '<span class="st st-now">동의</span>' : '<span class="st">거부</span>'}</td><td class="xsmall">${fmtDate(c.at)} · ${c.ch}</td></tr>`).join('')}</tbody></table>` : '<p class="small muted">기록 없음</p>';
     const audit = s.audit.length ? `<table class="tbl small"><thead><tr><th>시각</th><th>담당</th><th>한 일</th><th>사유</th></tr></thead><tbody>${s.audit.map((x) => `<tr><td class="xsmall">${fmtDate(x.at)}</td><td>${x.who}</td><td>${x.act}</td><td>${esc(x.reason)}</td></tr>`).join('')}</tbody></table>` : '<p class="small muted">기록 없음</p>';
-    return `${a === 'BIZ_CHECK' ? `<div class="hold-banner">국세청 재조회에서 폐업으로 확인됐어요 · ${fmtDate(s.grace.until, false)}에 사업자 혜택 해제 예정 · 세금계산서 발행 막힘</div>` : ''}
+    return `${a === 'BIZ_CHECK' ? `<div class="hold-banner">국세청 재조회에서 ${kindName(s.grace)}으로 확인됐어요 · ${fmtDate(s.grace.until, false)}에 사업자 혜택 해제 예정 · ${taxBlocked(s.grace) ? '세금계산서 발행 막힘(현금영수증·카드 전표 안내)' : '세금계산서는 그대로 발행'} · 세무 확인 필요</div>` : ''}
       <div class="panel"><div class="panel-h"><h2>기본 정보 · ${m.no}</h2>${un ? '<span class="tag tag-warn">가림 해제 중</span>' : '<span class="tag">가림</span>'}</div><div class="panel-b stack">
         <dl class="kv">${basic.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>${form}
         <p class="xsmall faint">전화로 본인 확인할 때는 전체 번호를 보여주지 않고 끝 4자리로 대조해요.</p></div></div>
@@ -701,7 +720,7 @@
   }
   function hqBiz(s) {
     const q = [];
-    if (s.manual) q.push(`<tr class="${s.manual.decided ? '' : 'is-hl'}"><td class="nw"><b>BV-3312</b><br><span class="xsmall faint">${maskName(s.person.name)}</span></td><td class="num">${fmtBizNo(s.manual.no)}</td><td>진위 불일치 ${lp('member.biz_verify_fail_max')}회 · 등록증 제출</td><td class="xsmall nw">${fmtDate(s.manual.due)}</td><td>${s.manual.decided ? (s.manual.decided === 'ok' ? '<span class="st st-done">승인</span>' : '<span class="st st-stop">반려</span>') : app.clock.now() > s.manual.due ? '<span class="st st-stop">목표 초과</span>' : '<span class="st st-warn">대기</span>'}</td></tr>`);
+    if (s.manual) q.push(`<tr class="${s.manual.decided ? '' : 'is-hl'}"><td class="nw"><b>BV-3312</b><br><span class="xsmall faint">${maskName(s.person.name)}</span></td><td class="num">${fmtBizNo(s.manual.no)}</td><td>진위 불일치 ${P('member.biz_verify_fail_max')}회 · 등록증 제출</td><td class="xsmall nw">${fmtDate(s.manual.due)}</td><td>${s.manual.decided ? (s.manual.decided === 'ok' ? '<span class="st st-done">승인</span>' : '<span class="st st-stop">반려</span>') : app.clock.now() > s.manual.due ? '<span class="st st-stop">목표 초과</span>' : '<span class="st st-warn">대기</span>'}</td></tr>`);
     const fakeAt = new Date(2026, 9, 12, 8, 40);
     q.push(`<tr><td class="nw"><b>BV-3307</b><br><span class="xsmall faint">김*연</span></td><td class="num">220-81-24681</td><td>등록증만 제출</td><td class="xsmall nw">${fmtDate(GC.addBusinessDays(fakeAt, bizManualBd()))}</td><td><span class="st st-warn">대기</span></td></tr>`);
     let detail = '';
@@ -726,7 +745,7 @@
     const accounts = `<table class="tbl small"><thead><tr><th>사업자등록번호</th><th class="num">인증 계정</th><th>비고</th></tr></thead><tbody>
       <tr><td class="num">214-86-35723</td><td class="num">${mine}/${GC.Policy.get('member.biz_accounts_max')}</td><td class="xsmall">오늘밥상</td></tr>
       <tr><td class="num">105-87-33108</td><td class="num">3/${GC.Policy.get('member.biz_accounts_max')}</td><td class="xsmall">4번째 신청 차단 ${s.limitBlocked}건 · 직원 계정은 3차</td></tr></tbody></table>`;
-    const check = app.state('acct') === 'BIZ_CHECK' ? `<tr><td class="nw">${s.member.no}</td><td class="nw">${esc(s.bizInfo.name)}</td><td>폐업 확인 ${fmtDate(s.grace.at, false)}</td><td>다음 조회에서 계속사업자면 자동으로 지움 · 아니면 ${fmtDate(s.grace.until, false)} 혜택 해제</td></tr>` : '<tr><td colspan="4" class="faint">확인 필요 회원이 없어요.</td></tr>';
+    const check = app.state('acct') === 'BIZ_CHECK' ? `<tr><td class="nw">${s.member.no}</td><td class="nw">${esc(s.bizInfo.name)}</td><td>${kindName(s.grace)} 확인 ${fmtDate(s.grace.at, false)}<br><span class="xsmall faint">${taxBlocked(s.grace) ? '세금계산서 막음' : '세금계산서 발행'} · 세무 확인 필요</span></td><td>다음 조회에서 계속사업자면 자동으로 지우고 알림 · 아니면 ${fmtDate(s.grace.until, false)} 혜택 해제</td></tr>` : '<tr><td colspan="4" class="faint">확인 필요 회원이 없어요.</td></tr>';
     return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>접수 · 회원</th><th>사업자번호</th><th>수동 심사 사유</th><th>처리 목표</th><th>상태</th></tr></thead><tbody>${q.join('')}</tbody></table></div>
       <p class="xsmall faint">수동 심사 대상: 진위 불일치 · 등록증만 제출 · 국세청 API 장애 중 접수. 처리 목표 ${pv('member.biz_manual_bd')}.</p>
       ${detail}
@@ -739,21 +758,21 @@
   VIEWS.system = (f) => {
     const s = S(); const a = app.state('acct'); const now = app.clock.now();
     const target = ['BIZ', 'BIZ_CHECK'].includes(a);
-    const rows = [['사업자 상태 월 재조회', `매월 ${lpv('member.biz_recheck_day', '1일 03:00')} · 다음 ${fmtDate(s.nextRecheck)} · 사업자 회원 전체(휴면 제외)`, target ? '<span class="sla sla-ok">대상에 오늘밥상 포함</span>' : '<span class="xsmall faint">우리 회원은 대상 아님</span>']];
-    if (s.grace) { const left = Math.ceil((s.grace.until - now) / GC.DAY); rows.push(['폐업 유예 감시', `확인 ${fmtDate(s.grace.at, false)} → 해제 ${fmtDate(s.grace.until, false)}`, `<span class="sla ${left <= 7 ? 'sla-warn' : 'sla-ok'}">${left}일 남음</span>`]); }
+    const rows = [['사업자 상태 월 재조회', `${pv('batch.biz_recheck_schedule')} · 다음 ${fmtDate(s.nextRecheck)} · 사업자 회원 전체(휴면 제외)`, target ? '<span class="sla sla-ok">대상에 오늘밥상 포함</span>' : '<span class="xsmall faint">우리 회원은 대상 아님</span>']];
+    if (s.grace) { const left = Math.ceil((s.grace.until - now) / GC.DAY); rows.push(['휴업·폐업 유예 감시', `${kindName(s.grace)} 확인 ${fmtDate(s.grace.at, false)} → 해제 ${fmtDate(s.grace.until, false)}`, `<span class="sla ${left <= 7 ? 'sla-warn' : 'sla-ok'}">${left}일 남음</span>`]); }
     if (s.withdrawn) rows.push(['재가입 제한 해시', `탈퇴 ${fmtDate(s.withdrawn.at, false)} → 해제 ${fmtDate(s.withdrawn.until, false)}`, s.withdrawn.expired ? '<span class="sla sla-ok">파기됨</span>' : `<span class="sla sla-warn">${Math.ceil((s.withdrawn.until - now) / GC.DAY)}일 남음</span>`]);
     if (s.manual && !s.manual.decided) rows.push(['서류 심사 처리 목표', `${fmtDate(s.manual.due)}까지`, now > s.manual.due ? '<span class="sla sla-over">초과 → 운영팀 알림(NOTI_INT_BIZ_VERIFY_LATE)</span>' : '<span class="sla sla-ok">여유</span>']);
     if (s.order && s.order.status !== 'CONFIRMED') rows.push(['자동 구매 확정', s.order.deliveredAt ? `배송 완료 + ${GC.Policy.get('order.auto_confirm_days')}일` : '배송 완료 대기(다음 날)', `<span class="sla sla-ok">${orderLabel(s.order.status)}</span>`]);
-    if (s.email.sentAt && !s.email.verified) { const left = s.email.sentAt.getTime() + lp('member.email_code_minutes') * MIN - now.getTime(); rows.push(['이메일 인증번호', `${lpv('member.email_code_minutes')} 유효`, left > 0 ? `<span class="sla sla-ok">${mmss(left)} 남음</span>` : '<span class="sla sla-over">만료</span>']); }
+    if (s.email.sentAt && !s.email.verified) { const left = s.email.sentAt.getTime() + P('security.member_email_code_minutes') * MIN - now.getTime(); rows.push(['이메일 인증번호', `${pv('security.member_email_code_minutes')} 유효`, left > 0 ? `<span class="sla sla-ok">${mmss(left)} 남음</span>` : '<span class="sla sla-over">만료</span>']); }
     f.body.innerHTML = `
       <h3>배치·외부 연동</h3>
       <p class="small muted">사람이 누르지 않아도 시간이 되면 돌아가는 일들이에요. 위쪽 +1일·+7일로 시간을 보내면 자동으로 실행돼요.</p>
       <div class="tbl-wrap"><table class="tbl"><thead><tr><th>작업</th><th>기준</th><th>상태</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${r[0]}</td><td class="small">${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table></div>
       <div class="panel"><div class="panel-h"><h2>사업자 상태 월 재조회</h2><span class="tag">A-MEM-02</span></div><div class="panel-b stack">
         <div class="demo"><span class="demo-h">체험용 · 다음 조회에서 국세청이 오늘밥상(214-86-35723)을</span>
-          <div class="seg">${[['active', '계속사업자로 응답'], ['closed', '폐업으로 응답']].map(([k, t]) => `<button data-act="ntsAns" data-v="${k}" aria-pressed="${s.ntsAnswer === k}">${t}</button>`).join('')}</div></div>
-        ${s.rechecks.length ? `<table class="tbl small"><thead><tr><th>실행</th><th>방식</th><th>결과</th></tr></thead><tbody>${s.rechecks.map((x) => `<tr><td class="xsmall">${fmtDate(x.at)}</td><td>${x.by}</td><td>${x.res}</td></tr>`).join('')}</tbody></table>` : ''}
-        <div class="cluster"><button class="btn btn-primary btn-ext" data-act="recheck" ${target ? '' : 'disabled'}>재조회 지금 실행</button><span class="xsmall faint">${target ? '폐업이면 "확인 필요"로 바꾸고 유예 뒤 혜택을 해제해요.' : '사업자 회원이 생기면 실행할 수 있어요.'}</span></div></div></div>
+          <div class="seg">${[['active', '계속사업자로 응답'], ['suspended', '휴업으로 응답'], ['closed', '폐업으로 응답']].map(([k, t]) => `<button data-act="ntsAns" data-v="${k}" aria-pressed="${s.ntsAnswer === k}">${t}</button>`).join('')}</div></div>
+        ${s.rechecks.length ? `<div class="tbl-wrap"><table class="tbl small"><thead><tr><th>실행</th><th>방식</th><th>결과</th></tr></thead><tbody>${s.rechecks.map((x) => `<tr><td class="xsmall">${fmtDate(x.at)}</td><td>${x.by}</td><td>${x.res}</td></tr>`).join('')}</tbody></table></div>` : ''}
+        <div class="cluster"><button class="btn btn-primary btn-ext" data-act="recheck" ${target ? '' : 'disabled'}>재조회 지금 실행</button><span class="xsmall faint">${target ? '휴업·폐업이면 "확인 필요"로 바꾸고 유예 뒤 혜택을 해제해요. 세금계산서는 폐업만 바로 막아요.' : '사업자 회원이 생기면 실행할 수 있어요.'}</span></div></div></div>
       <div class="note note-ext small">외부 연동: 카카오·Apple(소셜 로그인) · PASS·NICE(휴대폰 본인인증) · 국세청 사업자등록정보 API(진위·상태) · AWS SES(이메일) · AWS S3·GuardDuty(등록증 파일) · 채널톡(상담) · 솔라피(알림톡). 프로토타입에서는 안내 창으로 대신해요.</div>`;
   };
 
@@ -767,20 +786,31 @@
       app.log('rule', s.revoked ? `사업자 상태 재조회(${by}): 유예가 끝나 혜택이 풀린 회원은 대상이 아니에요. 계속사업자여도 자동으로 되살리지 않고 고객이 사업자 인증을 다시 신청해요` : `사업자 상태 재조회(${by}): 이 시나리오의 회원은 사업자 회원이 아니라 건너뜀`);
       return;
     }
-    const closed = s.ntsAnswer === 'closed';
-    if (closed && a === 'BIZ') {
-      goAcct('closure_detected', `${by} · 국세청 응답 폐업`);
-      s.grace = { at: now, until: new Date(now.getTime() + graceDays() * GC.DAY) };
-      app.log('rule', `사업자 혜택은 ${fmtDate(s.grace.until, false)}까지 유지 · 세금계산서 발행은 지금부터 막고 현금영수증·카드 전표로 안내 · 진행 중 주문은 영향 없음`);
-      app.notify('NOTI_BIZ_STATUS_CHECK', '고객', ['알림톡', '이메일', '알림센터'], `국세청에서 폐업으로 확인 · ${fmtDate(s.grace.until, false)} 사업자 혜택 해제 예정`);
-      s.rechecks.unshift({ at: now, by, res: '오늘밥상 폐업 → 확인 필요' });
-    } else if (!closed && a === 'BIZ_CHECK') {
+    const ans = s.ntsAnswer; const off = ans !== 'active'; const nm = KIND_NAME[ans];
+    const taxRule = (k) => (k === 'closed' ? '세금계산서 발행은 지금부터 막고 현금영수증(지출증빙)·카드 전표로 안내' : '세금계산서는 유예 중에도 그대로 발행(세무 확인 필요 표시)');
+    if (off && a === 'BIZ') {
+      /* 휴업도 폐업과 같게: '확인 필요' + 해제 예정일 알림 + 같은 유예(2026-10-17 D69) */
+      goAcct('closure_detected', `${by} · 국세청 응답 ${nm}`);
+      s.grace = { at: now, until: new Date(now.getTime() + graceDays() * GC.DAY), kind: ans };
+      app.log('rule', `${nm} 확인 → 사업자 혜택은 ${fmtDate(s.grace.until, false)}까지 그대로(${graceDays()}일 유예, 휴업·폐업 같음) · ${taxRule(ans)} · 결제가 끝난 주문은 결제 때 금액 그대로`);
+      app.notify('NOTI_BIZ_STATUS_CHECK', '고객', ['알림톡', '이메일', '알림센터'], `국세청에서 ${nm}으로 확인 · ${fmtDate(s.grace.until, false)} 사업자 혜택 해제 예정${ans === 'closed' ? ' · 세금계산서 발행 멈춤' : ''}`);
+      s.rechecks.unshift({ at: now, by, res: `오늘밥상 ${nm} → 확인 필요` });
+    } else if (!off && a === 'BIZ_CHECK') {
+      const was = kindName(s.grace);
       goAcct('reverified', `${by} · 계속사업자로 다시 확인`); s.grace = null;
-      app.log('rule', '‘확인 필요’ 표시를 자동으로 지움(2026-10-16 D48) · 유예 중이던 사업자가는 끊긴 적 없이 그대로 · 세금계산서 발행 다시 가능');
-      s.rechecks.unshift({ at: now, by, res: '오늘밥상 계속사업자 → 확인 필요 자동 해제 · 혜택 유지' });
+      app.log('rule', `‘확인 필요’(${was}) 표시를 자동으로 지움(2026-10-16 D48) · 유예 중이던 사업자가는 끊긴 적 없이 그대로${was === '폐업' ? ' · 세금계산서 발행 다시 가능' : ''}`);
+      /* 정기 조회로 지울 때만 알림(고객이 [다시 인증하기]로 직접 푼 때는 화면에서 바로 확인 — S12 맞춤 ⑪) */
+      app.notify('NOTI_BIZ_STATUS_RESTORED', '고객', ['알림톡', '이메일', '알림센터'], '국세청에서 계속사업자로 다시 확인 · ‘확인 필요’ 해제 · 사업자가 그대로');
+      s.rechecks.unshift({ at: now, by, res: `오늘밥상 계속사업자 → 확인 필요(${was}) 자동 해제 · 혜택 유지 · 고객 알림` });
+    } else if (off && a === 'BIZ_CHECK' && s.grace.kind !== ans) {
+      /* 판단: 유예 중 휴업 ↔ 폐업으로 바뀌면 해제 예정일은 처음 확인 때 그대로, 세금계산서 기준만 바꾸고 알림 */
+      const was = kindName(s.grace); s.grace.kind = ans;
+      app.log('rule', `유예 중 ${was} → ${nm}으로 바뀜 · 해제 예정일 ${fmtDate(s.grace.until, false)} 그대로(처음 확인 때부터) · ${taxRule(ans)}`);
+      app.notify('NOTI_BIZ_STATUS_CHECK', '고객', ['알림톡', '이메일', '알림센터'], `국세청에서 ${nm}으로 다시 확인 · ${fmtDate(s.grace.until, false)} 사업자 혜택 해제 예정 그대로${ans === 'closed' ? ' · 세금계산서 발행 멈춤' : ''}`);
+      s.rechecks.unshift({ at: now, by, res: `오늘밥상 ${was} → ${nm} · 유예 그대로` });
     } else {
-      s.rechecks.unshift({ at: now, by, res: closed ? '오늘밥상 여전히 폐업 · 유예 중' : '오늘밥상 계속사업자 · 변동 없음' });
-      app.log('rule', `사업자 상태 재조회(${by}): ${closed ? '여전히 폐업 · 유예 계속' : '변동 없음'}`);
+      s.rechecks.unshift({ at: now, by, res: off ? `오늘밥상 여전히 ${nm} · 유예 중` : '오늘밥상 계속사업자 · 변동 없음' });
+      app.log('rule', `사업자 상태 재조회(${by}): ${off ? `여전히 ${nm} · 유예 계속` : '변동 없음'}`);
     }
   }
 
@@ -803,15 +833,15 @@
       if (!emailOk(addr)) { e.err = { f: 'addr', msg: '이메일 형식이 맞지 않아요. 예: store@example.com' }; return refresh(); }
       if (addr === 'owner@todaybap.kr') { e.err = { f: 'addr', msg: '카카오로 가입된 계정이에요. 카카오로 로그인해 주세요' }; app.log('rule', '이미 SNS로 가입된 이메일 → 가입 방식을 알려 주고 그 SNS 로그인으로 보냄'); return refresh(); }
       if (e.sentAt && app.clock.now() - e.sentAt < MIN) { app.toast('1분 뒤에 다시 받을 수 있어요'); return; }
-      await app.ext({ service: 'AWS SES', what: '이메일 인증번호 보내기', lines: [`받는 사람 ${esc(addr)}`, `6자리 인증번호 · ${lp('member.email_code_minutes')}분 유효`, '재발송은 1분 간격, 하루 10회까지'], result: '메일이 도착한 것으로 처리해요' });
+      await app.ext({ service: 'AWS SES', what: '이메일 인증번호 보내기', lines: [`받는 사람 ${esc(addr)}`, `6자리 인증번호 · ${P('security.member_email_code_minutes')}분 유효`, '재발송은 1분 간격, 하루 10회까지'], result: '메일이 도착한 것으로 처리해요' });
       Object.assign(e, { addr, sentAt: app.clock.now(), input: '', err: null, fails: 0 });
       app.log('user', `이메일 인증번호 발송 · ${esc(addr)}`);
       refresh();
     },
     emCode(t) { S().email.input = t.value.replace(/\D/g, '').slice(0, 6); },
     emVerify() {
-      const e = S().email; const max = lp('member.email_code_fail_max');
-      const left = e.sentAt.getTime() + lp('member.email_code_minutes') * MIN - app.clock.now().getTime();
+      const e = S().email; const max = P('security.member_email_code_fail_max');
+      const left = e.sentAt.getTime() + P('security.member_email_code_minutes') * MIN - app.clock.now().getTime();
       if (left <= 0) { app.log('warn', '이메일 인증번호 만료 → 다시 받기 안내'); return refresh(); }
       if (e.input !== EMAIL_CODE) { e.fails += 1; app.log('warn', `이메일 인증번호 불일치 ${e.fails}/${max}회`); e.err = { f: 'code', msg: e.fails >= max ? `${max}번 틀렸어요. [다시 받기]로 새 번호를 받아 주세요` : `인증번호가 맞지 않아요 (${e.fails}/${max}회)` }; return refresh(); }
       e.verified = true; e.err = null; app.log('user', '이메일 인증 완료'); refresh();
@@ -821,7 +851,7 @@
     emNext() {
       const s = S(); s.via = 'email'; s.consent = {}; s.idScn = 'ok';
       goJoin('email_verified', `이메일 ${esc(s.email.addr)} 인증`);
-      app.log('rule', '비밀번호는 일방향 암호화(bcrypt·Argon2)로 저장 · 로그인 5회 실패하면 10분 잠금');
+      app.log('rule', `비밀번호는 일방향 암호화(bcrypt·Argon2)로 저장 · 로그인 ${P('security.member_login_fail_lock')}회 연속 실패하면 ${P('security.member_login_lock_minutes')}분 잠금`);
       go('terms');
     },
     agreeChk(t) {
@@ -840,7 +870,7 @@
     idScn(b) { S().idScn = b.dataset.v; refresh(); },
     async pass() {
       const s = S(); const p = s.idScn === 'minor' ? MINOR : OWNER;
-      await app.ext({ service: 'PASS · 본인확인기관', what: '휴대폰 본인인증', lines: ['통신사를 고르고 PASS 앱 또는 문자로 인증', `돌아온 결과: ${p.name} · ${p.birth} · 성별 · ${p.phone} · CI·DI`, '서버가 본인확인기관에 결과를 직접 조회해 검증해요. 앱·웹이 보낸 값은 믿지 않아요', `건당 비용이 들어 같은 사람은 하루 ${lp('member.identity_daily_max')}회까지`], result: '인증이 끝난 것으로 처리해요' });
+      await app.ext({ service: 'PASS · 본인확인기관', what: '휴대폰 본인인증', lines: ['통신사를 고르고 PASS 앱 또는 문자로 인증', `돌아온 결과: ${p.name} · ${p.birth} · 성별 · ${p.phone} · CI·DI`, '서버가 본인확인기관에 결과를 직접 조회해 검증해요. 앱·웹이 보낸 값은 믿지 않아요', `건당 비용이 들어 같은 사람은 하루 ${P('member.identity_daily_max')}회까지`], result: '인증이 끝난 것으로 처리해요' });
       app.clock.pass(2 * MIN);
       const now = app.clock.now(); const min = GC.Policy.get('member.min_age'); const age = manAge(p.birth, now);
       app.log('rule', `만 나이 계산: ${p.birth} 생 → 만 ${age}세 (가입 기준 만 ${min}세 이상) · 생년월일·성별은 계산에만 쓰고 저장하지 않음`);
@@ -867,7 +897,7 @@
     dupLogin() { app.toast('기존 계정으로 로그인해요. 한 사람은 계정 하나만 쓸 수 있어요'); const s = S(); goJoin('restart', '기존 계정 로그인으로 안내'); s.consent = {}; s.idScn = 'ok'; go('login'); },
     toBiz() {
       const s = S();
-      if (app.state('join') === 'JOINED') { goJoin('start_biz'); s.biz = freshBiz(); s.revoked = false; }
+      if (app.state('join') === 'JOINED') { goJoin('start_biz'); s.biz = freshBiz(); s.revoked = false; s.revokedKind = null; }
       go(s.biz.nts ? 'bizDetail' : 'biz');
     },
     bzNo(t) { const d = digitsOf(t.value); S().biz.no = d; t.value = fmtBizNo(d); syncBiz(); },
@@ -875,7 +905,7 @@
     bzOpen(t) { const v = t.value.replace(/\D/g, '').slice(0, 8); S().biz.open = v; t.value = v; syncBiz(); },
     bzSample(b) { const x = SAMPLES.find((y) => y[0] === b.dataset.s); Object.assign(S().biz, { no: x[1], rep: x[2], open: x[3] }); refresh(); },
     async ntsCheck() {
-      const s = S(); const b = s.biz; const r = NTS[b.no]; const max = lp('member.biz_verify_fail_max'); const lim = GC.Policy.get('member.biz_accounts_max');
+      const s = S(); const b = s.biz; const r = NTS[b.no]; const max = P('member.biz_verify_fail_max'); const lim = GC.Policy.get('member.biz_accounts_max');
       const match = r && r.rep === b.rep.trim() && r.open === b.open;
       const out = !match ? 'mismatch' : r.status !== 'active' ? 'closed' : r.accounts >= lim ? 'limit' : 'ok';
       await app.ext({ service: '국세청 사업자등록정보 API', what: '진위확인 · 상태조회', lines: [`사업자등록번호 ${fmtBizNo(b.no)} · 대표자명 ${esc(b.rep)} · 개업일자 ${esc(b.open)}`, '진위확인: 세 값이 국세청 등록 정보와 모두 같은지', '상태조회: 계속사업자 · 휴업 · 폐업', 'API가 멈추면 입력값을 저장해 "확인 중"으로 두고 자동으로 다시 조회해요'], result: out === 'mismatch' ? '진위가 맞지 않는다고 응답한 것으로 처리해요' : `진위 일치 · ${r.statusName}로 응답한 것으로 처리해요` });
@@ -930,18 +960,22 @@
     async consult() { await app.ext({ service: '채널톡', what: '채팅 상담 연결', lines: ['회원 번호·화면 위치를 함께 넘겨 상담원이 바로 확인해요', '운영시간 밖이면 남긴 문의에 다음 영업일에 답해요'] }); },
     async buy() {
       const s = S(); const bz = isBiz(); const price = bz ? PRODUCT.bizTiers[0].price : PRODUCT.tiers[0].price;
-      await app.ext({ service: '토스페이먼츠', what: '결제창 호출', lines: [`${esc(PRODUCT.name)} 1박스 · ${won(price)} (${bz ? '사업자가' : '일반가'}, VAT 포함)`, bz ? `증빙: 세금계산서 · 사업자 정보(${esc(s.bizInfo.name)})가 기본값` : '증빙: 카드 전표 · 현금영수증', '체험용으로 배송비 없이 바로 출고해요'], result: '결제가 승인된 것으로 처리해요' });
+      const noTax = bz && app.state('acct') === 'BIZ_CHECK' && taxBlocked(s.grace); // 폐업 '확인 필요' 중: 사업자가는 그대로, 세금계산서만 막음(D69)
+      const proof = !bz ? '증빙: 카드 전표 · 현금영수증' : noTax ? '증빙: 폐업이 확인돼 세금계산서는 고를 수 없어요 → 현금영수증(지출증빙)·카드 전표' : `증빙: 세금계산서 · 사업자 정보(${esc(s.bizInfo.name)})가 기본값${app.state('acct') === 'BIZ_CHECK' ? ' · 휴업 확인 중이라 세무 확인 필요 표시' : ''}`;
+      await app.ext({ service: '토스페이먼츠', what: '결제창 호출', lines: [`${esc(PRODUCT.name)} 1박스 · ${won(price)} (${bz ? '사업자가' : '일반가'}, VAT 포함)`, proof, '체험용으로 배송비 없이 바로 출고해요'], result: '결제가 승인된 것으로 처리해요' });
       s.order = { price, biz: bz, at: app.clock.now(), status: 'SHIPPED', deliveredAt: null };
-      app.log('money', `주문 결제 ${won(price)} · ${bz ? '사업자가 적용 · 세금계산서 신청' : '일반가'}`);
+      app.log('money', `주문 결제 ${won(price)} · ${bz ? (noTax ? '사업자가 적용 · 현금영수증(지출증빙)' : '사업자가 적용 · 세금계산서 신청') : '일반가'}`);
       app.log('state', '주문: 결제 완료 → 배송 중 (체험용으로 바로 출고)');
       refresh();
     },
     confirmOrder() { const o = S().order; o.status = 'CONFIRMED'; app.log('state', '주문: 고객이 구매 확정'); refresh(); },
     async reverify() {
-      const s = S(); const closed = s.ntsAnswer === 'closed';
-      await app.ext({ service: '국세청 사업자등록정보 API', what: '상태 다시 조회', lines: [`사업자등록번호 ${fmtBizNo(s.bizInfo.no)}`], result: closed ? '여전히 폐업으로 응답한 것으로 처리해요' : '계속사업자로 응답한 것으로 처리해요' });
-      if (closed) { app.toast('국세청에서 아직 폐업으로 확인돼요'); app.log('rule', '다시 조회해도 폐업 → 유예 그대로'); return refresh(); }
-      goAcct('reverified', '고객이 다시 인증 · 계속사업자'); s.grace = null; refresh();
+      const s = S(); const ans = s.ntsAnswer; const off = ans !== 'active'; const nm = KIND_NAME[ans];
+      await app.ext({ service: '국세청 사업자등록정보 API', what: '상태 다시 조회', lines: [`사업자등록번호 ${fmtBizNo(s.bizInfo.no)}`, s.grace.kind === 'closed' ? '폐업이 잘못 확인됐는지 같은 번호로 다시 조회해요. 다시 개업해 번호가 바뀌었다면 새 번호로 인증해야 해요' : '영업을 다시 시작했는지(계속사업자) 같은 번호로 다시 조회해요'], result: off ? `여전히 ${nm}으로 응답한 것으로 처리해요` : '계속사업자로 응답한 것으로 처리해요' });
+      if (off) { app.toast(`국세청에서 아직 ${nm}으로 확인돼요`); app.log('rule', `다시 조회해도 ${nm} → 유예 그대로(해제 예정일 ${fmtDate(s.grace.until, false)})`); return refresh(); }
+      goAcct('reverified', '고객이 다시 인증 · 계속사업자'); s.grace = null;
+      app.log('rule', '고객이 [다시 인증하기]로 직접 확인해 ‘확인 필요’를 지움 · 화면에서 바로 확인했으니 따로 알리지 않음(NOTI_BIZ_STATUS_RESTORED는 정기 조회로 지울 때만)');
+      refresh();
     },
     async logoutAll() {
       const s = S(); const n = s.sessions.length;
@@ -972,7 +1006,7 @@
       if (s.bizInfo && s.revoked === false && isBiz()) app.log('rule', '같은 사업자번호로 인증한 다른 계정에는 영향 없음');
       s.oldMember = { no: s.member.no, at: now };
       s.withdrawn = { at: now, until, expired: false };
-      Object.assign(s, { sessions: [], out: null, member: null, bizInfo: null, biz: freshBiz(), bizForm: freshForm(), manual: null, denied: null, grace: null, revoked: false, order: null, consent: {}, hqOpen: false, unmasked: false, maskReason: null, maskNote: '', via: null, wdReason: null, notice: '탈퇴가 끝났어요. 그동안 이용해 주셔서 고마워요.' });
+      Object.assign(s, { sessions: [], out: null, member: null, bizInfo: null, biz: freshBiz(), bizForm: freshForm(), manual: null, denied: null, grace: null, revoked: false, revokedKind: null, order: null, consent: {}, hqOpen: false, unmasked: false, maskReason: null, maskNote: '', via: null, wdReason: null, notice: '탈퇴가 끝났어요. 그동안 이용해 주셔서 고마워요.' });
       go('login');
     },
     hqTab(b) { S().hqTab = b.dataset.v; refresh(); },
@@ -990,7 +1024,7 @@
       if (!ok) return;
       s.unmasked = true; s.hqDone = true;
       s.audit.unshift({ at: app.clock.now(), who: '운영1 (CS)', act: '마스킹 해제 · 이름·휴대폰·이메일·주소', reason: s.maskReason + (s.maskNote ? ` · ${s.maskNote}` : '') });
-      app.log('rule', `접근 기록: 마스킹 해제 · 사유 "${esc(s.maskReason)}" · 접속 IP 10.0.**.** · 1년 이상 보관 · 1시간 100건 넘게 조회하면 계정 잠금`);
+      app.log('rule', `접근 기록: 마스킹 해제 · 사유 "${esc(s.maskReason)}" · 접속 IP 10.0.**.** · 1년 이상 보관 · 1시간 ${GC.num(P('security.pii_view_lock_per_hour'))}건 넘게 조회하면 계정 잠금`);
       refresh();
     },
     remask() { S().unmasked = false; app.log('user', '관리자가 개인정보를 다시 가렸어요'); refresh(); },
@@ -1013,10 +1047,10 @@
       app.notify('NOTI_BIZ_VERIFY_RESULT', '고객', ['알림톡', '이메일', '알림센터'], `사업자 인증 반려 · ${esc(s.rejCode)}`);
       s.cs = 'bizDenied'; s._top = true; refresh();
     },
-    ntsAns(b) { S().ntsAnswer = b.dataset.v; app.log('user', `체험용 국세청 응답: ${b.dataset.v === 'closed' ? '폐업' : '계속사업자'}`); refresh(); },
+    ntsAns(b) { S().ntsAnswer = b.dataset.v; app.log('user', `체험용 국세청 응답: ${KIND_NAME[b.dataset.v] || '계속사업자'}`); refresh(); },
     async recheck() {
       const s = S();
-      await app.ext({ service: '국세청 사업자등록정보 API', what: '사업자 회원 상태 일괄 재조회', lines: ['사업자 회원 전체(휴면 회원 제외)를 100건씩 상태조회', '휴업·폐업이면 "확인 필요"로 표시하고 고객에게 안내', `폐업이면 ${graceDays()}일 유예 뒤 사업자 혜택 해제`], result: s.ntsAnswer === 'closed' ? '오늘밥상을 폐업으로 응답한 것으로 처리해요' : '오늘밥상을 계속사업자로 응답한 것으로 처리해요' });
+      await app.ext({ service: '국세청 사업자등록정보 API', what: '사업자 회원 상태 일괄 재조회', lines: ['사업자 회원 전체(휴면 회원 제외)를 100건씩 상태조회', '휴업·폐업이면 "확인 필요"로 표시하고 해제 예정일과 함께 고객에게 안내', `휴업·폐업 모두 ${graceDays()}일 유예 뒤 사업자 혜택 해제(세금계산서는 폐업만 바로 막음)`, '‘확인 필요’ 회원이 계속사업자로 나오면 자동으로 지우고 알림'], result: `오늘밥상을 ${KIND_NAME[s.ntsAnswer] || '계속사업자'}로 응답한 것으로 처리해요` });
       runRecheck('관리자가 지금 실행');
       refresh();
     },
@@ -1039,19 +1073,20 @@
     const m = fr.querySelector('[data-act="manualSubmit"]'); if (m) m.disabled = !formOk(s, true);
   }
 
-  /* ── 시간이 흐를 때: 월 재조회 · 폐업 유예 · 재가입 제한 · 배송·자동 확정 · 심사 기한 ── */
+  /* ── 시간이 흐를 때: 월 재조회 · 휴업·폐업 유예 · 재가입 제한 · 배송·자동 확정 · 심사 기한 ── */
   app.onAdvance((prev, now) => {
     const s = S();
     if (now >= s.nextRecheck) {
-      app.log('ext', '국세청 사업자등록정보 API · 상태조회(사업자 회원 일괄, 매월 1일 03:00 배치)');
-      runRecheck('매월 1일 자동 배치');
+      app.log('ext', `국세청 사업자등록정보 API · 상태조회(사업자 회원 일괄, ${esc(P('batch.biz_recheck_schedule'))} 배치)`);
+      runRecheck('정기 자동 배치');
     }
     if (s.grace && now >= s.grace.until && app.state('acct') === 'BIZ_CHECK') {
-      goAcct('grace_over', `폐업 확인 후 ${graceDays()}일 지남`);
+      const kind = s.grace.kind || 'closed'; const nm = KIND_NAME[kind];
+      goAcct('grace_over', `${nm} 확인 후 ${graceDays()}일 지남`);
       if (app.state('join') === 'BIZ_MEMBER') goJoin('benefit_off');
-      s.grace = null; s.revoked = true;
-      app.log('rule', '사업자 혜택 해제: 사업자가·세금계산서 끔 · 회원 유형 개인 · 진행 중 주문은 결제 때 가격 그대로');
-      app.notify('NOTI_BIZ_STATUS_CHECK', '고객', ['알림톡', '이메일', '알림센터'], '사업자가 적용 중지(혜택 해제) · 다시 개업했다면 새로 인증');
+      s.grace = null; s.revoked = true; s.revokedKind = kind;
+      app.log('rule', '사업자 혜택 해제: 사업자가·세금계산서 끔 · 회원 유형 개인 · 결제가 끝난 주문은 결제 때 금액 그대로(가상계좌는 발급 때 금액) · 지금 열려 있는 주문서는 결제 직전 다시 계산해 가격이 바뀌면 막고 다시 확인(U-ORD-02)');
+      app.notify('NOTI_BIZ_STATUS_CHECK', '고객', ['알림톡', '이메일', '알림센터'], `사업자가 적용 중지(혜택 해제) · ${kind === 'closed' ? '다시 개업했다면 새 사업자등록번호로 인증' : '영업을 다시 시작했다면 [다시 인증하기]'}`);
     }
     if (s.withdrawn && !s.withdrawn.expired && now >= s.withdrawn.until) {
       s.withdrawn.expired = true;

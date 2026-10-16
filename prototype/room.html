@@ -74,30 +74,44 @@
   const esc = UI.esc, pv = UI.pv;
   const MIN = 60000;
 
-  /* ── 페이지 안 정책값 (엔진 정책값 목록에 아직 없는 것 · 임시 기본값) ── */
+  /* ── 값 (2026-10-17 S12 ⑫): 엔진 키가 생긴 것은 GC.Policy.get으로, 명세에 정책값 표시가 없는 고정값만 페이지 상수 ── */
+  const P = (k) => GC.Policy.get(k);
+  /* 운영시간은 정책값 calendar.business_hours('평일 09~18시', 글자 값)에서 시각만 읽음 — 읽지 못하면 09~18 */
+  const BH = (() => { const m = String(P('calendar.business_hours')).match(/(\d{1,2})\s*~\s*(\d{1,2})/); return m ? { open: +m[1], close: +m[2] } : { open: 9, close: 18 }; })();
   const RP = {
-    recallMin: 5, // 전송 취소 가능 시간(분) D-ROOM-02
-    violDesign: 3, violCustomer: 5, // 반복 위반 운영 알림 D-ROOM-06
-    reinquiryDays: 90, // 완료·취소 후 재문의 기간 D-ROOM-01
-    openHour: 9, closeHour: 18, // 운영시간(평일)
-    partnerReplyBd: 1, // 생산 협의 파트너 답변 기한(영업일) D-PRD-03
+    recallMin: 5, // 전송 취소 가능 시간(분) D-ROOM-02 — 명세 고정값(키 아님)
+    reinquiryDays: 90, // 완료·취소 후 재문의 기간 D-ROOM-01 — 명세 고정값(키 아님)
+    openHour: BH.open, closeHour: BH.close, // 운영시간(평일) — calendar.business_hours
+    partnerReplyBd: 1, // 생산 협의 파트너 답변 기한(영업일) D-PRD-03 '공통 기준 영업일 1일' — 명세 고정값(키 아님, partner.confirm_request_days와 같은 값인지 확인 거리)
   };
+  /* 반복 위반 운영 알림 기준 D-ROOM-06 — 정책값 키(2026-10-17 S12 ⑫) */
+  const violLim = (who) => (who === 'design' ? P('design.room_violation_alert_designer') : who === 'customer' ? P('design.room_violation_alert_customer') : null);
+  const violKey = (who) => (who === 'design' ? 'design.room_violation_alert_designer' : 'design.room_violation_alert_customer');
   /* 파일 크기 한도는 엔진 정책값(C-FILE-01 · 2026-10-15 종류별 키). 룸 첨부 = file.max_size_chat, 디자이너 인쇄 원본 = file.max_size_original(AI·PDF만, 2026-10-16) */
   const chatMax = () => GC.Policy.get('file.max_size_chat');
   const CHAT_FMT = 'AI·PDF·PSD·PNG·JPG·SVG';
   /* 발견·검사 불가 파일을 올린 사람에게 다시 올려 달라고 알리는 코드(C-FILE-01 · C-NOTI-01) */
+  /* 채널은 C-NOTI-01 표대로(2026-10-17 ⑩): 고객 이메일은 '○ 화면을 떠났을 때'라 룸 화면에 있는 이 시나리오에서는 보내지 않음 */
   const SCAN_NOTI = {
-    customer: { code: 'NOTI_FILE_SCAN_REJECTED', to: '고객(올린 사람)', ch: ['알림톡', '푸시', '알림센터'] },
+    customer: { code: 'NOTI_FILE_SCAN_REJECTED', to: '고객(올린 사람)', ch: ['알림톡', 'SMS 대체', '앱 푸시', '알림센터'] },
     design: { code: 'NOTI_INT_FILE_SCAN_REJECTED', to: '올린 디자이너', ch: ['관리자 알림센터'] },
     partner: { code: 'NOTI_PARTNER_FILE_SCAN_REJECTED', to: '파트너(올린 사람)', ch: ['알림센터', '이메일(화면을 떠났을 때)'] },
   };
-  /* 안 읽은 메시지 묶음 알림(C-NOTI-01 · notify.room_digest_minutes): 고객·파트너는 알림톡, 담당 디자이너는 내부 Slack(관리자 화면에서 안 읽은 고객 메시지, 2026-10-16 맞춤) */
+  /* 안 읽은 메시지 묶음 알림(C-NOTI-01 · notify.room_digest_minutes): 고객·파트너는 알림톡, 담당 디자이너는 내부 Slack(관리자 화면에서 안 읽은 고객 메시지, 2026-10-16 맞춤).
+     생산 협의 채널의 파트너 메시지도 담당 디자이너 Slack으로 같은 규칙이고, 읽음·묶음은 협의 룸과 따로 셈(dprd · NOTI_INT_CHANNEL_MESSAGE, 2026-10-17 S12 ③) */
   const DIGEST = {
     customer: { code: 'NOTI_ROOM_MESSAGE', to: '고객', ch: '알림톡', who: '고객이', what: '메시지' },
     partner: { code: 'NOTI_PARTNER_CHANNEL_MESSAGE', to: '파트너', ch: '알림톡', who: '파트너가', what: '메시지' },
     design: { code: 'NOTI_INT_ROOM_MESSAGE', to: '담당 디자이너', ch: 'Slack', who: '디자이너가 관리자 화면에서', what: '고객 메시지' },
+    dprd: { code: 'NOTI_INT_CHANNEL_MESSAGE', to: '담당 디자이너', ch: 'Slack', who: '디자이너가 생산 협의 채널에서', what: '파트너 메시지' },
   };
-  const cpv = (text, label) => `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(label)} — 엔진 정책값 목록에 아직 없어 이 페이지 상수로 둠">${text}</span>`;
+  /* 알림 채널(C-NOTI-01 표 · 2026-10-17 ⑩ 이메일 칸 맞춤): 고객 C5 = 이메일 ● · C4 = 이메일 — / 파트너 P4 = 이메일 ● */
+  const C5 = ['알림톡', 'SMS 대체', '앱 푸시', '이메일', '알림센터'];
+  const C4 = ['알림톡', 'SMS 대체', '앱 푸시', '알림센터'];
+  const P4 = ['알림톡', 'SMS 대체', '이메일', '알림센터'];
+  /* 명세 고정값 표시(정책값 키가 아님 — 명세에 정책값 표시 없음) */
+  const fixv = (text, label) => `<span title="명세 고정값 · ${esc(label)} — 정책값 키가 아니에요">${text}</span>`;
+  const bh = (k) => pv(k, `영업시간 ${P(k)}시간`);
 
   /* ── 협의 룸 생애 상태 (D-ROOM-01 · D-ROOM-07) ── */
   GC.sm.define('ROOM_LIFE', {
@@ -174,7 +188,7 @@
     domain: 'room',
     title: '협의 룸·연락처 가림',
     lede: '고객과 파트너는 직접 연결되지 않습니다. 고객은 디자인팀과 협의 룸에서, 디자인팀은 파트너와 생산 협의 채널에서 따로 이야기하고, 팀 안의 메모는 디자인팀만 봐요. 대화에 쓴 연락처와 외부 링크는 자동으로 가려지고 원문은 운영자만 사유를 남기고 열어 볼 수 있어요.',
-    meta: '근거: 기능 명세서 D-ROOM-01~07 · D-STU-06 · D-PRD-03 · C-NOTI-01·02 · C-FILE-01 · A-SYS-02 · 기획서 06장 소통 채널 3종 · 디자인 요청서 S-15 · 2026-10-16 S11 맞춤 ④(디자이너 Slack 묶음)',
+    meta: '근거: 기능 명세서 D-ROOM-01~07 · D-STU-06 · D-PRD-03 · C-NOTI-01·02 · C-FILE-01 · A-SYS-02 · 기획서 06장 소통 채널 3종 · 디자인 요청서 S-15 · 2026-10-16 S11 맞춤 ④(디자이너 Slack 묶음) · 2026-10-17 S12 맞춤 ③(생산 협의 채널 파트너 답 → 디자이너 NOTI_INT_CHANNEL_MESSAGE) · ⑩ 알림 이메일 칸 · ⑫ 정책값 키',
     actors: [
       { id: 'customer', title: '협의 룸', tab: '디자인' },
       { id: 'design', nav: ['협의 룸', '생산 협의', '내부 메모'], navOn: '협의 룸', url: 'admin.sikup.co.kr/studio/rooms/DR-24118' },
@@ -198,7 +212,7 @@
       cs: 'chat', dnav: 'room', hqnav: 'vault', attachOpen: false,
       msgs: [], seq: 0, proofs: [], vault: [], audit: [], memos: [],
       draft: { customer: '', design: '', dprd: '', partner: '' }, memoText: '', memoScope: 'customer',
-      unread: { customer: { since: null, n: 0 }, partner: { since: null, n: 0 }, design: { since: null, n: 0 } },
+      unread: { customer: { since: null, n: 0 }, partner: { since: null, n: 0 }, design: { since: null, n: 0 }, dprd: { since: null, n: 0 } },
       viol: { customer: 0, design: 0, partner: 0 }, f: {},
       designer: null, freeLeft: GC.Policy.get('design.free_revisions_custom'), revisions: 0,
       sla: null, waitSince: null, fired: {}, doneAt: null, canceled: false,
@@ -267,7 +281,7 @@
       tip = k.some((x) => ['phone', 'email', 'account'].includes(x)) ? '연락처는 대화로 공유할 수 없어요. 인쇄할 번호는 수정 요청의 ‘문구 변경’ 칸에 적어 주세요.'
         : k.includes('link') ? '외부 링크는 대화로 보낼 수 없어요. 참고할 링크는 수정 요청의 ‘참고 링크’ 칸으로 보내 주세요.'
           : '메신저 아이디·오픈채팅 링크는 어느 칸에서도 보낼 수 없어요.';
-    } else if (msg.from === 'design') tip = `연락처·외부 연락 유도는 대화로 보낼 수 없어요. 반복되면 운영팀에 알려지고 내부 징계 대상이에요. (${s.viol.design + 1}/${RP.violDesign}회)`;
+    } else if (msg.from === 'design') tip = `연락처·외부 연락 유도는 대화로 보낼 수 없어요. 반복되면 운영팀에 알려지고 내부 징계 대상이에요. (${s.viol.design + 1}/${violLim('design')}회)`;
     else tip = '고객 연락처·외부 연락처는 이 채널에서 주고받을 수 없어요. 가린 원문은 직거래 조사 기록으로 보관돼요.';
     addMsg({ ch: msg.ch, from: 'system', kind: 'sys', tone: 'warn', onlyFor: msg.from, html: esc(tip) });
     app.log('rule', `${CH_NAME[msg.ch]} · ${esc(whoLabel(msg.from))} 메시지에서 ${esc(kinds)} 부분을 가렸어요 → 원문은 암호화해 따로 보관(운영자만 열람)`);
@@ -275,7 +289,7 @@
   }
   function addViolation(who) {
     const s = S(); s.viol[who] += 1;
-    const lim = who === 'design' ? RP.violDesign : who === 'customer' ? RP.violCustomer : null;
+    const lim = violLim(who);
     if (lim && s.viol[who] === lim) {
       app.notify('NOTI_INT_MASK_REPEAT', '운영팀(CS)', ['관리자 알림', 'Slack'], `${esc(whoLabel(who))} 연락처 가림 ${lim}회 반복 <span class="faint">(알림 매트릭스에 없는 임시 코드)</span>`);
       app.log('warn', `반복 위반 기준(${who === 'design' ? '디자이너' : '고객'} ${lim}회)에 닿아 운영팀에 알렸어요${who === 'design' ? ' · 내부 징계 검토 대상' : ''}`);
@@ -286,15 +300,21 @@
     const u = S().unread[t]; if (!u) return;
     if (!u.since) {
       u.since = app.clock.now(); u.n = 0;
-      if (t === 'customer') app.notify('NOTI_ROOM_MESSAGE', '고객', ['푸시'], '협의 룸 새 메시지 · 앱 밖에 있을 때');
+      if (t === 'customer') app.notify('NOTI_ROOM_MESSAGE', '고객', ['앱 푸시', '알림센터'], '협의 룸 새 메시지 · 앱 푸시는 앱 밖에 있을 때');
       else if (t === 'partner') app.notify('NOTI_PARTNER_CHANNEL_MESSAGE', '파트너', ['알림센터'], '생산 협의 채널 새 메시지');
     }
     u.n += 1;
   }
   /* 담당 디자이너에게 고객 메시지 알림: 관리자 알림센터는 늘(●), Slack은 관리자 화면에서 10분 동안 안 읽으면 묶어 1회(○, C-NOTI-01 2026-10-16 맞춤) */
   function notifyDesigner(what) {
-    app.notify('NOTI_INT_ROOM_MESSAGE', '담당 디자이너', ['관리자 알림'], `${what} <span class="faint">(Slack은 ${GC.Policy.get('notify.room_digest_minutes')}분 동안 안 읽으면 묶어 1회)</span>`);
+    app.notify('NOTI_INT_ROOM_MESSAGE', '담당 디자이너', ['관리자 알림'], `${what} <span class="faint">(Slack은 ${P('notify.room_digest_minutes')}분 동안 안 읽으면 묶어 1회)</span>`);
     markUnread('design');
+  }
+  /* 생산 협의 채널에서 파트너가 답하면 담당 디자이너에게(D-PRD-03 · C-NOTI-01 · 2026-10-17 S12 ③): 관리자 알림센터 ●,
+     Slack은 생산 협의 채널에서 10분 동안 안 읽으면 묶어 1회 — 협의 룸의 고객 메시지와 읽음·묶음을 따로 셈(notify.room_digest_minutes) */
+  function notifyDesignerChannel(what) {
+    app.notify('NOTI_INT_CHANNEL_MESSAGE', '담당 디자이너', ['관리자 알림'], `${what} <span class="faint">(Slack은 생산 협의 채널에서 ${P('notify.room_digest_minutes')}분 동안 안 읽으면 묶어 1회 · 협의 룸과 따로 셈)</span>`);
+    markUnread('dprd');
   }
   /* 묶음 알림 발송: 안 읽은 첫 메시지부터 10분이 된 시각에 1건 */
   function sendDigest(t) {
@@ -305,13 +325,14 @@
   function markRead(viewer, ch) {
     const s = S(); const now = app.clock.now(); let n = 0;
     s.msgs.forEach((m) => { if (m.ch === ch && m.kind !== 'sys' && m.from !== viewer && m.from !== 'system' && !m.readAt && canSee(m, viewer)) { m.readAt = now; n += 1; } });
-    // 디자이너 Slack 묶음은 고객 협의 룸 메시지만(생산 협의 채널을 읽은 것으로는 풀지 않음)
-    const u = viewer === 'design' && ch !== 'room' ? null : s.unread[viewer];
+    // 디자이너 Slack 묶음은 채널마다 따로: 협의 룸(고객 메시지) = design, 생산 협의 채널(파트너 메시지) = dprd(2026-10-17 S12 ③)
+    const key = viewer === 'design' ? (ch === 'prd' ? 'dprd' : 'design') : viewer;
+    const u = s.unread[key];
     if (u && u.since && n) {
-      const dm = GC.Policy.get('notify.room_digest_minutes'); const g = DIGEST[viewer];
+      const dm = P('notify.room_digest_minutes'); const g = DIGEST[key];
       // 작업 시간만 흘러(시계 버튼 없이) 10분이 지났으면 그 시각에 묶음 알림이 이미 나간 것으로 기록
-      if (now - u.since >= dm * MIN) sendDigest(viewer);
-      else { app.log('rule', `${g.who} ${dm}분 안에 읽어서 ${g.ch}은 보내지 않았어요`); u.since = null; u.n = 0; }
+      if (now - u.since >= dm * MIN) sendDigest(key);
+      else { app.log('rule', `${g.who} ${dm}분 안에 읽어서 ${g.ch}은 보내지 않았어요${key === 'dprd' ? '(협의 룸 묶음과 따로 셈)' : ''}`); u.since = null; u.n = 0; }
     }
   }
   function openPrd() {
@@ -324,7 +345,7 @@
     const s = S(); const no = nextOpen(app.clock.now());
     if (s.autoReplyKey === no.getTime()) return;
     s.autoReplyKey = no.getTime();
-    addMsg({ ch: 'room', from: 'system', kind: 'sys', html: `지금은 운영시간(평일 09~18시)이 아니에요. 담당 디자이너가 ${fmtDate(no)} 이후에 답변드려요. 기다리는 시간은 디자인 기한(SLA)에 넣지 않아요.` });
+    addMsg({ ch: 'room', from: 'system', kind: 'sys', html: `지금은 운영시간(${esc(P('calendar.business_hours'))})이 아니에요. 담당 디자이너가 ${fmtDate(no)} 이후에 답변드려요. 기다리는 시간은 디자인 기한(SLA)에 넣지 않아요.` });
     app.log('rule', '운영시간 밖 고객 메시지 → 다음 영업일 안내 자동 응답 · SLA는 영업시간에만 흘러요');
   }
   /* 예고 먼저(D-ROOM-07 · C-NOTI-01, B36): 날짜가 돼도 예고를 보낸 지 notify.notice_min_hours가 지나야 보류·자동 취소(본 처리).
@@ -399,7 +420,7 @@
   }
   function scanRejected(from, text) {
     const n = SCAN_NOTI[from]; if (!n) return;
-    app.notify(n.code, n.to, n.ch, `${text}${from === 'customer' ? ' <span class="faint">(룸 안에서 바로 읽으면 알림톡은 보내지 않아요, C-NOTI-02)</span>' : ''}`);
+    app.notify(n.code, n.to, n.ch, `${text}${from === 'customer' ? ' <span class="faint">(룸 안에서 바로 읽으면 알림톡은 보내지 않아요, C-NOTI-02 · 이메일은 화면을 떠났을 때만)</span>' : ''}`);
   }
   function fileHtml(m, viewer) {
     const f = m.file; const ops = viewer === 'hq';
@@ -434,7 +455,7 @@
     if (m.kind === 'sys') return `<div class="bubble sys${m.tone ? ' is-' + m.tone : ''}">${m.onlyFor && viewer === 'hq' ? '<b class="xsmall">보낸 사람에게만 · </b>' : ''}${m.html}</div>`;
     if (m.kind === 'intro') {
       return `<div class="rcard"><div class="rc-h"><span>담당 디자이너 ${esc(m.name)}</span><small>배정 ${fmtTime(m.at)}</small></div>
-        <dl class="kv"><dt>표시 이름</dt><dd>${esc(m.name)} (실명 대신 활동명 가능)</dd><dt>담당 품목</dt><dd>수저집·컵홀더·종이컵</dd><dt>운영시간</dt><dd>평일 09~18시</dd><dt>첫 시안</dt><dd>${fmtDate(m.due)}까지</dd></dl></div>`;
+        <dl class="kv"><dt>표시 이름</dt><dd>${esc(m.name)} (실명 대신 활동명 가능)</dd><dt>담당 품목</dt><dd>수저집·컵홀더·종이컵</dd><dt>운영시간</dt><dd>${esc(P('calendar.business_hours'))}</dd><dt>첫 시안</dt><dd>${fmtDate(m.due)}까지</dd></dl></div>`;
     }
     if (m.kind === 'proof') {
       const p = s.proofs[m.v - 1]; const latest = m.v === s.proofs.length;
@@ -509,19 +530,20 @@
       mask: [{ k: '대화·핀·추가 설명', v: '연락처·외부 링크 가림' }, { k: '문구 변경 칸', v: '가리지 않음' }, { k: '메신저·오픈채팅 링크', v: '어느 칸에서도 막음' }],
       digest: { k: '안 읽으면 알림톡 묶음', policy: 'notify.room_digest_minutes' },
       slack: { k: '디자이너가 안 읽으면 Slack 묶음', policy: 'notify.room_digest_minutes' },
-      viol: { k: '반복 위반 운영 알림', v: cpv(`디자이너 ${RP.violDesign}회 · 고객 ${RP.violCustomer}회`, '반복 위반 기준') },
-      recall: { k: '전송 취소', v: cpv(`${RP.recallMin}분 안`, '전송 취소 가능 시간') + ' · 원문 보관' },
-      hours: { k: '운영시간(밖이면 자동 응답)', v: cpv('평일 09~18시', '운영시간') },
+      slackPrd: { k: '파트너 답 → 디자이너 Slack 묶음(협의 룸과 따로)', policy: 'notify.room_digest_minutes' },
+      viol: { k: '반복 위반 운영 알림', v: `디자이너 ${pv('design.room_violation_alert_designer')} · 고객 ${pv('design.room_violation_alert_customer')}` },
+      recall: { k: '전송 취소', v: fixv(`${RP.recallMin}분 안`, '전송 취소 가능 시간(D-ROOM-02)') + ' · 원문 보관' },
+      hours: { k: '운영시간(밖이면 자동 응답)', policy: 'calendar.business_hours' },
       wait: { k: '무응답 리마인드·보류·취소', v: `${RM}·${HD}·${CD}일` },
       notice: { k: '예고 뒤 보류·취소까지', policy: 'notify.notice_min_hours' },
       attach: { k: '첨부 최대 크기', policy: 'file.max_size_chat' },
       types: { k: '첨부 형식', v: CHAT_FMT },
       original: { k: '인쇄 원본(고객 비공개)', v: `AI·PDF만 · 최대 ${pv('file.max_size_original')}` },
-      reinq: { k: '완료·취소 후 재문의', v: cpv(`${RP.reinquiryDays}일`, '재문의 기간') },
+      reinq: { k: '완료·취소 후 재문의', v: fixv(`${RP.reinquiryDays}일`, '재문의 기간(D-ROOM-01)') },
       keep: { k: '룸 기록 보관', v: '분쟁 3년 · 계약·확정 5년' },
-      partner: { k: '파트너 답변 기한', v: cpv(`영업일 ${RP.partnerReplyBd}일`, '파트너 답변 기한') },
+      partner: { k: '파트너 답변 기한', v: fixv(`영업일 ${RP.partnerReplyBd}일`, "파트너 답변 기한(D-PRD-03 '공통 기준')") },
     };
-    if (st === 'READ_ONLY') return app.done('완료 뒤 90일이 지나 협의 룸이 읽기 전용이 됐어요. 기록은 분쟁 기록 3년, 계약·확정 기록 5년 보관해요.', { next: '[처음부터]를 누른 뒤 시스템 탭 [저녁 8시로 보내기]로 운영시간 밖 자동 응답을 볼 수 있어요. 시안 v1 뒤 +7일 두 번이면 보류 예고만 가고, +1일을 더 보내야(예고 뒤 24시간) 보류돼요. 디자이너 [위반 예시]를 세 번 보내면 운영 알림이 가요.' });
+    if (st === 'READ_ONLY') return app.done('완료 뒤 90일이 지나 협의 룸이 읽기 전용이 됐어요. 기록은 분쟁 기록 3년, 계약·확정 기록 5년 보관해요.', { next: `[처음부터]를 누른 뒤 시스템 탭 [저녁 8시로 보내기]로 운영시간 밖 자동 응답을 볼 수 있어요. 시안 v1 뒤 +7일 두 번이면 보류 예고만 가고, +1일을 더 보내야(예고 뒤 24시간) 보류돼요. 디자이너 [위반 예시]를 ${violLim('design')}번 보내면 운영 알림이 가요.` });
     if (st === 'DONE') {
       if (!f.reinq) return app.turn('customer', s.canceled ? `${CD}일 동안 답이 없어 자동 취소됐어요. ${RP.reinquiryDays}일 동안은 재문의를 남길 수 있어요` : '디자인을 확정해 룸이 완료됐어요. 90일 동안은 재문의만 남길 수 있어요. 예시 [재문의]를 보내 보세요', { rules: [R.reinq, R.keep] });
       return app.turn('system', '시스템 화면의 [90일 보내기]로 룸이 읽기 전용으로 바뀌는 걸 확인하세요', { rules: [R.reinq, R.keep] });
@@ -535,9 +557,9 @@
     if (st === 'OPEN') {
       if (np === 1) {
         if (!f.prdq) return app.turn('design', '[생산 협의] 탭에서 파트너에게 사양 질문 양식 “별색 가능한가요?”를 보내세요', { hint: '이 채널은 고객에게 보이지 않아요. 파트너에게는 요청 번호와 매장명만 보여요.', rules: [R.partner, { k: '파트너에게 보이는 고객 정보', v: '요청 번호·매장명만' }, R.digest] });
-        if (!f.pans) return app.turn('partner', '디자인팀의 사양 질문에 답하세요. 예시 [별색 가능 답변]을 눌러 보내 보세요', { rules: [R.partner, R.digest] });
+        if (!f.pans) return app.turn('partner', '디자인팀의 사양 질문에 답하세요. 예시 [별색 가능 답변]을 눌러 보내 보세요', { hint: `답하면 담당 디자이너에게 관리자 알림센터로 바로 알리고, 디자이너가 생산 협의 채널에서 ${P('notify.room_digest_minutes')}분 동안 안 읽으면 Slack 1건으로 묶어 보내요(협의 룸의 고객 메시지와 따로 셈, NOTI_INT_CHANNEL_MESSAGE).`, rules: [R.partner, R.digest, R.slackPrd] });
         if (!f.pcontact) return app.turn('partner', '이번엔 고객에게 직접 연락하려는 문장을 보내 보세요. 가려지고 직거래 조사 기록에 남아요', { rules: [{ k: '생산 협의 채널', v: '협의 룸과 같은 가림 검사' }, { k: '가린 원문', v: '직거래 조사 증거' }] });
-        if (!f.relay) return app.turn('design', '파트너 답을 정리해 고객에게 설명하세요. [고객에게 정리해서 설명]을 누르면 협의 룸 입력 칸에 초안이 들어가요', { hint: '파트너 메시지를 고객 룸으로 그대로 옮기는 기능은 없어요.', rules: [{ k: '파트너 → 고객', v: '디자이너가 정리해서만' }] });
+        if (!f.relay) return app.turn('design', '파트너 답을 정리해 고객에게 설명하세요. [고객에게 정리해서 설명]을 누르면 협의 룸 입력 칸에 초안이 들어가요', { hint: '파트너 메시지를 고객 룸으로 그대로 옮기는 기능은 없어요. [생산 협의] 탭을 열면 파트너 메시지를 읽은 것으로 보고, 그 전에 10분이 지났으면 Slack 묶음 1건이 나간 것으로 기록해요.', rules: [{ k: '파트너 → 고객', v: '디자이너가 정리해서만' }, R.slackPrd] });
         if (!f.memo) return app.turn('design', '[내부 메모] 탭에 고객 단위 메모를 남기고 팀장을 @멘션하세요', { rules: [{ k: '보이는 사람', v: '디자인팀만' }, { k: '고객 단위 메모', v: '이 고객의 모든 요청에 보임' }, { k: '작성·수정', v: '감사 로그에 남음' }] });
       }
       return app.turn('design', `수정 요청을 반영해 [시안 v${np + 1} 올리기]를 누르세요`, { rules: [{ k: '수정본 기한', policy: 'design.sla.revision_days' }, { k: '남은 무료 수정', v: `${s.freeLeft}회` }] });
@@ -593,7 +615,7 @@
     else if (st === 'DONE') info = `<span class="small">${s.canceled ? '자동 취소됨 · ' : ''}재문의 가능 <b>${fmtDate(new Date(s.doneAt.getTime() + RP.reinquiryDays * GC.DAY), false)}까지</b></span>`;
     else if (st === 'READ_ONLY') info = '<span class="small muted">기록만 볼 수 있어요</span>';
     return `<div class="room-head"><div class="split"><b>수저집 ${REQ.qty} · ${REQ.id}</b><span class="st ${cls}">${esc(lab)}</span></div>
-      <span class="xsmall muted">${s.designer ? `디자이너 ${esc(dName())} · 평일 09~18시 운영` : '디자이너 배정 전'} · 무료 수정 ${s.freeLeft}회 남음</span>${info}</div>`;
+      <span class="xsmall muted">${s.designer ? `디자이너 ${esc(dName())} · ${esc(P('calendar.business_hours'))} 운영` : '디자이너 배정 전'} · 무료 수정 ${s.freeLeft}회 남음</span>${info}</div>`;
   }
   function customerComposer(s, st) {
     if (st === 'READ_ONLY') return `<p class="small muted">완료 후 ${RP.reinquiryDays}일이 지나 읽기 전용이에요. 같은 디자인은 주문 상세의 [재주문]으로, 문의는 고객센터로 남겨 주세요.</p>`;
@@ -619,7 +641,7 @@
       <div class="field"><span class="lbl">참고 링크 (최대 5개)</span>
         <div class="app-list">${r.links.map((u) => `<div class="li"><span class="small">${esc(u)}</span><span class="st st-done">그대로 전달</span></div>`).join('') || '<span class="xsmall faint">아직 없어요</span>'}</div>
         <div class="composer no-attach"><input class="input${r.linkErr ? ' is-err' : ''}" id="revLink" data-input="revLink" data-send="addLink" value="${esc(r.linkDraft)}" placeholder="링크 붙여넣기" aria-label="참고 링크"><button class="btn btn-sm" data-act="addLink">추가</button></div>
-        ${r.linkErr ? `<span class="err">${esc(r.linkErr)}</span>` : '<span class="hint">허용 목록(instagram.com·naver.me 등) 밖의 링크도 이 칸으로는 보낼 수 있어요.</span>'}
+        ${r.linkErr ? `<span class="err">${esc(r.linkErr)}</span>` : `<span class="hint">대화에서 가리지 않는 링크(${pv('design.room_link_allowlist')}) 밖의 링크도 이 칸으로는 보낼 수 있어요.</span>`}
         <div class="ex-row"><span class="lbl">예시</span>${LINK_EX.map((u) => `<button class="btn btn-sm" data-act="addLink" data-u="${esc(u)}">${esc(u)}</button>`).join('')}</div></div>
     </div>`;
     f.bottom(`<button class="btn btn-primary btn-lg btn-block${s.freeLeft > 0 ? '' : ' btn-ext'}" data-act="sendRevision">${s.freeLeft > 0 ? '수정 요청 보내기' : '결제하고 요청하기'}</button>`);
@@ -664,7 +686,8 @@
     const dis = !s.prdOpen;
     return `<div class="note small">고객에게 보이지 않는 채널이에요. 파트너에게는 요청 번호와 매장명만 보여요. 파트너 메시지를 고객 룸으로 그대로 옮기는 기능은 없고, 디자이너가 정리해서 설명해요.</div>
       <div class="room-top"><div class="stack-sm"><b class="small">사양 질문 양식</b><div class="cluster">${QS.map((q) => `<button class="btn btn-sm" data-act="askQ" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div></div>
-        <dl class="kv small"><dt>파트너</dt><dd>${REQ.partner} · 인쇄 담당</dd><dt>답변 기한</dt><dd>${cpv(`영업일 ${RP.partnerReplyBd}일`, '파트너 답변 기한')}</dd><dt>생산 보류 회신</dt><dd>영업시간 4시간</dd></dl></div>
+        <dl class="kv small"><dt>파트너</dt><dd>${REQ.partner} · 인쇄 담당</dd><dt>답변 기한</dt><dd>${fixv(`영업일 ${RP.partnerReplyBd}일`, "파트너 답변 기한(D-PRD-03 '공통 기준')")}</dd><dt>생산 보류 회신</dt><dd>${bh('production.hold_reply_hours')}</dd>
+          <dt>파트너 답 알림</dt><dd>담당 디자이너 알림센터 · Slack은 ${pv('notify.room_digest_minutes')} 안 읽으면 1회(협의 룸과 따로)</dd></dl></div>
       ${s.f.pans ? `<div class="cluster"><button class="btn btn-primary" data-act="relay">고객에게 정리해서 설명</button><span class="xsmall faint">협의 룸 입력 칸에 디자이너가 다듬을 초안이 들어가요</span></div>` : ''}
       ${s.prdOpen ? `<div class="chat-box"><div class="chat">${renderChat('prd', 'design')}</div></div>` : '<p class="small muted">아직 채널이 없어요. 사양 질문을 보내거나 확정 인쇄 파일을 전달하면 주문 항목별로 열려요.</p>'}
       <div class="composer no-attach"><input class="input" id="dpMsg" data-input="draftDP" data-send="sendDP" value="${esc(s.draft.dprd)}" placeholder="파트너에게 보낼 메시지" ${dis ? 'disabled' : ''} aria-label="생산 협의 메시지"><button class="btn btn-primary" data-act="sendDP" ${dis ? 'disabled' : ''}>전송</button></div>`;
@@ -710,11 +733,11 @@
     const seg = `<div class="seg" role="group" aria-label="운영 메뉴">${[['vault', '가림 원문'], ['room', '협의 룸 열람'], ['audit', `감사 로그 ${s.audit.length}`]].map(([k, n]) => `<button data-act="hqnav" data-k="${k}" aria-pressed="${s.hqnav === k}">${n}</button>`).join('')}</div>`;
     let main = '';
     if (s.hqnav === 'vault') {
-      const vrow = (who, n, lim, extra) => `<tr><td>${who}</td><td class="num">${n}회</td><td>${lim ? cpv(`${lim}회`, '반복 위반 기준') : '<span class="faint">기준 없음(명세 미정)</span>'}</td><td>${lim ? (n >= lim ? '<span class="st st-stop">운영 알림 보냄</span>' : `<span class="st">${lim - n}회 남음</span>`) : (n ? '<span class="st st-warn">직거래 조사 증거</span>' : '-')}${extra && n >= (lim || 1) ? ` <span class="xsmall faint">${extra}</span>` : ''}</td></tr>`;
+      const vrow = (who, n, k, extra) => { const lim = k ? P(k) : null; return `<tr><td>${who}</td><td class="num">${n}회</td><td>${lim ? pv(k) : '<span class="faint">기준 없음(명세 미정)</span>'}</td><td>${lim ? (n >= lim ? '<span class="st st-stop">운영 알림 보냄</span>' : `<span class="st">${lim - n}회 남음</span>`) : (n ? '<span class="st st-warn">직거래 조사 증거</span>' : '-')}${extra && n >= (lim || 1) ? ` <span class="xsmall faint">${extra}</span>` : ''}</td></tr>`; };
       const rows = s.vault.slice().reverse().map((v) => `<tr><td class="small" style="white-space:nowrap">${fmtTime(v.at)}<br><span class="faint">${v.id}</span></td><td class="small">${CH_NAME[v.ch]}<br>${esc(whoLabel(v.from))}</td><td class="small"><span class="tag">${esc(v.kinds)}</span><br>${esc(v.shown)}</td>
         <td class="small">${v.revealed ? `<b>${esc(v.original)}</b><br><span class="xsmall faint">열람함 · 감사 로그 남음</span>` : `<span class="faint">암호화됨</span><br><button class="btn btn-sm" style="white-space:nowrap" data-act="reveal" data-id="${v.id}" ${s.hqReason ? '' : 'disabled'}>원문 열람</button>`}</td></tr>`).join('');
       main = `<div class="panel"><div class="panel-h"><h2>반복 위반 감시</h2><span class="xsmall faint">D-ROOM-06</span></div><div class="panel-b"><div class="tbl-wrap"><table class="tbl small"><thead><tr><th>계정</th><th class="num">가림</th><th>운영 알림 기준</th><th>상태</th></tr></thead><tbody>
-          ${vrow(`고객 ${STORE.name}`, s.viol.customer, RP.violCustomer)}${vrow(`디자이너 ${esc(dName())}`, s.viol.design, RP.violDesign, '내부 징계 검토')}${vrow(`파트너 ${REQ.partner}`, s.viol.partner, null)}</tbody></table></div></div></div>
+          ${vrow(`고객 ${STORE.name}`, s.viol.customer, violKey('customer'))}${vrow(`디자이너 ${esc(dName())}`, s.viol.design, violKey('design'), '내부 징계 검토')}${vrow(`파트너 ${REQ.partner}`, s.viol.partner, null)}</tbody></table></div></div></div>
         <div class="panel"><div class="panel-h"><h2>가린 원문 보관함</h2><span class="xsmall faint">KMS 암호화 · 분리 보관</span></div><div class="panel-b stack">
           <div class="field"><span class="lbl">열람 사유 (필수 · 감사 로그에 남아요)</span><div class="seg" role="group" aria-label="열람 사유">${REASONS.map((r) => `<button data-act="hqReason" data-r="${esc(r)}" aria-pressed="${s.hqReason === r}">${esc(r)}</button>`).join('')}</div></div>
           ${rows ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>시각</th><th>채널·보낸 사람</th><th>가린 내용</th><th>원문</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="small muted">아직 가린 내용이 없어요. 고객·디자이너·파트너가 대화에 연락처를 쓰면 여기에 쌓여요.</p>'}
@@ -737,9 +760,9 @@
   VIEWS.system = (f) => {
     const s = S(); const st = app.state('room'); const now = app.clock.now();
     const dm = GC.Policy.get('notify.room_digest_minutes');
-    const dg = (t, who) => { const u = s.unread[t]; const g = DIGEST[t]; return [`알림 묶음 · ${who}`, `${u.since ? `안 읽은 ${g.what} ${u.n}개 · ${fmtTime(u.since)}부터` : `안 읽은 ${g.what} 없음`}${t === 'design' ? '<br><span class="xsmall faint">관리자 알림센터는 메시지마다 · Slack만 묶음</span>' : ''}`, u.since ? `<span class="sla sla-warn" style="white-space:nowrap">${fmtTime(new Date(u.since.getTime() + dm * MIN))}에 ${g.ch} 1건</span>` : '<span class="faint">대기 없음</span>']; };
-    const rows = [dg('customer', '고객'), dg('partner', '파트너'), dg('design', '담당 디자이너'),
-      ['운영시간', `평일 09~18시 · 지금 ${fmtDate(now)}`, bizOpen(now) ? '<span class="st st-now">운영 중</span>' : `<span class="st st-warn">운영시간 밖</span> <span class="xsmall faint">다음 ${fmtDate(nextOpen(now))}</span>`]];
+    const dg = (t, who) => { const u = s.unread[t]; const g = DIGEST[t]; return [`알림 묶음 · ${who}`, `${u.since ? `안 읽은 ${g.what} ${u.n}개 · ${fmtTime(u.since)}부터` : `안 읽은 ${g.what} 없음`}${t === 'design' || t === 'dprd' ? `<br><span class="xsmall faint">관리자 알림센터는 메시지마다 · Slack만 묶음${t === 'dprd' ? ' · 협의 룸과 따로 셈' : ''}</span>` : ''}`, u.since ? `<span class="sla sla-warn" style="white-space:nowrap">${fmtTime(new Date(u.since.getTime() + dm * MIN))}에 ${g.ch} 1건</span>` : '<span class="faint">대기 없음</span>']; };
+    const rows = [dg('customer', '고객'), dg('partner', '파트너'), dg('design', '담당 디자이너 · 협의 룸'), dg('dprd', '담당 디자이너 · 생산 협의'),
+      ['운영시간', `${pv('calendar.business_hours')} · 지금 ${fmtDate(now)}`, bizOpen(now) ? '<span class="st st-now">운영 중</span>' : `<span class="st st-warn">운영시간 밖</span> <span class="xsmall faint">다음 ${fmtDate(nextOpen(now))}</span>`]];
     if (s.waitSince && ['WAIT_CUSTOMER', 'ON_HOLD'].includes(st)) {
       const days = Math.floor((now - s.waitSince) / GC.DAY);
       const RM = GC.Policy.get('design.no_response_remind_days'), HD = GC.Policy.get('design.no_response_hold_days'), CD = GC.Policy.get('design.no_response_cancel_days');
@@ -849,6 +872,7 @@
       app.clock.pass(s.f.pans ? 2 * MIN : 20 * MIN);
       const msg = sendText('partner', 'prd', text); s.draft.partner = '';
       if (msg.hits.length) s.f.pcontact = true; else s.f.pans = true;
+      notifyDesignerChannel(msg.hits.length ? '생산 협의 채널 파트너 메시지 도착(연락처 가림)' : '생산 협의 채널 파트너 답변 도착');
       refresh(); focusSel('#pMsg');
     },
     relay() {
@@ -875,7 +899,7 @@
       app.go('room', 'assign', { by: `팀장이 ${s.designer.name} 배정` });
       s.sla = { kind: '첫 시안', due: GC.addBusinessDays(app.clock.now(), GC.Policy.get('design.sla.first_draft_days')) };
       addMsg({ ch: 'room', from: 'system', kind: 'intro', name: s.designer.name, due: s.sla.due });
-      app.notify('NOTI_DESIGN_ASSIGNED', '고객', ['알림톡', '푸시'], `디자이너 ${s.designer.name} 배정 · 첫 시안 ${fmtDate(s.sla.due)}까지`);
+      app.notify('NOTI_DESIGN_ASSIGNED', '고객', C4, `디자이너 ${s.designer.name} 배정 · 첫 시안 ${fmtDate(s.sla.due)}까지`);
       refresh();
     },
     async propose() {
@@ -887,7 +911,7 @@
       addFile('design', 'room', { name: `오늘밥상_수저집_v${v}_목업.pdf`, size: '2.4MB', type: 'PDF', outcome: 'ok' });
       app.go('room', 'propose', { by: `시안 v${v} 등록` });
       s.sla = null; s.waitSince = app.clock.now(); s.fired = {};
-      app.notify(v === 1 ? 'NOTI_DESIGN_PROPOSED' : 'NOTI_DESIGN_REVISED', '고객', ['알림톡', '푸시', '이메일'], `시안 v${v} 도착`);
+      app.notify(v === 1 ? 'NOTI_DESIGN_PROPOSED' : 'NOTI_DESIGN_REVISED', '고객', C5, `시안 v${v} 도착`);
       refresh();
     },
     addLink(b) {
@@ -935,8 +959,8 @@
       addMsg({ ch: 'room', from: 'system', kind: 'sys', html: `디자인을 확정했어요. 제작·배송은 주문 상세에서 볼 수 있어요. 완료 후 ${RP.reinquiryDays}일 동안은 이 룸에 재문의를 남길 수 있어요.` });
       openPrd();
       addMsg({ ch: 'prd', from: 'system', kind: 'sys', html: `확정 인쇄 패키지가 전달됐어요 · ${REQ.id} · ${STORE.name} · 시안 v${v}. 패키지에는 고객 개인정보가 없어요.` });
-      app.notify('NOTI_DESIGN_APPROVED', '고객', ['알림톡', '이메일'], '확정 확인서(사양 요약)');
-      app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', '파트너', ['알림톡', '알림센터'], '인쇄 파일 도착 · 생산 협의 채널 이벤트로만');
+      app.notify('NOTI_DESIGN_APPROVED', '고객', C5, '확정 확인서(사양 요약)');
+      app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', '파트너(주문 담당)', P4, `인쇄 파일 도착 · [인쇄 가능] 확인 기한 ${fmtDate(GC.production.printDue(app.clock.now()))}까지 · 생산 협의 채널 이벤트로만`);
       app.log('rule', '확정 시각·IP·사양 스냅샷 저장 · 생산·배송·구매 확정은 맞춤 디자인 화면에서 다뤄요(여기서는 완료로 건너뜀)');
       s.cs = 'chat'; refresh();
     },
@@ -990,23 +1014,23 @@
   app.onAdvance((prev, now) => {
     const s = S(); if (!s.msgs) return;
     const dm = GC.Policy.get('notify.room_digest_minutes');
-    ['customer', 'partner', 'design'].forEach((t) => { const u = s.unread[t]; if (u.since && now - u.since >= dm * MIN) sendDigest(t); });
+    ['customer', 'partner', 'design', 'dprd'].forEach((t) => { const u = s.unread[t]; if (u.since && now - u.since >= dm * MIN) sendDigest(t); });
     const st = app.state('room');
     if (s.waitSince && ['WAIT_CUSTOMER', 'ON_HOLD'].includes(st)) {
       const days = Math.floor((now - s.waitSince) / GC.DAY);
       const RM = GC.Policy.get('design.no_response_remind_days'), HD = GC.Policy.get('design.no_response_hold_days'), CD = GC.Policy.get('design.no_response_cancel_days');
-      if (days >= RM && !s.fired.rm) { s.fired.rm = true; app.notify('NOTI_DESIGN_REMIND', '고객', ['알림톡', '푸시'], `시안 확인을 기다리고 있어요 (${RM}일째)`); }
-      if (st === 'WAIT_CUSTOMER') noticeStep('hn', HD, days, now, '보류', () => app.notify('NOTI_DESIGN_HOLD_NOTICE', '고객', ['알림톡', '푸시', '이메일'], '내일 보류 처리돼요'), () => {
+      if (days >= RM && !s.fired.rm) { s.fired.rm = true; app.notify('NOTI_DESIGN_REMIND', '고객', C4, `시안 확인을 기다리고 있어요 (${RM}일째)`); }
+      if (st === 'WAIT_CUSTOMER') noticeStep('hn', HD, days, now, '보류', () => app.notify('NOTI_DESIGN_HOLD_NOTICE', '고객', C5, '내일 보류 처리돼요'), () => {
         app.go('room', 'hold', { by: `${HD}일 무응답 · 예고 뒤 ${GC.Policy.get('notify.notice_min_hours')}시간 지남 · 보류 전 상태(고객 확인 대기) 저장` });
         addMsg({ ch: 'room', from: 'system', kind: 'sys', tone: 'warn', html: `${HD}일 동안 답이 없어 보류했어요. 메시지를 보내거나 [진행 재개]를 누르면 이어서 진행해요.` });
-        app.notify('NOTI_DESIGN_ON_HOLD', '고객', ['알림톡', '푸시', '이메일'], '보류 전환');
+        app.notify('NOTI_DESIGN_ON_HOLD', '고객', C5, '보류 전환');
         app.log('rule', '보류 중에는 SLA 타이머가 멈추고 디자이너 업무량에서도 빠져요');
       });
-      if (st === 'ON_HOLD') noticeStep('cn', CD, days, now, '자동 취소', () => app.notify('NOTI_DESIGN_CANCEL_NOTICE', '고객', ['알림톡', '푸시', '이메일'], '내일 자동 취소돼요'), () => {
+      if (st === 'ON_HOLD') noticeStep('cn', CD, days, now, '자동 취소', () => app.notify('NOTI_DESIGN_CANCEL_NOTICE', '고객', C5, '내일 자동 취소돼요'), () => {
         app.go('room', 'auto_cancel', { by: `${CD}일 무응답 · 예고 뒤 ${GC.Policy.get('notify.notice_min_hours')}시간 지남 · 자동 취소` });
         s.canceled = true; s.doneAt = now; s.waitSince = null;
         addMsg({ ch: 'room', from: 'system', kind: 'sys', tone: 'stop', html: `${CD}일 동안 답이 없어 자동 취소했어요. 첫 시안을 받은 뒤라 디자인비를 빼고 환불해요. ${RP.reinquiryDays}일 동안은 재문의를 남길 수 있어요.` });
-        app.notify('NOTI_DESIGN_AUTO_CANCELED', '고객', ['알림톡', '푸시', '이메일'], '자동 취소 · 공제·환불 내역');
+        app.notify('NOTI_DESIGN_AUTO_CANCELED', '고객', C5, '자동 취소 · 공제·환불 내역');
         app.log('money', `자동 취소 · 첫 시안 뒤라 디자인비 ${won(GC.Policy.get('design.fee'))} 공제 후 환불(C-PAY-02)`);
       });
     }

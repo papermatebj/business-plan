@@ -77,7 +77,9 @@
   const esc = UI.esc, pv = UI.pv;
   const P = (k) => GC.Policy.get(k);
 
-  /* ── 이 페이지에만 둔 정책값(엔진 정책값에 아직 없음 · 최종 보고에 목록) ── */
+  /* ── 이 페이지에만 둔 정책값(엔진 정책값에 아직 없음 · 최종 보고에 목록) ──
+     (2026-10-17 S12 ⑫ 확인) 엔진 키가 새로 생긴 것은 없음. withdrawDays(청약철회 7일)는 법정 값이라 키로 두지 않음,
+     retry·autoCancelDay·noticeMonthly·noticeYearly·pointNoticeDays는 멤버십·포인트(2차) 값이라 2차에 키, avgOrder는 예상 비용 계산용 가정 */
   const PC = { codeFailMax: 5, codeLockMin: 10, expireNoticeDays: 7, pointNoticeDays: 30, withdrawDays: 7, retry: [1, 3], autoCancelDay: 7, noticeMonthly: 3, noticeYearly: 7, avgOrder: 150000 };
   const pc = (text, label) => `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(label)} — 엔진 정책값에 아직 없어 이 페이지 상수로 둠">${text}</span>`;
   /* 기획서 멤버십 손익 가정(11장 멤버십 손익 · 연간 회원 한 줄 포함) */
@@ -142,6 +144,13 @@
   const targetText = (d) => (d.kind === 'design' ? `${DC_TARGET} (고정 · 제외 대상 없음)` : TARGET[d.target]);
   /* 최소 주문 표기(D51): 디자인비 쿠폰 = 그 디자인 요청(묶음)의 맞춤 품목 금액 '맞춤 품목 N원 이상', 그 밖의 쿠폰 = 'N원 이상 주문' */
   const minText = (x) => (x.kind === 'design' ? `맞춤 품목 ${won(x.minOrder)} 이상` : `${won(x.minOrder)} 이상 주문`);
+  /* 디자인비 쿠폰 최소 주문의 상한(S12 맞춤 ④): design.free_threshold의 지금 값과 A-REV-04에 예약된 새 값 중 큰 값.
+     최소 주문이 이 값 이상이면 그 묶음은 이미 디자인비가 무료라 쓰일 일이 없음 → 승인 요청을 막음(서로 부딪히는 값은 저장을 막는 A-SYS-03 습관) */
+  const dcBlockAt = (s) => Math.max(GC.Policy.get('design.free_threshold'), s.freeNext ? s.freeNext.v : 0);
+  const dcMinErr = (s) => {
+    const at = dcBlockAt(s); const nx = s.freeNext;
+    return `맞춤 품목 ${won(at)} 이상이면 디자인비가 이미 무료라 이 쿠폰은 쓰일 일이 없어요. 최소 주문을 ${won(at)}보다 낮게 넣어 주세요${nx ? ` (지금 기준 ${won(GC.Policy.get('design.free_threshold'))}과 ${fmtDate(nx.at, false)}부터 적용할 새 기준 ${won(nx.v)} 중 큰 값)` : ''}`;
+  };
   const TEAM = { yoon: { name: '윤마케', role: '마케터', lead: false }, seo: { name: '서팀장', role: '마케터', lead: true } };
   const OTHER = [
     ['HC-2609-01', '신규가입 5,000원', '장바구니', '자동 지급(가입)', 'ACTIVE', '412 / 1,380'],
@@ -203,7 +212,7 @@
     Object.assign(app.S, {
       cs: 'my', acct: 'yoon', hqView: 'coupon', author: 'yoon',
       form: { name: '사업자 첫 주문 장바구니 10%', kind: 'cart', type: 'rate', value: 10, max: 10000, minOrder: 100000, target: 'all', members: { biz: true, new: true }, issue: 'download', qty: 300, days: 30, budget: 3000000 },
-      errors: {}, coupon: null, req: null, reject: null, pauseReason: '',
+      errors: {}, coupon: null, req: null, reject: null, pauseReason: '', freeNext: null,
       stats: { issued: 0, used: 0, disc: 0, gmv: 0 },
       wallet: [
         w('w1', { name: '신규가입 5,000원', kind: 'cart', value: 5000, minOrder: 50000, until: D(10, 31), how: '가입 자동 지급' }),
@@ -425,7 +434,7 @@
         const d = PC.retry.find((x) => !M.retried[x] && t >= M.failedAt + x * DAY);
         if (d) {
           M.retried[d] = true;
-          if (M.failMode) { app.log('warn', `D+${d} 재시도 결제도 실패했어요`); app.notify('NOTI_MEMBERSHIP_PAY_FAILED', '고객', ['알림톡'], `D+${d} 재시도 실패 · 카드를 바꿔 주세요`); } else recover(`D+${d} 재시도 성공`);
+          if (M.failMode) { app.log('warn', `D+${d} 재시도 결제도 실패했어요`); app.notify('NOTI_MEMBERSHIP_PAY_FAILED', '고객', ['알림톡', '이메일'], `D+${d} 재시도 실패 · 카드를 바꿔 주세요`); } else recover(`D+${d} 재시도 성공`);
           continue;
         }
         if (t >= M.failedAt + PC.autoCancelDay * DAY) {
@@ -443,7 +452,7 @@
   function guide() {
     const s = S(); const c = app.state('coupon'); const m = app.state('mem'); const M = s.mem;
     const R = {
-      coupon: [{ k: '승인', v: '팀장 플래그 · 요청자와 다른 계정' }, { k: '예산 상한', v: '필수 · 닿으면 자동 중지' }, { k: '정률 쿠폰 최대 할인액', v: '필수' }, { k: '디자인비 쿠폰 최대 할인액', v: '선택' }, { k: '디자인비 쿠폰 적용 대상', v: '맞춤 디자인비 고정' }, { k: '디자인비 쿠폰 최소 주문', v: '묶음의 맞춤 품목' }, { k: '사용 횟수', v: '1인 1회(본인인증 기준)' }],
+      coupon: [{ k: '승인', v: '팀장 플래그 · 요청자와 다른 계정' }, { k: '예산 상한', v: '필수 · 닿으면 자동 중지' }, { k: '정률 쿠폰 최대 할인액', v: '필수' }, { k: '디자인비 쿠폰 최대 할인액', v: '선택' }, { k: '디자인비 쿠폰 적용 대상', v: '맞춤 디자인비 고정' }, { k: '디자인비 쿠폰 최소 주문', v: '묶음의 맞춤 품목' }, { k: '디자인비 쿠폰 최소 주문 상한', v: `무료 기준 ${pv('design.free_threshold')}보다 낮게(예약된 새 값이 크면 그 값) · 아니면 요청 막음` }, { k: '사용 횟수', v: '1인 1회(본인인증 기준)' }],
       box: [{ k: '코드 오입력', v: `${pc(PC.codeFailMax + '회', '쿠폰 코드 오입력 한도')} → ${pc(PC.codeLockMin + '분', '오입력 잠금 시간')} 잠금` }, { k: '신규가입 쿠폰', v: '본인인증(CI) 기준 1회' }, { k: '한 주문에 쓰는 장수(배송비는 묶음당 1장)', v: '상품 할인 1 · 디자인비 1' }, { k: '만료 안내(NOTI_COUPON_EXPIRE_SOON)', v: `${pc(PC.expireNoticeDays + '일 전', '쿠폰 만료 안내 시점')} · 마케팅 동의자만` }],
       dfee: [{ k: '디자인비 판정 순서', v: '50만원 → 이용권 → 쿠폰' }, { k: '상품 할인 쿠폰(장바구니·상품)', v: '1장 · 디자인비에 안 걸림' }, { k: '디자인비 쿠폰 1장(디자인비에만)', v: '정액·정률 100%까지' }, { k: '디자인비 쿠폰 최소 주문(일반 상품 제외)', v: '묶음의 맞춤 품목' }, { k: '디자인 요청이 여럿이면(같으면 앞 요청)', v: '할인 큰 1곳' }, { k: '부분 취소로 기준 아래', v: '할인 유지' }, { k: '맞춤 디자인비', policy: 'design.fee' }, { k: '이용권 묶음의 추가 품목(그대로 냄 · 쿠폰 안 씀)', policy: 'design.multi_item_fee' }, { k: '첫 시안 뒤 취소 공제(쿠폰 몫은 본사 부담)', v: '낸 디자인비만' }, { k: '50만원·이용권·쿠폰으로 무료면 공제', v: '0원 · 이용권·쿠폰은 사용 처리' }],
       checkout: [{ k: '상품 할인 쿠폰(장바구니·상품 중)', v: '주문당 1장 · 가장 큰 할인 자동' }, { k: '디자인비 쿠폰 · 최소 주문은 맞춤 품목', v: '주문당 1장 · 디자인비에만' }, { k: '배송비 쿠폰 · 묶음 = 같은 판매자·출고지·출고 유형', v: '묶음당 1장' }, { k: '수수료 기준가', v: '본사 쿠폰 전 금액' }, { k: '판매 수수료', policy: 'commission.default_rate' }],
@@ -453,7 +462,7 @@
     };
     const memPhase = m !== 'NONE' || ['mem', 'memjoin', 'memhome', 'memcancel'].includes(s.cs) || s.orders.length > 0;
     if (!memPhase) {
-      if (c === 'DRAFT') return app.turn('hq', s.reject ? `${s.acct === s.author ? '' : `작성자(${TEAM[s.author].name}) 계정으로 돌아가 `}반려 사유를 보고 고친 뒤 다시 [승인 요청]을 누르세요` : '쿠폰 양식을 채우고 예상 비용을 확인한 뒤 [승인 요청]을 누르세요', { hint: '최대 할인액이나 예산 상한을 비우고 요청해 보면 저장을 막아요.', rules: R.coupon });
+      if (c === 'DRAFT') return app.turn('hq', s.reject ? `${s.acct === s.author ? '' : `작성자(${TEAM[s.author].name}) 계정으로 돌아가 `}반려 사유를 보고 고친 뒤 다시 [승인 요청]을 누르세요` : '쿠폰 양식을 채우고 예상 비용을 확인한 뒤 [승인 요청]을 누르세요', { hint: '최대 할인액이나 예산 상한을 비우거나, 디자인비 쿠폰의 최소 주문을 무료 기준 이상으로 넣고 요청해 보면 막아요.', rules: R.coupon });
       if (c === 'PENDING') return app.turn('hq', '팀장 플래그가 있는 서팀장 계정으로 바꿔 [승인·게시]를 누르세요', { hint: `요청한 ${esc(s.req.byName)} 계정 그대로 [승인·게시]를 누르면 서버가 막아요. [반려]하면 작성 중으로 돌아가요.`, rules: [{ k: '승인 권한', v: '팀장 플래그(돈이 나가는 승인)' }, { k: '요청자 = 승인자', v: '서버가 거부' }, { k: '예상 비용', v: s.req.cost != null ? won(s.req.cost) : '예산 상한까지' }] });
       if (locked()) return app.turn('customer', `쿠폰 코드를 ${PC.codeFailMax}번 틀려 ${fmtTime(s.lockUntil)}까지 입력이 막혔어요. 위쪽 [+1시간]을 누르면 풀려요`, { rules: R.box });
       const got = s.wallet.some((x) => x.id === 'new');
@@ -815,10 +824,13 @@
         ${DUP().map((d) => `<tr><td>${d[0]} <span class="tag ${d[1] === 'MVP' ? '' : 'tag-phase'}">${d[1]}</span></td><td class="nw">${d[2]}</td><td>${d[3]}</td><td>${d[4]}</td></tr>`).join('')}</tbody></table></div></div>`;
   }
   function couponForm(s) {
-    const fm = s.form; const e = s.errors; const est = estimate(fm);
+    const fm = s.form; const est = estimate(fm);
+    const isDisc = fm.kind === 'cart' || fm.kind === 'product'; const isDc = fm.kind === 'design';
+    /* 디자인비 쿠폰 최소 주문이 무료 기준 이상이면 넣는 즉시 오류로 보여 줌(승인 요청도 막음, S12 맞춤 ④) */
+    const e = { ...s.errors }; delete e.minOrder; if (isDc && fm.minOrder && fm.minOrder >= dcBlockAt(s)) e.minOrder = dcMinErr(s);
     const seg = (act, cur, opts) => `<div class="seg">${Object.entries(opts).map(([k, n]) => `<button data-act="${act}" data-v="${k}" aria-pressed="${cur === k}">${n}</button>`).join('')}</div>`;
     const num = (k, label, unit, hint) => `<div class="field"><label for="f_${k}">${label}</label><div class="unit-in"><input class="input${e[k] ? ' is-err' : ''}" id="f_${k}" inputmode="numeric" data-change="fNum" data-f="${k}" value="${fm[k] == null ? '' : fm[k]}"><span>${unit}</span></div>${e[k] ? `<span class="err">${e[k]}</span>` : hint ? `<span class="hint">${hint}</span>` : ''}</div>`;
-    const isDisc = fm.kind === 'cart' || fm.kind === 'product'; const isDc = fm.kind === 'design';
+    const nx = s.freeNext;
     const raw = Math.floor((PC.avgOrder * (fm.value || 0)) / 100);
     const dcRaw = fm.type === 'rate' ? Math.floor((P('design.fee') * (fm.value || 0)) / 100) : fm.value || 0;
     const avgHow = isDc ? `맞춤 디자인비 ${won(P('design.fee'))} 기준 ${fm.type === 'rate' ? `× ${fm.value || 0}% = ${won(dcRaw)}` : `정액 ${won(dcRaw)}`}${est.avg < dcRaw ? ` → ${fm.max && fm.max < P('design.fee') ? `최대 ${won(fm.max)}` : '디자인비까지'}` : ''} (묶음이면 디자인비가 커져요)` : fm.kind === 'ship' ? '장당 최대 할인' : fm.type === 'rate' ? `평균 주문 ${pc(won(PC.avgOrder), '예상 비용용 평균 주문 금액')} × ${fm.value || 0}% = ${won(raw)}${fm.max && raw > fm.max ? ` → 최대 ${won(fm.max)}` : ''}` : '정액';
@@ -833,9 +845,10 @@
         ${isDisc || isDc ? num('value', fm.type === 'rate' ? '할인율' : '할인 금액', fm.type === 'rate' ? '%' : '원', isDc ? (fm.type === 'rate' ? '1~100% · 100%면 디자인비 전액 무료' : '디자인비보다 크면 디자인비까지만 할인') : '') : ''}
         ${fm.type === 'rate' && (isDisc || isDc) || fm.kind === 'ship' ? num('max', fm.kind === 'ship' ? '장당 최대 할인' : isDc ? '최대 할인액 (선택)' : '최대 할인액 (정률이면 필수)', '원', isDc ? '비우면 디자인비까지 할인' : '') : ''}
         ${num('minOrder', isDc ? '최소 주문 금액 (선택) · 맞춤 품목 기준' : '최소 주문 금액 (선택)', '원', isDc
-          ? (fm.minOrder && fm.minOrder >= P('design.free_threshold') ? `<span style="color:var(--warn)">맞춤 품목 ${won(P('design.free_threshold'))} 이상이면 디자인비가 이미 무료라 이 쿠폰은 쓰일 일이 없어요. 기준보다 낮게 정해 주세요</span>`
-            : '주문 전체가 아니라 그 디자인 요청(묶음)의 맞춤 품목 금액과 비교 · 50만원 무료 판정과 같은 금액(파트너 할인 후·본사 쿠폰 전, 판비·추가 구성품·배송비 제외) · 고객에게는 "맞춤 품목 N원 이상"')
+          ? `주문 전체가 아니라 그 디자인 요청(묶음)의 맞춤 품목 금액과 비교 · 50만원 무료 판정과 같은 금액(파트너 할인 후·본사 쿠폰 전, 판비·추가 구성품·배송비 제외) · 고객에게는 "맞춤 품목 N원 이상" · ${won(dcBlockAt(s))} 이상이면 승인 요청을 막아요`
           : '파트너 할인 후 상품 금액 기준 · 고객에게는 "N원 이상 주문"')}
+        ${isDc ? `<div class="field"><span class="lbl">디자인비 무료 기준 (A-REV-04)</span><span class="small">지금 ${pv('design.free_threshold')}${nx ? ` · ${fmtDate(nx.at, false)}부터 ${won(nx.v)}으로 올림(공지 뒤 적용 예약)` : ' · 예약된 변경 없음'}</span>
+          ${seg('freeNext', nx ? 'up' : 'none', { none: '예약 없음', up: '올림 예약 (체험용)' })}<span class="hint">최소 주문은 지금 값과 예약된 새 값 중 큰 값보다 낮아야 해요. 기준을 올리면 그 뒤로 쓰일 수 있어서예요</span></div>` : ''}
         ${isDc ? `<div class="field"><span class="lbl">적용 대상</span><div class="cluster"><b class="small">${DC_TARGET}</b><span class="tag">고정</span></div><span class="hint">디자인비 쿠폰은 적용 대상·제외 대상을 고르지 않아요(디자인은 본사 디자이너, 디자인비는 본사 매출). 대상 회원은 아래에서 골라요</span></div>`
           : `<div class="field"><label for="f_target">적용 대상</label><select class="select" id="f_target" data-change="fSel" data-f="target">${Object.entries(TARGET).map(([k, n]) => `<option value="${k}" ${fm.target === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>`}
         <div class="field"><span class="lbl">발행 방식</span>${seg('fIssue', fm.issue, ISSUE)}</div>
@@ -1002,6 +1015,13 @@
       refresh();
     },
     fIssue(b) { S().form.issue = b.dataset.v; refresh(); },
+    freeNext(b) {
+      /* 체험용: A-REV-04에서 무료 기준을 올리는 변경이 예약된 상태(고객에게 불리해 공지 뒤 적용 시작일부터, 2026-10-12 확정) */
+      const s = S(); const cur = P('design.free_threshold');
+      s.freeNext = b.dataset.v === 'up' ? { v: Math.round((cur * 1.2) / 10000) * 10000, at: new Date(2026, 10, 1) } : null;
+      app.log('user', s.freeNext ? `체험용: 디자인비 무료 기준을 ${fmtDate(s.freeNext.at, false)}부터 ${won(s.freeNext.v)}으로 올리는 변경이 예약됨(A-REV-04)` : '체험용: 무료 기준 변경 예약 없음');
+      refresh();
+    },
     fNum(t) { const v = t.value.replace(/[^\d]/g, ''); S().form[t.dataset.f] = v === '' ? null : Number(v); refresh(); },
     fText(t) { S().form[t.dataset.f] = t.value.trim(); refresh(); },
     fSel(t) { S().form[t.dataset.f] = t.value; refresh(); },
@@ -1016,8 +1036,9 @@
       if (!fm.days) e.days = '유효기간을 넣어 주세요';
       if (!fm.budget) e.budget = '예산 상한은 꼭 넣어야 해요. 발행 수량이 무제한이어도 마찬가지예요';
       if (!Object.values(fm.members).some(Boolean)) e.members = '대상 회원을 하나 이상 골라 주세요';
+      if (isDc && fm.minOrder && fm.minOrder >= dcBlockAt(s)) e.minOrder = dcMinErr(s); // S12 맞춤 ④: 경고가 아니라 막음
       s.errors = e;
-      if (Object.keys(e).length) { app.log('warn', `승인 요청 막힘: ${Object.values(e).map((x) => x.split('.')[0]).join(' · ')}`); app.toast('빠진 항목이 있어 승인 요청을 보낼 수 없어요'); refresh(); return; }
+      if (Object.keys(e).length) { app.log('warn', `승인 요청 막힘: ${Object.values(e).map((x) => x.split('.')[0]).join(' · ')}`); app.toast(e.minOrder && Object.keys(e).length === 1 ? '최소 주문이 디자인비 무료 기준 이상이라 승인 요청을 보낼 수 없어요' : '빠진 항목이 있어 승인 요청을 보낼 수 없어요'); refresh(); return; }
       const est = estimate(fm);
       s.req = { by: s.acct, byName: TEAM[s.acct].name, at: app.clock.now(), ...est, qty: fm.qty };
       s.author = s.acct; s.reject = null; s.denied = false;
@@ -1095,7 +1116,7 @@
       if (k.hq && k.hq.id === 'new') { s.stats.used += 1; s.stats.disc += r.totals.hqDisc; s.stats.gmv += r.totals.pay; checkBudget(); }
       if (k.ship && k.ship.src === 'mem') { s.mem.used = true; s.mem.saved += r.totals.shipCoupon; app.log('rule', '멤버십 혜택을 썼어요 → 이번 결제분은 7일 전액 환불 대상에서 빠져요'); }
       const ev = settleOf(r); app.log('money', `파트너 정산 예정 ${won(ev.amount)} · 판매 수수료 ${won(ev.fee)}(본사 쿠폰 전 ${won(ev.base)} 기준)`);
-      app.notify('NOTI_ORDER_PAID', '고객', ['알림톡', '푸시'], `주문·결제 완료 ${won(r.totals.pay)}`);
+      app.notify('NOTI_ORDER_PAID', '고객', ['알림톡', '앱 푸시', '이메일', '알림센터'], `주문·결제 완료 ${won(r.totals.pay)}`);
       s.pickHq = undefined; s.pickShip = undefined; s.cs = 'paid'; refresh();
     },
     async cancelOrder() {

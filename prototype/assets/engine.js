@@ -15,10 +15,19 @@
     { key: 'calendar.business_hours', def: '평일 09~18시', unit: '', text: true, group: '공통 · 영업일·배치', label: '영업시간(디자인 SLA·CS 첫 응답)' },
     { key: 'notify.notice_min_hours', def: 24, unit: '시간', group: '공통 · 영업일·배치', label: '예고 뒤 본 처리까지 최소 간격(디자인 보류·자동 취소)' },
     { key: 'batch.stale_grace', def: 1, unit: '시간', group: '공통 · 영업일·배치', label: '배치 감시 여유(주기 + 이 시간 동안 성공 없으면 알림)' },
+    // 2026-10-17 S12 ⑫ 키 없는 정책값 정리(MVP 키 + 페이지 상수를 엔진으로)
+    { key: 'batch.biz_recheck_schedule', def: '매월 1일 03:00', unit: '', text: true, group: '공통 · 영업일·배치', label: '사업자 상태 정기 재조회 시각(회원·파트너 공통)' },
     // 공통 · 보안 (2026-10-15 S8 추가 — 관리자·파트너 같은 규칙, C-SEC-01)
     { key: 'security.password_min_length', def: 10, unit: '자', group: '공통 · 보안', label: '관리자·파트너 비밀번호 최소 길이(영문·숫자·특수문자 3종)' },
     { key: 'security.login_fail_lock', def: 5, unit: '회', group: '공통 · 보안', label: '비밀번호 연속 실패 시 계정 잠금(파트너는 대표자에게 알림 · 관리자는 본인·최고관리자에게 알리고 최고관리자가 풂)' },
     { key: 'security.idle_logout_minutes', def: 30, unit: '분', group: '공통 · 보안', label: '쓰지 않으면 자동 로그아웃(관리자 화면·파트너 센터)' },
+    // 2026-10-17 S12 ⑫ 키 없는 정책값 정리(MVP 키 + 페이지 상수를 엔진으로)
+    { key: 'security.member_password_rule', def: '8~20자, 영문·숫자·특수문자 중 2종 이상', unit: '', text: true, group: '공통 · 보안', label: '고객 이메일 회원 비밀번호 규칙' },
+    { key: 'security.member_login_fail_lock', def: 5, unit: '회', group: '공통 · 보안', label: '고객 로그인 연속 실패 시 잠금' },
+    { key: 'security.member_login_lock_minutes', def: 10, unit: '분', group: '공통 · 보안', label: '고객 로그인 잠금 시간' },
+    { key: 'security.member_email_code_minutes', def: 5, unit: '분', group: '공통 · 보안', label: '이메일 인증번호 유효 시간' },
+    { key: 'security.member_email_code_fail_max', def: 5, unit: '회', group: '공통 · 보안', label: '이메일 인증번호 오입력 허용' },
+    { key: 'security.pii_view_lock_per_hour', def: 100, unit: '건/시간', group: '공통 · 보안', label: '개인정보 조회 몰림 잠금 기준(1시간)' },
     // 수수료·파트너
     { key: 'commission.default_rate', def: 10, unit: '%', group: '수수료·파트너', label: '카테고리 요율(일반) 기본값' },
     { key: 'commission.custom_rate', def: 13, unit: '%', group: '수수료·파트너', label: '카테고리 요율(맞춤) 기본값' },
@@ -27,6 +36,7 @@
     { key: 'commission.new_partner_discount', def: 2, unit: '%p', group: '수수료·파트너', label: '신규 입점 인하(3개월)' },
     { key: 'commission.reorder_discount', def: 3, unit: '%p', group: '수수료·파트너', label: '같은 판 재주문 인하' },
     { key: 'commission.floor', def: 5, unit: '%', group: '수수료·파트너', label: '최종 요율 하한' },
+    { key: 'commission.override_max', def: 30, unit: '%', group: '수수료·파트너', label: '파트너 예외 요율(대체형) 상한' },
     { key: 'partner.reapply_days', def: 30, unit: '일', group: '수수료·파트너', label: '입점 반려 후 재신청 제한' },
     { key: 'partner.supplement_days', def: 14, unit: '일', group: '수수료·파트너', label: '보완 요청 응답 기한' },
     // 2026-10-16 S11 맞춤(A-PTN-01 · P-ONB-02 처리 목표)
@@ -35,6 +45,11 @@
     { key: 'partner.onboard_total_bd', def: 10, unit: '영업일', group: '수수료·파트너', label: '입점 접수부터 심사 결과(승인·반려)까지 전체 처리 목표' },
     { key: 'partner.non_circumvent_months', def: 12, unit: '개월', group: '수수료·파트너', label: '계약 종료 후 직거래 금지 기간', draft: true },
     { key: 'partner.circumvent_penalty_min', def: 500000, unit: '원', group: '수수료·파트너', label: '직거래 위약금 최소액(수수료율×3배)', draft: true },
+    { key: 'partner.circumvent_penalty_multiple', def: 3, unit: '배', group: '수수료·파트너', label: '직거래 위약금 배수(확인된 직거래 금액 × 수수료율 × 이 값)', draft: true },
+    { key: 'partner.circumvent_reply_days', def: 7, unit: '일', group: '수수료·파트너', label: '직거래 조사 소명 기한' },
+    { key: 'partner.apply_draft_keep_days', def: 30, unit: '일', group: '수수료·파트너', label: '임시 저장 입점 신청서 보관' },
+    { key: 'partner.confirm_request_days', def: 1, unit: '영업일', group: '수수료·파트너', label: '파트너 확인 요청 응답 기한' },
+    { key: 'partner.shipping_info_days', def: 90, unit: '일', group: '수수료·파트너', label: '배송 완료 뒤 파트너가 배송 정보를 보는 기간' },
     { key: 'product.detail_image_max', def: 60, unit: '장', group: '수수료·파트너', label: '상품 상세 설명 이미지 최대 장수' },
     { key: 'product.addon_max', def: 20, unit: '개', group: '수수료·파트너', label: '상품 하나의 추가 구성품 최대 개수' },
     // 2026-10-16 S10 맞춤(P-PRD-02 · A-PRD-01)
@@ -43,6 +58,12 @@
     { key: 'product.price_change_alert', def: '−50% / +200%', unit: '', text: true, group: '수수료·파트너', label: '가격 오입력 경고 기준(직전 가격 대비 — 절반 이하·3배 이상, 사업자가 변경 포함)', note: '숫자는 GC.price.priceChangeAlert()로 읽어요' },
     { key: 'product.review_bd', def: 1, unit: '영업일', group: '수수료·파트너', label: '본사 상품 검수 처리 목표(넘기면 검수 담당·팀장에게 알림)' },
     { key: 'product.review_priority_hours', def: 4, unit: '영업시간', group: '수수료·파트너', label: '프로·프리미엄 플랜 우선 검수 처리 목표', phase: '2차' },
+    // 2026-10-17 S12 ⑫ 키 없는 정책값 정리(MVP 키 + 페이지 상수를 엔진으로)
+    { key: 'product.ship_lead_max_bd', def: 2, unit: '영업일', group: '수수료·파트너', label: '일반 상품 출고 소요일 최대' },
+    { key: 'product.doc_valid_months', def: 12, unit: '개월', group: '수수료·파트너', label: '인증 서류 유효기간(발급일부터)' },
+    { key: 'product.detail_slice_px', def: 3000, unit: 'px', group: '수수료·파트너', label: '상세 이미지 자르는 높이' },
+    { key: 'product.detail_html_max_kb', def: 200, unit: 'KB', group: '수수료·파트너', label: '상세 설명 HTML 최대 크기' },
+    { key: 'product.revision_keep_months', def: 6, unit: '개월', group: '수수료·파트너', label: '주문에 연결되지 않은 상세 설명 이전 버전 보관' },
     // 할인·쿠폰
     { key: 'promo.instant_discount_max', def: 70, unit: '%', group: '할인·쿠폰', label: '파트너 즉시 할인율 상한' },
     { key: 'promo.instant_discount_max_days', def: 90, unit: '일', group: '할인·쿠폰', label: '즉시 할인 한 건의 기간 최대' },
@@ -60,12 +81,32 @@
     { key: 'order.partner_change_reply_days', def: 7, unit: '일', group: '주문·클레임·CS', label: '제작 파트너 변경 제안에 답할 기한(무응답이면 전액 환불)' },
     // 2026-10-16 취소·환불(D57·D58·D59)
     { key: 'order.overdue_grace_bd', def: 1, unit: '영업일', group: '주문·클레임·CS', label: '출고 지연 판정 유예(약속 출고일·출고 예정일 뒤 이 기간까지 송장이 없으면 일반은 [바로 취소], 맞춤은 [취소 요청])' },
-    { key: 'claim.refund_due_bd', def: 3, unit: '영업일', group: '주문·클레임·CS', label: '환불 기한(법정 — 반품은 회수 완료 뒤, 취소는 승인·확정 뒤부터)', draft: true },
-    { key: 'claim.refund_delay_rate', def: 15, unit: '%', group: '주문·클레임·CS', label: '환불 지연배상금 연 이율(법정 값이라 낮추지 않음)', draft: true },
+    { key: 'claim.refund_due_bd', def: 3, unit: '영업일', group: '주문·클레임·CS', label: '환불 기한(법정 — 반품은 회수 완료 뒤, 취소는 승인·확정 뒤부터)', draft: true, legal: 'max' },
+    { key: 'claim.refund_delay_rate', def: 15, unit: '%', group: '주문·클레임·CS', label: '환불 지연배상금 연 이율(법정 값이라 낮추지 않음)', draft: true, legal: 'min' },
+    // 2026-10-17 S12(D71·㉑·㉒)
+    { key: 'claim.late_return_days', def: 7, unit: '일', group: '주문·클레임·CS', label: "반품 사유 '늦게 받음(출고 지연)' 신청 기한(받은 날부터, 파트너 귀책)", draft: true },
+    { key: 'claim.return_back_pay_days', def: 14, unit: '일', group: '주문·클레임·CS', label: '검수 거부 수량 [되돌려 받기]·[폐기] 고르는 기한(지나면 폐기, 3일 전 다시 알림)', draft: true },
+    { key: 'claim.return_back_ship_bd', def: 2, unit: '영업일', group: '주문·클레임·CS', label: '되돌림 배송비 결제 뒤 파트너 송장 등록 기한' },
+    { key: 'order.accept_remind_bd', def: 1, unit: '영업일', group: '주문·클레임·CS', label: '결제 뒤 발주 확인이 없으면 파트너에게 리마인드' },
+    { key: 'order.accept_alert_bd', def: 2, unit: '영업일', group: '주문·클레임·CS', label: '결제 뒤 발주 확인이 없으면 운영팀 알림(자동 취소 없음)' },
+    // 2026-10-17 S12 ⑫ 키 없는 정책값 정리(MVP 키 + 페이지 상수를 엔진으로)
+    { key: 'order.cart_keep_days', def: 90, unit: '일', group: '주문·클레임·CS', label: '회원 장바구니 보관' },
+    { key: 'order.checkout_hold_minutes', def: 30, unit: '분', group: '주문·클레임·CS', label: '주문서 유지 시간(지나면 다시 계산)' },
+    { key: 'order.delay_cancel_days', def: 10, unit: '영업일', group: '주문·클레임·CS', label: '출고 지연 안내로 늦출 수 있는 최대(주문당 1번)' },
+    { key: 'claim.pickup_register_bd', def: 2, unit: '영업일', group: '주문·클레임·CS', label: '반품 신청 뒤 회수 접수 기한' },
+    { key: 'claim.exchange_ship_bd', def: 2, unit: '영업일', group: '주문·클레임·CS', label: '교환 승인 뒤 교환품 출고 기한' },
+    { key: 'claim.mediation_bd', def: 5, unit: '영업일', group: '주문·클레임·CS', label: '본사 중재 판정 목표(넘기면 알림만)' },
+    { key: 'cs.first_response_hours', def: 4, unit: '영업시간', group: '주문·클레임·CS', label: '문의 첫 응답 목표' },
+    { key: 'cs.answer_bd', def: 1, unit: '영업일', group: '주문·클레임·CS', label: '1:1 문의 답변 목표' },
+    { key: 'cs.auto_close_days', def: 7, unit: '일', group: '주문·클레임·CS', label: '답변 뒤 고객 응답이 없으면 자동 종료' },
     // 정산
     { key: 'settlement.payout_min', def: 1000, unit: '원', group: '정산', label: '이 금액 미만이면 다음 주기로 이월' },
     { key: 'settlement.account_change_hold_hours', def: 24, unit: '시간', group: '정산', label: '정산 계좌 변경 후 첫 지급 보류' },
     { key: 'settlement.receivable_limit', def: 300000, unit: '원', group: '정산', label: '미수금 청구서 발행 기준' },
+    { key: 'settlement.receivable_weeks', def: 4, unit: '주', group: '정산', label: '미수가 이 주기 연속이면 청구서 발행' },
+    { key: 'settlement.receivable_pay_days', def: 14, unit: '일', group: '정산', label: '미수금 청구서 납부 기한(넘기면 판매 중지)' },
+    { key: 'settlement.cycle', def: '주 1회: 화 마감 → 수~목 확정 → 금 지급', unit: '', text: true, group: '정산', label: '정산 주기' },
+    { key: 'settlement.period', def: '화 00시 ~ 다음 주 월 24시', unit: '', text: true, group: '정산', label: '정산 집계 기간' },
     { key: 'settlement.final_holdback', def: 30, unit: '%', group: '정산', label: '계약 종료 파트너 최종 정산 유보(90일)' },
     // 디자인·파일
     { key: 'design.fee', def: 39000, unit: '원', group: '디자인·파일', label: '맞춤 디자인비(VAT 포함)' },
@@ -79,11 +120,26 @@
     { key: 'design.sla.assign_hours', def: 4, unit: '영업시간', group: '디자인·파일', label: '디자이너 배정 기한' },
     { key: 'design.sla.first_draft_days', def: 2, unit: '영업일', group: '디자인·파일', label: '첫 시안 기한(멤버십 1일)' },
     { key: 'design.sla.revision_days', def: 1, unit: '영업일', group: '디자인·파일', label: '수정본 기한' },
+    { key: 'design.sla.template_first_draft_days', def: 1, unit: '영업일', group: '디자인·파일', label: '템플릿형 첫 시안 목표' },
+    { key: 'design.sla.senior_review_hours', def: 2, unit: '영업시간', group: '디자인·파일', label: '선임 검수 목표' },
     { key: 'design.no_response_remind_days', def: 3, unit: '일', group: '디자인·파일', label: '고객 무응답 리마인드' },
     { key: 'design.no_response_hold_days', def: 14, unit: '일', group: '디자인·파일', label: '고객 무응답 보류' },
     { key: 'design.no_response_cancel_days', def: 30, unit: '일', group: '디자인·파일', label: '고객 무응답 자동 취소' },
     { key: 'production.plate_keep_months', def: 24, unit: '개월', group: '디자인·파일', label: '판 보관 최소 기간(파트너는 늘리기만)', draft: true },
-    { key: 'production.print_check_bd', def: 1, unit: '영업일', group: '디자인·파일', label: '파트너 [인쇄 가능]·[반려] 기한(패키지가 전달된 때부터 — 내려받은 때가 아님, 다시 전달하거나 변경 제안을 거두면 새로 셈)' },
+    { key: 'production.print_check_bd', def: 1, unit: '영업일', group: '디자인·파일', label: '파트너 [인쇄 가능]·[반려] 기한(패키지가 전달된 때부터 — 내려받은 때가 아님, 다시 전달하거나 변경 제안을 거두거나 생산 보류·정지·판매 중지가 풀리면 새로 셈)' },
+    // 2026-10-17 S12 ⑫ 키 없는 정책값 정리(MVP 키 + 페이지 상수를 엔진으로)
+    { key: 'production.hold_reply_hours', def: 4, unit: '영업시간', group: '디자인·파일', label: '생산 보류 요청에 파트너가 답할 기한(판 제작 증빙)' },
+    { key: 'design.max_first_drafts', def: 2, unit: '안', group: '디자인·파일', label: '첫 시안 최대 개수' },
+    { key: 'design.own_file_review_days', def: 1, unit: '영업일', group: '디자인·파일', label: '자체 파일 검수 기한' },
+    { key: 'design.own_file_free_rechecks', def: 3, unit: '회', group: '디자인·파일', label: '자체 파일 무료 재검수' },
+    { key: 'design.no_response_extend_days', def: 30, unit: '일', group: '디자인·파일', label: '무응답 기한 1회 연장' },
+    { key: 'design.pins_per_version_max', def: 30, unit: '개', group: '디자인·파일', label: '시안 버전당 핀 최대' },
+    { key: 'design.room_violation_alert_designer', def: 3, unit: '회', group: '디자인·파일', label: '협의 룸 연락처·링크 위반 반복 알림(디자이너)' },
+    { key: 'design.room_violation_alert_customer', def: 5, unit: '회', group: '디자인·파일', label: '협의 룸 연락처·링크 위반 반복 알림(고객)' },
+    { key: 'design.room_link_allowlist', def: 'instagram.com · naver.me · map.naver.com · place.map.kakao.com', unit: '', text: true, group: '디자인·파일', label: '협의 룸에서 가리지 않는 링크 도메인' },
+    { key: 'design.reorder_free_fixes', def: 1, unit: '회', group: '디자인·파일', label: '[인쇄 가능] 뒤 수정 재주문의 무료 문구 수정' },
+    { key: 'design.designer_active_max', def: 15, unit: '건', group: '디자인·파일', label: '디자이너 한 사람의 동시 진행 상한' },
+    { key: 'design.file_retention', def: '마지막 주문 후 3년', unit: '', text: true, group: '디자인·파일', label: '확정 디자인 파일 보관 기간' },
     { key: 'file.scan_timeout_minutes', def: 10, unit: '분', group: '디자인·파일', label: '악성코드 검사 시간 초과(1회 재검사 뒤 격리)' },
     { key: 'file.max_size_chat', def: 100, unit: 'MB', group: '디자인·파일', label: '협의 룸·생산 협의 채널 첨부 한도' },
     { key: 'file.max_size_original', def: 500, unit: 'MB', group: '디자인·파일', label: '인쇄 원본·고객 자체 인쇄 파일·칼선 파일 한도' },
@@ -94,7 +150,11 @@
     { key: 'member.rejoin_block_days', def: 30, unit: '일', group: '회원·혜택·알림', label: '탈퇴 후 재가입 제한' },
     { key: 'member.biz_accounts_max', def: 3, unit: '개', group: '회원·혜택·알림', label: '사업자번호당 인증 가능 계정' },
     { key: 'member.biz_manual_bd', def: 1, unit: '영업일', group: '회원·혜택·알림', label: '사업자 인증 수동 검토 처리 목표(넘기면 운영팀 알림)' },
-    { key: 'member.biz_closed_grace_days', def: 30, unit: '일', group: '회원·혜택·알림', label: '폐업 확인 뒤 사업자 혜택 해제까지 유예' },
+    // 2026-10-17 S12 ⑫ 키 없는 정책값 정리(MVP 키 + 페이지 상수를 엔진으로)
+    { key: 'member.biz_verify_fail_max', def: 3, unit: '회', group: '회원·혜택·알림', label: '사업자 진위 확인 실패 → 서류 수동 심사 안내' },
+    { key: 'member.identity_daily_max', def: 5, unit: '회', group: '회원·혜택·알림', label: '본인인증 하루 최대(비용 한도)' },
+    { key: 'member.address_max', def: 20, unit: '개', group: '회원·혜택·알림', label: '배송지 저장 최대' },
+    { key: 'member.biz_closed_grace_days', def: 30, unit: '일', group: '회원·혜택·알림', label: '휴업·폐업 확인 뒤 사업자 혜택 해제까지 유예(휴업도 같음, 2026-10-17 D69)' },
     { key: 'member.web_keep_login_days', def: 30, unit: '일', group: '회원·혜택·알림', label: '웹 "로그인 유지" 기간' },
     { key: 'member.app_keep_login_days', def: 90, unit: '일', group: '회원·혜택·알림', label: '앱 자동 로그인 최대(마지막 사용부터)' },
     { key: 'membership.price_monthly', def: 9900, unit: '원', group: '회원·혜택·알림', label: '멤버십 월간 요금', phase: '2차' },
@@ -107,7 +167,10 @@
     { key: 'notify.ad_daily_max', def: 1, unit: '회', group: '회원·혜택·알림', label: '광고성 메시지 하루 최대' },
     { key: 'notify.ad_weekly_max', def: 3, unit: '회', group: '회원·혜택·알림', label: '광고성 메시지 주 최대' },
     { key: 'notify.ad_send_hours', def: '카카오가 정한 시간(확인 필요)', unit: '', text: true, group: '회원·혜택·알림', label: '카카오 브랜드 메시지 발송 가능 시간' },
-    { key: 'notify.room_digest_minutes', def: 10, unit: '분', group: '회원·혜택·알림', label: '협의 룸 알림톡 묶음 단위' },
+    { key: 'notify.room_digest_minutes', def: 10, unit: '분', group: '회원·혜택·알림', label: '협의 룸·생산 협의 채널 알림 묶음 단위(두 채널은 따로 셈)' },
+    // 광고·검색·앱 (2026-10-17 S12 ⑫)
+    { key: 'search.rank_weights', def: '관련도 · 최근 30일 판매량 · 전환율 · 신상품 가산 · 품절 감점(리뷰·출고 준수율은 MVP 0)', unit: '', text: true, group: '광고·검색·앱', label: '기본 정렬 가중치' },
+    { key: 'app.min_os', def: 'Android 8 / iOS 15', unit: '', text: true, group: '광고·검색·앱', label: '앱 지원 최저 OS' },
   ];
   const POLICY_BY_KEY = Object.fromEntries(POLICY.map((p) => [p.key, p]));
   const POLICY_STORE = 'gc.policy.v1';
@@ -143,6 +206,13 @@
       memOverrides = o; writeOverrides(o);
     },
     reset() { memOverrides = {}; writeOverrides({}); },
+    /** 법정 값(메타 legal: 'min' = 기본값보다 낮추면 고객에게 불리, 'max' = 늘리면 불리)을 불리한 쪽으로 바꾸려 하면 ok:false (A-SYS-03, 2026-10-17 S12) */
+    legalOk(key, value) {
+      const m = POLICY_BY_KEY[key];
+      if (!m || !m.legal || value == null || Number.isNaN(+value)) return { ok: true };
+      const bad = m.legal === 'min' ? +value < m.def : +value > m.def;
+      return { ok: !bad, dir: m.legal, bound: m.def };
+    },
     /* 테스트·예시 계산용: 기본값으로만 계산 */
     useDefaults() { memOverrides = {}; },
     /** 이 키를 바꿀 수 있는 권한 = A-SYS-01 권한 표의 어느 행을 따르나(A-SYS-03 '누가 바꾸나', 2026-10-16 D42) */
@@ -516,14 +586,32 @@
     const kids = list.filter((it) => it.addonOf && full.includes(it.addonOf) && !req.some((r) => r.id === it.id));
     return { cascade: kids.filter((k) => !shippedIds.includes(k.id)).map((k) => k.id), toReturn: kids.filter((k) => shippedIds.includes(k.id)).map((k) => k.id), partialParents };
   }
+  const endOfDay = (d) => { const x = new Date(d); return new Date(x.getFullYear(), x.getMonth(), x.getDate(), 23, 59, 59); };
   /** 출고 지연 판정 시각(P-ORD-03 · 2026-10-16 D58·D59): 약속 출고일(맞춤은 출고 예정일, 지연 안내·기각 때 받은 새 예정일이 있으면 그 날)
-   *  + order.overdue_grace_bd 영업일, 그날 끝. 출고일이 정해질 때 계산해 저장 */
-  function overdueAt(promisedAt) {
-    const d = addBusinessDays(promisedAt, Policy.get('order.overdue_grace_bd'));
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+   *  + order.overdue_grace_bd 영업일, 그날 끝. 출고일이 정해질 때 계산해 저장. bd를 주면 그 값으로(운영 설정 미리보기) */
+  function overdueAt(promisedAt, bd = Policy.get('order.overdue_grace_bd')) {
+    return endOfDay(addBusinessDays(promisedAt, bd));
   }
-  /** 송장이 없고 판정 시각을 넘겼으면 출고 지연 — 일반 상품·추가 구성품은 [바로 취소](무단 지연 기록), 맞춤 제작은 [취소 요청](DELAY_CANCEL) */
-  function isOverdue({ promisedAt, now, shipped = false }) { return !shipped && +new Date(now) > +overdueAt(promisedAt); }
+  /** 본사 일괄 공지 지연(지연 예외 기간 — A-ORD-01 · P-ORD-03, 2026-10-17 D72) 안이면 판정하지 않음 */
+  function inNotice(now, notice) { return !!notice && +new Date(now) >= +new Date(notice.start) && (!notice.end || +new Date(now) <= +new Date(notice.end)); }
+  /** 일괄 공지가 끝난 뒤 판정 시각: 판정 시각이 기간 안에 들었거나 끝나기 전에 이미 지났으면 끝난 날 + order.overdue_grace_bd 영업일의 끝(원래와 견줘 늦은 쪽).
+   *  공지 전에 이미 판정된 건(판정 시각 < 시작 — [바로 취소]·[취소 요청]이 열림)과 공지 뒤에 판정할 건은 그대로 */
+  function afterNotice({ judgeAt, notice, bd = Policy.get('order.overdue_grace_bd') }) {
+    if (!notice || !notice.end) return new Date(judgeAt);
+    const j = +new Date(judgeAt);
+    if (j < +new Date(notice.start) || j > +new Date(notice.end)) return new Date(judgeAt);
+    return new Date(Math.max(j, +endOfDay(addBusinessDays(notice.end, bd))));
+  }
+  /** 송장이 없고 판정 시각을 넘겼으면 출고 지연 — 일반 상품·추가 구성품은 [바로 취소](무단 지연 기록), 맞춤 제작은 [취소 요청](DELAY_CANCEL).
+   *  notice = { start, end }(본사 일괄 공지)를 주면 기간 안에는 판정하지 않고, 끝난 뒤는 afterNotice 시각으로. 발주 확인 전(PAID)도 같음(2026-10-17 ㉑) */
+  function isOverdue({ promisedAt, now, shipped = false, notice = null }) {
+    if (shipped || inNotice(now, notice)) return false;
+    return +new Date(now) > +afterNotice({ judgeAt: overdueAt(promisedAt), notice });
+  }
+  /** [인쇄 가능] 확인 기한(D-PRD-02 · 2026-10-16 D47 · 2026-10-17 D66·D67): 인쇄 패키지를 전달한 때(HANDED_OFF) + production.print_check_bd 영업일.
+   *  다시 전달한 것으로 보는 때(반려 수정·이전 확정본 복원 · 제작 파트너 변경 제안을 거둠 · 생산 보류가 철회·기각으로 풀림 · 정지·판매 중지가 풀림)에는
+   *  그 시각을 handedAt으로 넘겨 새로 셈. 생산 보류·정지 중에는 리마인드·지연 알림을 보내지 않음(호출하는 쪽) */
+  function printDue(handedAt, bd = Policy.get('production.print_check_bd')) { return addBusinessDays(handedAt, bd); }
   function designFeeText(d) {
     if (d.type !== 'CUSTOM') return '템플릿·자체 파일·재주문은 디자인비 없음';
     if (d.reason === 'threshold') return `맞춤 품목 ${won(d.basis)} → 무료(기준 ${won(Policy.get('design.free_threshold'))})`;
@@ -554,9 +642,13 @@
    * alreadyCanceled = { [id]: 이미 취소·반품한 수량 }, deduction = 공제액(디자인 단계 공제·판비 공제·고객 부담 반품 배송비)
    * mode = 'before_ship'(출고 전 취소: 남은 수량의 구간 단가가 바뀌면 막음 — 전체 취소 후 재주문 안내) | 'return'(반품: 막지 않음)
    * restoreDesignCoupon = 디자인비 쿠폰을 쓴 묶음이 모두 취소될 때 첫 시안 전이라 쿠폰을 돌려줄지(디자인 단계 규칙은 호출하는 쪽이 정함)
-   * → { blocked, reason?, last, refund, pointRefund, pgRefund, itemsRefund, designRefund, shipRefund, deduction, lines, couponsRestored, shortfall?, balance, remainingTotal }
+   * fault = 반품이 파트너 귀책인지(불량·오배송·표시와 다름·늦게 받음, 중재에서 파트너 귀책으로 뒤집힌 것 포함, 2026-10-17 D70)
+   * keptBefore = 앞선 취소·반품에서 돌려주지 않고 남긴 금액 합(앞선 결과의 kept를 더해 넘김) — 마지막 건의 잔액 정리에서 다시 돌려주지 않게
+   * 처음 낸 배송비(D70): 출고 전에 묶음을 모두 취소했을 때, 또는 묶음에 남는 항목이 없게 되는 반품이 파트너 귀책일 때만 돌려줌(앞선 반품 사유와 상관없이).
+   *   고객 사정 반품이면 돌려주지 않고 shipKept에 담음(파트너 몫 — 마지막 '클레임 완료' 정산 이벤트 +). 반품 순서와 상관없이 같은 금액
+   * → { blocked, reason?, last, refund, pointRefund, pgRefund, itemsRefund, designRefund, shipRefund, shipKept, shipKeptLines, kept, deduction, lines, couponsRestored, shortfall?, balance, remainingTotal }
    */
-  function partialCancel({ input, paid, refunded = { pg: 0, points: 0 }, cancel, cancelIds, alreadyCanceled = {}, deduction = 0, mode = 'before_ship', restoreDesignCoupon = false }) {
+  function partialCancel({ input, paid, refunded = { pg: 0, points: 0 }, cancel, cancelIds, alreadyCanceled = {}, deduction = 0, mode = 'before_ship', restoreDesignCoupon = false, fault = false, keptBefore = 0 }) {
     const original = calcOrder(input);
     const req = (cancel || (cancelIds || []).map((id) => ({ id }))).map((c) => (typeof c === 'string' ? { id: c } : c));
     const balPoints = paid.points - refunded.points;
@@ -577,22 +669,24 @@
       const paidAll = linePaid(l);
       const gone = Math.floor((paidAll * before(id)) / l.qty);
       const amount = all ? paidAll - gone : Math.floor((paidAll * q) / l.qty); // 끝전은 남는 항목에 — 마지막 수량 때 함께
-      lines.push({ id, qty: q, all, amount, designShare: all && before(id) === 0 ? designShare(original.designFees, id) : 0 });
+      lines.push({ id, qty: q, all, amount, designShare: all ? designShare(original.designFees, id) : 0 }); // 품목 디자인비 몫은 그 품목의 마지막 수량이 빠질 때
     });
     if (blockedBy.length) return { blocked: true, reason: 'TIER_CHANGE', blockedBy, balance, refund: 0, pointRefund: 0, pgRefund: 0, lines };
     const goneAfter = (id) => before(id) + (lines.find((x) => x.id === id && x.all) ? original.lines.find((x) => x.id === id).qty : 0);
     const fullyGone = (l) => goneAfter(l.id) >= l.qty;
     const fullyGoneBefore = (l) => before(l.id) >= l.qty;
     const remaining = original.lines.filter((l) => !fullyGone(l));
-    // 배송비: 다시 계산하지 않음. 출고 전에 배송 묶음의 항목이 모두 취소되면 낸 배송비를 돌려줌(반품 배송비는 C-PRICE-03)
-    let shipRefund = 0; const couponsRestored = [];
+    // 배송비: 다시 계산하지 않음. 묶음에 남는 항목이 없게 되면 — 출고 전 취소·파트너 귀책 반품은 낸 배송비를 돌려주고, 고객 사정 반품은 남김(D70. 반품 배송비는 C-PRICE-03)
+    let shipRefund = 0; const couponsRestored = []; const shipKeptLines = [];
     original.shippingLines.forEach((s) => {
       const gl = original.lines.filter((l) => l.shipKey === s.shipKey);
       if (gl.every(fullyGone) && !gl.every(fullyGoneBefore)) {
-        if (mode === 'before_ship') shipRefund += s.fee;
+        if (mode === 'before_ship' || fault) shipRefund += s.fee;
+        else if (s.fee > 0) shipKeptLines.push({ shipKey: s.shipKey, fee: s.fee });
         if (s.coupon > 0) couponsRestored.push({ kind: 'ship', shipKey: s.shipKey, name: (input.shipCoupons || {})[s.shipKey] ? input.shipCoupons[s.shipKey].name : '배송비 쿠폰' });
       }
     });
+    const shipKept = shipKeptLines.reduce((a, x) => a + x.fee, 0);
     // 쿠폰: 그 항목에만 걸린 쿠폰은 돌려주고, 여러 항목에 나눠 걸린 쿠폰은 걸린 항목이 모두 취소·반품될 때 돌려줌(최소 주문이 깨져도 회수 안 함)
     const covered = (pred) => original.lines.filter(pred);
     const hqCov = covered((l) => l.hqAlloc > 0);
@@ -608,11 +702,13 @@
     }
     const itemsRefund = lines.reduce((a, x) => a + x.amount, 0);
     const designRefund = lines.reduce((a, x) => a + x.designShare, 0);
-    const base = { blocked: false, balance, itemsRefund, designRefund, shipRefund, deduction, lines, couponsRestored };
-    if (remaining.length === 0) { // 남은 항목이 없는 마지막 취소: 계산 없이 잔액 전부
-      const refund = Math.max(0, balance - deduction);
-      const pgRefund = Math.max(0, balPg - deduction);
-      return { ...base, last: true, remainingTotal: 0, refund, pointRefund: refund - pgRefund, pgRefund };
+    const base = { blocked: false, balance, itemsRefund, designRefund, shipRefund, shipKept, shipKeptLines, kept: deduction + shipKept, deduction, lines, couponsRestored };
+    if (remaining.length === 0) { // 남은 항목이 없는 마지막 취소·반품: 끝전이 남지 않게 잔액으로 정리하되, 이번 공제·돌려주지 않는 처음 배송비·앞서 남긴 금액은 빼고(D70)
+      const withheld = deduction + shipKept + keptBefore;
+      const net = balance - withheld;
+      if (net < 0) return { ...base, last: true, refund: 0, pointRefund: 0, pgRefund: 0, shortfall: -net, remainingTotal: balance };
+      const pgRefund = Math.max(0, balPg - withheld);
+      return { ...base, last: true, remainingTotal: balance - net, refund: net, pointRefund: net - pgRefund, pgRefund };
     }
     const net = itemsRefund + designRefund + shipRefund - deduction;
     if (net < 0) return { ...base, last: false, refund: 0, pointRefund: 0, pgRefund: 0, shortfall: -net, remainingTotal: balance }; // 고객 부담 반품 배송비가 더 크면 모자란 만큼 추가 결제
@@ -621,9 +717,8 @@
     return { ...base, last: false, refund, pointRefund, pgRefund: refund - pointRefund, remainingTotal: balance - refund };
   }
   /** 환불 기한(C-PAY-02 · 2026-10-16 D57, 법률 자문 전 초안): 시작(반품은 회수 완료, 취소는 승인·확정) + claim.refund_due_bd 영업일, 그날 끝까지. 시작 때 계산해 저장 */
-  function refundDueAt(startAt) {
-    const d = addBusinessDays(startAt, Policy.get('claim.refund_due_bd'));
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59);
+  function refundDueAt(startAt, bd = Policy.get('claim.refund_due_bd')) {
+    return endOfDay(addBusinessDays(startAt, bd));
   }
   /** 지연배상금 = 환불액 × 연 이율 × 지연 일수 ÷ 365, 원 단위 내림. 지연 일수 = 기한 다음 날 ~ 환불을 마친 날(달력일) − 고객 사정으로 늦은 일수 */
   function refundDelayComp({ amount, dueAt, doneAt, excludeDays = 0, rate = Policy.get('claim.refund_delay_rate') }) {
@@ -785,9 +880,9 @@
   const CLAIM_OPEN_LABEL = { CANCEL: '취소 요청 중', CUSTOM_CANCEL: '취소 중재 중', DELAY_CANCEL: '취소 중재 중', RETURN: '반품 진행 중', EXCHANGE: '교환 진행 중', REMAKE: '재제작 진행 중' };
   /** 반품 사유와 귀책(C-STATE-02 · C-PRICE-03). '늦게 받음(출고 지연)'은 약속 출고일(지연 안내 때는 새 예정일)을 넘겨 출고된 일반 상품·추가 구성품만(2026-10-16 D58 ①, 법률 L-61 전 초안) */
   const RETURN_REASONS = [
-    { code: 'CHANGE_MIND', label: '단순 변심', fault: 'customer', days: 7 },
+    { code: 'CHANGE_MIND', label: '단순 변심', fault: 'customer', days: 7, legal: true }, // 받은 날부터 7일은 법정 값이라 키로 두지 않음
     { code: 'DEFECT', label: '불량·오배송·표시와 다름', fault: 'partner', photo: true },
-    { code: 'LATE', label: '늦게 받음(출고 지연)', fault: 'partner', days: 7, lateOnly: true },
+    { code: 'LATE', label: '늦게 받음(출고 지연)', fault: 'partner', get days() { return Policy.get('claim.late_return_days'); }, lateOnly: true }, // 2026-10-17 ㉒ 키
   ];
   /** 늦게 출고됐나: 송장 등록일이 약속 출고일(새 예정일)보다 뒤인 날 */
   function shippedLate({ promisedAt, shippedAt }) {
@@ -807,7 +902,7 @@
   /** 진행 단계 안내(라벨 옆에 붙이는 말): 상태 이름(회수 중·검수 중·교환·재제작품 출고 등). claimType을 주면 승인·출고를 유형 이름으로(교환 승인·재제작품 출고) */
   const CLAIM_STEP_BY_TYPE = {
     EXCHANGE: { RETURN_APPROVED: '교환 승인', EXCHANGE_SHIPPED: '교환품 출고' },
-    REMAKE: { RETURN_APPROVED: '재제작 승인', EXCHANGE_SHIPPED: '재제작품 출고' },
+    REMAKE: { RETURN_REQUESTED: '재제작 요청됨', RETURN_INSPECTING: '확정본 대조 검수 중', RETURN_APPROVED: '재제작 승인', RETURN_REJECTED: '판매자 거부', EXCHANGE_SHIPPED: '재제작품 출고' }, // design 페이지 상수를 옮김(2026-10-17)
   };
   function claimStep(machineId, state, claimType = null) {
     const byType = machineId === 'CLAIM_RETURN' && claimType && CLAIM_STEP_BY_TYPE[claimType];
@@ -1034,7 +1129,7 @@
       { from: 'PREFLIGHT_REJECTED', event: 'back_to_file', to: 'FILE_REJECTED', actor: 'design', label: '자체 파일은 고객 선택지 흐름으로' },
       { from: 'IN_PRODUCTION', event: 'ship', to: 'SHIPPED', actor: 'partner', label: '송장 등록' },
       { from: 'IN_PRODUCTION', event: 'delay_cancel_approved', to: 'CANCELED', actor: 'hq', label: '생산 지연 취소 중재 승인(공제 없이 전액 환불 · 인쇄물·판 폐기 · 연결 보장 자동 해제, 2026-10-16 D59). 요청 중에는 생산 보류 없이 ‘취소 중재 중’ 표시만' },
-      { from: 'SHIPPED', event: 'complete', to: 'COMPLETED', actor: 'system', label: '연결 항목이 모두 구매 확정(반품·분할 취소는 빼고, 재제작 EXCHANGED는 7일 뒤 확정으로 봄)' },
+      { from: 'SHIPPED', event: 'complete', to: 'COMPLETED', actor: 'system', label: '연결 항목이 모두 구매 확정(반품·분할 취소는 빼고, 재제작 EXCHANGED는 7일 뒤 확정으로 봄). 모두 반품·회수 환불로 빠지면(생산 지연 취소 요청 중 출고된 건의 승인 포함) 마지막 클레임이 끝날 때(2026-10-17)' },
       // 보류(고객 무응답, 예고 뒤 24시간 지나야 본 처리)
       { from: ['PROPOSED', 'FILE_REJECTED', 'IN_PROGRESS', 'REVISION'], event: 'hold', to: 'ON_HOLD', actor: 'system', label: '14일 무응답 보류(보류 전 상태 저장 · SLA 멈춤)' },
       { from: 'ON_HOLD', event: 'resume', to: '(보류 전 상태)', actor: 'customer', label: '고객 응답 또는 [진행 재개]' },
@@ -1105,7 +1200,7 @@
       { from: 'CANCEL_REQUESTED', event: 'mediation_dismiss', to: 'CLAIM_COMPLETED', actor: 'hq', label: '기각 → 바로 완료(CUSTOM_CANCEL·DELAY_CANCEL · 본사 중재 결과라 이의 제기 없음. DELAY_CANCEL은 출고 독촉·새 예정일 — 그 날도 넘기면 다시 요청 가능)', result: 'DISMISSED' },
       { from: 'CANCEL_REQUESTED', event: 'withdraw', to: 'CLAIM_COMPLETED', actor: 'customer', label: '고객이 요청 철회(중재 결과 전)', result: 'WITHDRAWN' },
       { from: 'CANCEL_APPROVED', event: 'refund', to: 'CLAIM_COMPLETED', actor: 'system', label: '환불 완료', result: 'REFUNDED' },
-      { from: 'CANCEL_APPROVED', event: 'collected_refund', to: 'CLAIM_COMPLETED', actor: 'system', label: '출고 뒤 취소 이의 인정 건: 플랫폼 회수 완료 뒤 파트너 검수 없이 환불(주문 항목 RETURNED, 2026-10-15 D23)', result: 'REFUNDED' },
+      { from: 'CANCEL_APPROVED', event: 'collected_refund', to: 'CLAIM_COMPLETED', actor: 'system', label: '출고 뒤 취소 이의 인정 건 · 생산 지연 취소 요청 중 출고된 건의 승인: 플랫폼 회수 완료 뒤 파트너 검수 없이 환불(주문 항목 RETURNED, 회수 배송비 파트너, 2026-10-15 D23 · 2026-10-17)', result: 'REFUNDED' },
       { from: 'CANCEL_REJECTED', event: 'mediation_customer', to: 'CANCEL_APPROVED', actor: 'hq', label: '이의 제기 → 본사 중재: 고객 주장 인정(최종)' },
       { from: 'CANCEL_REJECTED', event: 'mediation_partner', to: 'CLAIM_COMPLETED', actor: 'hq', label: '이의 제기 → 본사 중재: 파트너 거부 유지(최종)', result: 'REJECTED' },
       { from: 'CANCEL_REJECTED', event: 'no_objection', to: 'CLAIM_COMPLETED', actor: 'system', label: '3일 동안 이의 없음 → 거부 확정', result: 'REJECTED' },
@@ -1209,7 +1304,8 @@
     Policy, won, signedWon, num, floor10, fmtDate, fmtTime, DAY, HOUR, addBusinessDays, addBusinessHours, isBizDay, vatSplit,
     price: { tierPrice, nextTier, applyInstantUnit, allocate, couponDiscount, calcOrder, bizTiers, pickTiers, bizOptionExtra, bizErrors, bizInversion, BIZ_INVERSION_MSG, listPrice, plateInstantDisc, designCouponDiscount, optionExtraRange, priceChangeAlert, priceChangeCheck },
     refund: { partialCancel, designCancel, designStage, partnerChange, linePaid, designShare, dueAt: refundDueAt, delayComp: refundDelayComp },
-    order: { addonCascade, overdueAt, isOverdue },
+    order: { addonCascade, overdueAt, isOverdue, inNotice, afterNotice },
+    production: { printDue },
     settle: { finalRate, commission, confirmEvent, payout, CHARGE_NAME },
     claim: { canObject, defectDeadline, remakeSettlement, RESULT_LABEL: CLAIM_RESULT_LABEL, OPEN_LABEL: CLAIM_OPEN_LABEL, RETURN_REASONS, shippedLate, result: claimResult, label: claimLabel, step: claimStep },
     notice: { elapsed: noticeElapsed },

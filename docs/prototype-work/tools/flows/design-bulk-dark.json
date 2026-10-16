@@ -1,0 +1,155 @@
+[
+{
+"act": "toMethod"
+},
+{
+"act": "toRequest"
+},
+{
+"check": "rights"
+},
+{
+"check": "stage"
+},
+{
+"check": "own"
+},
+{
+"act": "toCheckout"
+},
+{
+"check": "co_stage"
+},
+{
+"check": "co_plate"
+},
+{
+"act": "pay",
+"after": 500
+},
+{
+"role": "design"
+},
+{
+"act": "assign"
+},
+{
+"act": "startWork"
+},
+{
+"act": "propose",
+"after": 500
+},
+{
+"role": "customer"
+},
+{
+"act": "cs",
+"attr": "data-to=\"proposal\""
+},
+{
+"act": "cs",
+"attr": "data-to=\"approve\""
+},
+{
+"check": "ap_typo"
+},
+{
+"check": "ap_contact"
+},
+{
+"check": "ap_color"
+},
+{
+"check": "ap_qty"
+},
+{
+"check": "ap_nocancel"
+},
+{
+"act": "doApprove",
+"after": 600
+},
+{
+"role": "design"
+},
+{
+"act": "handOff"
+},
+{
+"role": "partner"
+},
+{
+"act": "download"
+},
+{
+"act": "printable"
+},
+{
+"role": "system"
+},
+{
+"act": "bulkNotice"
+},
+{
+"adv": "604800000"
+},
+{
+"adv": "604800000"
+},
+{
+"role": "system",
+"shot": "dbk-d01-system-bulk"
+},
+{
+"role": "customer"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .note')].find(c=>/택배 파업/.test(c.innerText));if(!c)return 'none';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ')})()",
+"after": 200,
+"shot": "dbk-d02-customer-bulk"
+},
+{
+"role": "system"
+},
+{
+"act": "bulkNotice"
+},
+{
+"role": "partner",
+"shot": "dbk-d03-partner-new-judge"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+},
+{
+"adv": "86400000"
+},
+{
+"role": "customer"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .note')].find(c=>/일괄 공지가 끝났어요/.test(c.innerText));if(!c)return 'none';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ').slice(0,400)})()",
+"after": 200
+},
+{
+"adv": "86400000"
+},
+{
+"role": "customer"
+},
+{
+"eval": "(()=>{const c=[...document.querySelectorAll('#gc-device .app-card')].find(c=>/늦어지고/.test(c.innerText));if(!c)return 'no card';c.scrollIntoView({block:'center'});return c.innerText.replace(/\\s+/g,' ')})()",
+"after": 200,
+"shot": "dbk-d04-customer-overdue"
+},
+{
+"eval": "[...document.querySelectorAll('#gc-log li')].map(l=>l.innerText.replace(/\\s+/g,' ')).filter(t=>/BULK_DELAY|일괄 공지|생산 지연:/.test(t)).reverse().join(' || ')"
+},
+{
+"eval": "[...document.querySelectorAll('.chip.is-now,.chip.is-branch-now')].map(c=>c.title).join(' | ')"
+},
+{
+"eval": "document.querySelector('#gc-turn').innerText.replace(/\\s+/g,' ')"
+}
+]

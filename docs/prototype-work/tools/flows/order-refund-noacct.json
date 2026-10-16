@@ -1,0 +1,23 @@
+[
+ {"click":"#ord-scn [data-scn=\"inspect\"]","after":400},
+ {"click":"#ord-scn [data-acct=\"none\"]","after":400},
+ {"eval":"(()=>{ const b=document.querySelector('#ord-scn [data-acct=\"none\"]'); if(b.getAttribute('aria-pressed')!=='true') throw new Error('환불 계좌 없음 옵션이 안 눌림'); const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,6).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('환불 계좌가 없어요')) throw new Error('옵션 기록 없음: '+log); return log; })()"},
+ {"role":"partner"},{"act":"rejectReturn","after":400},
+ {"role":"customer"},{"act":"objection"},
+ {"adv":"86400000"},{"adv":"86400000"},{"adv":"86400000"},
+ {"role":"hq"},
+ {"eval":"(()=>{ const t=document.querySelector('#gc-device .panel .kv').innerText.split(String.fromCharCode(10)).join(' | '); if(!t.includes('계좌 입력을 요청')) throw new Error('중재 화면에 계좌 없음 갈래 안내 없음: '+t); return t; })()"},
+ {"act":"mediate","attr":"data-r=\"customer\"","after":400},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,16).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); ['47,207원','NOTI_REFUND_ACCOUNT_REQUIRED','지연배상금 19원 확정','중재 판정'].forEach((k)=>{ if(!log.includes(k)) throw new Error(k+' 기록 없음: '+log); }); if(log.includes('NOTI_REFUND_DELAY_PAID')) throw new Error('계좌가 없는데 송금됨'); return log; })()"},
+ {"role":"customer","shot":"order-104-noacct-customer"},
+ {"eval":"(()=>{ if(!document.querySelector('#gc-device [data-act=\"regAcct\"]')) throw new Error('[환불 계좌 등록] 없음'); const t=document.querySelector('#gc-device').innerText.split(String.fromCharCode(10)).join(' '); if(!t.includes('지연배상금 19원')) throw new Error('지연배상금 19원 안내 없음'); return 'ok'; })()"},
+ {"adv":"604800000"},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,12).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('다시 알림')||!log.includes('지연배상금 송금 대기')) throw new Error('7일 뒤 다시 알림·송금 대기 없음: '+log); return log; })()"},
+ {"role":"hq","shot":"order-105-noacct-monitor"},
+ {"eval":"(()=>{ const p=Array.from(document.querySelectorAll('#gc-device .panel')).find(x=>x.querySelector('h2').textContent==='모니터링'); if(!p||!p.innerText.includes('지연배상금 송금 대기')) throw new Error('모니터링에 지연배상금 송금 대기 없음'); return p.innerText.split(String.fromCharCode(10)).join(' ').split(String.fromCharCode(9)).join(' '); })()"},
+ {"role":"customer"},
+ {"act":"regAcct","after":600},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,8).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('NOTI_REFUND_DELAY_PAID')||!log.includes('지연배상금 19원 송금')) throw new Error('계좌 등록 뒤 19원 송금 없음(금액은 그대로): '+log); if(document.querySelector('#gc-device [data-act=\"regAcct\"]')) throw new Error('송금 뒤에도 계좌 등록 버튼이 남음'); return log; })()"},
+ {"role":"partner"},
+ {"eval":"(()=>{ const t=Array.from(document.querySelectorAll('#gc-device .panel')).pop().innerText.split(String.fromCharCode(10)).join(' ').split(String.fromCharCode(9)).join(' '); if(!t.includes('중재 판정')||!t.includes('−19원')) throw new Error('파트너 정산에 중재 판정 −19원 없음: '+t); return t; })()"}
+]

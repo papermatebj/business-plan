@@ -1,0 +1,21 @@
+[
+ {"click":"#ord-scn [data-scn=\"retall\"]","after":400},
+ {"act":"openReturn","attr":"data-id=\"napkin\""},
+ {"act":"sheetReason","attr":"data-r=\"defect\""},
+ {"act":"sheetQty","attr":"data-set=\"1\""},
+ {"act":"photo"},
+ {"wait":100,"shot":"order-115-narrow-retall-split1","el":"#gc-device"},
+ {"act":"doReturn","after":400},
+ {"role":"partner"},{"act":"pickup"},{"role":"system"},{"act":"collected"},{"role":"partner"},{"act":"approveReturn","after":400},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,10).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('환불 30,000원')) throw new Error('첫 반품 30,000원 아님: '+log); return log; })()"},
+ {"role":"customer"},
+ {"act":"openReturn","attr":"data-id=\"napkin\""},
+ {"act":"sheetReason","attr":"data-r=\"defect\""},
+ {"act":"photo"},
+ {"eval":"(()=>{ const amt=document.querySelector('#gc-device .refund-big').textContent; if(amt!=='34,000원') throw new Error('마지막 반품 기대 34,000원(처음 배송비 포함): '+amt); const c=document.querySelector('#gc-device .calc-line').innerText.split(String.fromCharCode(10)).join(' | '); if(!c.includes('돌려받는 배송비 4,000원')) throw new Error('돌려받는 배송비 줄 없음: '+c); return c; })()"},
+ {"wait":100,"shot":"order-116-narrow-retall-split2","el":"#gc-device"},
+ {"act":"doReturn","after":400},
+ {"role":"partner"},{"act":"pickup"},{"role":"system"},{"act":"collected"},{"role":"partner"},{"act":"approveReturn","after":400},
+ {"eval":"(()=>{ const log=Array.from(document.querySelectorAll('#gc-log li')).slice(0,10).map(l=>l.innerText.split(String.fromCharCode(10)).join(' ')).join(' // '); if(!log.includes('환불 34,000원')) throw new Error('마지막 반품 34,000원 아님: '+log); const t=document.querySelector('#gc-turn .turn-done, #gc-turn .turn-what').textContent; if(!t.includes('64,000원')) throw new Error('환불 누적 64,000원 아님: '+t); return [t, log]; })()"},
+ {"role":"hq","shot":"order-117-narrow-retall-hq","full":true}
+]

@@ -86,30 +86,57 @@
   /* 반품 사유와 귀책(엔진 GC.claim.RETURN_REASONS · C-STATE-02): 화면 키 change·defect·late */
   const RKEY = { CHANGE_MIND: 'change', DEFECT: 'defect', LATE: 'late' };
   const REASON = Object.fromEntries(GC.claim.RETURN_REASONS.map((r) => [RKEY[r.code], r]));
-  const LATE_REASON = REASON.late;
 
-  /* ── 엔진 정책값 목록에 아직 없는 값: 이 페이지 안 상수(점선 표시) ── */
+  /* ── 정책값: 장바구니 보관·주문서 유지·발주 확인 리마인드·운영팀 알림·회수 접수·중재 목표·'늦게 받음' 기한은
+     2026-10-17 S12 ⑫·㉑·㉒로 엔진 키가 생겨 GC.Policy.get / UI.pv로 읽음(order.cart_keep_days · order.checkout_hold_minutes ·
+     order.accept_remind_bd · order.accept_alert_bd · claim.pickup_register_bd · claim.mediation_bd · claim.late_return_days) ── */
+  const lateDays = () => P('claim.late_return_days'); // = GC.claim.RETURN_REASONS LATE의 days
+  const lateTxt = () => pv('claim.late_return_days', `받은 날부터 ${lateDays()}일`);
+  /* ── 법정 값: 정책값 키로 두지 않음(고객에게 불리하게 바꿀 수 없음 · S12 ⑫). 엔진 RETURN_REASONS CHANGE_MIND의 legal ── */
+  const LEGAL = {
+    changeMind: { v: REASON.change.days, t: `받은 날부터 ${REASON.change.days}일`, label: '단순 변심 반품 기한(전자상거래법 청약철회, U-MY-03)' },
+    defect: { t: '받은 날부터 3개월 · 안 날부터 30일', label: '불량·표시와 다름 반품 기한(전자상거래법, U-MY-03)' },
+  };
+  const lg = (k) => `<span title="법정 값 · ${esc(LEGAL[k].label)} — 고객에게 불리하게 바꿀 수 없어 관리자 설정값이 아니에요">${LEGAL[k].t}</span>`;
+  /* ── 2차 기능 값(정책값, 2차에 키): 이 페이지 안 상수(점선 표시) ── */
   const LOCAL = {
-    cartKeepDays: { v: 90, t: '90일', label: '회원 장바구니 보관 (U-ORD-01)' },
-    checkoutHoldMin: { v: 30, t: '30분', label: '주문서·임시 주문 유지 (U-ORD-02 · C-PAY-01)' },
-    acceptRemindBd: { v: 1, t: '영업일 1일', label: '발주 확인 리마인드 (P-ORD-01)' },
-    acceptAlertBd: { v: 2, t: '영업일 2일', label: '발주 확인 미처리 운영팀 알림 (P-ORD-01)' },
-    pickupBd: { v: 2, t: '영업일 2일', label: '회수 미접수 시 자동 회수 접수 · claim.pickup_register_bd (C-STATE-02)' },
-    changeMindDays: { v: 7, t: '받은 날부터 7일', label: '단순 변심 반품 기한 (U-MY-03)' },
-    defectLimit: { v: 0, t: '3개월 · 안 날부터 30일', label: '불량 반품 기한 (U-MY-03)' },
-    pointMin: { v: 1000, t: '1,000P 이상 · 10P 단위', label: '포인트 사용 조건 (U-ORD-02, 2차)' },
-    mediationBd: { v: 5, t: '영업일 5일', label: '중재 판정 목표 기한 (A-ORD-02)' },
-    /* 늦게 받음(출고 지연) 반품 기한: 엔진 GC.claim.RETURN_REASONS의 days(정책값 키는 없음 · D58 ①) */
-    lateDays: { v: LATE_REASON.days, t: `받은 날부터 ${LATE_REASON.days}일`, label: '늦게 받음(출고 지연) 반품 기한 (U-MY-03 · C-STATE-02 · D58, 법률 L-61 전 초안)' },
+    pointMin: { t: '1,000P 이상 · 10P 단위', label: '포인트 사용 조건 (U-ORD-02, 2차 기능이라 키는 2차에)' },
+    /* 명세 문장에만 있는 기간(따로 키 없음) — 2026-10-17 D71 · S12 맞춤 ⑳ */
+    rbRemind: { v: 3, t: '기한 3일 전', label: '거부 수량 [되돌려 받기]·[폐기] 기한 전 다시 알림 (P-ORD-05 · D71 — claim.return_back_pay_days 설명 안의 값)' },
+    acctRemind: { v: 7, t: '7일', label: '지연배상금 환불 계좌 입력 요청 뒤 다시 알림 · 모니터링 송금 대기 (C-PAY-02 · A-ORD-01 · S12 맞춤 ⑳)' },
   };
   const lv = (k) => `<span class="pv" title="관리자 설정값(임시 기본값) · ${esc(LOCAL[k].label)} — 엔진 정책값 목록에 아직 없어 이 페이지 안 상수로 둠">${LOCAL[k].t}</span>`;
   const tv = (text, label) => `<span class="pv" title="파트너 배송비 템플릿 값(임시) · ${esc(label)} — 파트너가 상품 등록 때 정함(P-PRD-04)">${text}</span>`;
 
+  /* ── 알림 채널: C-NOTI-01 표 그대로(2026-10-17 맞춤 ⑩ — 이메일 칸의 조건 없는 ○가 없어짐). 이메일 ● 행만 이메일을 넣고,
+     조건 ○(NOTI_CLAIM_UPDATED '거부·환불 완료 때')는 조건이 맞을 때만(nt의 mail). 앱 푸시 ○는 앱 설치·알림 권한이 있을 때 ── */
+  const KT = '알림톡', SMS = 'SMS 대체', PU = '앱 푸시', EM = '이메일', NC = '알림센터', ANC = '관리자 알림센터', SL = 'Slack';
+  const CUST5 = [KT, SMS, PU, EM, NC], CUST4 = [KT, SMS, PU, NC], PT4 = [KT, SMS, EM, NC], PT3 = [KT, SMS, NC];
+  const CH = {
+    NOTI_ORDER_PAID: CUST5, NOTI_VBANK_ISSUED: CUST5, NOTI_VBANK_DUE_SOON: CUST4, NOTI_VBANK_DEPOSITED: CUST4, NOTI_VBANK_EXPIRED: CUST5,
+    NOTI_ITEM_STOCKOUT_CANCELED: CUST5, NOTI_ITEM_PARTNER_CHANGE_PROPOSED: CUST5, NOTI_ITEM_PARTNER_CHANGED: CUST5, NOTI_ITEM_PARTNER_CHANGE_REFUNDED: CUST5,
+    NOTI_SHIPPED: CUST4, NOTI_SHIP_OVERDUE: CUST4, NOTI_BULK_DELAY_NOTICE: CUST4, NOTI_DELIVERED: [PU, NC], NOTI_CONFIRM_DUE: [PU, NC],
+    NOTI_CLAIM_UPDATED: CUST4, NOTI_RETURN_BACK_DUE: CUST5, NOTI_CLAIM_WITHDRAWN: CUST4, NOTI_OBJECTION_RECEIVED: CUST5, NOTI_MEDIATION_DECIDED: CUST5,
+    NOTI_REFUND_ACCOUNT_REQUIRED: CUST5, NOTI_REFUND_DELAY_PAID: CUST5,
+    NOTI_PARTNER_ORDER_NEW: PT4, NOTI_PARTNER_ACCEPT_LATE: PT3, NOTI_PARTNER_SHIP_OVERDUE: PT3, NOTI_PARTNER_ITEM_CANCELED: PT3, NOTI_PARTNER_BULK_DELAY_NOTICE: PT3,
+    NOTI_PARTNER_CLAIM_NEW: PT4, NOTI_PARTNER_CLAIM_DUE: PT3, NOTI_PARTNER_RETURN_BACK: PT3, NOTI_PARTNER_CLAIM_AUTO_APPROVED: PT4,
+    NOTI_PARTNER_OBJECTION_RECEIVED: PT4, NOTI_PARTNER_MEDIATION_DECIDED: PT4, NOTI_PARTNER_PACKAGE_HANDED_OFF: PT4,
+    NOTI_INT_MEDIATION_NEW: [ANC, SL], NOTI_INT_REFUND_DUE: [EM, ANC, SL], NOTI_INT_REFUND_OVER: [EM, ANC, SL],
+  };
+  const MAIL_IF = { NOTI_CLAIM_UPDATED: '거부·환불 완료 때' };
+  /** 알림(채널은 위 표에서). mail = 조건부 이메일의 조건이 맞음(예: NOTI_CLAIM_UPDATED 거부·환불 완료) */
+  function nt(code, to, text, mail = false) {
+    const ch = [...(CH[code] || [KT, NC])];
+    if (mail && MAIL_IF[code] && !ch.includes(EM)) ch.splice(ch.indexOf(NC), 0, EM);
+    app.notify(code, to, ch, text);
+  }
+
   /* ── 시나리오 데이터 (C-PRICE-01 · C-PRICE-03 예시) ── */
   const STORE = { name: '오늘밥상 강남점', who: '정○○', addr: '서울 강남구 테헤란로 ○○, 1층', time: '평일 10:00~15:00', unload: '1층 매장 앞 하차 · 계단 없음' };
+  /* retFee = 반품 배송비(편도) · exFee = 교환 배송비(왕복, 무료배송으로 받은 묶음을 단순 변심으로 모두 반품할 때도 이 금액 — C-PRICE-03) — 파트너 배송비 템플릿 값 */
   const PARTNERS = {
-    A: { name: '대성포장', from: '경기 파주 출고', lead: 1, ship: { name: '대성포장', type: 'conditional', base: 4000, freeOver: 200000 }, retFee: 4000 },
-    B: { name: '한빛컵', from: '경기 김포 출고', lead: 2, ship: { name: '한빛컵', type: 'perQty', base: 3000, per: 10 }, retFee: 3000 },
+    A: { name: '대성포장', from: '경기 파주 출고', lead: 1, ship: { name: '대성포장', type: 'conditional', base: 4000, freeOver: 200000 }, retFee: 4000, exFee: 8000 },
+    B: { name: '한빛컵', from: '경기 김포 출고', lead: 2, ship: { name: '한빛컵', type: 'perQty', base: 3000, per: 10 }, retFee: 3000, exFee: 6000 },
   };
   /* pick = 추가 구성품(P-PRD-02 · D24): 정해진 가격 × 수량, 파트너 할인 없음, 본 상품(addonOf)과 같은 배송 묶음. '추가 구성품' 예시에서만 장바구니에 있음 */
   const PROD = {
@@ -148,8 +175,9 @@
   const SCN = {
     base: { t: '기본 주문', tag: '명세서 예시', d: '장바구니부터 · 카드·가상계좌 결제, 부분 취소(낸 금액 그대로 · 구간 단가가 바뀌면 막힘), 반품, 취소 거부 이의 제기(출고 뒤 인정되면 회수 뒤 환불)' },
     addon: { t: '추가 구성품', d: '상품 상세에서 수저집에 이쑤시개를 붙여 담은 장바구니부터 · 구성품만 따로 취소, 본 상품을 취소하면 출고 전 구성품도 함께 취소' },
-    late: { t: '안내 없는 출고 지연', d: '대성포장이 발주 확인만 하고 송장 없이 약속 출고일을 넘긴 주문부터 · 시계를 넘기면 출고 지연 표시·알림(무단 지연 기록), 고객 [바로 취소] · 늦게 출고되면 반품 사유 ‘늦게 받음’' },
-    inspect: { t: '반품 검수 · 환불 지연', d: '단순 변심으로 돌려보낸 냅킨 2박스가 판매자에게 도착한 뒤부터 · [일부 승인](멀쩡한 수량만 환불, 사용한 수량은 되돌려 보냄) · 거부가 중재에서 뒤집혀 환불 기한을 넘기면 지연배상금' },
+    late: { t: '안내 없는 출고 지연', d: '대성포장이 발주 확인만 하고 송장 없이 약속 출고일을 넘긴 주문부터 · 시계를 넘기면 출고 지연 표시·알림(무단 지연 기록), 고객 [바로 취소] · 늦게 출고되면 반품 사유 ‘늦게 받음’ · 본사 일괄 공지(택배 파업) 중에는 판정하지 않고 끝나면 하루 유예' },
+    inspect: { t: '반품 검수 · 환불 지연', d: '단순 변심으로 돌려보낸 냅킨 2박스가 판매자에게 도착한 뒤부터 · [일부 승인](멀쩡한 수량만 환불) → 거부가 확정되면 거부 수량 [되돌려 받기](배송비 결제)·[폐기] · 거부가 중재에서 뒤집혀 환불 기한을 넘기면 지연배상금(환불 계좌가 없으면 입력 요청 뒤 송금)' },
+    retall: { t: '묶음 전부 반품 · 처음 배송비', draft: true, d: '냅킨 2박스(60,000원 + 배송비 4,000원)만 산 주문을 받은 뒤부터 · 판매자 잘못이면 처음 배송비까지 64,000원, 단순 변심이면 56,000원(처음 배송비는 판매자 몫) · 나눠 반품해도 같은 금액' },
     pc_lo: { t: '제작 판매자 변경 · 더 싼 상품', d: '디자인 확정된 맞춤 주문(이쑤시개 구성품 포함)에 본사가 다른 판매자 상품을 제안한 뒤부터 · 상품 + 판비 합계가 낮아 동의하면 차액 환불, 답이 없으면 전액 환불' },
     pc_mid: { t: '제작 판매자 변경 · 상품만 싼 상품', d: '상품 대금은 싸지만 새 판비가 더 비싸 합계가 높음 · 상품 + 판비 합계로 비교해 차액 환불 없음, 더 받지도 않음' },
     pc_hi: { t: '제작 판매자 변경 · 더 비싼 상품', d: '같은 제안인데 새 상품이 더 비쌈 · 동의해도 더 받지 않고, 새 판매자는 새 금액 기준으로 정산(차이는 플랫폼 부담 할인)' },
@@ -206,8 +234,10 @@
   const subNo = (pid) => `${ORDER_NO}-${pid === 'A' ? '01' : '02'}`;
   const VBANK = { bank: '국민은행', acct: '940-2026-1012-0521', holder: '식업(토스페이먼츠)' };
   const CLOSED = ['CANCELED', 'RETURNED'];
-  /* 고객이 등록해 둔 환불 계좌(S-33 · 설명용 예시). 카드 환불은 승인 금액을 넘을 수 없어 지연배상금은 이 계좌로 따로 보냄(C-PAY-02 · D57) */
+  /* 고객이 등록해 둔 환불 계좌(S-33 · 설명용 예시). 카드 환불은 승인 금액을 넘을 수 없어 지연배상금은 이 계좌로 따로 보냄(C-PAY-02 · D57).
+     ‘반품 검수 · 환불 지연’ 장면에서는 계좌가 없는 갈래를 고를 수 있음(S12 맞춤 ⑳: 금액은 PG 취소 성공일로 정하고, 계좌를 넣으면 송금) */
   const REFUND_ACCT = { bank: '신한은행', no: '110-***-***456', holder: '정○○' };
+  let acctNone = false; // 시작 장면 옵션(‘반품 검수 · 환불 지연’에서만)
   const DRAFT = '<span class="tag tag-phase">법률 자문 전 초안</span>';
 
   /* 취소 클레임은 엔진 CLAIM_CANCEL(C-STATE-02, claim_type CANCEL)을 씀. 이의 제기는 상태가 아니라 '이의 제기됨' 표시(U-MY-01 · D8) */
@@ -216,7 +246,7 @@
     domain: 'order',
     title: '주문·결제·클레임',
     lede: '사장님은 여러 판매자 상품을 한 번에 결제하고, 결제가 끝나면 판매자별 주문으로 나뉘어 파트너가 각자 발주 확인·출고합니다. 취소·반품은 그 상품에 낸 금액(결제 스냅샷의 줄 결제 금액)을 그대로 돌려주고, 남은 상품은 다시 계산하지 않아요.',
-    meta: '근거: 기능 명세서 U-ORD-01~05 · U-MY-01~03 · U-PDP-07(주문 시점 상세 설명) · P-PRD-02(추가 구성품) · P-ORD-01~05(출고 지연 P-ORD-03) · C-PRICE-01~03 · C-PAY-01·02 · C-STATE-01~03 · C-STL-01 · C-NOTI-01 · A-ORD-01(제작 파트너 변경·모니터링) · A-ORD-02 · 디자인 요청서 S-20~S-26 · 결정 D53·D56·D57·D58(2026-10-16)',
+    meta: '근거: 기능 명세서 U-ORD-01~05 · U-MY-01~03 · U-PDP-07(주문 시점 상세 설명) · P-PRD-02(추가 구성품) · P-ORD-01~05(출고 지연 P-ORD-03) · C-PRICE-01~03 · C-PAY-01·02 · C-STATE-01~03 · C-STL-01 · C-NOTI-01 · A-ORD-01(제작 파트너 변경·모니터링) · A-ORD-02 · 디자인 요청서 S-20~S-26 · 결정 D53·D56·D57·D58(2026-10-16) · D70·D71·D72(2026-10-17)',
     actors: [
       { id: 'customer', title: '장바구니' },
       { id: 'partner', nav: ['주문', '클레임', '상품', '정산'], navOn: '주문', url: 'partner.sikup.co.kr/orders' },
@@ -250,17 +280,19 @@
       cs: 'cart', cart,
       ph2: true, hqKey: null, pay: 'card', proof: 'tax', memo: '', flags: {},
       order: null, recs: [], seq: 1, sheet: null, creq: null, ret: null, pv: 'A', fired: {}, csState: null,
+      acct: scenario === 'inspect' && acctNone ? null : REFUND_ACCT,
     });
     app.strips.order.main = MAIN_CARD.slice();
     if (scenario === 'addon') app.log('user', `상품 상세에서 담은 상태로 시작: ${esc(PROD.spoon.name)} 10박스 + 추가 구성품 ${esc(PROD.pick.name)} ${PROD.pick.qty}봉 (고르는 화면은 상품 페이지 catalog.html)`);
     if (scenario === 'late') initLate();
     if (scenario === 'inspect') initInspect();
+    if (scenario === 'retall') initRetall();
     syncStrip(); guide();
   }
   /** 결제 스냅샷과 주문 항목 만들기(결제 · 시작 장면 공용). 스냅샷 = 주문서 입력에서 항목만 뺀 것, 항목 수량은 origQty로 따로 둠 */
   function makeOrder(input, r, { at, vb = false, proof = 'card', memo = '' }) {
     const s = S(); const snap = { ...input }; delete snap.items;
-    const o = s.order = { at, paidAt: vb ? null : at, method: vb ? 'vbank' : 'card', proof, memo, snap, calc: r, paid: { pg: r.totals.pay, points: r.totals.points }, refunded: { pg: 0, points: 0 }, refunds: [], ship: {}, restored: {}, medEv: [], comps: [], overdue: {}, origQty: {}, vbDue: vb ? new Date(at.getTime() + P('payment.vbank_due_days') * DAY) : null };
+    const o = s.order = { at, paidAt: vb ? null : at, method: vb ? 'vbank' : 'card', proof, memo, snap, calc: r, paid: { pg: r.totals.pay, points: r.totals.points }, refunded: { pg: 0, points: 0 }, refunds: [], ship: {}, restored: {}, medEv: [], comps: [], overdue: {}, origQty: {}, kept: 0, claimEv: [], notice: null, compWait: null, vbDue: vb ? new Date(at.getTime() + P('payment.vbank_due_days') * DAY) : null };
     r.lines.forEach((l) => { o.origQty[l.id] = l.qty; });
     s.recs = r.lines.map((l) => ({ id: l.id, base: l.id, qty: l.qty, st: vb ? 'PAYMENT_PENDING' : 'PAID', pid: l.partnerId }));
     return o;
@@ -290,11 +322,24 @@
     s.recs.forEach((r) => { r.st = 'DELIVERED'; r.deliveredAt = new Date(2026, 9, 5, 13, 0); });
     recById('spoon').st = 'CONFIRMED';
     const collectedAt = new Date(2026, 9, 9, 16, 0);
-    s.ret = { recId: 'napkin', qty: 2, reason: 'change', fault: 'customer', photo: 0, method: 'pickup', at: new Date(2026, 9, 7, 10, 0), pickupDue: GC.addBusinessDays(new Date(2026, 9, 7, 10, 0), LOCAL.pickupBd.v), shipDue: null, objection: false, done: null,
-      collectedAt, inspectDue: GC.addBusinessDays(collectedAt, P('claim.inspect_bd')), refundDue: GC.refund.dueAt(collectedAt), back: 'send' };
+    s.ret = { recId: 'napkin', qty: 2, reason: 'change', fault: 'customer', photo: 0, method: 'pickup', at: new Date(2026, 9, 7, 10, 0), pickupDue: GC.addBusinessDays(new Date(2026, 9, 7, 10, 0), P('claim.pickup_register_bd')), shipDue: null, objection: false, done: null,
+      collectedAt, inspectDue: GC.addBusinessDays(collectedAt, P('claim.inspect_bd')), refundDue: GC.refund.dueAt(collectedAt) };
     showStrip('claim'); app.setState('claim', 'RETURN_INSPECTING', { log: false });
     app.log('state', `반품 클레임: 반품 신청(10/07 · 단순 변심) → 회수 중 → <b>검수 중</b> <span class="faint">(10/09 16:00 ${PARTNERS.A.name} 도착 확인)</span>`);
     app.log('rule', `회수 완료 때 기한을 계산해 저장: 검수 ${fmtDate(s.ret.inspectDue)}까지(claim.inspect_bd) · 환불 ${fmtDate(s.ret.refundDue)}까지(claim.refund_due_bd, 법률 자문 전 초안). 수저집은 10/06 구매 확정`);
+    if (!s.acct) app.log('rule', '시작 장면 옵션: 고객 환불 계좌가 없어요(카드 결제라 환불은 카드로 되지만, 지연배상금은 계좌로 보내야 해요 · S12 맞춤 ⑳)');
+  }
+  /* 묶음 전부 반품 · 처음 배송비(D70 · C-PAY-02 예시): 대성포장 냅킨 2박스만 산 주문(60,000원 + 배송비 4,000원 · 쿠폰 없음) · 10/07 결제 → 10/09 배송 완료.
+     판매자 잘못(불량·오배송·늦게 받음)으로 묶음을 모두 반품하면 처음 배송비까지(나눠 반품했으면 마지막에), 단순 변심이면 처음 배송비는 판매자 몫 */
+  function initRetall() {
+    const s = S(); const at = new Date(2026, 9, 7, 10, 0);
+    Object.assign(s.cart, { spoon: { on: false, qty: 10 }, napkin: { on: true, qty: 2 }, cup: { on: false, qty: 25 } }); s.ph2 = false;
+    const input = { items: [itemOf('napkin', 2)], shipping: shippingTpl() }; const r = GC.price.calcOrder(input);
+    makeOrder(input, r, { at }); s.cs = 'detail';
+    s.order.ship.A = { carrier: 'CJ대한통운', no: '6890-2222-0707', at: new Date(2026, 9, 8, 15, 0), late: false };
+    s.recs.forEach((x) => { x.st = 'DELIVERED'; x.deliveredAt = new Date(2026, 9, 9, 14, 0); });
+    app.log('money', `${fmtDate(at)} 카드 승인 ${won(r.totals.pay)} = ${esc(PROD.napkin.name)} 2박스 ${won(r.totals.gross)} + 배송비 ${won(r.totals.shipping)}(${PARTNERS.A.name} · ${won(PARTNERS.A.ship.freeOver)} 미만) · 쿠폰 없음`);
+    app.log('state', `주문 항목: 결제 완료 → 발주 확인 → 배송 중 → <b>배송 완료</b> <span class="faint">(10/09 14:00 받음 · 냅킨이 이 판매자 묶음의 유일한 상품)</span>`);
   }
   /* 제작 판매자 변경: 파트너 관리(partner.html)에서 계약 종료 → 운영 제안까지 끝난 상태로 시작 */
   function initPc() {
@@ -314,7 +359,7 @@
     app.setState('order', 'PAID', { log: false }); app.setState('citem', 'DESIGN_CONFIRMED', { log: false }); app.setState('design', 'HANDED_OFF', { log: false });
     app.log('rule', `파트너 관리(partner.html)에서 ${PC.old.name}를 계약 종료 처리하면서, 본사가 [인쇄 가능] 전 맞춤 항목을 같은 사양의 ${esc(c.name)} 상품으로 옮기자고 제안한 상태로 시작해요. 맞춤 항목에 붙은 ${esc(eun(`${PC.addon.name} ${PC.addon.qty}${PC.addon.u}`))} ${PC.old.name} 상품이라 어느 쪽을 골라도 취소·환불돼요`);
     app.log('rule', `붙은 ${esc(eun(PC.addon.short))} 따로 [발주 확인]이 없고 본 맞춤 항목 [인쇄 가능] 때 시스템이 함께 발주 확인해요(parent_printable · 리마인드·약속 출고일도 본 항목을 따름). 지금은 그 전이라 결제 완료 상태 — 고객이 바로 취소할 수 있어요(D49)`);
-    app.notify('NOTI_ITEM_PARTNER_CHANGE_PROPOSED', '고객', ['알림톡', '푸시', '이메일'], `제작 판매자 변경 제안 · ${fmtDate(due)}까지 [변경 동의] 또는 [전액 환불]`);
+    nt('NOTI_ITEM_PARTNER_CHANGE_PROPOSED', '고객', `제작 판매자 변경 제안 · ${fmtDate(due)}까지 [변경 동의] 또는 [전액 환불]`);
     guide();
   }
 
@@ -324,9 +369,12 @@
   document.querySelector('.page-head').insertAdjacentElement('afterend', scnBox);
   function paintScn() {
     scnBox.innerHTML = `<div class="panel-b scn"><div class="scn-h"><b>시작 장면</b><span>어느 예시로 볼지 골라요. 고르면 그 예시로 처음부터 다시 시작해요.</span></div>
-      <div class="scn-cards">${Object.entries(SCN).map(([id, x]) => `<button class="scn-card" data-scn="${id}" aria-pressed="${scenario === id}"><span class="scn-t">${x.t}${x.tag ? ` <span class="tag tag-kraft">${x.tag}</span>` : ''}<span class="tag tag-spot scn-on">보는 중</span></span><span>${x.d}</span></button>`).join('')}</div></div>`;
+      <div class="scn-cards">${Object.entries(SCN).map(([id, x]) => `<button class="scn-card" data-scn="${id}" aria-pressed="${scenario === id}"><span class="scn-t">${x.t}${x.tag ? ` <span class="tag tag-kraft">${x.tag}</span>` : ''}${x.draft ? ' <span class="tag tag-phase">법률 자문 전 초안</span>' : ''}<span class="tag tag-spot scn-on">보는 중</span></span><span>${x.d}</span></button>`).join('')}</div>
+      ${scenario === 'inspect' ? `<div class="scn-h"><b>장면 옵션</b><span>고객 환불 계좌(지연배상금을 받을 곳)</span><span class="seg" role="group" aria-label="환불 계좌"><button data-acct="has" aria-pressed="${!acctNone}">등록돼 있음</button><button data-acct="none" aria-pressed="${acctNone}">없음</button></span><span class="xsmall faint">바꾸면 이 장면을 처음부터 다시 시작해요</span></div>` : ''}</div>`;
   }
   scnBox.addEventListener('click', (e) => {
+    const a = e.target.closest('[data-acct]');
+    if (a) { acctNone = a.dataset.acct === 'none'; app.reset(); return; }
     const b = e.target.closest('[data-scn]'); if (!b || !SCN[b.dataset.scn]) return;
     scenario = b.dataset.scn; app.reset();
   });
@@ -380,11 +428,13 @@
   function goneQty() { const o = S().order; const m = {}; Object.keys(o.origQty).forEach((b) => { const g = o.origQty[b] - activeQty(b); if (g > 0) m[b] = g; }); return m; }
   /** cancel = { base: 수량 } — 본 상품과 함께 취소되는 추가 구성품도 같이 넣음.
    *  mode: before_ship(출고 전 — 남은 수량의 구간 단가가 바뀌면 막음, 배송 묶음 전부 취소면 배송비 환불) | return(반품 — 막지 않음)
-   *  deduction = 고객 부담 반품 배송비(환불액보다 크면 refund 0 + shortfall 추가 결제) */
-  function refundCalc(cancel, mode = 'before_ship', deduction = 0) {
+   *  deduction = 고객 부담 반품 배송비(환불액보다 크면 refund 0 + shortfall 추가 결제)
+   *  fault = 반품이 파트너 귀책(불량·오배송·늦게 받음 · 출고 뒤 취소 이의 인정)인지 — 묶음에 남는 항목이 없게 되면 처음 낸 배송비를 돌려줌(D70)
+   *  keptBefore = 앞선 취소·반품에서 돌려주지 않고 남긴 금액(결과 kept의 누적, 주문 기록 o.kept) — 마지막 건의 잔액 정리에서 다시 돌려주지 않게(D70) */
+  function refundCalc(cancel, mode = 'before_ship', deduction = 0, fault = false) {
     const o = S().order;
     const list = Object.entries(cancel).filter(([, q]) => q > 0).map(([id, qty]) => ({ id, qty }));
-    return GC.refund.partialCancel({ input: snapInput(), paid: o.paid, refunded: o.refunded, cancel: list, alreadyCanceled: goneQty(), deduction, mode });
+    return GC.refund.partialCancel({ input: snapInput(), paid: o.paid, refunded: o.refunded, cancel: list, alreadyCanceled: goneQty(), deduction, mode, fault, keptBefore: o.kept || 0 });
   }
   /** 본 상품을 이 수량만큼 취소하면 같이 가는 추가 구성품(GC.order.addonCascade · C-STATE-01 · 2026-10-16 D39).
    *  엔진이 본 상품의 남은 수량(qty − canceledQty)과 취소 수량을 비교: 일부만 취소하면 그대로(partialParents),
@@ -413,17 +463,26 @@
     return [...k.recs, ...k.ret];
   }
   const inCreq = (rec) => { const c = S().creq; return !!(c && creqOpen() && (c.recId === rec.id || creqKids().includes(rec))); };
-  /** 취소 인정(회수) 건의 환불: 본 상품 + 같은 상자로 간 붙은 구성품에 낸 금액(D53 · 회수 배송비는 판매자 부담이라 공제 없음) */
-  function wonRefund(rec) { const casc = cascadeOf(rec.base, rec.qty); return { casc, kids: [...casc.ret, ...casc.recs], x: refundCalc(cancelMap(rec.base, rec.qty, casc, true), 'return') }; }
+  /** 취소 인정(회수) 건의 환불: 본 상품 + 같은 상자로 간 붙은 구성품에 낸 금액(D53 · 회수 배송비는 판매자 부담이라 공제 없음).
+   *  요청 뒤에 보낸 판매자 귀책이라 fault — 이 회수로 묶음이 비면 처음 낸 배송비도 돌려줌(출고 전 전부 취소와 같게, D70 판단) */
+  function wonRefund(rec) { const casc = cascadeOf(rec.base, rec.qty); return { casc, kids: [...casc.ret, ...casc.recs], x: refundCalc(cancelMap(rec.base, rec.qty, casc, true), 'return', 0, true) }; }
   /** 고객이 실제로 낸 몫(결제 스냅샷의 줄 결제 금액을 수량 비율로, 원 단위 내림) */
   function paidShare(base, qty) { const o = S().order; const l = o.calc.lines.find((x) => x.id === base); return Math.floor((GC.refund.linePaid(l) * qty) / o.origQty[base]); }
   /** 판매자 품절 취소: 일반 취소와 같은 '낸 금액 그대로'(D53). 판매자 사정이라 구간 단가가 바뀌는 수량이어도 막지 않음 */
-  function faultRefund(map) { const r = refundCalc(map, 'before_ship'); return r.blocked ? refundCalc(map, 'return') : r; }
-  /** 반품 환불 = 반품한(승인된) 수량에 낸 금액 − 고객 부담 반품 배송비(단순 변심만, 한 클레임에 한 번). 불량·늦게 받음은 판매자 부담 */
+  function faultRefund(map) { const r = refundCalc(map, 'before_ship'); return r.blocked ? refundCalc(map, 'return', 0, true) : r; }
+  /** 이 반품으로 판매자 배송 묶음에 남는 항목이 없게 되는지(구매 확정된 항목도 남은 것으로 셈 — D70) */
+  const bundleEmptied = (pid, qty) => S().recs.filter((r) => r.pid === pid && isActive(r)).reduce((a, r) => a + r.qty, 0) - qty <= 0;
+  /** 반품 환불 = 반품한(승인된) 수량에 낸 금액 − 고객 부담 반품 배송비(단순 변심만, 한 클레임에 한 번). 불량·늦게 받음은 판매자 부담.
+   *  D70: 파트너 귀책이면 fault로 넘겨, 묶음에 남는 항목이 없게 되는 반품이면 처음 낸 배송비를 돌려줌(나눠 반품했으면 마지막 건에서).
+   *  고객 사정이면 처음 배송비는 돌려주지 않음(shipKept — 판매자 몫, 마지막 ‘클레임 완료’ 정산 이벤트 +).
+   *  무료배송으로 받은 묶음(템플릿 기본 배송비 0원)을 변심으로 모두 반품하면 반품 배송비는 왕복(교환 배송비, C-PRICE-03) */
   function returnRefund(base, qty, fault, pid, feeTaken = false) {
-    const fee = PARTNERS[pid].retFee;
-    const r = refundCalc({ [base]: qty }, 'return', fault === 'customer' && !feeTaken ? fee : 0);
-    return { ...r, fee, feeBy: fault === 'customer' ? 'customer' : 'partner' };
+    const pa = PARTNERS[pid]; const pf = fault === 'partner';
+    const sl = S().order.calc.shippingLines.find((x) => x.shipKey === `${pid}-일반`);
+    const round = !pf && !feeTaken && !!sl && sl.base === 0 && bundleEmptied(pid, qty);
+    const fee = round ? pa.exFee : pa.retFee;
+    const r = refundCalc({ [base]: qty }, 'return', !pf && !feeTaken ? fee : 0, pf);
+    return { ...r, fee, round, feeBy: pf ? 'partner' : 'customer' };
   }
   /** 환불 예정 금액 설명(U-MY-02 · S-26): 취소 상품에 낸 금액 + (묶음 전부 출고 전 취소면) 배송비 − 공제 = 환불액 */
   function lineTxt(l) {
@@ -434,15 +493,18 @@
     if (l.all) return `남은 ${esc(nm)}에 낸 금액 ${won(l.amount)} <span class="faint">(줄 결제 금액 ${won(paidAll)} − 먼저 돌려준 몫 · 끝전 포함)</span>`;
     return `${esc(nm)}에 낸 금액 ${won(l.amount)} <span class="faint">(줄 결제 금액 ${won(paidAll)} × ${l.qty}/${L.qty} · 원 단위 내림)</span>`;
   }
-  function refundText(r) {
+  /** ret = 반품(받은 뒤). 처음 낸 배송비(D70): 출고 전 묶음 전부 취소 · 판매자 잘못으로 묶음 전부 반품이면 ‘돌려받는 배송비’ 줄, 고객 사정이면 ‘돌려드리지 않아요’ 줄 */
+  function refundText(r, ret = false) {
     const rows = r.lines.map(lineTxt);
     if (r.shipRefund) {
       const sl = S().order.calc.shippingLines.find((x) => x.fee === r.shipRefund && x.coupon > 0);
-      rows.push(`+ 배송 묶음을 출고 전에 모두 취소해 낸 배송비 ${won(r.shipRefund)}${sl ? ` <span class="faint">(${GC.num(sl.base + sl.region)} − 배송비 쿠폰 ${GC.num(sl.coupon)})</span>` : ''}`);
+      const why = ret ? '판매자 잘못으로 이 판매자 묶음을 모두 반품해 처음 낸 배송비' : '배송 묶음을 출고 전에 모두 취소해 낸 배송비';
+      rows.push(`+ 돌려받는 배송비 ${won(r.shipRefund)} <span class="faint">(${why}${sl ? ` · ${GC.num(sl.base + sl.region)} − 배송비 쿠폰 ${GC.num(sl.coupon)}` : ''})</span>`);
     }
-    if (r.deduction) rows.push(`− 반품 배송비(편도) ${won(r.deduction)} 고객 부담`);
+    if (r.shipKept) rows.push(`처음 낸 배송비 ${won(r.shipKept)}은 돌려드리지 않아요(단순 변심 · 판매자 몫) ${DRAFT}`);
+    if (r.deduction) rows.push(`− 반품 배송비(${r.round ? '왕복 · 무료배송으로 받은 묶음을 모두 반품' : '편도'}) ${won(r.deduction)} 고객 부담`);
     if (r.shortfall) rows.push(`반품 배송비가 환불액보다 커서 환불 <b>0원</b> · 모자란 ${won(r.shortfall)}은 추가 결제해요`);
-    else if (r.last) rows.push(`남은 상품이 없어 결제 잔액 전부 <b>${won(r.refund)}</b>을 돌려드려요(마지막 취소는 잔액 전부${r.deduction ? ' − 반품 배송비' : ''})`);
+    else if (r.last) rows.push(`남은 상품이 없어 결제 잔액으로 정리해 <b>${won(r.refund)}</b>을 돌려드려요${r.kept || (S().order.kept || 0) ? '(돌려드리지 않는 배송비와 앞서 뺀 반품 배송비는 빼고)' : '(끝전까지)'}`);
     else rows.push(`환불 <b>${won(r.refund)}</b> · 남은 상품은 다시 계산하지 않아요(구간 단가·쿠폰 최소 주문·무료배송 기준 그대로)`);
     return rows.join('<br>');
   }
@@ -457,17 +519,32 @@
     const o = S().order; list.forEach(([k]) => { o.restored[k] = true; });
     app.log('rule', `쿠폰 되돌림: ${list.map((x) => esc(x[1])).join(' · ')} — 유효기간이 남았으면 쿠폰함으로`);
   }
+  /** 돌려주지 않고 남긴 금액을 주문 기록에 쌓음(D70 keptBefore — 결과 kept의 누적, 추가 결제로 넘어간 몫은 빼고).
+   *  고객 부담 반품 배송비와 돌려주지 않은 처음 배송비는 판매자 몫 → ‘클레임 완료’ 정산 이벤트(+, P-STL-01) */
+  function noteKept(x) {
+    const o = S().order; if (!o || !x || x.blocked) return;
+    if (!o.claimEv) o.claimEv = [];
+    o.kept = (o.kept || 0) + (x.shortfall ? Math.max(0, x.deduction - x.shortfall) : (x.deduction || 0)) + (x.shipKept || 0);
+    const lp = x.lines && x.lines[0] && PROD[x.lines[0].id] ? PROD[x.lines[0].id].partner : null;
+    if (x.deduction && lp) o.claimEv.push({ pid: lp, amt: x.deduction, why: '반품 배송비 고객 부담분' });
+    (x.shipKeptLines || []).forEach((l) => {
+      const pid = l.shipKey.split('-')[0];
+      o.claimEv.push({ pid, amt: l.fee, why: '돌려주지 않은 처음 배송비(고객 사정으로 묶음을 모두 반품)' });
+      app.log('money', `처음 낸 배송비 ${won(l.fee)}은 돌려주지 않아요(고객 사정으로 ${esc(PARTNERS[pid].name)} 묶음을 모두 반품) → 판매자 몫 · 묶음이 반품으로 끝나 구매 확정 이벤트가 없으니 정산 ‘클레임 완료’ 이벤트(+)에 붙여요(C-STL-01 · D70, 법률 자문 전 초안)`);
+    });
+  }
   function refundApply(x, label, silent, noti = true) {
     const o = S().order;
     if (silent) app.log('ext', `토스페이먼츠 · 결제 부분 취소(자동 처리) ${won(x.refund)}`);
     o.refunded.pg += x.pgRefund; o.refunded.points += x.pointRefund;
     o.refunds.push({ at: app.clock.now(), total: x.refund, pg: x.pgRefund, points: x.pointRefund, label });
+    noteKept(x);
     const b = bal();
     app.log('money', `환불 ${won(x.refund)} = ${x.pointRefund ? `포인트 ${GC.num(x.pointRefund)}P + ` : ''}${mName()} ${won(x.pgRefund)} · ${esc(label)} · 남은 잔액 ${won(b.pg + b.points)}${b.points ? ` (${GC.num(b.points)}P + ${won(b.pg)})` : ''}`);
-    if (noti) app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], `환불 ${won(x.refund)} 진행`);
+    if (noti) nt('NOTI_CLAIM_UPDATED', '고객', `환불 ${won(x.refund)} 완료`, true);
   }
   async function payRefund(x, label, extra = [], noti = true) {
-    if (!x.refund) { app.log('money', `0원 환불 · ${esc(label)}`); return; }
+    if (!x.refund) { noteKept(x); app.log('money', `0원 환불 · ${esc(label)}`); return; }
     const vb = S().order.method === 'vbank';
     await app.ext({ service: '토스페이먼츠', what: '결제 부분 취소(환불)', lines: [
       `환불 ${won(x.refund)} = ${x.pointRefund ? `포인트 ${GC.num(x.pointRefund)}P + ` : ''}${mName()} ${won(x.pgRefund)}`,
@@ -480,23 +557,37 @@
   /** 환불 지연배상금(C-PAY-02 · 2026-10-16 D57, 법률 자문 전 초안): 기한(시작 때 저장)을 넘겨 환불했으면 = 환불액 × 연 이율 × 지연 일수 ÷ 365, 원 단위 내림.
    *  카드 환불은 승인 금액을 넘을 수 없어 환불과 따로 고객 환불 계좌로 송금. 늦게 만든 쪽이 부담: 판매자 거부가 중재에서 뒤집힘 → 판매자('중재 판정' 정산 이벤트 −), 그 밖 → 본사 */
   async function payDelayComp({ amount, dueAt, doneAt, pid, burden, label }) {
-    const o = S().order; const excludeDays = 0; // 고객 사정(환불 계좌 입력 요청 ~ 등록)은 계좌 환불일 때만 생김 — 카드 환불이라 0일
+    const s = S(); const o = s.order; const excludeDays = 0; // 고객 사정(환불 계좌 입력 요청 ~ 등록)은 계좌 환불일 때만 생김 — 카드 환불이라 0일
     const c = GC.refund.delayComp({ amount, dueAt, doneAt, excludeDays });
     if (!c.comp) return null;
-    await app.ext({ service: '토스페이먼츠 지급대행 · 쿠콘', what: '환불 지연배상금 송금(환불 계좌)', lines: [
-      `환불 기한 ${fmtDate(dueAt)}을 넘겨 ${fmtDate(doneAt, false)}에 환불했어요 · 지연 ${c.days}일(기한 다음 날부터 환불을 마친 날까지 달력일 − 고객 사정 ${excludeDays}일)`,
-      `지연배상금 = 환불액 ${won(amount)} × 연 ${c.rate}% × ${c.days}일 ÷ 365 = ${won(c.comp)}(원 단위 내림)`,
-      `${o.method === 'vbank' ? '계좌 환불이라 환불과 같은 계좌로 함께 보내요' : '카드 환불은 승인 금액을 넘을 수 없어 환불과 따로 보내요'} · ${REFUND_ACCT.bank} ${REFUND_ACCT.no} ${REFUND_ACCT.holder} · 예금주 확인 건당 50원`,
-      '송금 요청 키(환불 건 ID + 회차)를 먼저 저장하고 그 키로 요청해요(다시 보내도 한 번만 처리 · 돈이 나가는 호출 규칙)'],
-      result: '송금이 성공한 것으로 처리해요' });
-    o.comps.push({ at: now(), amt: c.comp, days: c.days, pid, burden, label });
-    app.log('money', `지연배상금 ${won(c.comp)} 송금(${c.days}일 × 연 ${c.rate}%) · ${esc(label)} · ${burden === 'partner' ? `${esc(PARTNERS[pid].name)} 부담 — 거부가 중재에서 뒤집혀 늦어짐` : '본사 부담 — PG·시스템·본사 처리 지연'}`);
-    app.notify('NOTI_REFUND_DELAY_PAID', '고객', ['알림톡', '푸시', '이메일'], `환불 지연배상금 ${won(c.comp)} · ${REFUND_ACCT.bank} 환불 계좌로 송금`);
+    const w = { amt: c.comp, days: c.days, rate: c.rate, pid, burden, label };
+    /* S12 맞춤 ⑳: 카드 환불은 PG 취소가 성공한 날로 지연 일수를 끝내 금액을 정함. 환불 계좌가 없으면 입력을 요청하고 등록되는 대로 보냄(기다리는 동안 더 붙이지 않음) */
+    const wait = o.method !== 'vbank' && !s.acct;
+    if (wait) {
+      o.compWait = { ...w, at: now(), remindAt: new Date(now().getTime() + LOCAL.acctRemind.v * DAY), reminded: false };
+      app.log('money', `지연배상금 ${won(c.comp)} 확정(${c.days}일 × 연 ${c.rate}% · 카드 환불이라 PG 취소가 성공한 ${fmtDate(doneAt, false)}로 일수를 끝냄) · ${compWho(w)} · 고객 환불 계좌가 없어 송금 대기`);
+      nt('NOTI_REFUND_ACCOUNT_REQUIRED', '고객', `환불 지연배상금 ${won(c.comp)}을 보내 드릴 환불 계좌를 등록해 주세요(계좌 인증 뒤 바로 송금 · 기다리는 동안 금액은 그대로)`);
+      app.log('rule', `계좌를 기다리는 동안 지연배상금은 더 붙이지 않아요(고객 사정 기간을 빼는 것은 계좌이체·가상계좌처럼 환불 자체가 계좌를 기다릴 때만) · ${LOCAL.acctRemind.v}일 안에 넣지 않으면 한 번 더 알리고 본사 모니터링 ‘지연배상금 송금 대기’(A-ORD-01 · S12 맞춤 ⑳, 소액 송금 생략 여부는 법률 L-21)`);
+    } else {
+      await sendComp(w, [`환불 기한 ${fmtDate(dueAt)}을 넘겨 ${fmtDate(doneAt, false)}에 환불했어요 · 지연 ${c.days}일(기한 다음 날부터 환불을 마친 날까지 달력일 − 고객 사정 ${excludeDays}일)`, `지연배상금 = 환불액 ${won(amount)} × 연 ${c.rate}% × ${c.days}일 ÷ 365 = ${won(c.comp)}(원 단위 내림)`]);
+    }
     if (burden === 'partner') {
       o.medEv.push({ pid, amt: c.comp, why: '환불 지연배상금' });
       app.log('money', `정산 이벤트 ‘중재 판정’ −${won(c.comp)} · ${esc(PARTNERS[pid].name)} · 수수료 없음 · 정산액이 모자라면 미수금(분쟁 조정)으로(C-STL-01)`);
     }
-    return c;
+    return wait ? { ...c, wait: true } : c;
+  }
+  const compWho = (w) => `${esc(w.label)} · ${w.burden === 'partner' ? `${esc(PARTNERS[w.pid].name)} 부담 — 거부가 중재에서 뒤집혀 늦어짐` : '본사 부담 — PG·시스템·본사 처리 지연'}`;
+  /** 지연배상금 송금(돈이 나가는 호출 — 요청 키 먼저 저장). 카드 환불은 승인 금액을 넘을 수 없어 환불과 따로 고객 환불 계좌로 */
+  async function sendComp(w, head = []) {
+    const s = S(); const o = s.order; const acct = s.acct || REFUND_ACCT;
+    await app.ext({ service: '토스페이먼츠 지급대행 · 쿠콘', what: '환불 지연배상금 송금(환불 계좌)', lines: [...head,
+      `${o.method === 'vbank' ? '계좌 환불이라 환불과 같은 계좌로 함께 보내요' : '카드 환불은 승인 금액을 넘을 수 없어 환불과 따로 보내요'} · ${acct.bank} ${acct.no} ${acct.holder} · 예금주 확인 건당 50원`,
+      '송금 요청 키(환불 건 ID + 회차)를 먼저 저장하고 그 키로 요청해요(다시 보내도 한 번만 처리 · 돈이 나가는 호출 규칙)'],
+      result: '송금이 성공한 것으로 처리해요' });
+    o.comps.push({ at: now(), amt: w.amt, days: w.days, pid: w.pid, burden: w.burden, label: w.label });
+    app.log('money', `지연배상금 ${won(w.amt)} 송금(${w.days}일 × 연 ${w.rate}%) · ${compWho(w)}`);
+    nt('NOTI_REFUND_DELAY_PAID', '고객', `환불 지연배상금 ${won(w.amt)} · ${acct.bank} 환불 계좌로 송금`);
   }
 
   /* ── 상태 이동 ── */
@@ -546,11 +637,20 @@
   const canObj = (claimType, state, rejAt, objected) => !objected && GC.claim.canObject({ claimType, state, rejectedAt: rejAt, now: app.clock.now() });
   function showStrip(id, main) { const st = app.strips[id]; st.hidden = false; st.current = null; st.lastMainIdx = null; if (main) st.main = main; }
   const promiseDate = (pid) => GC.addBusinessDays(S().order.paidAt, PARTNERS[pid].lead);
-  /** 출고 지연(D58 · P-ORD-03): 시스템이 판정해 둔 판매자 묶음이고 아직 송장이 없음 → 고객 [바로 취소] 열림(송장 등록 전까지) */
+  /** 출고 지연(D58 · P-ORD-03): 시스템이 판정해 둔 판매자 묶음이고 아직 송장이 없음 */
   const overdueOpen = (pid) => { const o = S().order; return !!(o && o.overdue && o.overdue[pid] && !o.ship[pid]); };
-  const isOverdueRec = (rec) => rec.st === 'ACCEPTED' && overdueOpen(rec.pid);
-  /** 반품 사유 ‘늦게 받음(출고 지연)’: 약속 출고일을 넘겨 출고된 항목만, 배송 완료 뒤(구매 확정 전) 받은 날부터 7일 안(D58 ①) */
-  const lateOk = (rec) => { const sh = S().order.ship[rec.pid]; const days = rec.deliveredAt ? (app.clock.now() - rec.deliveredAt) / DAY : 0; return !!(sh && sh.late) && rec.st === 'DELIVERED' && days < LOCAL.lateDays.v; };
+  /** ‘출고 지연’ 표시: 발주 확인 전(PAID)도 판정 시각을 넘기면 무단 지연(S12 맞춤 ㉑) */
+  const isOverdueRec = (rec) => ['PAID', 'ACCEPTED'].includes(rec.st) && overdueOpen(rec.pid);
+  /** [바로 취소](ORDER delay_cancel)는 발주 확인 뒤(ACCEPTED)만 — 발주 확인 전은 고객 취소가 원래 즉시라 따로 열지 않음(㉑) */
+  const delayCancelOk = (rec) => rec.st === 'ACCEPTED' && overdueOpen(rec.pid);
+  /** 본사 일괄 공지(지연 예외 기간, A-ORD-01 · D72) 진행 중: 출고 지연 판정을 하지 않음 */
+  const noticeOn = () => { const o = S().order; return !!(o && o.notice && GC.order.inNotice(now(), o.notice)); };
+  /** 출고 지연 판정 시각 = 약속 출고일 + order.overdue_grace_bd 영업일 끝. 일괄 공지가 끝났으면 GC.order.afterNotice(기간 안에 든 판정만 끝난 날 + 1영업일 끝, D72) */
+  const judgeAt = (pid) => { const o = S().order; const j = GC.order.overdueAt(promiseDate(pid)); return o.notice && o.notice.end ? GC.order.afterNotice({ judgeAt: j, notice: o.notice }) : j; };
+  /** 반품 사유 ‘늦게 받음(출고 지연)’: 약속 출고일을 넘겨 출고된 항목만, 배송 완료 뒤(구매 확정 전) 받은 날부터 claim.late_return_days 안(D58 ① · ㉒) */
+  const lateOk = (rec) => { const sh = S().order.ship[rec.pid]; const days = rec.deliveredAt ? (app.clock.now() - rec.deliveredAt) / DAY : 0; return !!(sh && sh.late) && rec.st === 'DELIVERED' && days < lateDays(); };
+  /** 거부가 확정된 반품 수량의 되돌려 보내기·폐기가 아직 끝나지 않음(D71) */
+  const rbOpen = () => { const r = S().ret; return !!(r && r.rb && !r.rb.shippedAt && !r.rb.disposedAt); };
   /** 반품 환불을 지금 하면 붙을 지연배상금(미리보기, D57) */
   function retDelayPreview(r) {
     if (!r || !r.refundDue) return null;
@@ -571,7 +671,7 @@
         return app.turn('customer', '할인·결제 수단·증빙을 확인하고 동의한 뒤 결제하세요', {
           hint: addon ? '이쑤시개는 수저집 줄 아래에 붙어 있고 금액은 상품 금액에 들어가지만, 판매자 할인(즉시 할인 10%)은 수저집에만 걸려요. 본사 상품 할인 쿠폰은 이쑤시개에도 나눠 걸려요.'
             : '“2차 기능 포함”을 끄면 MVP 금액, 켜면 2차 금액이에요. 종이컵을 뺐다면 144,000원 / 134,000원으로 명세서 C-PRICE-01 예시와 같아요.',
-          rules: [{ k: '금액 표시 순서', v: '계산 순서 그대로 6단계' }, { k: '본사 쿠폰', v: '상품 할인 1장 · 디자인비 1장 · 배송비 묶음당 1장' }, { k: '주문서 유지', v: lv('checkoutHoldMin') }, { k: '가격 보장', v: '결제 요청 시점' }, { k: '가상계좌 입금 기한', policy: 'payment.vbank_due_days' }, { k: '무료배송 쿠폰 장당 최대', policy: 'membership.free_ship_max' }, { k: '무료배송 쿠폰 최소 주문', policy: 'membership.free_ship_min_order' }],
+          rules: [{ k: '금액 표시 순서', v: '계산 순서 그대로 6단계' }, { k: '본사 쿠폰', v: '상품 할인 1장 · 디자인비 1장 · 배송비 묶음당 1장' }, { k: '주문서 유지', policy: 'order.checkout_hold_minutes' }, { k: '가격 보장', v: '결제 요청 시점' }, { k: '가상계좌 입금 기한', policy: 'payment.vbank_due_days' }, { k: '무료배송 쿠폰 장당 최대', policy: 'membership.free_ship_max' }, { k: '무료배송 쿠폰 최소 주문', policy: 'membership.free_ship_min_order' }],
         });
       }
       if (addon) {
@@ -582,26 +682,27 @@
       }
       return app.turn('customer', s.cart.cup.on ? '가격이 오른 종이컵은 체크를 풀고 [주문하기]를 누르세요' : '장바구니를 확인하고 [주문하기]를 누르세요', {
         hint: '종이컵을 빼면 명세서 예시 주문(대성포장 수저집 10박스 + 냅킨 2박스)이 돼요. 넣은 채로 주문해도 끝까지 진행되고, 파트너 화면에서 판매자를 바꿔 볼 수 있어요. 냅킨을 1박스로 줄이고 주문하면 최소 주문 수량 경고가 떠요.',
-        rules: [{ k: '장바구니 보관', v: lv('cartKeepDays') }, { k: '가격 기준', v: '담을 때가 아니라 지금' }, { k: '쿠폰 적용', v: '주문서에서' }, { k: '대성포장 무료배송', v: tv('200,000원 이상', '대성포장 조건부 무료배송') }, { k: '한빛컵 배송비', v: tv('10박스마다 3,000원', '한빛컵 수량별 반복 부과') }],
+        rules: [{ k: '장바구니 보관', policy: 'order.cart_keep_days' }, { k: '가격 기준', v: '담을 때가 아니라 지금' }, { k: '쿠폰 적용', v: '주문서에서' }, { k: '대성포장 무료배송', v: tv('200,000원 이상', '대성포장 조건부 무료배송') }, { k: '한빛컵 배송비', v: tv('10박스마다 3,000원', '한빛컵 수량별 반복 부과') }],
       });
     }
     const recs = s.recs; const has = (st) => recs.some((r) => r.st === st); const pidOf = (st) => (recs.find((r) => r.st === st) || {}).pid;
     const cst = app.state('cancel'); const rs = app.state('claim');
     if (s.cs === 'cancel' && s.sheet) {
       const rec = recById(s.sheet.recId); const casc = cascadeOf(rec.base, s.sheet.qty); const r = refundCalc(cancelMap(rec.base, s.sheet.qty, casc));
-      const p = PROD[rec.base]; const restQ = activeQty(rec.base) - s.sheet.qty; const od = isOverdueRec(rec);
+      const p = PROD[rec.base]; const restQ = activeQty(rec.base) - s.sheet.qty; const od = delayCancelOk(rec);
       if (r.blocked) return app.turn('customer', `${p.short} ${iga(restQ + UW(rec.base))} 남으면 단가 구간이 바뀌어 이 수량만은 취소할 수 없어요. 수량을 바꾸거나 [${p.short} 전부 취소]로 바꾼 뒤 남길 수량은 다시 주문하세요`, { hint: '같은 구간 안이면 그대로 부분 취소돼요(예: 냅킨 2박스 중 1박스). 받은 뒤 반품은 구간이 바뀌어도 막지 않고 낸 금액 그대로 돌려줘요.', rules: [{ k: '구간이 바뀌는 출고 전 부분 취소', v: '막고 전체 취소 후 재주문 안내' }, { k: '같은 구간 안', v: '그대로 부분 취소' }, { k: '반품', v: '구간이 바뀌어도 낸 금액 그대로' }] });
       const cascRule = casc.recs.length ? [{ k: '붙은 추가 구성품', v: `함께 취소 · ${esc(kidsText(casc.recs))}` }] : isAddon(rec.base) ? [{ k: '추가 구성품만 취소', v: '본 상품은 그대로' }] : [];
       const how = od ? [{ k: '출고 지연 뒤 취소', v: '판매자 승인 없이 바로 · 송장 등록 전까지' }] : rec.st === 'ACCEPTED' ? [{ k: '판매자 미처리 자동 승인', policy: 'claim.cancel_auto_approve_bd' }] : [];
       return app.turn('customer', od ? '출고가 늦어져 판매자 확인 없이 바로 취소돼요. 환불 예정 금액을 확인하고 [바로 취소하기]를 누르세요' : rec.st === 'ACCEPTED' ? '환불 예정 금액을 확인하고 [취소 요청 보내기]를 누르세요' : '환불 예정 금액을 확인하고 [취소하기]를 누르세요', { hint: casc.recs.length ? '수저집을 모두 취소하면 붙은 이쑤시개가 혼자 남지 않도록 출고 전이면 같이 취소되고, 환불에도 그 구성품에 낸 금액이 함께 들어가요. 수저집 일부만 취소하면 이쑤시개는 그대로예요.' : '수저집을 1박스만 취소해 보면 남는 9박스의 구간 단가가 바뀌어 부분 취소가 막혀요(전체 취소 후 재주문 안내).', rules: [...cascRule, { k: '환불액', v: '취소 상품에 낸 금액 · 남은 상품 다시 계산 안 함' }, { k: '쿠폰', v: '그 상품에만 걸린 것은 돌려줌 · 나눠 걸린 것은 모두 취소될 때' }, { k: '포인트 몫', v: '잔액 비율 · 10P 내림' }, ...how] });
     }
-    if (s.cs === 'ret' && s.sheet) return app.turn('customer', '사유를 고르고(불량·오배송은 사진 필수) 환불 예정 금액을 확인한 뒤 신청하세요', { rules: [{ k: '단순 변심 반품', v: lv('changeMindDays') }, { k: '불량 반품', v: lv('defectLimit') }, ...(lateOk(recById(s.sheet.recId)) ? [{ k: '늦게 받음(출고 지연)', v: `${lv('lateDays')} · 판매자 부담` }] : []), { k: '반품 배송비(편도)', v: '변심이면 고객, 불량·늦게 받음이면 판매자' }, { k: '환불액', v: '반품한 수량에 낸 금액 · 남은 수량 단가 그대로' }, { k: '사용·훼손된 수량', v: '반품되지 않고 되돌려 보냄(원하면 판매자 폐기)' }, { k: '반품 배송비가 더 크면', v: '모자란 만큼 추가 결제' }] });
+    if (s.cs === 'ret' && s.sheet) return app.turn('customer', '사유를 고르고(불량·오배송은 사진 필수) 환불 예정 금액을 확인한 뒤 신청하세요', { hint: scenario === 'retall' ? '냅킨이 이 판매자 묶음의 유일한 상품이라, 2박스를 모두 반품하면 처음 낸 배송비 4,000원이 걸려요. 사유를 ‘불량’으로 바꾸면 64,000원(배송비까지), ‘단순 변심’이면 56,000원(배송비는 판매자 몫 · 반품 배송비 4,000원도 뺌)이에요. 1박스만 고르면 나눠 반품하는 첫 건이에요.' : undefined,
+      rules: [{ k: '단순 변심 반품', v: lg('changeMind') }, { k: '불량 반품', v: lg('defect') }, ...(lateOk(recById(s.sheet.recId)) ? [{ k: '늦게 받음(출고 지연)', v: `${lateTxt()} · 판매자 부담` }] : []), { k: '반품 배송비', v: '변심이면 고객(편도 · 무료배송 묶음을 모두 반품하면 왕복), 불량·늦게 받음이면 판매자' }, { k: '처음 낸 배송비', v: `판매자 잘못으로 묶음을 모두 반품하면 돌려줌 · 변심이면 판매자 몫 ${DRAFT}` }, { k: '환불액', v: '반품한 수량에 낸 금액 · 남은 수량 단가 그대로' }, { k: '사용·훼손된 수량', v: '반품되지 않음 · 거부가 확정되면 [되돌려 받기](배송비 결제)·[폐기]' }, { k: '반품 배송비가 더 크면', v: '모자란 만큼 추가 결제' }] });
     if (s.ret && s.ret.objection && rs === 'RETURN_REJECTED') {
       const r = s.ret; const dl = retDelayPreview(r);
       return app.turn('hq', '고객 이의를 판정하세요. 결과는 최종이고 재심이 없어요', { hint: dl && dl.comp ? `환불 기한(${fmtDate(r.refundDue)})이 지났어요. 지금 [고객 주장 인정]을 누르면 환불과 함께 지연배상금 ${won(dl.comp)}(${dl.days}일)을 환불 계좌로 따로 보내고, 거부가 뒤집혀 늦어진 것이라 판매자가 부담해요.` : r.refundDue ? `환불 기한은 ${fmtDate(r.refundDue)}이에요. +1일로 기한을 넘긴 뒤 [고객 주장 인정]을 누르면 지연배상금이 붙어요(판매자 부담).` : undefined,
-        rules: [{ k: '판정 목표 기한', v: lv('mediationBd') }, { k: '판정자', v: 'CS 담당과 다른 사람' }, { k: '근거', v: '클레임 이력 · 양측 사진' }, ...(r.refundDue ? [{ k: '환불 기한', v: `${fmtDate(r.refundDue)} · 회수 완료 + ${pv('claim.refund_due_bd')}` }, { k: '지연배상금', v: `환불액 × 연 ${pv('claim.refund_delay_rate')} × 일수 ÷ 365 · 늦게 만든 쪽 부담` }] : [])] });
+        rules: [{ k: '판정 목표 기한', policy: 'claim.mediation_bd' }, { k: '판정자', v: 'CS 담당과 다른 사람' }, { k: '근거', v: '클레임 이력 · 양측 사진' }, { k: '거부 유지 때 되돌림 배송비', v: '판정 귀책대로 · 파트너 귀책이면 결제 없이 보냄' }, ...(r.refundDue ? [{ k: '환불 기한', v: `${fmtDate(r.refundDue)} · 회수 완료 + ${pv('claim.refund_due_bd')}` }, { k: '지연배상금', v: `환불액 × 연 ${pv('claim.refund_delay_rate')} × 일수 ÷ 365 · 늦게 만든 쪽 부담` }] : [])] });
     }
-    if (s.creq && s.creq.objection && cst === 'CANCEL_REJECTED') return app.turn('hq', '고객이 취소 거부에 이의를 제기했어요. 취소 요청 시각과 출고 기록을 비교해 판정하세요. 결과는 최종이고 재심이 없어요', { hint: '[고객 주장 인정]은 이미 나간 상품을 판매자 비용으로 회수한 뒤 환불하는 갈래, [파트너 거부 유지]는 거부가 확정되고 받은 상품은 일반 반품으로만 돌려보내는 갈래예요.', rules: [{ k: '판정 목표 기한', v: lv('mediationBd') }, { k: '판정자', v: 'CS 담당과 다른 사람' }, { k: '근거', v: '취소 요청 시각 · 송장 등록·집하 기록' }, { k: '자동 구매 확정', v: '중재 중에는 멈춤' }] });
+    if (s.creq && s.creq.objection && cst === 'CANCEL_REJECTED') return app.turn('hq', '고객이 취소 거부에 이의를 제기했어요. 취소 요청 시각과 출고 기록을 비교해 판정하세요. 결과는 최종이고 재심이 없어요', { hint: '[고객 주장 인정]은 이미 나간 상품을 판매자 비용으로 회수한 뒤 환불하는 갈래, [파트너 거부 유지]는 거부가 확정되고 받은 상품은 일반 반품으로만 돌려보내는 갈래예요.', rules: [{ k: '판정 목표 기한', policy: 'claim.mediation_bd' }, { k: '판정자', v: 'CS 담당과 다른 사람' }, { k: '근거', v: '취소 요청 시각 · 송장 등록·집하 기록' }, { k: '자동 구매 확정', v: '중재 중에는 멈춤' }] });
     if (has('PAYMENT_PENDING')) return app.turn('system', `고객 입금을 기다려요. [입금 확인 웹훅 받기]를 누르거나 시간을 보내 입금 기한(${fmtDate(o.vbDue)})을 넘겨 보세요`, { hint: '+1일을 세 번 누르면 기한이 지나 PG 계좌 마감을 확인한 뒤 자동 취소돼요. 고객은 입금 전 [주문 취소]도 할 수 있어요.', rules: [{ k: '입금 기한', policy: 'payment.vbank_due_days' }, { k: '기한 하루 전', v: '입금 안내 알림' }, { k: '늦은 입금', v: '주문을 되살리지 않고 자동 환불' }] });
     /* D52: 본 상품 남은 수량 전부의 취소 클레임이 열리면 붙은 구성품도 그때부터 그 클레임 대상 */
     const ck = creqKids(); const kidScope = ck.length ? [{ k: '붙은 추가 구성품', v: `같은 클레임 대상 · 따로 클레임·구매 확정·정산 없음 · ${esc(kidsText(ck))}` }] : [];
@@ -622,42 +723,60 @@
     if (retOpen()) {
       const r = s.ret; const rec = recById(r.recId); setPv(rec.pid);
       if (rs === 'RETURN_REQUESTED' && r.method === 'self') return app.turn('customer', '반품할 상품을 보내고 [반품 송장 입력]을 누르세요', { rules: [{ k: '안 보내면 자동 철회', policy: 'claim.return_ship_days' }] });
-      if (rs === 'RETURN_REQUESTED') return app.turn('partner', `${PARTNERS[rec.pid].name}: 반품 요청이 왔어요. [회수 접수]를 누르세요`, { hint: '+1일을 두 번 누르면(영업일 2일) 플랫폼이 계약 택배사로 자동 회수 접수해요.', rules: [{ k: '회수 접수', v: lv('pickupBd') }, { k: '자동 회수 접수 시각', v: fmtDate(r.pickupDue) }, { k: '고객 미발송 자동 철회', policy: 'claim.return_ship_days' }] });
+      if (rs === 'RETURN_REQUESTED') return app.turn('partner', `${PARTNERS[rec.pid].name}: 반품 요청이 왔어요. [회수 접수]를 누르세요`, { hint: `처리하지 않고 시간을 보내 영업일 ${P('claim.pickup_register_bd')}일이 지나면 플랫폼이 계약 택배사로 자동 회수 접수해요.`, rules: [{ k: '회수 접수', policy: 'claim.pickup_register_bd' }, { k: '자동 회수 접수 시각', v: fmtDate(r.pickupDue) }, { k: '고객 미발송 자동 철회', policy: 'claim.return_ship_days' }] });
       if (rs === 'RETURN_COLLECTING') return app.turn('system', '회수 택배가 판매자에게 도착했는지 확인하세요(택배 조회)');
       const dueRule = r.refundDue ? [{ k: '환불 기한', v: `${fmtDate(r.refundDue)} · 회수 완료 + ${pv('claim.refund_due_bd')} ${DRAFT}` }] : [{ k: '환불 기한', v: `회수 확인 뒤 ${pv('claim.refund_due_bd')}(법정)` }];
       if (rs === 'RETURN_INSPECTING') return app.turn('partner', `${PARTNERS[rec.pid].name}: 회수한 상품을 검수하고 [반품 승인]·[일부 승인]·[반품 거부] 중 하나를 누르세요`, { hint: `사용·훼손된 것이 섞여 있으면 [일부 승인]으로 멀쩡한 수량만 승인해요(금액을 깎지 않고 수량으로 나눔 · 한 개짜리는 승인·거부만). 검수하지 않고 영업일 ${P('claim.inspect_bd')}일이 지나면 자동 승인·환불돼요. 거부하면 고객이 ${P('claim.objection_days')}일 안에 이의를 제기할 수 있고 본사가 중재해요.`, rules: [{ k: '검수 기한', policy: 'claim.inspect_bd' }, { k: '자동 승인 시각', v: fmtDate(r.inspectDue) }, ...dueRule, { k: '사용·훼손 섞임', v: '수량으로 나눔 · 부분 환불 제안 없음' }] });
-      if (rs === 'RETURN_REJECTED') return app.turn('customer', r.partial ? `멀쩡한 ${r.partial.ok}${UW(rec.base)}만 반품이 승인되고 ${eun(r.qty + UW(rec.base))} 거부됐어요. 동의하지 않으면 주문 상세에서 [이의 제기]를 누르세요` : '반품이 거부됐어요. 동의하지 않으면 주문 상세에서 [이의 제기]를 누르세요', { hint: `+1일을 세 번 누르면 이의 기한이 지나 거부가 확정되고, 거부된 물건은 되돌려 보내요(배송비 고객 부담 · 원하면 [판매자가 폐기]).`, rules: [{ k: '이의 제기 기한', policy: 'claim.objection_days' }, { k: '마감', v: fmtDate(r.objDue) }, { k: '중재 결과', v: '최종 · 재심 없음' }, { k: '거부된 물건', v: '되돌려 보냄 · 배송비 고객 · 원하면 폐기' }, ...dueRule] });
+      if (rs === 'RETURN_REJECTED') return app.turn('customer', r.partial ? `멀쩡한 ${r.partial.ok}${UW(rec.base)}만 반품이 승인되고 ${eun(r.qty + UW(rec.base))} 거부됐어요. 동의하지 않으면 주문 상세에서 [이의 제기]를 누르세요` : '반품이 거부됐어요. 동의하지 않으면 주문 상세에서 [이의 제기]를 누르세요', { hint: `+1일을 세 번 누르면 이의 기한이 지나 거부가 확정되고, 거부된 물건을 [되돌려 받기](배송비 따로 결제)·[폐기] 중에서 골라요(${P('claim.return_back_pay_days')}일 안 · 지나면 판매자가 폐기).`, rules: [{ k: '이의 제기 기한', policy: 'claim.objection_days' }, { k: '마감', v: fmtDate(r.objDue) }, { k: '중재 결과', v: '최종 · 재심 없음' }, { k: '거부가 확정되면', v: '[되돌려 받기](배송비 결제) · [폐기]' }, ...dueRule] });
+    }
+    /* D71: 거부가 확정된 수량 — 고객이 [되돌려 받기](되돌림 배송비 따로 결제)·[폐기]를 고르고, 결제되면 파트너가 송장 등록 · 폐기면 파트너가 폐기 확인 */
+    if (rbOpen()) {
+      const r = s.ret; const rb = r.rb; const rec = recById(r.recId); setPv(rec.pid); const pn = PARTNERS[rec.pid].name; const q = `${PROD[rec.base].short} ${r.qty}${UW(rec.base)}`;
+      if (!rb.choice) return app.turn('customer', `거부가 확정된 ${eul(q)} [되돌려 받기](배송비 ${won(rb.fee)} 따로 결제) 또는 [폐기] 중에서 골라 주세요`, { hint: `고르지 않고 시간을 보내면 기한 ${LOCAL.rbRemind.v}일 전(${fmtDate(rb.remindAt)})에 한 번 더 알리고, 기한(${fmtDate(rb.due)})이 지나면 폐기를 고른 것으로 보고 판매자가 폐기해요.`, rules: [{ k: '고르는 기한', policy: 'claim.return_back_pay_days' }, { k: '마감', v: fmtDate(rb.due) }, { k: '다시 알림', v: lv('rbRemind') }, { k: '기한이 지나면', v: '폐기로 보고 판매자가 폐기 기록' }, { k: '되돌림 배송비', v: `편도 · 그 상품의 반품 배송비 ${tv(won(rb.fee), `${pn} 반품 배송비(편도)`)} · 따로 결제` }, { k: '반품 배송비', v: '일부 승인 환불 때 한 번만 뺐어요' }, { k: '초안', v: DRAFT }] });
+      if (rb.choice === 'send') return app.turn('partner', `${pn}: ${rb.by === 'partner' ? '본사 판정으로 배송비를 판매자가 내고' : '고객이 되돌림 배송비를 결제해'} 거부한 ${eul(q)} 되돌려 보내요. 송장을 넣으세요`, { rules: [{ k: '송장 등록 기한', policy: 'claim.return_back_ship_bd' }, { k: '마감', v: fmtDate(rb.shipDue) }, { k: '되돌림 배송비', v: rb.by === 'partner' ? '판매자 부담(중재 판정 귀책 파트너 · 결제 없음)' : `고객 결제 ${won(rb.fee)}` }] });
+      return app.turn('partner', `${pn}: 거부한 ${q} 폐기가 확정됐어요. 폐기하고 [폐기 확인 기록]을 누르세요`, { rules: [{ k: '폐기 확정', v: rb.by === 'auto' ? `고객이 ${fmtDate(rb.due)}까지 고르지 않음` : '고객이 [폐기]를 고름' }, { k: '기록', v: '폐기 확인(사진·시각) · 감사 로그' }, { k: '초안', v: DRAFT }] });
+    }
+    /* S12 맞춤 ⑳: 카드 환불의 지연배상금 — 환불 계좌가 없어 송금 대기 */
+    if (o.compWait) {
+      const w = o.compWait;
+      return app.turn('customer', `주문 상세의 [환불 계좌 등록]으로 계좌를 인증하면 지연배상금 ${won(w.amt)}을 바로 보내 드려요`, { hint: w.reminded ? `${LOCAL.acctRemind.v}일이 지나 한 번 더 알렸고, 본사 모니터링에 ‘지연배상금 송금 대기’로 올라갔어요. 본사 화면에서 확인해 보세요.` : '등록하지 않고 +7일을 누르면 한 번 더 알리고 본사 모니터링 ‘지연배상금 송금 대기’에 올라가요. 기다리는 동안 금액은 그대로예요.', rules: [{ k: '금액', v: `${won(w.amt)} · ${w.days}일 × 연 ${pv('claim.refund_delay_rate')}` }, { k: '지연 일수 끝', v: '카드 환불은 PG 취소가 성공한 날' }, { k: '계좌를 기다리는 동안', v: '더 붙이지 않음' }, { k: '계좌가 없으면', v: `${lv('acctRemind')} 뒤 한 번 더 알림 · 모니터링 송금 대기` }, { k: '초안', v: DRAFT }] });
     }
     if (has('PAID')) {
       const pid = pidOf('PAID'); setPv(pid);
       const addonOpen = recs.some((r) => isAddon(r.base) && r.st === 'PAID');
-      return app.turn('partner', `${PARTNERS[pid].name}: 새 주문을 확인하고 [발주 확인]을 누르세요`, {
-        hint: addonOpen ? '발주 확인 전에는 고객이 바로 취소할 수 있어요. 고객 주문 상세에서 이쑤시개만 [취소]하면 수저집은 그대로이고, 수저집을 모두 취소하면 아직 출고 전인 이쑤시개도 함께 취소돼 환불에 들어가요.'
-          : '발주 확인 전에는 고객이 바로 취소할 수 있어요. 고객 주문 상세에서 냅킨 [취소]를 누르면 부분 취소 환불(냅킨에 낸 금액 그대로)을, 수저집 1박스만 취소하면 남는 9박스의 구간 단가가 바뀌어 막히는 경우를 볼 수 있어요.',
-        rules: [{ k: '발주 확인 리마인드', v: lv('acceptRemindBd') }, { k: '운영팀 알림', v: lv('acceptAlertBd') }, { k: '약속 출고일', v: fmtDate(promiseDate(pid), false) }, { k: '품절 취소', v: '전액 환불 · 평가 기록' }, ...(addonOpen ? [{ k: '본 상품을 모두 취소하면', v: '출고 전 구성품은 함께 취소 · 출고된 것은 같은 회수로 함께 환불' }] : [])],
+      const od = overdueOpen(pid);
+      return app.turn('partner', od ? `${PARTNERS[pid].name}: 발주 확인 없이 출고 지연 판정 시각을 넘겼어요(무단 지연 기록). 지금이라도 [발주 확인]하고 출고하세요` : `${PARTNERS[pid].name}: 새 주문을 확인하고 [발주 확인]을 누르세요`, {
+        hint: od ? '발주 확인 전이라 고객 취소는 원래 바로 돼요 — [바로 취소]를 따로 열지 않아요. 지금 [발주 확인]하면 송장이 없는 동안 고객 주문 상세에 [바로 취소]가 보여요(판매자 승인 없이).'
+          : addonOpen ? '발주 확인 전에는 고객이 바로 취소할 수 있어요. 고객 주문 상세에서 이쑤시개만 [취소]하면 수저집은 그대로이고, 수저집을 모두 취소하면 아직 출고 전인 이쑤시개도 함께 취소돼 환불에 들어가요.'
+          : `발주 확인 전에는 고객이 바로 취소할 수 있어요. 고객 주문 상세에서 냅킨 [취소]를 누르면 부분 취소 환불(냅킨에 낸 금액 그대로)을, 수저집 1박스만 취소하면 남는 9박스의 구간 단가가 바뀌어 막히는 경우를 볼 수 있어요. 발주 확인하지 않고 +1일을 세 번 누르면 리마인드(영업일 ${P('order.accept_remind_bd')}일) → 운영팀 알림(${P('order.accept_alert_bd')}일) → 출고 지연 판정(무단 지연)이 차례로 와요. 자동 취소는 없어요.`,
+        rules: [{ k: '발주 확인 리마인드', policy: 'order.accept_remind_bd' }, { k: '운영팀 알림', policy: 'order.accept_alert_bd' }, { k: '기한을 넘겨도', v: '자동 취소 없음' }, { k: '약속 출고일', v: fmtDate(promiseDate(pid), false) }, { k: '출고 지연 판정', v: od ? `${fmtDate(o.overdue[pid].at)} 지남 · 무단 지연 기록` : `${fmtDate(judgeAt(pid))} · 발주 확인 전도 같음` }, { k: '품절 취소', v: '전액 환불 · 평가 기록' }, ...(addonOpen ? [{ k: '본 상품을 모두 취소하면', v: '출고 전 구성품은 함께 취소 · 출고된 것은 같은 회수로 함께 환불' }] : [])],
       });
     }
     if (has('ACCEPTED')) {
       const pid = pidOf('ACCEPTED'); setPv(pid); const pn = PARTNERS[pid].name;
-      const odAt = GC.order.overdueAt(promiseDate(pid));
+      const odAt = judgeAt(pid); const nt0 = o.notice;
+      const noticeRules = nt0 ? [{ k: '본사 일괄 공지', v: nt0.end ? `${fmtDate(nt0.start)} ~ ${fmtDate(nt0.end)} · 끝남` : `${fmtDate(nt0.start)}부터 · 지연으로 보지 않음` }, { k: '공지가 끝나면', v: `끝난 날 + ${pv('order.overdue_grace_bd')} 끝으로 다시 판정` }] : [];
       if (overdueOpen(pid)) {
         return app.turn('customer', `${iga(pn)} 약속 출고일을 넘기고 다음 영업일까지 보내지 않았어요. 고객 주문 상세에서 [바로 취소]를 눌러 보세요`, {
           hint: '판매자 승인 없이 바로 취소되고 그 상품에 낸 금액을 공제 없이 돌려받아요. 파트너 화면에서 지금 송장을 넣으면 [바로 취소]가 닫히고, 받은 뒤 반품 사유 ‘늦게 받음(출고 지연)’을 고를 수 있어요(반품 배송비 판매자).',
-          rules: [{ k: '약속 출고일', v: fmtDate(promiseDate(pid), false) }, { k: '출고 지연 판정', v: `${fmtDate(odAt)} · 다음 ${pv('order.overdue_grace_bd')} 끝` }, { k: '바로 취소', v: '판매자 승인 없이 · 송장 등록 전까지' }, { k: '무단 지연', v: '기록만 · 페널티는 2차' }, { k: '예고 간격', v: '두지 않음 · 취소를 열기만 하고 자동 취소 안 함' }, { k: '늦게 출고되면', v: `반품 사유 ‘늦게 받음’ · ${lv('lateDays')} · 배송비 판매자` }],
+          rules: [{ k: '약속 출고일', v: fmtDate(promiseDate(pid), false) }, { k: '출고 지연 판정', v: `${fmtDate(odAt)} · 다음 ${pv('order.overdue_grace_bd')} 끝` }, { k: '바로 취소', v: '판매자 승인 없이 · 송장 등록 전까지' }, { k: '무단 지연', v: '기록만 · 페널티는 2차' }, { k: '예고 간격', v: '두지 않음 · 취소를 열기만 하고 자동 취소 안 함' }, { k: '늦게 출고되면', v: `반품 사유 ‘늦게 받음’ · ${lateTxt()} · 배송비 판매자` }, ...noticeRules],
         });
       }
-      return app.turn('partner', `${pn}: 택배사와 송장번호를 넣고 출고하세요`, { hint: scenario === 'late' ? `송장을 넣지 않고 +1일을 누르면 출고 지연 판정 시각(${fmtDate(odAt)})이 지나 시스템이 ‘출고 지연’으로 보고 고객·판매자에게 알려요. 판매자가 지연 안내를 하지 않았으니 무단 지연으로 기록하고, 고객 주문 상세에 [바로 취소]가 열려요.` : '지금 고객이 취소하면 바로 취소가 아니라 “취소 요청”이 되고, 파트너 승인 또는 영업일 1일 뒤 자동 승인을 거쳐요.', rules: [{ k: '약속 출고일', v: fmtDate(promiseDate(pid), false) }, { k: '출고 지연 판정', v: `${fmtDate(odAt)}까지 송장 없으면 · ${pv('order.overdue_grace_bd')} 유예` }, { k: '송장 검증', v: '택배사별 형식 · 중복 경고' }, { k: '집하 기록 없음', v: '24시간 뒤 운영팀 알림' }] });
+      const lateHint = noticeOn() ? `본사 일괄 공지 중이라 출고 지연 판정을 하지 않아요(시간을 보내도 [바로 취소]가 열리지 않음). 본사 화면에서 [공지 끝내기]를 누르면 판정 시각이 끝난 날 + 영업일 ${P('order.overdue_grace_bd')}일의 끝으로 다시 정해져요.`
+        : nt0 && nt0.end ? `일괄 공지가 끝나 새 판정 시각은 ${fmtDate(odAt)}이에요(원래 ${fmtDate(GC.order.overdueAt(promiseDate(pid)))}). 그때까지 송장이 없으면 출고 지연이 돼요.`
+        : `송장을 넣지 않고 +1일을 누르면 출고 지연 판정 시각(${fmtDate(odAt)})이 지나 시스템이 ‘출고 지연’으로 보고 고객·판매자에게 알려요. 판매자가 지연 안내를 하지 않았으니 무단 지연으로 기록하고, 고객 주문 상세에 [바로 취소]가 열려요. 먼저 본사 화면에서 [일괄 공지 시작](택배 파업)을 누르면 공지 동안은 판정하지 않아요.`;
+      return app.turn('partner', `${pn}: 택배사와 송장번호를 넣고 출고하세요`, { hint: scenario === 'late' ? lateHint : `지금 고객이 취소하면 바로 취소가 아니라 “취소 요청”이 되고, 파트너 승인 또는 영업일 ${P('claim.cancel_auto_approve_bd')}일 뒤 자동 승인을 거쳐요.`, rules: [{ k: '약속 출고일', v: fmtDate(promiseDate(pid), false) }, { k: '출고 지연 판정', v: noticeOn() ? '본사 일괄 공지 중 · 판정 안 함' : `${fmtDate(odAt)}까지 송장 없으면 · ${pv('order.overdue_grace_bd')} 유예` }, ...noticeRules, { k: '송장 검증', v: '택배사별 형식 · 중복 경고' }, { k: '집하 기록 없음', v: '24시간 뒤 운영팀 알림' }] });
     }
     if (has('SHIPPED')) return app.turn('system', '택배 조회(스윗트래커)로 배송 완료를 확인하세요');
     if (recs.some((r) => r.st === 'DELIVERED' && !hasOpenClaim(r))) {
-      return app.turn('customer', '받은 상품을 확인하고 [구매 확정]하거나, 문제가 있으면 [반품 신청]하세요', { hint: '아무것도 누르지 않고 +7일을 누르면 열린 클레임이 없는 항목은 자동 구매 확정돼요. 불량 반품은 사진이 필수이고, 판매자가 거부하면 이의 제기 → 본사 중재로 이어져요.', rules: [{ k: '자동 구매 확정', policy: 'order.auto_confirm_days' }, { k: '단순 변심 반품', v: lv('changeMindDays') }, { k: '불량 반품', v: lv('defectLimit') }] });
+      return app.turn('customer', '받은 상품을 확인하고 [구매 확정]하거나, 문제가 있으면 [반품 신청]하세요', { hint: '아무것도 누르지 않고 +7일을 누르면 열린 클레임이 없는 항목은 자동 구매 확정돼요. 불량 반품은 사진이 필수이고, 판매자가 거부하면 이의 제기 → 본사 중재로 이어져요.', rules: [{ k: '자동 구매 확정', policy: 'order.auto_confirm_days' }, { k: '단순 변심 반품', v: lg('changeMind') }, { k: '불량 반품', v: lg('defect') }, ...(scenario === 'retall' ? [{ k: '처음 낸 배송비', v: `판매자 잘못으로 묶음을 모두 반품하면 돌려줌 · 변심이면 판매자 몫 ${DRAFT}` }] : [])] });
     }
     if (!o.paidAt) return app.done('입금 전에 주문이 취소됐어요. 결제한 돈이 없어 환불도 없어요.', { next: '[처음부터]로 카드 결제를 하거나, 가상계좌로 다시 주문해 [입금 확인 웹훅 받기]를 눌러 보세요.' });
     const n = (st) => recs.filter((r) => r.st === st).length;
     const refundSum = o.refunds.reduce((a, x) => a + x.total, 0);
     const viaCancel = recs.filter((r) => r.viaCancel).length;
     const parts = [n('CONFIRMED') && `구매 확정 ${n('CONFIRMED')}건`, n('CANCELED') && `취소 ${n('CANCELED')}건`, viaCancel && `취소 인정(회수) ${viaCancel}건`, n('RETURNED') - viaCancel && `반품 ${n('RETURNED') - viaCancel}건`].filter(Boolean).join(' · ');
-    app.done(`주문이 끝났어요. ${parts}${refundSum ? ` · 환불 누적 ${won(refundSum)}` : ''}`, { next: '[처음부터]로 다른 갈래를 해 보세요: 가상계좌 입금 기한 넘기기 · 발주 확인 전 부분 취소(냅킨 → 수저집) · 1박스 취소 막힘(구간 단가) · 발주 확인 뒤 취소 요청 · 취소 거부와 이의 제기 · 불량 반품 거부와 이의 · 파트너 품절 취소. 위 시작 장면에서 안내 없는 출고 지연, 반품 검수 일부 승인·환불 지연배상금도 볼 수 있어요.' });
+    app.done(`주문이 끝났어요. ${parts}${refundSum ? ` · 환불 누적 ${won(refundSum)}` : ''}`, { next: '[처음부터]로 다른 갈래를 해 보세요: 가상계좌 입금 기한 넘기기 · 발주 확인 전 부분 취소(냅킨 → 수저집) · 1박스 취소 막힘(구간 단가) · 발주 확인 뒤 취소 요청 · 취소 거부와 이의 제기 · 불량 반품 거부와 이의 · 파트너 품절 취소. 위 시작 장면에서 안내 없는 출고 지연(본사 일괄 공지 포함), 반품 검수 일부 승인·거부 수량 되돌려 받기·환불 지연배상금(환불 계좌 없음), 묶음 전부 반품의 처음 배송비도 볼 수 있어요.' });
   }
   function refresh() { syncStrip(); guide(); app.refresh(); }
 
@@ -674,7 +793,8 @@
       const todo = s.recs.filter((r) => r.st === 'DELIVERED' && !hasOpenClaim(r)).length
         + (s.ret && !s.ret.done && canObj('RETURN', app.state('claim'), s.ret.rejAt, s.ret.objection) ? 1 : 0)
         + (s.creq && canObj('CANCEL', app.state('cancel'), s.creq.rejAt, s.creq.objection) ? 1 : 0)
-        + s.recs.filter((r) => isOverdueRec(r) && !hasOpenClaim(r)).length;
+        + s.recs.filter((r) => delayCancelOk(r) && !hasOpenClaim(r)).length
+        + (rbOpen() && !s.ret.rb.choice ? 1 : 0) + (s.order.compWait ? 1 : 0);
       if (todo) f.badge('마이', todo);
     }
     ({ cart: cartView, checkout: checkoutView, done: doneView, detail: detailView, cancel: cancelView, ret: returnView, snap: snapView }[s.cs] || detailView)(f, s);
@@ -862,31 +982,45 @@
     const idx = { RETURN_REQUESTED: 0, RETURN_COLLECTING: 1, RETURN_INSPECTING: 2, RETURN_APPROVED: 3, CLAIM_COMPLETED: 4, RETURN_REJECTED: 3 }[st];
     const kept = ['mediated', 'rejected'].includes(r.done); const u = UW(rec.base);
     const fee = PARTNERS[rec.pid].retFee;
-    const backTxt = r.back === 'dispose' ? `거부된 ${eun(r.qty + u)} 되돌려 받지 않고 판매자가 폐기해요` : `거부된 ${eun(r.qty + u)} 다시 보내 드려요(배송비 ${won(fee)} 고객 부담)`;
     const partLine = r.partial ? `<div class="note note-warn small"><b>검수 결과가 수량별로 나뉘었어요</b><br>멀쩡한 ${eun(r.partial.ok + u)} 반품을 승인해 ${won(r.partial.refund)}을 환불했어요 · ${eun(r.qty + u)} 반품되지 않아요(사유: ${esc(r.rejectReason)} · 사진 2장). 금액을 깎아 일부만 환불하지는 않아요.</div>` : '';
     let body = '';
     if (!r.done) {
       const x = returnRefund(rec.base, rec.qty, r.fault, rec.pid, r.feeTaken);
-      body = `<dl class="kv xsmall"><dt>환불 예정</dt><dd>${x.shortfall ? `0원 · 반품 배송비 모자란 ${won(x.shortfall)} 추가 결제` : won(x.refund)}${r.partial ? ` <span class="faint">(거부된 ${iga(r.qty + u)} 이의로 인정될 때)</span>` : ''}</dd><dt>반품 배송비</dt><dd>${x.feeBy === 'partner' ? '판매자 부담' : r.feeTaken ? `${won(fee)} 승인 수량 환불에서 뺐어요` : `${won(fee)} 고객 부담`}</dd>
+      body = `<dl class="kv xsmall"><dt>환불 예정</dt><dd>${x.shortfall ? `0원 · 반품 배송비 모자란 ${won(x.shortfall)} 추가 결제` : won(x.refund)}${r.partial ? ` <span class="faint">(거부된 ${iga(r.qty + u)} 이의로 인정될 때)</span>` : ''}</dd><dt>반품 배송비</dt><dd>${x.feeBy === 'partner' ? '판매자 부담' : r.feeTaken ? `${won(fee)} 승인 수량 환불에서 뺐어요` : `${won(x.fee)} 고객 부담${x.round ? '(왕복 · 무료배송으로 받은 묶음을 모두 반품)' : ''}`}</dd>
+        ${x.shipRefund || x.shipKept ? `<dt>처음 낸 배송비</dt><dd>${x.shipRefund ? `${won(x.shipRefund)} 함께 돌려드려요(판매자 잘못 · 묶음 전부 반품)` : `${won(x.shipKept)} 돌려드리지 않아요(단순 변심 · 판매자 몫)`} ${DRAFT}</dd>` : ''}
         ${st === 'RETURN_REQUESTED' && r.method === 'pickup' ? `<dt>회수 접수</dt><dd>${fmtDate(r.pickupDue)}까지(안 하면 자동 접수)</dd>` : ''}
         ${st === 'RETURN_INSPECTING' ? `<dt>검수 결과</dt><dd>${fmtDate(r.inspectDue)}까지(넘기면 자동 승인)</dd>` : ''}
         ${r.refundDue && st !== 'RETURN_REJECTED' ? `<dt>환불 예정일</dt><dd>${fmtDate(r.refundDue, false)}까지(회수 확인 뒤 ${pv('claim.refund_due_bd')}) · 넘기면 지연배상금을 환불 계좌로 따로 보내드려요 ${DRAFT}</dd>` : ''}</dl>`;
       if (st === 'RETURN_REQUESTED' && r.method === 'self') body += '<button class="btn btn-sm btn-ext" data-act="selfShip">반품 송장 입력</button>';
       if (st === 'RETURN_REJECTED') {
         body += r.partial ? partLine : `<div class="note note-stop small">판매자가 반품을 거부했어요. 사유: ${esc(r.rejectReason)}</div>`;
-        body += `<div class="field"><span class="lbl">거부된 ${r.qty}${u}</span><div class="seg" role="group" aria-label="거부된 물건 처리"><button data-act="retBack" data-v="send" aria-pressed="${r.back !== 'dispose'}">되돌려 받기 · 배송비 ${won(fee)}</button><button data-act="retBack" data-v="dispose" aria-pressed="${r.back === 'dispose'}">판매자가 폐기</button></div><span class="hint">거부가 확정되면 고른 대로 처리해요. 이의가 인정되면 환불해요.</span></div>`;
+        body += `<p class="xsmall">거부가 확정되면 거부된 ${eul(r.qty + u)} [되돌려 받기](되돌려 보내는 배송비 ${won(fee)} 따로 결제) 또는 [폐기] 중에서 골라요. ${pv('claim.return_back_pay_days')} 안에 고르지 않으면 판매자가 폐기해요. 이의가 인정되면 환불해요. ${DRAFT}</p>`;
         body += r.objection ? '<p class="small">이의를 접수했어요. 본사가 양쪽 기록을 보고 판정해요. 판정 결과가 최종이에요.</p>'
           : canObj('RETURN', st, r.rejAt, r.objection) ? `<div class="cluster"><button class="btn btn-sm btn-primary" data-act="objection">이의 제기</button><span class="xsmall faint">${fmtDate(r.objDue)}까지 이의가 없으면 거부가 확정돼요.</span></div>` : '';
       }
     } else {
-      const compLine = r.comp ? ` 환불 예정일(${fmtDate(r.refundDue, false)})을 넘겨 지연배상금 ${won(r.comp.comp)}(${r.comp.days}일)을 ${REFUND_ACCT.bank} 환불 계좌로 따로 보냈어요.` : '';
-      body = `${r.partial && r.done !== 'refunded' ? partLine : ''}<p class="small">${r.done === 'refunded' ? `${r.partial ? `본사 중재로 거부된 ${r.qty}${u}도 인정돼 ${won(r.paidOut.refund)}을 환불했어요. 먼저 승인된 ${r.partial.ok}${u}(${won(r.partial.refund)} 환불)와 함께 반품을 마쳤어요.` : `반품을 마치고 ${won(r.paidOut.refund)}을 환불했어요.`}${compLine}` : r.done === 'withdrawn' ? '7일 안에 보내지 않아 반품 신청이 자동 철회됐어요' : `${r.done === 'mediated' ? '본사 중재로 거부가 확정됐어요(최종).' : '이의 기한이 지나 거부가 확정됐어요.'} ${backTxt}.`}</p>`;
+      const compLine = r.comp ? (r.comp.wait && s.order.compWait ? ` 환불 예정일(${fmtDate(r.refundDue, false)})을 넘겨 지연배상금 ${won(r.comp.comp)}(${r.comp.days}일)이 정해졌어요. 환불 계좌를 등록하면 보내 드려요.` : ` 환불 예정일(${fmtDate(r.refundDue, false)})을 넘겨 지연배상금 ${won(r.comp.comp)}(${r.comp.days}일)을 ${(s.acct || REFUND_ACCT).bank} 환불 계좌로 따로 보냈어요.`) : '';
+      const shipLine = r.paidOut && r.paidOut.shipRefund ? ` 판매자 잘못으로 묶음을 모두 반품해 처음 낸 배송비 ${won(r.paidOut.shipRefund)}도 함께 돌려드렸어요.` : r.paidOut && r.paidOut.shipKept ? ` 처음 낸 배송비 ${won(r.paidOut.shipKept)}은 돌려드리지 않았어요(단순 변심 · 판매자 몫).` : '';
+      body = `${r.partial && r.done !== 'refunded' ? partLine : ''}<p class="small">${r.done === 'refunded' ? `${r.partial ? `본사 중재로 거부된 ${r.qty}${u}도 인정돼 ${won(r.paidOut.refund)}을 환불했어요. 먼저 승인된 ${r.partial.ok}${u}(${won(r.partial.refund)} 환불)와 함께 반품을 마쳤어요.` : `반품을 마치고 ${won(r.paidOut.refund)}을 환불했어요.`}${shipLine}${compLine}` : r.done === 'withdrawn' ? `${P('claim.return_ship_days')}일 안에 보내지 않아 반품 신청이 자동 철회됐어요` : `${r.done === 'mediated' ? '본사 중재로 거부가 확정됐어요(최종).' : '이의 기한이 지나 거부가 확정됐어요.'}`}</p>${kept ? rbHtml(r, rec) : ''}`;
     }
     /* 라벨은 엔진에서만: 끝났으면 저장한 완료 결과(환불 완료·거부 확정·신청 철회, D30), 진행 중이면 클레임 유형 라벨(반품 진행 중) + 단계 */
     const label = GC.claim.label('CLAIM_RETURN', st, r.result, 'RETURN');
     const cls = kept || (!r.done && st === 'RETURN_REJECTED') ? 'st-stop' : r.done ? 'st-done' : 'st-warn';
     return `<div class="claimbox"><div class="split"><b>반품 ${r.qty}${u}${r.partial ? ` <span class="faint">(${r.partial.ok + r.qty}${u} 중)</span>` : ''} · ${esc(REASON[r.reason].label)}</b><span class="stk"><span class="st ${cls}">${esc(label)}</span>${r.done ? '' : stepHtml(claimStep('CLAIM_RETURN', st))}${r.objection && !r.done ? objTag : ''}</span></div>
       ${stepsHtml(['신청', '회수', '검수', '승인', '완료'], kept ? 3 : idx, st === 'RETURN_REJECTED' || kept ? 3 : -1)}${body}</div>`;
+  }
+  /** 거부 확정 뒤 되돌려 받기·폐기(D71 · U-MY-03, 법률 자문 전 초안): 남은 기한과 두 버튼, 고른 뒤에는 진행 */
+  function rbHtml(r, rec) {
+    const rb = r.rb; if (!rb) return '';
+    const q = `${r.qty}${UW(rec.base)}`;
+    if (rb.choice === 'send') {
+      if (rb.shippedAt) return `<p class="small">거부된 ${eul(q)} ${fmtDate(rb.shippedAt, false)}에 다시 보냈어요(${esc(rb.ship.carrier)} ${esc(rb.ship.no)}).</p>`;
+      return `<p class="small">${rb.by === 'partner' ? '본사 판정으로 판매자가 배송비를 내고' : `되돌림 배송비 ${won(rb.fee)}을 결제했어요(${fmtDate(rb.paidAt, false)}). 판매자가`} ${fmtDate(rb.shipDue, false)}까지 거부된 ${eul(q)} 다시 보내요.</p>`;
+    }
+    if (rb.choice === 'dispose') return `<p class="small">${rb.by === 'auto' ? `${fmtDate(rb.due, false)}까지 고르지 않아 ` : ''}거부된 ${eun(q)} 판매자가 폐기${rb.disposedAt ? `했어요(${fmtDate(rb.disposedAt, false)} 폐기 확인)` : '해요'}. ${DRAFT}</p>`;
+    const left = Math.max(0, Math.ceil((rb.due - now()) / DAY));
+    return `<div class="note note-warn small"><b>거부된 ${eul(q)} 어떻게 할지 골라 주세요</b><br>[되돌려 받기]는 되돌려 보내는 배송비 ${won(rb.fee)}을 따로 결제하면 판매자가 ${pv('claim.return_back_ship_bd')} 안에 보내요. ${fmtDate(rb.due, false)}까지(${left}일 남음) 고르지 않으면 판매자가 폐기해요. ${DRAFT}</div>
+      <div class="pc-acts"><button class="btn btn-sm" data-act="rbDispose">폐기</button><button class="btn btn-sm btn-primary btn-ext" data-act="rbSend">되돌려 받기 · ${won(rb.fee)}</button></div>`;
   }
   /** 취소 요청 상자 = 판매자 거부 통지 화면 겸용(U-MY-01: 거부 통지 화면·주문 상세에 [이의 제기]) */
   function creqBox() {
@@ -922,10 +1056,10 @@
   function itemHtml(rec) {
     const s = S(); const p = PROD[rec.base]; const st = rec.st;
     const open = hasOpenClaim(rec); const btn = [];
-    const anyRet = retOpen(); const anyReq = creqOpen();
+    const anyRet = retOpen() || rbOpen(); const anyReq = creqOpen(); // 거부 수량 되돌려 보내기·폐기가 끝나기 전에는 새 반품을 받지 않음(D71)
     if (!open) {
       if (st === 'PAID') btn.push(`<button class="btn btn-sm" data-act="openCancel" data-id="${rec.id}">취소</button>`);
-      const od = isOverdueRec(rec);
+      const od = delayCancelOk(rec);
       if (st === 'ACCEPTED' && !anyReq) btn.push(od ? `<button class="btn btn-sm btn-primary" data-act="openCancel" data-id="${rec.id}">바로 취소</button>` : `<button class="btn btn-sm" data-act="openCancel" data-id="${rec.id}">취소 요청</button>`);
       if (st === 'DELIVERED') { btn.push(`<button class="btn btn-sm btn-primary" data-act="confirmItem" data-id="${rec.id}">구매 확정</button>`); if (!anyRet) btn.push(`<button class="btn btn-sm" data-act="openReturn" data-id="${rec.id}">반품 신청</button>`); }
       if (st === 'CONFIRMED' && !anyRet) btn.push(`<button class="btn btn-sm" data-act="openReturn" data-id="${rec.id}">불량 반품</button>`);
@@ -956,10 +1090,14 @@
       const order = ['PAID', 'ACCEPTED', 'SHIPPED', 'DELIVERED', 'CONFIRMED'];
       const idx = act.length ? Math.min(...act.map((r) => order.indexOf(r.st)).filter((i) => i >= 0).concat([9])) : -1;
       const track = idx >= 0 && idx < 9 ? stepsHtml(['결제 완료', '상품 준비', '배송 중', '배송 완료', '구매 확정'], idx, -1) : '';
-      const lateNote = overdueOpen(pid) ? `<div class="note note-stop small"><b>출고가 늦어지고 있어요</b><br>약속 출고일 ${fmtDate(promiseDate(pid), false)}이 지나고 다음 영업일까지 보내지 않았어요. 보내기 전까지는 [바로 취소]로 판매자 확인 없이 낸 금액을 돌려받을 수 있어요.</div>`
-        : sh && sh.late && act.some((r) => ['SHIPPED', 'DELIVERED'].includes(r.st)) ? `<p class="xsmall">약속 출고일 ${fmtDate(promiseDate(pid), false)}보다 늦게(${fmtDate(sh.at, false)}) 보냈어요. 받은 날부터 ${LOCAL.lateDays.v}일 안에는 반품 사유 ‘늦게 받음’을 고를 수 있고 반품 배송비는 판매자가 내요.</p>` : '';
+      const unshipped = act.some((r) => ['PAID', 'ACCEPTED'].includes(r.st));
+      /* D72: 본사 일괄 공지 기간에는 공지 안내만(지연으로 보지 않음) · 공지 전에 이미 열린 [바로 취소]는 그대로 */
+      const noticeNote = noticeOn() && unshipped ? `<div class="note small"><b>택배 파업으로 식업이 배송 지연을 공지했어요</b><br>공지 기간에는 출고 지연으로 보지 않아요. 공지가 끝난 다음 영업일까지도 보내지 않으면 그때 [바로 취소]가 생겨요.</div>` : '';
+      const lateNote = overdueOpen(pid) ? (act.some((r) => r.st === 'ACCEPTED') ? `<div class="note note-stop small"><b>출고가 늦어지고 있어요</b><br>약속 출고일 ${fmtDate(promiseDate(pid), false)}이 지나고 다음 영업일까지 보내지 않았어요. 보내기 전까지는 [바로 취소]로 판매자 확인 없이 낸 금액을 돌려받을 수 있어요.</div>`
+          : `<div class="note note-stop small"><b>출고가 늦어지고 있어요</b><br>약속 출고일 ${fmtDate(promiseDate(pid), false)}이 지났는데 판매자가 아직 주문을 확인하지 않았어요. 지금 [취소]하면 판매자 확인 없이 바로 취소되고 낸 금액을 돌려드려요.</div>`)
+        : sh && sh.late && act.some((r) => ['SHIPPED', 'DELIVERED'].includes(r.st)) ? `<p class="xsmall">약속 출고일 ${fmtDate(promiseDate(pid), false)}보다 늦게(${fmtDate(sh.at, false)}) 보냈어요. 받은 날부터 ${lateDays()}일 안에는 반품 사유 ‘늦게 받음’을 고를 수 있고 반품 배송비는 판매자가 내요.</p>` : '';
       return `<div class="app-sec"><div class="split"><h4>${PARTNERS[pid].name}</h4><span class="xsmall faint">${subNo(pid)}</span></div>
-        ${track}${lateNote}${sh ? `<p class="xsmall muted">${esc(sh.carrier)} ${esc(sh.no)}${idx === 2 ? ' · 택배사 정보가 반영되기 전이면 조회가 비어 있을 수 있어요' : ''}</p>` : ''}
+        ${track}${noticeNote}${lateNote}${sh ? `<p class="xsmall muted">${esc(sh.carrier)} ${esc(sh.no)}${idx === 2 ? ' · 택배사 정보가 반영되기 전이면 조회가 비어 있을 수 있어요' : ''}</p>` : ''}
         <div class="olist">${recs.map(itemHtml).join('')}</div></div>`;
     }).join('');
     const b = bal();
@@ -972,8 +1110,11 @@
           <dt>증빙</dt><dd>${{ card: '카드 전표', tax: '세금계산서(판매자별 · 구매 확정 뒤 발행)', cash: '현금영수증', none: '미발행' }[o.proof]}</dd>
           ${o.refunds.map((x) => `<dt>환불 ${fmtDate(x.at, false)}</dt><dd>${won(x.total)} · ${x.points ? `${GC.num(x.points)}P + ` : ''}${mName()} ${won(x.pg)}<br><span class="xsmall faint">${esc(x.label)}</span></dd>`).join('')}
           ${o.refunds.length ? `<dt>남은 결제 잔액</dt><dd>${won(b.pg + b.points)}</dd>` : ''}
-          ${o.comps.map((c) => `<dt>지연배상금 ${fmtDate(c.at, false)}</dt><dd>${won(c.amt)} · ${REFUND_ACCT.bank} 환불 계좌로 송금<br><span class="xsmall faint">환불이 예정일보다 ${c.days}일 늦어 따로 드려요 · ${DRAFT}</span></dd>`).join('')}
+          ${o.comps.map((c) => `<dt>지연배상금 ${fmtDate(c.at, false)}</dt><dd>${won(c.amt)} · ${(s.acct || REFUND_ACCT).bank} 환불 계좌로 송금<br><span class="xsmall faint">환불이 예정일보다 ${c.days}일 늦어 따로 드려요 · ${DRAFT}</span></dd>`).join('')}
+          ${s.ret && s.ret.rb && s.ret.rb.paidAt ? `<dt>되돌림 배송비 ${fmtDate(s.ret.rb.paidAt, false)}</dt><dd>${won(s.ret.rb.fee)} · 카드(주문 결제와 따로)<br><span class="xsmall faint">반품 검수에서 거부된 ${eul(s.ret.qty + UW(recById(s.ret.recId).base))} 되돌려 받는 배송비</span></dd>` : ''}
+          <dt>환불 계좌</dt><dd>${s.acct ? `${s.acct.bank} ${s.acct.no} ${s.acct.holder}` : '등록 안 함 · 카드 환불은 카드로 돌아가요'}</dd>
           <dt>배송지</dt><dd>${STORE.name} · ${STORE.time}</dd></dl>
+        ${o.compWait ? `<div class="claimbox"><div class="split"><b>지연배상금 ${won(o.compWait.amt)}</b><span class="st st-warn">환불 계좌 필요</span></div><p class="xsmall">환불이 예정일보다 ${o.compWait.days}일 늦어 드리는 돈이에요. 카드 환불은 결제 금액을 넘을 수 없어 계좌로 따로 보내요. 계좌를 인증해 등록하면 바로 보내 드려요(기다리는 동안 금액은 그대로예요). ${DRAFT}</p><div class="cluster"><button class="btn btn-sm btn-primary btn-ext" data-act="regAcct">환불 계좌 등록</button></div></div>` : ''}
         ${pending ? `<div class="claimbox"><span class="xsmall faint">${VBANK.bank} ${VBANK.acct} · ${fmtDate(o.vbDue)}까지</span><div class="cluster"><button class="btn btn-sm" data-act="copyAcct">계좌번호 복사</button><button class="btn btn-sm btn-danger" data-act="cancelPending">주문 취소</button></div></div>` : ''}
         <button class="btn btn-sm btn-ghost" data-act="reAdd">이 주문 그대로 다시 담기</button></div>`;
   }
@@ -995,7 +1136,7 @@
   }
 
   function cancelView(f, s) {
-    const sh = s.sheet; const rec = recById(sh.recId); const p = PROD[rec.base]; const od = isOverdueRec(rec); const req = rec.st === 'ACCEPTED' && !od;
+    const sh = s.sheet; const rec = recById(sh.recId); const p = PROD[rec.base]; const od = delayCancelOk(rec); const req = rec.st === 'ACCEPTED' && !od;
     f.title(od ? '바로 취소' : req ? '취소 요청' : '주문 취소'); f.tab('마이'); f.back();
     const casc = cascadeOf(rec.base, sh.qty); const u0 = UW(rec.base);
     const r = refundCalc(cancelMap(rec.base, sh.qty, casc)); const restQ = activeQty(rec.base) - sh.qty;
@@ -1036,7 +1177,7 @@
     const sh = s.sheet; const rec = recById(sh.recId); const p = PROD[rec.base];
     f.title(rec.st === 'CONFIRMED' ? '불량 반품' : '반품 신청'); f.tab('마이'); f.back();
     const days = rec.deliveredAt ? Math.floor((app.clock.now() - rec.deliveredAt) / DAY) : 0;
-    const canChange = rec.st !== 'CONFIRMED' && days < LOCAL.changeMindDays.v;
+    const canChange = rec.st !== 'CONFIRMED' && days < LEGAL.changeMind.v;
     const canLate = lateOk(rec);
     if ((!canChange && sh.reason === 'change') || (!canLate && sh.reason === 'late')) sh.reason = 'defect';
     const why = REASON[sh.reason]; const fault = why.fault;
@@ -1045,8 +1186,8 @@
     /* D53: 반품한 수량에 낸 금액 그대로(남은 수량의 구간 단가·쿠폰 조건은 다시 보지 않음) − 고객 부담 반품 배송비. 반품 배송비가 더 크면 모자란 만큼 추가 결제 */
     const pre = `<div class="app-card"><span class="xsmall faint">환불 예정 금액 · 검수 승인 뒤</span><span class="refund-big">${won(x.refund)}</span>
         <span class="small">${x.pointRefund ? `포인트 ${GC.num(x.pointRefund)}P + ` : ''}${mName()} ${won(x.pgRefund)}</span>
-        <div class="calc-line">${refundText(x)}${fault === 'partner' ? `<br>${sh.reason === 'late' ? '늦게 보낸 판매자 책임이라' : '판매자 책임이라'} 반품 배송비 ${tv(won(x.fee), `${pa.name} 반품 배송비`)}은 판매자가 내요.` : ''}</div></div>`;
-    const lateLine = canLate ? `약속 출고일(${fmtDate(promiseDate(rec.pid), false)})보다 늦게 출고된 상품이라 ‘늦게 받음’을 고를 수 있어요(${lv('lateDays')} · 반품 배송비 판매자). ` : '';
+        <div class="calc-line">${refundText(x, true)}${fault === 'partner' ? `<br>${sh.reason === 'late' ? '늦게 보낸 판매자 책임이라' : '판매자 책임이라'} 반품 배송비 ${tv(won(x.fee), `${pa.name} 반품 배송비`)}은 판매자가 내요.` : ''}</div></div>`;
+    const lateLine = canLate ? `약속 출고일(${fmtDate(promiseDate(rec.pid), false)})보다 늦게 출고된 상품이라 ‘늦게 받음’을 고를 수 있어요(${lateTxt()} · 반품 배송비 판매자). ` : '';
     f.body.innerHTML = `
       <div class="app-pad">
         <div class="app-card"><div class="split"><b>${esc(p.name)}</b><span class="xsmall faint">${rec.deliveredAt ? `${fmtDate(rec.deliveredAt, false)} 받음 · ${days}일째` : ''}</span></div>
@@ -1054,12 +1195,12 @@
           <div class="cluster"><button class="btn btn-sm btn-ghost" data-act="sheetQty" data-set="1">1${UW(rec.base)}만</button><button class="btn btn-sm btn-ghost" data-act="sheetQty" data-set="${rec.qty}">전부</button></div></div>
         <div class="field"><span class="lbl">반품 사유</span>
           <div class="seg" role="group" aria-label="반품 사유">${Object.entries(REASON).filter(([k]) => k !== 'late' || canLate).map(([k, n]) => `<button data-act="sheetReason" data-r="${k}" aria-pressed="${sh.reason === k}" ${k === 'change' && !canChange ? 'disabled' : ''}>${esc(n.label)}</button>`).join('')}</div>
-          <span class="hint">${lateLine}${canChange ? `단순 변심은 ${lv('changeMindDays')} 안에만 돼요(반품 배송비 고객 부담).` : rec.st === 'CONFIRMED' ? '구매 확정 뒤에는 불량·오배송 반품만 할 수 있어요.' : '받은 지 7일이 지나 단순 변심 반품은 할 수 없어요.'}</span></div>
+          <span class="hint">${lateLine}${canChange ? `단순 변심은 ${lg('changeMind')} 안에만 돼요(반품 배송비 고객 부담).` : rec.st === 'CONFIRMED' ? '구매 확정 뒤에는 불량·오배송 반품만 할 수 있어요.' : `받은 지 ${LEGAL.changeMind.v}일이 지나 단순 변심 반품은 할 수 없어요.`}</span></div>
         ${needPhoto ? `<div class="field"><span class="lbl">사진 (필수 · 최대 10장)</span>${sh.photo ? `<span class="st st-done">사진 ${sh.photo}장 · 검사 통과</span>` : '<button class="btn btn-sm btn-ext" data-act="photo">사진 올리기</button>'}<span class="hint">앱에서는 카메라로 바로 찍을 수 있어요.</span></div>` : ''}
         <div class="field"><span class="lbl">회수 방법</span><div class="seg" role="group" aria-label="회수 방법"><button data-act="sheetMethod" data-m="pickup" aria-pressed="${sh.method === 'pickup'}">회수 신청(판매자 지정 택배)</button><button data-act="sheetMethod" data-m="self" aria-pressed="${sh.method === 'self'}">직접 보내기</button></div></div>
-        <div class="note note-warn small">사용하거나 훼손된 수량은 반품되지 않고 되돌려 보내요(원하시면 판매자가 폐기해요). 금액을 깎아 일부만 환불하지는 않아요.</div>
+        <div class="note note-warn small">사용하거나 훼손된 수량은 반품되지 않고 되돌려 보내요(원하시면 판매자가 폐기해요). 금액을 깎아 일부만 환불하지는 않아요. 거부가 확정되면 [되돌려 받기](배송비 따로 결제)·[폐기] 중에서 고르고, ${pv('claim.return_back_pay_days')} 안에 고르지 않으면 판매자가 폐기해요. ${DRAFT}</div>
         ${pre}
-        <p class="xsmall faint">판매자가 ${lv('pickupBd')} 안에 회수를 접수해요(안 하면 자동 접수). 회수 뒤 검수 ${pv('claim.inspect_bd')}을 넘기면 자동 승인돼요. 환불은 회수 확인 뒤 ${pv('claim.refund_due_bd')} 안이고, 넘기면 지연배상금을 환불 계좌로 따로 드려요 ${DRAFT}.</p>
+        <p class="xsmall faint">판매자가 ${pv('claim.pickup_register_bd')} 안에 회수를 접수해요(안 하면 자동 접수). 회수 뒤 검수 ${pv('claim.inspect_bd')}을 넘기면 자동 승인돼요. 환불은 회수 확인 뒤 ${pv('claim.refund_due_bd')} 안이고, 넘기면 지연배상금을 환불 계좌로 따로 드려요 ${DRAFT}.</p>
       </div>`;
     const ok = !needPhoto || sh.photo;
     f.bottom(`<div class="grid2" style="gap:8px"><button class="btn btn-lg" data-act="cs" data-to="detail">돌아가기</button><button class="btn btn-primary btn-lg" data-act="doReturn" ${ok ? '' : 'disabled'}>반품 신청하기</button></div>`);
@@ -1073,7 +1214,10 @@
     const ship = sale > 0 && sl ? sl.base : 0;
     /* '중재 판정' 정산 이벤트(−): 판매자 거부가 중재에서 뒤집혀 늦어진 환불의 지연배상금(C-STL-01 · D57) */
     const med = o.medEv.filter((e) => e.pid === pid).reduce((a, e) => a + e.amt, 0);
-    return { sale, disc, ship, ev: GC.settle.confirmEvent({ sale, partnerDisc: disc, rate: P('commission.default_rate'), shipping: ship }), med };
+    /* ‘클레임 완료’ 정산 이벤트(+): 고객 부담 반품 배송비 · 고객 사정으로 묶음을 모두 반품해 돌려주지 않은 처음 배송비(D70 — 구매 확정 이벤트에 붙지 못하므로) */
+    const claims = (o.claimEv || []).filter((e) => e.pid === pid);
+    const claimSum = claims.reduce((a, e) => a + e.amt, 0);
+    return { sale, disc, ship, ev: GC.settle.confirmEvent({ sale, partnerDisc: disc, rate: P('commission.default_rate'), shipping: ship }), med, claims, claimSum };
   }
   VIEWS.partner = (f) => {
     const s = S(); const o = s.order;
@@ -1088,7 +1232,8 @@
     const creqHere = creqMine && cst === 'CANCEL_REQUESTED';
     const creqRej = creqMine && (cst === 'CANCEL_REJECTED' || s.creq.done === 'won');
     const retHere = s.ret && recById(s.ret.recId).pid === pid && !s.ret.done;
-    const onClaim = creqHere || creqRej || retHere;
+    const rbHere = rbOpen() && recById(s.ret.recId).pid === pid;
+    const onClaim = creqHere || creqRej || retHere || rbHere;
     f.nav(onClaim ? '클레임' : '주문'); f.url(`partner.sikup.co.kr/${onClaim ? 'claims' : 'orders'}`);
     const cnt = (sts) => mine.filter((r) => sts.includes(r.st)).length;
     const tabs = [['신규', ['PAID']], ['발주 확인', ['ACCEPTED']], ['배송 중', ['SHIPPED']], ['배송 완료', ['DELIVERED']], ['구매 확정', ['CONFIRMED']], ['취소·반품', ['CANCELED', 'RETURNED']]];
@@ -1096,7 +1241,8 @@
     const onTab = Math.max(0, tabs.findIndex(([, sts]) => cnt(sts) > 0));
     const share = (r) => { const l = o.calc.lines.find((x) => x.id === r.base); return Math.round((l.afterPartner * r.qty) / o.origQty[r.base]); };
     const panels = [];
-    if (paid.length) panels.push(`<div class="panel"><div class="panel-h"><h2>신규 주문 ${paid.length}건</h2><span class="xsmall faint">결제 후 ${lv('acceptRemindBd')} 안에 발주 확인</span></div><div class="panel-b stack-sm">
+    if (paid.length) panels.push(`<div class="panel"><div class="panel-h"><h2>신규 주문 ${paid.length}건</h2><span class="xsmall faint">결제 후 ${pv('order.accept_remind_bd')} 안에 발주 확인 · ${pv('order.accept_alert_bd')}이면 운영팀 알림(자동 취소 없음)</span></div><div class="panel-b stack-sm">
+      ${overdueOpen(pid) ? `<div class="note note-stop small"><b>발주 확인 없이 출고 기한을 넘겼어요 · 무단 지연 기록</b><br>약속 출고일 ${fmtDate(promiseDate(pid), false)} 다음 영업일(${fmtDate(o.overdue[pid].at)})까지 송장이 없어 ‘출고 지연’이 됐어요. 발주 확인 전이라 고객 취소는 원래 바로 돼요. 지금 발주 확인하면 송장 등록 전까지 고객에게 [바로 취소]가 보여요.</div>` : ''}
       <div class="cluster"><button class="btn btn-primary" data-act="accept">발주 확인 (${paid.length}건 일괄)</button>${paid.map((r) => `<button class="btn btn-sm btn-danger" data-act="stockout" data-id="${r.id}">${PROD[r.base].short} 품절 취소</button>`).join('')}</div>
       <p class="xsmall faint">약속 출고일 ${fmtDate(promiseDate(pid), false)} = 결제일 + 출고 소요일 ${tv(`영업일 ${pa.lead}일`, `${pa.name} 출고 소요일`)}. 품절 취소는 발주 확인 전후 모두 할 수 있고 고객은 공제 없이 환불받아요.</p></div></div>`);
     if (creqHere) {
@@ -1107,9 +1253,10 @@
         <div class="cluster"><button class="btn btn-primary" data-act="approveCancel">취소 승인</button><button class="btn btn-danger btn-ext" data-act="rejectCancel">거부 · 이미 출고(송장 등록)</button></div>
         <p class="xsmall faint">출고 준비만 끝났고 집하 전이면 승인을 권장해요. 이미 포장한 비용은 청구할 수 없어요. 거부하면 고객이 거부 통지 뒤 ${pv('claim.objection_days')} 안에 이의를 제기할 수 있고, 본사 중재 결과가 최종이에요.</p></div></div>`);
     } else if (acc.length) {
-      const odAt = GC.order.overdueAt(promiseDate(pid));
+      const odAt = judgeAt(pid);
+      const ntNote = noticeOn() && !overdueOpen(pid) ? `<div class="note small"><b>본사 일괄 공지 — 지연으로 보지 않아요</b><br>${fmtDate(o.notice.start)}부터 택배 파업 공지 중이에요. 공지가 끝나면 끝난 날 + ${pv('order.overdue_grace_bd')}의 끝으로 다시 판정해요(P-ORD-03 · D72).</div>` : '';
       const odNote = overdueOpen(pid) ? `<div class="note note-stop small"><b>출고 기한을 넘겼어요 · 무단 지연 기록</b><br>약속 출고일 ${fmtDate(promiseDate(pid), false)} 다음 영업일(${fmtDate(odAt)})까지 송장이 없고 지연 안내도 없어 ‘출고 지연’이 됐어요. 고객은 송장 등록 전까지 승인 없이 바로 취소할 수 있어요. 지금 출고하면 늦게 받은 상품이라 고객이 반품 사유 ‘늦게 받음’을 고를 수 있고 반품 배송비는 판매자가 내요. 무단 지연은 기록만 하고 페널티는 2차예요.</div>` : '';
-      panels.push(`<div class="panel"><div class="panel-h"><h2>출고 대기 ${acc.length}건</h2><span class="xsmall faint">약속 출고일 ${fmtDate(promiseDate(pid), false)} · 지연 판정 ${fmtDate(odAt)}</span></div><div class="panel-b stack-sm">${odNote}
+      panels.push(`<div class="panel"><div class="panel-h"><h2>출고 대기 ${acc.length}건</h2><span class="xsmall faint">약속 출고일 ${fmtDate(promiseDate(pid), false)} · ${noticeOn() && !overdueOpen(pid) ? '일괄 공지 중 · 판정 안 함' : `지연 판정 ${fmtDate(odAt)}`}</span></div><div class="panel-b stack-sm">${ntNote}${odNote}
         <div class="inline-form"><div class="field"><label for="carrier">택배사</label><select class="select" id="carrier"><option>CJ대한통운</option><option>한진택배</option><option>롯데택배</option></select></div><div class="field"><label for="inv">송장번호</label><input class="input" id="inv" value="6890-1234-5678"></div></div>
         <div class="cluster"><button class="btn btn-primary btn-ext" data-act="ship">송장 등록하고 출고</button>${acc.map((r) => `<button class="btn btn-sm btn-danger" data-act="stockout" data-id="${r.id}">${PROD[r.base].short} 품절 취소</button>`).join('')}</div>
         <p class="xsmall faint">묶음 배송이라 송장 하나로 ${acc.length}개 항목을 처리해요. 24시간 안에 집하 기록이 없으면 허위 송장 의심으로 운영팀에 알려요.</p></div></div>`);
@@ -1132,14 +1279,27 @@
           ${rec.qty > 1 ? `<div class="field"><label for="okQty">멀쩡해서 승인할 수량(일부 승인)</label><select class="select" id="okQty">${Array.from({ length: rec.qty - 1 }, (_, i) => `<option value="${i + 1}">${i + 1}${u} 승인 · ${rec.qty - i - 1}${u} 거부</option>`).join('')}</select></div>` : ''}</div>
         <div class="cluster"><button class="btn btn-primary" data-act="approveReturn">반품 승인(${rec.qty}${u} 전부)</button>${rec.qty > 1 ? '<button class="btn btn-ext" data-act="partialReturn">일부 승인 · 거부 수량 사진</button>' : ''}<button class="btn btn-danger btn-ext" data-act="rejectReturn">반품 거부 · 사유·사진</button></div>
         <span class="xsmall faint">${rec.qty > 1 ? '금액을 깎지 않고 수량으로만 나눠요. ' : '한 개짜리라 승인 또는 거부만 할 수 있어요. '}${fmtDate(r.inspectDue)}까지 결과를 안 내면 자동 승인·환불돼요.</span>`;
-      if (st === 'RETURN_REJECTED') act = `<p class="small">${r.objection ? '고객이 이의를 제기해 본사가 중재하고 있어요(수량별 승인·거부로 판정). 결과가 최종이에요.' : `거부를 통지했어요. 고객은 ${fmtDate(r.objDue)}까지 이의를 제기할 수 있어요.`} 거부가 확정되면 ${r.back === 'dispose' ? '고객이 고른 대로 폐기해요(배송비 없음).' : `${eul(r.qty + u)} 고객에게 다시 보내요(배송비 ${won(pa.retFee)} 고객 부담).`}</p>`;
+      if (st === 'RETURN_REJECTED') act = `<p class="small">${r.objection ? '고객이 이의를 제기해 본사가 중재하고 있어요(수량별 승인·거부로 판정). 결과가 최종이에요.' : `거부를 통지했어요. 고객은 ${fmtDate(r.objDue)}까지 이의를 제기할 수 있어요.`} 거부가 확정되면 고객이 ${pv('claim.return_back_pay_days')} 안에 [되돌려 받기](되돌림 배송비 ${won(pa.retFee)} 결제 → 판매자가 ${pv('claim.return_back_ship_bd')} 안에 송장 등록)·[폐기]를 골라요. 고르지 않으면 폐기로 확정돼요 ${DRAFT}</p>`;
       const dueRow = r.refundDue ? `<dt>환불 기한</dt><dd>${fmtDate(r.refundDue)} · 회수 완료 + ${pv('claim.refund_due_bd')} · 거부가 중재에서 뒤집혀 늦어지면 지연배상금은 판매자 부담 ${DRAFT}</dd>` : '';
       panels.push(`<div class="panel"><div class="panel-h"><h2>반품 · ${esc(recLabel(rec))}${r.partial ? ' (거부한 수량)' : ''}</h2><span class="st ${st === 'RETURN_REJECTED' ? 'st-stop' : 'st-warn'}">${esc(GC.sm.stateName('CLAIM_RETURN', st))}</span></div><div class="panel-b stack-sm">
         ${r.partial ? `<p class="small">일부 승인: 멀쩡한 ${eun(r.partial.ok + u)} 반품 승인 → 고객 환불 ${won(r.partial.refund)}(항목 분할 · 반품 완료) · ${eun(r.qty + u)} 거부(${esc(r.rejectReason)} · 사진 2장)</p>` : ''}
         <dl class="kv small"><dt>사유·귀책</dt><dd>${esc(REASON[r.reason].label)} · ${r.fault === 'partner' ? '판매자 귀책' : '고객 귀책'}</dd><dt>사진</dt><dd>${r.photo ? `${r.photo}장` : `없음(${esc(REASON[r.reason].label)})`}</dd><dt>회수</dt><dd>${r.method === 'self' ? '고객 직접 발송' : '판매자 지정 택배 회수'}</dd>
-          <dt>반품 배송비</dt><dd>${tv(won(pa.retFee), `${pa.name} 반품 배송비(편도)`)} · ${r.fault === 'partner' ? '판매자 부담' : r.feeTaken ? '고객 부담 · 승인 수량 환불에서 뺐음' : '고객 부담(환불액에서 차감)'}</dd>
+          <dt>반품 배송비</dt><dd>${x.round ? tv(won(pa.exFee), `${pa.name} 교환 배송비(왕복) — 무료배송 묶음을 모두 반품`) : tv(won(pa.retFee), `${pa.name} 반품 배송비(편도)`)} · ${r.fault === 'partner' ? '판매자 부담' : r.feeTaken ? '고객 부담 · 승인 수량 환불에서 뺐음' : '고객 부담(환불액에서 차감) · 정산 클레임 완료(+)'}</dd>
+          ${x.shipRefund || x.shipKept ? `<dt>처음 낸 배송비</dt><dd>${x.shipRefund ? `${won(x.shipRefund)} 고객에게 돌려줌(판매자 귀책 · 묶음 전부 반품)` : `${won(x.shipKept)} 돌려주지 않음 → 판매자 몫(정산 클레임 완료 +)`} ${DRAFT}</dd>` : ''}
           <dt>고객 환불 예정</dt><dd>${x.shortfall ? `0원 · 반품 배송비 모자란 ${won(x.shortfall)} 고객 추가 결제` : won(x.refund)}${r.partial ? ` (거부한 ${iga(r.qty + u)} 인정될 때)` : ''} · 반품한 수량에 낸 금액</dd>${dueRow}</dl>
         <div class="cluster">${act}</div></div></div>`);
+    }
+    /* D71: 거부가 확정된 수량 — 결제되면(또는 중재에서 파트너 귀책이면 결제 없이) 송장 등록, 폐기면 폐기 확인 기록 */
+    if (rbHere) {
+      const r = s.ret; const rb = r.rb; const rec = recById(r.recId); const u = UW(rec.base);
+      let body;
+      if (!rb.choice) body = `<p class="small">고객이 ${fmtDate(rb.due)}까지 [되돌려 받기](되돌림 배송비 ${won(rb.fee)} 결제)·[폐기]를 골라요. 고르지 않으면 폐기로 확정되고 알림이 와요.</p>`;
+      else if (rb.choice === 'send') body = `<dl class="kv small"><dt>되돌림 배송비</dt><dd>${rb.by === 'partner' ? '판매자 부담 · 중재 판정 귀책 파트너(고객 결제 없음)' : `고객이 따로 결제 ${won(rb.fee)} · ${fmtDate(rb.paidAt)}`}</dd><dt>송장 등록 기한</dt><dd>${fmtDate(rb.shipDue)} · ${pv('claim.return_back_ship_bd')}</dd><dt>받는 곳</dt><dd>${STORE.name} · ${STORE.addr}</dd></dl>
+        <div class="inline-form"><div class="field"><label for="rbCarrier">택배사</label><select class="select" id="rbCarrier"><option>CJ대한통운</option><option>한진택배</option><option>롯데택배</option></select></div><div class="field"><label for="rbInv">송장번호</label><input class="input" id="rbInv" value="6890-3333-1017"></div></div>
+        <div class="cluster"><button class="btn btn-primary btn-ext" data-act="rbShip">송장 등록하고 되돌려 보내기</button></div>`;
+      else body = `<p class="small">${rb.by === 'auto' ? `고객이 ${fmtDate(rb.due)}까지 고르지 않아` : '고객이 [폐기]를 골라'} 폐기가 확정됐어요. 폐기하고 기록(사진·시각)을 남겨 주세요.</p><div class="cluster"><button class="btn btn-primary btn-ext" data-act="rbDisposed">폐기 확인 기록</button></div>`;
+      const lab = !rb.choice ? ['st-todo', '고객 선택 대기'] : rb.choice === 'send' ? ['st-warn', '되돌려 보내기'] : ['st-stop', '폐기 확정'];
+      panels.push(`<div class="panel"><div class="panel-h"><h2>거부 수량 · ${esc(PROD[rec.base].name)} ${r.qty}${u}</h2><span class="st ${lab[0]}">${lab[1]}</span></div><div class="panel-b stack-sm">${body}<p class="xsmall faint">반품 검수에서 거부가 확정된 수량이에요(${r.done === 'mediated' ? '본사 중재 거부 유지' : '이의 기한 지남'} · P-ORD-05) ${DRAFT}</p></div></div>`);
     }
     const sp = settleFor(pid); const conf = mine.filter((r) => r.st === 'CONFIRMED').length;
     f.body.innerHTML = `
@@ -1158,8 +1318,10 @@
           <tr><td>파트너 부담 할인(즉시 할인·파트너 쿠폰)</td><td class="num">−${won(sp.disc)}</td></tr>
           <tr><td>판매 수수료 ${pv('commission.default_rate')} · 할인 뒤 금액 기준</td><td class="num">−${won(sp.ev.fee)}</td></tr>
           <tr><td>배송비 정산(고객 결제 + 본사 쿠폰 보전)</td><td class="num">${won(sp.ship)}</td></tr>
+          ${sp.claims.map((e) => `<tr><td>클레임 완료(+) · ${esc(e.why)}</td><td class="num">+${won(e.amt)}</td></tr>`).join('')}
           ${sp.med ? `<tr><td>중재 판정 · 환불 지연배상금(거부가 뒤집혀 늦어짐 · 수수료 없음)</td><td class="num">−${won(sp.med)}</td></tr>` : ''}
-          <tr class="is-sum"><td>정산 예정액</td><td class="num">${won(sp.ev.amount - sp.med)}</td></tr></tbody></table>
+          <tr class="is-sum"><td>정산 예정액</td><td class="num">${won(sp.ev.amount - sp.med + sp.claimSum)}</td></tr></tbody></table>
+        ${sp.claims.some((e) => e.why.startsWith('돌려주지 않은')) ? `<p class="xsmall">돌려주지 않은 처음 배송비는 판매자 몫이에요. 묶음이 반품으로 끝나 구매 확정 이벤트에 배송비가 붙지 못하므로 마지막 ‘클레임 완료’ 정산 이벤트(+)에 붙여요(C-STL-01 · D70) ${DRAFT}</p>` : ''}
         <p class="xsmall faint">본사 쿠폰·포인트·멤버십 배송비 쿠폰은 본사 부담이라 파트너 몫이 줄지 않아요.</p></div></div>`;
   };
 
@@ -1168,17 +1330,65 @@
   /** 모니터링 목록(A-ORD-01): 출고 지연(무단 지연 포함, D58)과 환불 기한 임박·초과(지연배상금, D57) */
   function monitorHtml(s, o) {
     const t = app.clock.now(); const rows = [];
+    /* 출고 지연에는 발주 확인 전(PAID) 주문도 듦(S12 맞춤 ㉑ · A-ORD-01) */
     ['A', 'B'].forEach((pid) => {
-      if (overdueOpen(pid) && s.recs.some((r) => r.pid === pid && r.st === 'ACCEPTED')) rows.push([`출고 지연 · ${PARTNERS[pid].name}`, `약속 출고일 ${fmtDate(promiseDate(pid), false)} · 판정 ${fmtDate(o.overdue[pid].at)} · 송장·지연 안내 없음 → 무단 지연 기록(페널티 2차) · 고객 [바로 취소] 열림`, '<span class="sla sla-over">지연</span>']);
+      const items = s.recs.filter((r) => r.pid === pid && ['PAID', 'ACCEPTED'].includes(r.st));
+      if (overdueOpen(pid) && items.length) rows.push([`출고 지연 · ${PARTNERS[pid].name}`, `약속 출고일 ${fmtDate(promiseDate(pid), false)} · 판정 ${fmtDate(o.overdue[pid].at)} · 송장·지연 안내 없음 → 무단 지연 기록(페널티 2차) · ${items.some((r) => r.st === 'ACCEPTED') ? '고객 [바로 취소] 열림' : '발주 확인 전 — 고객 취소는 원래 바로라 [바로 취소]는 따로 열지 않음'}`, '<span class="sla sla-over">지연</span>']);
     });
+    /* 지연배상금 송금 대기(S12 맞춤 ⑳): 카드 환불 고객이 7일 넘게 환불 계좌를 넣지 않음 */
+    if (o.compWait && o.compWait.reminded) rows.push(['지연배상금 송금 대기', `${won(o.compWait.amt)} · ${fmtDate(o.compWait.at)} 환불 계좌 입력 요청 · ${lv('acctRemind')} 지나 한 번 더 알림 · 계좌가 등록되면 바로 송금(금액은 그대로) ${DRAFT}`, '<span class="sla sla-over">송금 대기</span>']);
     const r = s.ret;
     if (refundWatch(r)) {
       const over = t > r.refundDue;
       rows.push([`환불 기한 · ${esc(recLabel(recById(r.recId)))} 반품`, `회수 완료 ${fmtDate(r.collectedAt)} + ${pv('claim.refund_due_bd')} → ${fmtDate(r.refundDue)} · ${over ? '넘김 → 환불할 때 지연배상금 자동 계산' : '전날·넘김 때 재무 알림'} ${DRAFT}`, over ? '<span class="sla sla-over">초과</span>' : t >= dueEve(r.refundDue) ? '<span class="sla sla-warn">임박</span>' : '<span class="sla sla-ok">기한 안</span>']);
     }
     if (!rows.length) return '';
-    return `<div class="panel"><div class="panel-h"><h2>모니터링</h2><span class="xsmall faint">출고 지연 · 환불 기한 임박·초과</span></div><div class="panel-b"><div class="tbl-wrap"><table class="tbl small"><thead><tr><th>대상</th><th>내용</th><th>상태</th></tr></thead><tbody>
+    return `<div class="panel"><div class="panel-h"><h2>모니터링</h2><span class="xsmall faint">출고 지연 · 환불 기한 임박·초과 · 지연배상금 송금 대기</span></div><div class="panel-b"><div class="tbl-wrap"><table class="tbl small"><thead><tr><th>대상</th><th>내용</th><th>상태</th></tr></thead><tbody>
       ${rows.map(([a, b, c]) => `<tr><td>${a}</td><td class="why">${b}</td><td>${c}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+  }
+  /** 지연 예외 기간(본사 일괄 공지, A-ORD-01 본사 개입 · P-ORD-03 · D72): ‘안내 없는 출고 지연’ 장면에서 시연 */
+  function noticeHtml(s, o) {
+    if (scenario !== 'late' && !o.notice) return '';
+    const n = o.notice; const pids = [...new Set(s.recs.map((r) => r.pid))];
+    let body; let btn = '';
+    if (!n) {
+      body = '<p class="small">천재지변·택배 파업처럼 전체가 늦어질 때 지연 예외 기간을 등록해요. 이 기간에는 출고 지연·무단 지연 판정을 하지 않고 지연 기록에서도 빼요. 시작·끝 때 범위에 드는 진행 중 주문의 고객과 파트너 주문 담당자에게 알리고, 고객 공지 글(U-CS-04)을 함께 올려요.</p>';
+      btn = '<button class="btn btn-primary" data-act="noticeStart">일괄 공지 시작 · 택배 파업(전체)</button>';
+    } else {
+      const rowsP = pids.map((pid) => {
+        const orig = GC.order.overdueAt(promiseDate(pid));
+        const v = o.ship[pid] ? '출고됨 · 해당 없음' : o.overdue[pid] && o.overdue[pid].at <= n.start ? `공지 전(${fmtDate(o.overdue[pid].at)})에 이미 출고 지연 · [바로 취소] 그대로` : !n.end ? `공지 중 · 판정 안 함(원래 ${fmtDate(orig)})` : `${fmtDate(judgeAt(pid))}${+judgeAt(pid) !== +orig ? ` · 원래 ${fmtDate(orig)} → 끝난 날 + ${pv('order.overdue_grace_bd')} 끝` : ' · 원래 그대로(공지와 상관없음)'}`;
+        return `<dt>판정 · ${PARTNERS[pid].name}</dt><dd>${v}</dd>`;
+      }).join('');
+      body = `<dl class="kv small"><dt>기간</dt><dd>${fmtDate(n.start)} ~ ${n.end ? fmtDate(n.end) : '끝 시각 미정(공지 중)'}</dd><dt>범위</dt><dd>${esc(n.scope)}</dd>${rowsP}</dl>
+        <p class="xsmall faint">끝나면 판정 시각이 기간 안에 들었거나 이미 지난 주문만 ‘끝난 날 + 영업일 ${P('order.overdue_grace_bd')}일의 끝’(원래와 견줘 늦은 쪽)으로 다시 판정해요. 공지와 상관없던 주문과 공지 전에 이미 열린 [바로 취소]는 그대로예요(GC.order.afterNotice).</p>`;
+      if (!n.end) btn = '<button class="btn btn-primary" data-act="noticeEnd">공지 끝내기</button>';
+    }
+    return `<div class="panel"><div class="panel-h"><h2>지연 예외 기간 · 본사 일괄 공지</h2><span class="xsmall faint">A-ORD-01 · P-ORD-03 · D72</span></div><div class="panel-b stack-sm">${body}${btn ? `<div class="cluster">${btn}</div>` : ''}</div></div>`;
+  }
+  /** 반품 배송비 비교(C-PAY-02 예시 · D70, 법률 자문 전 초안): 냅킨 2박스 60,000원 + 배송비 4,000원, 반품 배송비 4,000원 — 엔진 GC.refund.partialCancel로 계산 */
+  function shipCompareHtml() {
+    const fee = PARTNERS.A.retFee; const round = PARTNERS.A.exFee;
+    const run = (qty) => {
+      const input = { items: [itemOf('napkin', qty)], shipping: shippingTpl() }; const r0 = GC.price.calcOrder(input);
+      const paid = { pg: r0.totals.pay, points: 0 };
+      const pc = (o) => GC.refund.partialCancel({ input, paid, mode: 'return', ...o });
+      return { r0, pc };
+    };
+    const { r0, pc } = run(2);
+    const one = (pf) => pc({ cancel: [{ id: 'napkin' }], deduction: pf ? 0 : fee, fault: pf });
+    const two = (pf) => { const a = pc({ cancel: [{ id: 'napkin', qty: 1 }], deduction: pf ? 0 : fee, fault: pf }); const b = pc({ cancel: [{ id: 'napkin' }], alreadyCanceled: { napkin: 1 }, refunded: { pg: a.refund, points: 0 }, deduction: pf ? 0 : fee, fault: pf, keptBefore: a.kept }); return [a, b]; };
+    const pf1 = one(true); const pf2 = two(true); const cm1 = one(false); const cm2 = two(false);
+    const free = run(8); const fr = free.pc({ cancel: [{ id: 'napkin' }], deduction: round, fault: false });
+    const sum = (ab) => `${won(ab[0].refund)} + ${won(ab[1].refund)} = ${won(ab[0].refund + ab[1].refund)}`;
+    return `<div class="panel"><div class="panel-h"><h2>반품 배송비 비교</h2><span class="xsmall faint">C-PAY-02 예시 · C-PRICE-03 · D70 ${DRAFT}</span></div><div class="panel-b stack-sm">
+      <p class="small">냅킨 2박스 ${won(r0.totals.gross)} + 배송비 ${won(r0.totals.shipping)} = 결제 ${won(r0.totals.pay)} · 반품 배송비(편도) ${tv(won(fee), `${PARTNERS.A.name} 반품 배송비(편도)`)} · 냅킨이 이 판매자 묶음의 유일한 상품</p>
+      <div class="tbl-wrap"><table class="tbl small"><thead><tr><th>반품 사유</th><th class="num">한 번에 2박스</th><th class="num">1박스씩 나눠서</th><th>처음 낸 배송비</th></tr></thead><tbody>
+        <tr><td>판매자 잘못</td><td class="num">${won(pf1.refund)}</td><td class="num">${sum(pf2)}</td><td class="why">돌려줌 · 나눴으면 마지막 건에서</td></tr>
+        <tr><td>단순 변심</td><td class="num">${won(cm1.refund)}</td><td class="num">${sum(cm2)}</td><td class="why">돌려주지 않음 · 판매자 몫</td></tr>
+        <tr><td>단순 변심 · 무료배송 묶음</td><td class="num">${won(fr.refund)}</td><td class="num">—</td><td class="why">0원 · 반품 배송비 왕복</td></tr></tbody></table></div>
+      <p class="xsmall faint">판매자 잘못 = 불량·오배송·표시와 다름·늦게 받음(중재에서 판매자 귀책으로 뒤집힌 것 포함). 단순 변심은 반품 배송비(편도 ${won(fee)})를 반품마다 빼요. 무료배송 묶음 줄은 냅킨 8박스 ${won(free.r0.totals.pay)}(${won(PARTNERS.A.ship.freeOver)} 이상 무료배송)을 모두 반품한 예시로, 반품 배송비 왕복 ${tv(won(round), `${PARTNERS.A.name} 교환 배송비(왕복)`)}을 빼요(C-PRICE-03).</p>
+      <p class="xsmall">반품 순서와 상관없이 같은 금액이에요. 남은 항목이 없는 마지막 반품은 잔액으로 끝전을 정리하되, 돌려주지 않는 처음 배송비와 앞서 뺀 반품 배송비는 빼고 돌려줘요. 묶음의 항목이 하나라도 구매 확정되어 남으면 처음 배송비는 돌려주지 않아요. 돌려주지 않은 처음 배송비는 판매자 몫이라, 묶음이 반품으로 끝나 구매 확정 이벤트에 배송비가 붙지 못하므로 마지막 ‘클레임 완료’ 정산 이벤트(+)에 붙여요(C-STL-01). 법률 L-21에서 파트너 귀책 전부 반품의 처음 배송비 반환 의무를 확인해요.</p></div></div>`;
   }
 
   /* ── 본사 운영 화면 ── */
@@ -1203,14 +1413,14 @@
           <dt>거부 유지</dt><dd>거부 확정 · 고객은 받은 상품을 일반 반품 절차로만 돌려보낼 수 있어요(단순 변심이면 반품 배송비 고객 부담)</dd>
           <dt>판단 근거</dt><dd>취소 요청 시각과 택배 집하 시각(요청 전에 이미 보낸 경우만 거부할 수 있음, P-ORD-04) · 클레임 이력 · 주문·배송 기록</dd></dl>
         <div class="cluster"><button class="btn btn-primary" data-act="mediateCancel" data-r="customer">고객 주장 인정 · 취소 승인</button><button class="btn" data-act="mediateCancel" data-r="partner">파트너 거부 유지</button></div>
-        <p class="xsmall faint">판정 결과는 최종이고 재심이 없어요. 판정자는 이 주문 CS 담당과 다른 사람이어야 해요. 목표 기한 ${lv('mediationBd')}.</p></div></div>`;
+        <p class="xsmall faint">판정 결과는 최종이고 재심이 없어요. 판정자는 이 주문 CS 담당과 다른 사람이어야 해요. 목표 기한 ${pv('claim.mediation_bd')}.</p></div></div>`;
     }
     if (rmed) {
       const r = s.ret; const rec = recById(r.recId); const x = returnRefund(rec.base, rec.qty, r.fault, rec.pid, r.feeTaken); const u = UW(rec.base);
       const said = { change: '포장만 뜯어 내용을 확인했고 쓰지 않았어요', defect: '상자를 열자마자 냅킨이 젖어 있었어요', late: '약속한 날보다 늦게 와서 쓸 일이 없어졌어요' }[r.reason];
       const dl = retDelayPreview(r); const fee = PARTNERS[rec.pid].retFee;
       const dueRows = r.refundDue ? `<dt>환불 기한</dt><dd>${fmtDate(r.refundDue)} · 회수 완료 ${fmtDate(r.collectedAt)} + ${pv('claim.refund_due_bd')} ${DRAFT}</dd>
-          <dt>지금 인정하면</dt><dd>${dl && dl.comp ? `기한을 ${dl.days}일 넘겨 지연배상금 <b>${won(dl.comp)}</b> = ${won(dl.amount)} × 연 ${dl.rate}% × ${dl.days}일 ÷ 365(원 단위 내림) · 고객 사정으로 늦은 기간 0일(카드 환불이라 계좌 입력 대기 없음) · 판매자 거부가 뒤집혀 늦어진 것이라 <b>판매자 부담</b>(정산 ‘중재 판정’ −) · 카드 환불과 따로 환불 계좌로 송금` : `기한 안이라 지연배상금 없음 · 기한을 넘기면 하루마다 ${won(Math.floor((x.refund * P('claim.refund_delay_rate')) / 36500))}씩 붙어 판매자 부담`}</dd>` : '';
+          <dt>지금 인정하면</dt><dd>${dl && dl.comp ? `기한을 ${dl.days}일 넘겨 지연배상금 <b>${won(dl.comp)}</b> = ${won(dl.amount)} × 연 ${dl.rate}% × ${dl.days}일 ÷ 365(원 단위 내림) · 고객 사정으로 늦은 기간 0일(카드 환불이라 계좌 입력 대기를 빼지 않음) · 판매자 거부가 뒤집혀 늦어진 것이라 <b>판매자 부담</b>(정산 ‘중재 판정’ −) · ${s.acct ? '카드 환불과 따로 환불 계좌로 송금' : '고객 환불 계좌가 없어 PG 취소가 성공한 날로 금액을 정하고 계좌 입력을 요청(등록되면 송금)'}` : `기한 안이라 지연배상금 없음 · 기한을 넘기면 하루마다 ${won(Math.floor((x.refund * P('claim.refund_delay_rate')) / 36500))}씩 붙어 판매자 부담`}</dd>` : '';
       medHtml += `<div class="panel"><div class="panel-h"><h2>반품 거부 이의 · ${subNo(rec.pid)}</h2><span class="tag tag-stop">이의 제기됨</span></div><div class="panel-b stack">
         <div class="tbl-wrap"><table class="tbl small medlog"><thead><tr><th>시각</th><th>누가</th><th>내용</th></tr></thead><tbody>
           <tr><td>${fmtDate(r.at)}</td><td>고객</td><td>${PROD[rec.base].name} ${r.partial ? r.partial.ok + r.qty : r.qty}${u} 반품 신청 · ${esc(REASON[r.reason].label)} · 사진 ${r.photo || 0}장</td></tr>
@@ -1219,9 +1429,10 @@
           <tr><td>${fmtDate(r.objAt)}</td><td>고객</td><td>이의 제기 · "${said}"</td></tr></tbody></table></div>
         <dl class="kv small"><dt>고객 주장 인정</dt><dd>${r.partial ? `거부한 ${r.qty}${u}도 ` : ''}반품 승인 · 환불 ${won(x.refund)}(반품한 수량에 낸 금액${x.deduction ? ` − 반품 배송비 ${won(x.deduction)}` : ''}) · 반품 배송비 ${r.fault === 'partner' ? '파트너' : '고객'} 부담</dd>
           ${dueRows}
-          <dt>거부 유지</dt><dd>회수한 상품을 고객에게 다시 보내고 배송비 ${won(fee)}은 고객 부담(고객이 고르면 판매자가 폐기 · 지금 고객 선택: ${r.back === 'dispose' ? '폐기' : '되돌려 받기'})</dd><dt>판단 근거</dt><dd>양측 사진 · 클레임 이력 · 주문·배송 기록 · 수량별로 승인·거부할 수 있어요(금액을 깎는 부분 환불 없음)</dd></dl>
+          <dt>거부 유지</dt><dd>거부 확정 · 고객이 ${pv('claim.return_back_pay_days')} 안에 [되돌려 받기](되돌림 배송비 ${won(fee)} 따로 결제 → 판매자가 ${pv('claim.return_back_ship_bd')} 안에 송장)·[폐기]를 골라요(지나면 폐기). 판정 귀책이 파트너면 결제 없이 판매자 부담으로 되돌려 보내요 ${DRAFT}</dd><dt>판단 근거</dt><dd>양측 사진 · 클레임 이력 · 주문·배송 기록 · 수량별로 승인·거부할 수 있어요(금액을 깎는 부분 환불 없음)</dd></dl>
+        <div class="inline-form"><div class="field"><label for="backBy">거부 유지일 때 되돌림 배송비(판정 귀책)</label><select class="select" id="backBy"><option value="customer">고객 부담 · 귀책 고객(고객이 결제)</option><option value="partner">판매자 부담 · 귀책 파트너(결제 없이 보냄)</option></select></div></div>
         <div class="cluster"><button class="btn btn-primary" data-act="mediate" data-r="customer">고객 주장 인정 · 반품 승인</button><button class="btn" data-act="mediate" data-r="partner">파트너 거부 유지</button></div>
-        <p class="xsmall faint">판정 결과는 최종이고 재심이 없어요. 판정자는 이 주문 CS 담당과 다른 사람이어야 해요. 목표 기한 ${lv('mediationBd')}.</p></div></div>`;
+        <p class="xsmall faint">판정 결과는 최종이고 재심이 없어요. 판정자는 이 주문 CS 담당과 다른 사람이어야 해요. 목표 기한 ${pv('claim.mediation_bd')}.</p></div></div>`;
     }
     const t = o.calc.totals; const b = bal();
     const rows = [
@@ -1242,10 +1453,14 @@
           <tr><td>결제</td><td class="num">${won(o.paid.pg)}${o.paid.points ? ` + ${GC.num(o.paid.points)}P` : ''}</td></tr>
           ${o.refunds.map((x) => `<tr><td>환불 · ${esc(x.label)}</td><td class="num">−${won(x.pg)}${x.points ? ` − ${GC.num(x.points)}P` : ''}</td></tr>`).join('')}
           <tr class="is-sum"><td>남은 잔액</td><td class="num">${won(b.pg)}${o.paid.points ? ` + ${GC.num(b.points)}P` : ''}</td></tr>
-          ${o.comps.map((c) => `<tr><td>지연배상금 송금 · ${c.days}일 · ${c.burden === 'partner' ? `${PARTNERS[c.pid].name} 부담(중재 판정 −)` : '본사 부담'}</td><td class="num">${won(c.amt)}</td></tr>`).join('')}</tbody></table>
+          ${o.comps.map((c) => `<tr><td>지연배상금 송금 · ${c.days}일 · ${c.burden === 'partner' ? `${PARTNERS[c.pid].name} 부담(중재 판정 −)` : '본사 부담'}</td><td class="num">${won(c.amt)}</td></tr>`).join('')}
+          ${o.compWait ? `<tr><td>지연배상금 · ${o.compWait.days}일 · 환불 계좌 입력 대기(${fmtDate(o.compWait.at)} 요청${o.compWait.reminded ? ' · 다시 알림 보냄' : ''})</td><td class="num">${won(o.compWait.amt)}</td></tr>` : ''}
+          ${s.ret && s.ret.rb && s.ret.rb.paidAt ? `<tr><td>되돌림 배송비 결제(주문 결제와 따로) · 반품 검수 거부 수량</td><td class="num">+${won(s.ret.rb.fee)}</td></tr>` : ''}</tbody></table>
           <p class="xsmall faint">카드 누적 환불은 승인 금액을 넘지 않아요(잔액 비율 안분 · 마지막은 잔액 전부). 지연배상금은 카드 환불과 따로 환불 계좌로 보내요 ${DRAFT}.</p></div></div>
       </div>
       ${monitorHtml(s, o)}
+      ${noticeHtml(s, o)}
+      ${scenario === 'retall' ? shipCompareHtml() : ''}
       <div class="panel"><div class="panel-h"><h2>주문 항목 모니터</h2><span class="xsmall faint">관리자 강제 변경도 상태 표 안에서만 · 사유 필수</span></div><div class="panel-b"><div class="tbl-wrap"><table class="tbl small"><thead><tr><th>항목</th><th>판매자</th><th class="num">수량</th><th>상태</th><th>클레임</th></tr></thead><tbody>
         ${withAddons(s.recs).map((r) => `<tr><td>${esc(PROD[r.base].name)}${isAddon(r.base) ? ' <span class="tag tag-sm">추가 구성품</span>' : ''}</td><td>${PARTNERS[r.pid].name}</td><td class="num">${r.qty}</td><td>${esc(stName(r.st))}</td><td>${s.ret && s.ret.recId === r.id ? `반품 · ${esc(claimTxt('CLAIM_RETURN', app.state('claim'), s.ret.result))}${s.ret.objection ? ' · 이의' : ''}` : s.creq && s.creq.recId === r.id ? `취소 · ${esc(claimTxt('CLAIM_CANCEL', cst, s.creq.result))}${s.creq.objection ? ` · 이의${s.creq.done === 'kept' ? ' · 거부 유지' : s.creq.done ? ' · 고객 주장 인정' : ''}` : ''}` : inCreq(r) ? `취소 · ${esc(claimTxt('CLAIM_CANCEL', cst, null))} · 본 상품과 같은 클레임` : r.claimRes ? `${r.claimRes.kind} · ${esc(GC.claim.RESULT_LABEL[r.claimRes.result])}` : '—'}</td></tr>`).join('')}
       </tbody></table></div></div></div>`;
@@ -1258,22 +1473,27 @@
     const left = (due) => (now >= due ? '<span class="sla sla-over">실행됨</span>' : `<span class="sla sla-ok">${fmtDate(due)}</span>`);
     if (o) {
       if (s.recs.some((r) => r.st === 'PAYMENT_PENDING')) rows.push(['가상계좌 입금 기한', `발급 + ${P('payment.vbank_due_days')}일 · 하루 전 안내 · 지나면 PG 마감 확인 후 자동 취소`, left(o.vbDue)]);
-      ['A', 'B'].forEach((pid) => { if (s.recs.some((r) => r.pid === pid && r.st === 'PAID')) rows.push([`발주 확인 리마인드 · ${PARTNERS[pid].name}`, '결제 + 영업일 1일 리마인드, 2일 운영팀 알림', left(GC.addBusinessDays(o.paidAt, LOCAL.acceptRemindBd.v))]); });
-      /* D58: 출고 지연 판정 — 약속 출고일 + order.overdue_grace_bd 영업일 끝(출고일이 정해질 때 계산해 저장). 고객에게 취소를 열기만 하므로 예고 간격 없음 */
-      ['A', 'B'].forEach((pid) => { if (o.paidAt && !o.ship[pid] && s.recs.some((r) => r.pid === pid && ['PAID', 'ACCEPTED'].includes(r.st))) rows.push([`출고 지연 판정 · ${PARTNERS[pid].name}`, `약속 출고일 ${fmtDate(promiseDate(pid), false)} + ${pv('order.overdue_grace_bd')} 끝까지 송장 없으면 → 고객·판매자 알림, 무단 지연 기록, 고객 [바로 취소] 열기(자동 취소 아님 · 예고 간격 없음)`, o.overdue[pid] ? '<span class="sla sla-over">출고 지연</span>' : left(GC.order.overdueAt(promiseDate(pid)))]); });
+      ['A', 'B'].forEach((pid) => { if (s.recs.some((r) => r.pid === pid && r.st === 'PAID')) rows.push([`발주 확인 리마인드 · ${PARTNERS[pid].name}`, `결제 + ${pv('order.accept_remind_bd')} 리마인드, ${pv('order.accept_alert_bd')} 운영팀 알림 · 자동 취소 없음`, left(GC.addBusinessDays(o.paidAt, P('order.accept_remind_bd')))]); });
+      /* D58: 출고 지연 판정 — 약속 출고일 + order.overdue_grace_bd 영업일 끝(출고일이 정해질 때 계산해 저장). 고객에게 취소를 열기만 하므로 예고 간격 없음.
+         발주 확인 전(PAID)도 같게 판정(㉑) · 본사 일괄 공지 중에는 판정하지 않고 끝나면 GC.order.afterNotice(D72) */
+      ['A', 'B'].forEach((pid) => { if (o.paidAt && !o.ship[pid] && s.recs.some((r) => r.pid === pid && ['PAID', 'ACCEPTED'].includes(r.st))) rows.push([`출고 지연 판정 · ${PARTNERS[pid].name}`, `약속 출고일 ${fmtDate(promiseDate(pid), false)} + ${pv('order.overdue_grace_bd')} 끝까지 송장 없으면 → 고객·판매자 알림, 무단 지연 기록, 발주 확인 뒤면 고객 [바로 취소] 열기(자동 취소 아님 · 예고 간격 없음) · 발주 확인 전도 같게 판정 · 본사 일괄 공지 중에는 판정 안 함`, o.overdue[pid] ? '<span class="sla sla-over">출고 지연</span>' : noticeOn() ? '<span class="sla sla-warn">일괄 공지 중</span>' : left(judgeAt(pid))]); });
+      /* D71: 거부가 확정된 수량 — 고르는 기한(3일 전 다시 알림 · 지나면 폐기), 결제 뒤 파트너 송장 기한 */
+      if (s.ret && s.ret.rb && !s.ret.rb.choice) { const rb = s.ret.rb; rows.push(['거부 수량 되돌려 받기·폐기 기한', `거부 확정 + ${pv('claim.return_back_pay_days')} · ${lv('rbRemind')} NOTI_RETURN_BACK_DUE · 지나면 폐기로 보고 파트너에게 NOTI_PARTNER_RETURN_BACK ${DRAFT}`, `${rb.reminded ? '<span class="sla sla-warn">다시 알림 보냄</span> ' : ''}${left(rb.due)}`]); }
+      if (rbOpen() && s.ret.rb.choice === 'send') rows.push(['되돌려 보내기 송장 기한', `${s.ret.rb.by === 'partner' ? '중재 판정(귀책 파트너)' : '되돌림 배송비 결제'} + ${pv('claim.return_back_ship_bd')}`, `<span class="sla ${now > s.ret.rb.shipDue ? 'sla-over' : 'sla-ok'}">${fmtDate(s.ret.rb.shipDue)}</span>`]);
+      if (o.compWait) rows.push(['지연배상금 · 환불 계좌 다시 알림', `입력 요청 + ${lv('acctRemind')} 안에 계좌가 없으면 NOTI_REFUND_ACCOUNT_REQUIRED 한 번 더 · 본사 모니터링 ‘지연배상금 송금 대기’`, o.compWait.reminded ? '<span class="sla sla-over">보냄 · 송금 대기</span>' : left(o.compWait.remindAt)]);
       /* D57: 환불 기한 감시 — 전날·넘김 때 재무 알림, 넘겨 환불하면 지연배상금 */
       if (refundWatch(s.ret)) { const r = s.ret; rows.push(['환불 기한 감시 · 반품', `회수 완료 + ${pv('claim.refund_due_bd')} 끝 → ${fmtDate(r.refundDue)} · 전날 NOTI_INT_REFUND_DUE · 넘기면 NOTI_INT_REFUND_OVER(재무) ${DRAFT}`, now > r.refundDue ? '<span class="sla sla-over">기한 넘김</span>' : `<span class="sla sla-ok">${fmtDate(r.refundDue)}</span>`]); }
-      if (s.creq && app.state('cancel') === 'CANCEL_REQUESTED') rows.push(['취소 요청 자동 승인', '요청 + 영업일 1일 · 송장 있는 건 제외', left(s.creq.due)]);
+      if (s.creq && app.state('cancel') === 'CANCEL_REQUESTED') rows.push(['취소 요청 자동 승인', `요청 + ${pv('claim.cancel_auto_approve_bd')} · 송장 있는 건 제외`, left(s.creq.due)]);
       if (s.creq && app.state('cancel') === 'CANCEL_REJECTED') rows.push(s.creq.objection ? ['취소 거부 확정', '고객 이의 접수 · 본사 중재 결과를 기다려요', '<span class="sla sla-warn">멈춤</span>'] : ['취소 거부 확정', `거부 통지 + ${P('claim.objection_days')}일 이의 없음`, left(s.creq.objDue)]);
       if (s.creq && s.creq.done === 'won') { const wk = creqKids(); rows.push(['회수 접수(취소 인정)', `${s.creq.collect === 'collecting' ? '판매자 비용으로 접수함 · 도착 확인 뒤 환불' : '배송 완료가 확인되면 판매자 비용으로 접수'}${wk.length ? ` · 붙은 ${esc(kidsText(wk))}도 같은 회수(한 번)` : ''}`, s.creq.collect === 'collecting' ? '<span class="sla sla-ok">회수 중</span>' : '<span class="sla sla-warn">배송 완료 뒤</span>']); }
       if (retOpen()) {
         const r = s.ret; const st = app.state('claim');
-        if (st === 'RETURN_REQUESTED' && r.method === 'pickup') rows.push(['자동 회수 접수', '신청 + 영업일 2일 미접수', left(r.pickupDue)]);
-        if (st === 'RETURN_REQUESTED' && r.method === 'self') rows.push(['반품 자동 철회', '신청 + 7일 미발송', left(r.shipDue)]);
-        if (st === 'RETURN_INSPECTING') rows.push(['검수 자동 승인', '회수 완료 + 영업일 2일', left(r.inspectDue)]);
-        if (st === 'RETURN_REJECTED' && !r.objection) rows.push(['반품 거부 확정', '거부 통지 + 3일 이의 없음', left(r.objDue)]);
+        if (st === 'RETURN_REQUESTED' && r.method === 'pickup') rows.push(['자동 회수 접수', `신청 + ${pv('claim.pickup_register_bd')} 미접수`, left(r.pickupDue)]);
+        if (st === 'RETURN_REQUESTED' && r.method === 'self') rows.push(['반품 자동 철회', `신청 + ${pv('claim.return_ship_days')} 미발송`, left(r.shipDue)]);
+        if (st === 'RETURN_INSPECTING') rows.push(['검수 자동 승인', `회수 완료 + ${pv('claim.inspect_bd')}`, left(r.inspectDue)]);
+        if (st === 'RETURN_REJECTED' && !r.objection) rows.push(['반품 거부 확정', `거부 통지 + ${pv('claim.objection_days')} 이의 없음`, left(r.objDue)]);
       }
-      s.recs.filter((r) => r.st === 'DELIVERED').forEach((r) => rows.push([`자동 구매 확정 · ${esc(recLabel(r))}`, hasOpenClaim(r) ? '클레임이 열려 있어 제외' : '배송 완료 + 7일 · 확정 시각은 도래 시각으로 기록', hasOpenClaim(r) ? '<span class="sla sla-warn">멈춤</span>' : left(new Date(r.deliveredAt.getTime() + P('order.auto_confirm_days') * DAY))]));
+      s.recs.filter((r) => r.st === 'DELIVERED').forEach((r) => rows.push([`자동 구매 확정 · ${esc(recLabel(r))}`, hasOpenClaim(r) ? '클레임이 열려 있어 제외' : `배송 완료 + ${pv('order.auto_confirm_days')} · 확정 시각은 도래 시각으로 기록`, hasOpenClaim(r) ? '<span class="sla sla-warn">멈춤</span>' : left(new Date(r.deliveredAt.getTime() + P('order.auto_confirm_days') * DAY))]));
     }
     const pend = s.recs.some((r) => r.st === 'PAYMENT_PENDING'); const shipped = s.recs.some((r) => r.st === 'SHIPPED');
     const coll = (retOpen() && app.state('claim') === 'RETURN_COLLECTING') || cancelCollecting();
@@ -1292,7 +1512,7 @@
 
   /* ── 동작 ── */
   const now = () => app.clock.now();
-  function partnersNotify() { [...new Set(S().recs.map((r) => r.pid))].forEach((pid) => app.notify('NOTI_PARTNER_ORDER_NEW', PARTNERS[pid].name, ['알림톡', '이메일'], `새 주문 ${subNo(pid)}`)); }
+  function partnersNotify() { [...new Set(S().recs.map((r) => r.pid))].forEach((pid) => nt('NOTI_PARTNER_ORDER_NEW', PARTNERS[pid].name, `새 주문 ${subNo(pid)}`)); }
   /** 본 상품과 함께 취소되는 추가 구성품: ORDER parent_canceled(출고 전). 이미 출고된 것은 같은 취소 클레임으로 함께 회수(parent_collected, D39 — cancelWonRefund) */
   function cascadeApply(casc, main, x) {
     casc.recs.forEach((k) => {
@@ -1305,8 +1525,9 @@
   /** 환불 계산 결과를 기록에 한 줄로(D53): 항목별 낸 금액 · 돌려받는 배송비 · 공제 · 남은 항목은 다시 계산하지 않음 */
   function logRefundCalc(x) {
     const parts = x.lines.map((l) => `${esc(PROD[l.id].short)} ${l.qty}${UW(l.id)} ${won(l.amount)}`);
-    if (x.shipRefund) parts.push(`배송비 ${won(x.shipRefund)}(묶음 전부 출고 전 취소)`);
-    app.log('rule', `환불 계산(C-PAY-02 · D53): ${parts.join(' + ')}${x.deduction ? ` − 반품 배송비 ${won(x.deduction)}` : ''} = ${won(x.refund)}${x.last ? ' · 남은 항목이 없어 잔액 전부' : ' · 남은 항목은 다시 계산하지 않음(구간 단가·쿠폰 최소 주문·무료배송 기준)'}`);
+    if (x.shipRefund) parts.push(`처음 낸 배송비 ${won(x.shipRefund)}(묶음에 남는 항목 없음 · 출고 전 전부 취소 또는 판매자 귀책 반품, D70)`);
+    const kept = x.shipKept ? ` · 처음 낸 배송비 ${won(x.shipKept)}은 돌려주지 않음(고객 사정 · 판매자 몫, D70)` : '';
+    app.log('rule', `환불 계산(C-PAY-02 · D53): ${parts.join(' + ')}${x.deduction ? ` − 반품 배송비 ${won(x.deduction)}${x.round ? '(왕복 · 무료배송 묶음 전부 반품)' : ''}` : ''} = ${won(x.refund)}${kept}${x.last ? ` · 남은 항목이 없어 잔액으로 끝전 정리${x.kept || (S().order.kept || 0) ? '(돌려주지 않는 배송비·앞서 뺀 반품 배송비는 빼고 · keptBefore)' : ''}` : ' · 남은 항목은 다시 계산하지 않음(구간 단가·쿠폰 최소 주문·무료배송 기준)'}`);
   }
   async function cancelClaimImmediate(targets, x, label, casc = { recs: [], ret: [] }, ev = 'cancel') {
     showStrip('cancel', ['CANCEL_APPROVED', 'CLAIM_COMPLETED']);
@@ -1348,7 +1569,7 @@
       const input = checkoutInput(); const r = GC.price.calcOrder(input); const vb = s.pay === 'vbank';
       await app.ext({ service: '토스페이먼츠', what: vb ? '가상계좌 발급' : '결제창 호출', lines: [
         `서버가 금액을 다시 계산했어요: ${won(r.totals.pay)} · 화면 금액과 같아서 결제창을 열어요(다르면 막고 주문서로)`,
-        `결제 요청 ID(중복 결제 방지 키)와 임시 주문(${LOCAL.checkoutHoldMin.t})을 만들고 이 순간 가격으로 고정해요`,
+        `결제 요청 ID(중복 결제 방지 키)와 임시 주문(${P('order.checkout_hold_minutes')}분 · order.checkout_hold_minutes)을 만들고 이 순간 가격으로 고정해요`,
         vb ? `입금 기한 ${P('payment.vbank_due_days')}일 · 구매안전서비스(에스크로) 적용` : '결과는 리다이렉트 + 주문 토큰으로 받고, PG 조회 API로 금액·상태를 한 번 더 확인해요',
       ], result: vb ? '가상계좌가 발급된 것으로 처리해요' : '카드 결제가 승인된 것으로 처리해요' });
       const o = makeOrder(input, r, { at: now(), vb, proof: vb ? s.proof : 'card', memo: s.memo });
@@ -1357,8 +1578,8 @@
       app.log('money', `${vb ? '가상계좌 발급' : '카드 승인'} ${won(r.totals.pay)}${r.totals.points ? ` + 포인트 ${GC.num(r.totals.points)}P` : ''} · 결제 스냅샷(단가표·항목별 가격 종류 일반가/사업자가·할인·쿠폰 조건·배송 정책·상품 상세 설명 버전) 저장`);
       app.log('rule', `주문 1건과 판매자별 하위 주문 ${pids.length}건(${pids.map((p) => PARTNERS[p].name).join('·')})을 한 트랜잭션으로 만들어요. 하나라도 실패하면 전부 되돌리고 결제를 자동 취소해요`);
       app.log('state', `주문 항목 ${s.recs.length}개: <b>${esc(stName(s.recs[0].st))}</b> <span class="faint">(${vb ? '가상계좌 발급' : '카드 승인'})</span>`);
-      if (vb) app.notify('NOTI_VBANK_ISSUED', '고객', ['알림톡', '이메일'], `가상계좌 ${VBANK.bank} · ${fmtDate(o.vbDue)}까지`);
-      else { app.notify('NOTI_ORDER_PAID', '고객', ['알림톡', '푸시'], '주문·결제 완료'); partnersNotify(); }
+      if (vb) nt('NOTI_VBANK_ISSUED', '고객', `가상계좌 ${VBANK.bank} · ${fmtDate(o.vbDue)}까지`);
+      else { nt('NOTI_ORDER_PAID', '고객', '주문·결제 완료'); partnersNotify(); }
       s.cs = 'done'; s.flags = {}; syncStrip(); s.csState = app.state('order'); refresh();
     },
     copyAcct() { app.toast(`${VBANK.bank} ${VBANK.acct} 복사했어요`); },
@@ -1381,14 +1602,14 @@
       const s = S(); const sh = s.sheet; const rec = recById(sh.recId); const p = PROD[rec.base]; const u = UW(rec.base);
       const casc = cascadeOf(rec.base, sh.qty);
       const r = refundCalc(cancelMap(rec.base, sh.qty, casc)); if (r.blocked) return;
-      const od = isOverdueRec(rec);
+      const od = delayCancelOk(rec);
       if (rec.st === 'ACCEPTED' && !od) {
         const target = splitRec(rec, sh.qty);
         s.creq = { recId: target.id, qty: sh.qty, at: now(), due: GC.addBusinessDays(now(), P('claim.cancel_auto_approve_bd')) };
         showStrip('cancel', ['CANCEL_REQUESTED', 'CANCEL_APPROVED', 'CLAIM_COMPLETED']);
         app.setState('cancel', 'CANCEL_REQUESTED', { by: `고객 취소 요청 · ${p.short} ${sh.qty}${u}${casc.recs.length ? ` (승인되면 붙은 ${kidsText(casc.recs)}도 함께)` : ''}` });
-        app.notify('NOTI_PARTNER_CLAIM_NEW', PARTNERS[rec.pid].name, ['알림톡'], `취소 요청 · ${fmtDate(s.creq.due)}까지 처리`);
-        app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], '취소 요청 접수');
+        nt('NOTI_PARTNER_CLAIM_NEW', PARTNERS[rec.pid].name, `취소 요청 · ${fmtDate(s.creq.due)}까지 처리`);
+        nt('NOTI_CLAIM_UPDATED', '고객', '취소 요청 접수');
         s.sheet = null; s.cs = 'detail'; refresh(); return;
       }
       const kidsP = casc.recs.length ? `<p class="small">붙은 추가 구성품 ${esc(kidsText(casc.recs))}도 함께 취소돼요.</p>` : '';
@@ -1397,7 +1618,12 @@
       const back = couponBack(r); const target = splitRec(rec, sh.qty);
       await cancelClaimImmediate([target], r, `${p.short} ${sh.qty}${u} ${od ? '바로 취소(출고 지연 · 판매자 승인 없음)' : '취소(발주 확인 전)'}${casc.recs.length ? ` + 붙은 ${kidsText(casc.recs)}` : ''}`, casc, od ? 'delay_cancel' : 'cancel');
       restoreCoupons(back);
-      if (od) app.log('rule', `출고 지연 뒤 바로 취소(ORDER delay_cancel · D58): 지연 안내를 받은 주문과 같이 파트너 승인 없이 즉시 · 송장 등록 전까지만 · ${esc(PARTNERS[rec.pid].name)}에는 무단 지연 기록이 남아요(페널티 2차)`);
+      if (od) {
+        app.log('rule', `출고 지연 뒤 바로 취소(ORDER delay_cancel · D58): 지연 안내를 받은 주문과 같이 파트너 승인 없이 즉시 · 송장 등록 전까지만 · ${esc(PARTNERS[rec.pid].name)}에는 무단 지연 기록이 남아요(페널티 2차)`);
+        /* S12 맞춤 ⑰: 발주 확인 뒤 고객 바로 취소 → 파트너 주문 담당자에게 알리고 그 항목의 송장 등록을 막음(P-ORD-03 · C-STATE-01) */
+        nt('NOTI_PARTNER_ITEM_CANCELED', PARTNERS[rec.pid].name, `${subNo(rec.pid)} ${esc(p.short)} ${sh.qty}${u}${casc.recs.length ? ` + 붙은 ${esc(kidsText(casc.recs))}` : ''} 고객 바로 취소(출고 지연) · 이 항목은 송장을 등록할 수 없어요`);
+        app.log('rule', '취소된(CANCELED) 항목에는 송장을 넣을 수 없어요 — 서버가 막아요(P-ORD-02)');
+      }
       s.sheet = null; s.cs = 'detail'; refresh();
     },
     async cancelAll() {
@@ -1414,18 +1640,19 @@
       const s = S(); const sh = s.sheet; const rec = recById(sh.recId);
       const why = REASON[sh.reason]; const fault = why.fault;
       const target = splitRec(rec, sh.qty);
-      s.ret = { recId: target.id, qty: sh.qty, reason: sh.reason, fault, photo: sh.photo, method: sh.method, at: now(), pickupDue: GC.addBusinessDays(now(), LOCAL.pickupBd.v), shipDue: new Date(now().getTime() + P('claim.return_ship_days') * DAY), objection: false, done: null, back: 'send' };
+      s.ret = { recId: target.id, qty: sh.qty, reason: sh.reason, fault, photo: sh.photo, method: sh.method, at: now(), pickupDue: GC.addBusinessDays(now(), P('claim.pickup_register_bd')), shipDue: new Date(now().getTime() + P('claim.return_ship_days') * DAY), objection: false, done: null };
       showStrip('claim'); app.setState('claim', 'RETURN_REQUESTED', { by: `고객 반품 신청 · ${why.label}${sh.photo ? ` · 사진 ${sh.photo}장` : ''}` });
       app.log('rule', `귀책 ${fault === 'partner' ? `판매자(${why.label}) → 반품 배송비 판매자 부담` : '고객(단순 변심) → 반품 배송비 고객 부담(환불에서 뺌)'} · 환불은 반품한 수량에 낸 금액(D53) · 클레임이 열린 항목은 자동 구매 확정에서 빠져요`);
-      if (sh.reason === 'late') app.log('rule', `‘늦게 받음(출고 지연)’: 약속 출고일 ${fmtDate(promiseDate(rec.pid), false)}보다 늦게 출고된 항목이라 고를 수 있어요 · 받은 날부터 ${LOCAL.lateDays.v}일 · 파트너 귀책(D58 ①, 법률 L-61 전 초안)`);
-      app.notify('NOTI_PARTNER_CLAIM_NEW', PARTNERS[rec.pid].name, ['알림톡'], '반품 요청 · 영업일 2일 안 회수 접수');
-      app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], '반품 신청 접수');
+      if (sh.reason === 'late') app.log('rule', `‘늦게 받음(출고 지연)’: 약속 출고일 ${fmtDate(promiseDate(rec.pid), false)}보다 늦게 출고된 항목이라 고를 수 있어요 · 받은 날부터 ${lateDays()}일(claim.late_return_days) · 파트너 귀책(D58 ① · ㉒, 법률 L-61 전 초안)`);
+      if (bundleEmptied(rec.pid, sh.qty)) app.log('rule', `이 반품으로 ${esc(PARTNERS[rec.pid].name)} 배송 묶음에 남는 항목이 없어요 → 처음 낸 배송비는 ${fault === 'partner' ? '판매자 귀책이라 함께 돌려줘요' : '단순 변심이라 돌려주지 않아요(판매자 몫)'}(D70, 법률 자문 전 초안)`);
+      nt('NOTI_PARTNER_CLAIM_NEW', PARTNERS[rec.pid].name, `반품 요청 · 영업일 ${P('claim.pickup_register_bd')}일 안 회수 접수`);
+      nt('NOTI_CLAIM_UPDATED', '고객', '반품 신청 접수');
       s.sheet = null; s.flags = {}; s.cs = 'detail'; refresh();
     },
     async selfShip() { await app.ext({ service: '택배사', what: '반품 송장 입력', lines: ['고객이 직접 보낸 송장번호로 회수 추적'] }); app.go('claim', 'pickup', { by: '고객 직접 발송 · 송장 입력' }); refresh(); },
     async confirmItem(b) {
       const rec = recById(b.dataset.id);
-      if (!(await app.confirm({ title: '구매를 확정할까요?', body: '<p class="small">확정하면 단순 변심 반품은 할 수 없어요. 불량은 받은 날부터 3개월, 안 날부터 30일 안에 앱에서 신청할 수 있어요.</p>', ok: '구매 확정' }))) return;
+      if (!(await app.confirm({ title: '구매를 확정할까요?', body: `<p class="small">확정하면 단순 변심 반품은 할 수 없어요. 불량은 ${LEGAL.defect.t} 안에 앱에서 신청할 수 있어요.</p>`, ok: '구매 확정' }))) return;
       move(rec, 'confirm', '고객이 직접 구매 확정');
       app.log('money', `정산 이벤트: ${esc(recLabel(rec))} 구매 확정 → ${PARTNERS[rec.pid].name} 다음 주 정산 대상`); refresh();
     },
@@ -1460,8 +1687,8 @@
       const late = GC.claim.shippedLate({ promisedAt: promiseDate(pid), shippedAt: now() });
       s.recs.filter((r) => r.pid === pid && r.st === 'ACCEPTED').forEach((r) => move(r, 'ship', `송장 ${no}`));
       s.order.ship[pid] = { carrier, no, at: now(), late };
-      if (late) app.log('rule', `약속 출고일 ${fmtDate(promiseDate(pid), false)}보다 늦게 출고 → ${LOCAL.lateDays.t} 안에는 반품 사유 ‘늦게 받음(출고 지연)’을 고를 수 있어요(파트너 귀책 · 반품 배송비 판매자, D58 ①)${s.order.overdue[pid] ? ' · 송장이 등록돼 고객 [바로 취소]는 닫혀요' : ''}`);
-      app.notify('NOTI_SHIPPED', '고객', ['알림톡', '푸시'], `${PARTNERS[pid].name} 출고 · 배송 조회 링크`); refresh();
+      if (late) app.log('rule', `약속 출고일 ${fmtDate(promiseDate(pid), false)}보다 늦게 출고 → 받은 날부터 ${lateDays()}일 안에는 반품 사유 ‘늦게 받음(출고 지연)’을 고를 수 있어요(파트너 귀책 · 반품 배송비 판매자, D58 ①)${s.order.overdue[pid] ? ' · 송장이 등록돼 고객 [바로 취소]는 닫혀요' : ''}`);
+      nt('NOTI_SHIPPED', '고객', `${PARTNERS[pid].name} 출고 · 배송 조회 링크`); refresh();
     },
     async stockout(b) {
       const rec = recById(b.dataset.id); const casc = cascadeOf(rec.base, rec.qty); const x = faultRefund(cancelMap(rec.base, rec.qty, casc));
@@ -1472,7 +1699,7 @@
       logRefundCalc(x);
       await payRefund(x, `${PROD[rec.base].short} 품절 취소(전액 환불)`); rec.refunded = x.refund;
       restoreCoupons(back);
-      app.notify('NOTI_ITEM_STOCKOUT_CANCELED', '고객', ['알림톡', '푸시'], `${PROD[rec.base].short} 품절 취소 · 전액 환불`);
+      nt('NOTI_ITEM_STOCKOUT_CANCELED', '고객', `${PROD[rec.base].short} 품절 취소 · 전액 환불`);
       app.log('rule', '품절 취소 기록 → 판매자 평가(페널티는 2차)'); refresh();
     },
     approveCancel() { approveCancelCore(false); },
@@ -1486,17 +1713,17 @@
       s.recs.filter((r) => r.pid === pid && r.st === 'ACCEPTED').forEach((r) => move(r, 'ship', `송장 ${no}`));
       s.order.ship[pid] = { carrier, no, at: now() };
       Object.assign(s.creq, { rejAt: now(), ship: { carrier, no }, objection: false, objDue: new Date(now().getTime() + P('claim.objection_days') * DAY) });
-      app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], `판매자 거부 · 받은 뒤 반품 안내 · ${fmtDate(s.creq.objDue)}까지 [이의 제기] 가능`);
-      app.notify('NOTI_SHIPPED', '고객', ['알림톡', '푸시'], '출고 · 배송 조회 링크'); refresh();
+      nt('NOTI_CLAIM_UPDATED', '고객', `판매자 거부 · 받은 뒤 반품 안내 · ${fmtDate(s.creq.objDue)}까지 [이의 제기] 가능`, true);
+      nt('NOTI_SHIPPED', '고객', '출고 · 배송 조회 링크'); refresh();
     },
-    async pickup() { await app.ext({ service: '택배사(판매자 지정)', what: '반품 회수 접수', lines: ['회수 기사 방문 요청 · 회수 송장은 고객 화면에 바로 보여요'] }); app.clock.pass(2 * HOUR); app.go('claim', 'pickup', { by: '판매자 회수 접수' }); app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], '회수 접수'); refresh(); },
+    async pickup() { await app.ext({ service: '택배사(판매자 지정)', what: '반품 회수 접수', lines: ['회수 기사 방문 요청 · 회수 송장은 고객 화면에 바로 보여요'] }); app.clock.pass(2 * HOUR); app.go('claim', 'pickup', { by: '판매자 회수 접수' }); nt('NOTI_CLAIM_UPDATED', '고객', '회수 접수'); refresh(); },
     approveReturn() { approveReturnCore('판매자 검수 통과', false).then(refresh); },
     async rejectReturn() {
       const s = S(); const why = (app.lastFrame.querySelector('#rejWhy') || {}).value || '사용 흔적이 있어요';
       await app.ext({ service: 'AWS S3', what: '반품 거부 사진 올리기', lines: ['거부는 사유와 사진이 꼭 있어야 해요', '고객과 본사 중재 화면에 함께 보여요'] });
       s.ret.rejectReason = why; s.ret.rejAt = now(); s.ret.objDue = new Date(now().getTime() + P('claim.objection_days') * DAY);
       app.go('claim', 'reject', { by: `판매자 반품 거부 · ${why}` });
-      app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], `반품 거부 · ${fmtDate(s.ret.objDue)}까지 이의 가능`); refresh();
+      nt('NOTI_CLAIM_UPDATED', '고객', `반품 거부 · ${fmtDate(s.ret.objDue)}까지 이의 가능`, true); refresh();
     },
     /* D56: 검수 일부 승인 — 항목 분할(C-STATE-01). 멀쩡한 수량은 RETURN_APPROVED → 그 수량에 낸 금액 환불(partial_approve),
        사용·훼손된 수량은 나뉜 항목의 클레임으로 RETURN_REJECTED(사유·사진) → 고객 이의 제기 가능 · 거부 확정이면 되돌려 보냄(배송비 고객) 또는 폐기 */
@@ -1523,12 +1750,78 @@
       app.setState('claim', 'RETURN_REJECTED', { log: false });
       app.log('state', `반품 클레임(나뉜 항목 ${esc(short)} ${bad}${u}): <b>반품 거부</b> <span class="faint">(${esc(why)} · 사진 2장 · 이의 제기 가능)</span>`);
       Object.assign(r, { qty: bad, partial: { ok, refund: x.refund, recId: okRec.id }, rejectReason: why, rejAt: now(), objDue: new Date(now().getTime() + P('claim.objection_days') * DAY) });
-      app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], `반품 일부 승인 · ${ok}${u} 환불 ${won(x.refund)} · ${bad}${u} 거부(되돌려 보냄 · 원하면 폐기) · ${fmtDate(r.objDue)}까지 이의 가능`);
+      nt('NOTI_CLAIM_UPDATED', '고객', `반품 일부 승인 · ${ok}${u} 환불 ${won(x.refund)} · ${bad}${u} 거부(거부가 확정되면 되돌려 받기·폐기 선택) · ${fmtDate(r.objDue)}까지 이의 가능`, true);
       refresh();
     },
-    retBack(b) {
-      const r = S().ret; r.back = b.dataset.v;
-      app.log('user', `고객이 거부된 ${r.qty}${UW(recById(r.recId).base)} 처리 선택 · ${r.back === 'dispose' ? '판매자가 폐기(되돌려 받지 않음 · 배송비 없음)' : '되돌려 받기(배송비 고객 부담)'}`);
+    /* D71: 거부가 확정된 수량 — 고객 [되돌려 받기](되돌림 배송비 따로 결제 · 모의 결제)·[폐기], 파트너 송장 등록·폐기 확인 */
+    async rbSend() {
+      const s = S(); const r = s.ret; const rb = r && r.rb; if (!rb || rb.choice) return;
+      const rec = recById(r.recId); const pa = PARTNERS[rec.pid]; const q = `${PROD[rec.base].short} ${r.qty}${UW(rec.base)}`;
+      if (!(await app.confirm({ title: `${eul(q)} 되돌려 받을까요?`, body: `<p>되돌려 보내는 배송비 ${won(rb.fee)}을 따로 결제해요.</p><p class="small">결제하면 판매자가 영업일 ${P('claim.return_back_ship_bd')}일 안에 보내요. 반품 배송비는 일부 승인 환불 때 이미 뺐고, 이건 거부된 물건을 다시 받는 편도 배송비예요.</p>`, ok: `${won(rb.fee)} 결제하기`, cancel: '닫기' }))) return;
+      await app.ext({ service: '토스페이먼츠', what: '되돌림 배송비 결제창', lines: [`${won(rb.fee)} · 원래 주문 결제와 따로 된 결제 건(결제 요청 ID 새로)`, `그 상품의 반품 배송비(편도) ${pa.name} 템플릿 값`, '결과는 리다이렉트 + 주문 토큰으로 받고 PG 조회 API로 다시 확인해요'], result: '카드 결제가 승인된 것으로 처리해요' });
+      Object.assign(rb, { choice: 'send', by: 'customer', paidAt: now(), shipDue: GC.addBusinessDays(now(), P('claim.return_back_ship_bd')) });
+      app.log('money', `되돌림 배송비 ${won(rb.fee)} 결제(카드 · 주문 결제와 따로) · 거부된 ${esc(q)}`);
+      nt('NOTI_PARTNER_RETURN_BACK', pa.name, `되돌림 배송비 결제됨 · 거부한 ${esc(q)} ${fmtDate(rb.shipDue)}까지 송장 등록해 고객에게 보내 주세요`);
+      refresh();
+    },
+    async rbDispose() {
+      const s = S(); const r = s.ret; const rb = r && r.rb; if (!rb || rb.choice) return;
+      const rec = recById(r.recId); const q = `${PROD[rec.base].short} ${r.qty}${UW(rec.base)}`;
+      if (!(await app.confirm({ title: `${eul(q)} 폐기할까요?`, body: '<p class="small">판매자가 폐기하고 기록을 남겨요. 폐기하면 되돌려 받을 수 없어요. 배송비는 들지 않아요.</p>', ok: '폐기', cancel: '닫기', danger: true }))) return;
+      Object.assign(rb, { choice: 'dispose', by: 'customer', choseAt: now() });
+      app.log('user', `고객이 거부된 ${esc(q)} [폐기]를 골랐어요`);
+      nt('NOTI_PARTNER_RETURN_BACK', PARTNERS[rec.pid].name, `폐기 확정 · 거부한 ${esc(q)} 고객이 폐기를 골랐어요 · 폐기하고 확인 기록을 남겨 주세요`);
+      refresh();
+    },
+    async rbShip() {
+      const s = S(); const r = s.ret; const rb = r && r.rb; if (!rb || rb.choice !== 'send' || rb.shippedAt) return;
+      const fr = app.lastFrame; const carrier = (fr.querySelector('#rbCarrier') || {}).value || 'CJ대한통운'; const no = ((fr.querySelector('#rbInv') || {}).value || '').trim() || '6890-3333-1017';
+      const rec = recById(r.recId); const q = `${PROD[rec.base].short} ${r.qty}${UW(rec.base)}`;
+      await app.ext({ service: `${carrier} · 스윗트래커`, what: '되돌려 보내기 송장 등록', lines: [`${esc(carrier)} ${esc(no)} · 거부된 ${esc(q)} · 받는 곳 ${STORE.name}`, rb.by === 'partner' ? '배송비는 판매자 부담(중재 판정 귀책 파트너)' : `배송비는 고객이 결제한 ${won(rb.fee)}`] });
+      app.clock.pass(2 * HOUR);
+      Object.assign(rb, { shippedAt: now(), ship: { carrier, no } });
+      app.log('state', `거부 수량 되돌려 보내기: ${esc(q)} <b>출고</b> <span class="faint">(${esc(carrier)} ${esc(no)} · 기한 ${fmtDate(rb.shipDue)} 안)</span>`);
+      nt('NOTI_SHIPPED', '고객', `반품 검수에서 거부된 ${esc(q)} 다시 보냈어요 · 배송 조회 링크`);
+      refresh();
+    },
+    async rbDisposed() {
+      const s = S(); const r = s.ret; const rb = r && r.rb; if (!rb || rb.choice !== 'dispose' || rb.disposedAt) return;
+      const rec = recById(r.recId); const q = `${PROD[rec.base].short} ${r.qty}${UW(rec.base)}`;
+      await app.ext({ service: 'AWS S3', what: '폐기 확인 사진 올리기', lines: [`거부된 ${esc(q)} 폐기 · 사진과 시각을 남겨요`, '고객 물건을 폐기하는 일이라 감사 로그에 남겨요(법률 L-21 확인 거리)'] });
+      app.clock.pass(HOUR);
+      rb.disposedAt = now();
+      app.log('rule', `폐기 확인 기록: 거부된 ${esc(q)} · ${rb.by === 'auto' ? '고객이 기한까지 고르지 않아 폐기로 확정' : '고객이 [폐기]를 고름'} · 사진·시각 감사 로그(D71, 법률 자문 전 초안)`);
+      refresh();
+    },
+    /* S12 맞춤 ⑳: 환불 계좌 등록(계좌 인증) → 기다리던 지연배상금 송금 */
+    async regAcct() {
+      const s = S(); const o = s.order; if (!o.compWait) return;
+      await app.ext({ service: '쿠콘', what: '환불 계좌 예금주 확인', lines: [`${REFUND_ACCT.bank} ${REFUND_ACCT.no} · 예금주 ${REFUND_ACCT.holder} · 주문자 이름과 같은지 확인`, '계좌 인증 건당 50원 · 인증되면 환불 계좌로 등록(S-33)'], result: '예금주가 확인된 것으로 처리해요' });
+      s.acct = REFUND_ACCT;
+      app.log('user', `고객이 환불 계좌 등록 · ${REFUND_ACCT.bank} ${REFUND_ACCT.no}`);
+      const w = o.compWait;
+      await sendComp(w, [`카드 환불이라 PG 취소가 성공한 날로 정한 금액 그대로예요 · 지연 ${w.days}일 → ${won(w.amt)} (계좌를 기다린 ${Math.floor((now() - w.at) / DAY)}일은 더 붙이지 않음)`]);
+      o.compWait = null;
+      refresh();
+    },
+    /* D72: 본사 일괄 공지(지연 예외 기간) 시작·끝 */
+    noticeStart() {
+      const s = S(); const o = s.order; if (!o || o.notice) return;
+      o.notice = { start: now(), end: null, scope: '전체 · 택배 파업' };
+      app.log('rule', `지연 예외 기간 등록(A-ORD-01 본사 개입): ${fmtDate(o.notice.start)}부터 · 범위 ${o.notice.scope} · 이 기간에는 출고 지연·무단 지연 판정을 하지 않고 지연 기록에서도 빼요. 공지 전에 이미 열린 [바로 취소]는 그대로(그때는 판매자 사정) · 고객 공지 글(U-CS-04)도 올려요`);
+      noticeNotify('start');
+      refresh();
+    },
+    noticeEnd() {
+      const s = S(); const o = s.order; if (!o || !o.notice || o.notice.end) return;
+      o.notice.end = now();
+      [...new Set(s.recs.map((r) => r.pid))].forEach((pid) => {
+        if (o.ship[pid] || o.overdue[pid] || !s.recs.some((r) => r.pid === pid && ['PAID', 'ACCEPTED'].includes(r.st))) return;
+        const orig = GC.order.overdueAt(promiseDate(pid)); const nj = judgeAt(pid);
+        app.log('rule', `${esc(PARTNERS[pid].name)} 출고 지연 판정 다시 정함(GC.order.afterNotice): ${+nj !== +orig ? `원래 ${fmtDate(orig)}이 공지 기간 안에 들어 → 끝난 날 + 영업일 ${P('order.overdue_grace_bd')}일 끝 = <b>${fmtDate(nj)}</b>` : `원래 ${fmtDate(orig)} 그대로(공지와 상관없음)`}`);
+      });
+      app.log('rule', `지연 예외 기간 끝: ${fmtDate(o.notice.start)} ~ ${fmtDate(o.notice.end)} · 밀린 판정을 하루 유예해 다시 판정해요(D72)`);
+      noticeNotify('end');
       refresh();
     },
 
@@ -1538,13 +1831,13 @@
       app.clock.pass(5 * HOUR);
       s.recs.filter((r) => r.st === 'PAYMENT_PENDING').forEach((r) => move(r, 'deposit', '입금 확인(PG 웹훅)'));
       s.order.paidAt = now();
-      app.notify('NOTI_VBANK_DEPOSITED', '고객', ['알림톡', '푸시'], '입금 확인 · 주문 완료'); partnersNotify(); refresh();
+      nt('NOTI_VBANK_DEPOSITED', '고객', '입금 확인 · 주문 완료'); partnersNotify(); refresh();
     },
     async track() {
       const s = S(); await app.ext({ service: '스윗트래커', what: '배송 조회 API로 배송 완료 확인', lines: ['배송 완료를 감지하면 주문 항목을 배송 완료로 바꿔요', '7일 동안 완료를 못 받으면 판매자에게 확인을 요청해요'] });
       app.clock.pass(20 * HOUR);
       s.recs.filter((r) => r.st === 'SHIPPED').forEach((r) => { move(r, 'deliver', '택배 조회 · 배송 완료'); r.deliveredAt = now(); });
-      app.notify('NOTI_DELIVERED', '고객', ['푸시'], `배송 완료 · ${P('order.auto_confirm_days')}일 뒤 자동 구매 확정`);
+      nt('NOTI_DELIVERED', '고객', `배송 완료 · ${P('order.auto_confirm_days')}일 뒤 자동 구매 확정`);
       if (s.creq && s.creq.done === 'won' && s.creq.collect === 'wait' && recById(s.creq.recId).st === 'DELIVERED') startCancelCollect();
       refresh();
     },
@@ -1556,7 +1849,7 @@
       /* 회수 완료(반환받은 때) 기한을 계산해 저장: 검수(claim.inspect_bd) · 환불(claim.refund_due_bd, D57 법률 자문 전 초안) */
       Object.assign(s.ret, { collectedAt: now(), inspectDue: GC.addBusinessDays(now(), P('claim.inspect_bd')), refundDue: GC.refund.dueAt(now()) });
       app.log('rule', `기한 저장: 검수 ${fmtDate(s.ret.inspectDue)}까지 · 환불 ${fmtDate(s.ret.refundDue)}까지(회수 완료 + 영업일 ${P('claim.refund_due_bd')}일 끝 · 넘기면 지연배상금)`);
-      app.notify('NOTI_PARTNER_CLAIM_DUE', PARTNERS[recById(s.ret.recId).pid].name, ['알림톡'], `검수 기한 ${fmtDate(s.ret.inspectDue)}`); refresh();
+      nt('NOTI_PARTNER_CLAIM_DUE', PARTNERS[recById(s.ret.recId).pid].name, `검수 기한 ${fmtDate(s.ret.inspectDue)}`); refresh();
     },
 
     /* 본사 */
@@ -1566,9 +1859,10 @@
         app.go('claim', 'mediation_customer', { by: '본사 중재 · 고객 주장 인정(최종)' });
         await approveReturnCore(null, false, true);
       } else {
-        goClaim('claim', 'mediation_partner', '본사 중재 · 판매자 거부 유지(최종)', r, [recById(r.recId)]);
+        const backBy = (app.lastFrame.querySelector('#backBy') || {}).value || 'customer';
+        goClaim('claim', 'mediation_partner', `본사 중재 · 판매자 거부 유지(최종) · 되돌림 배송비 ${backBy === 'partner' ? '판매자 부담(귀책 파트너)' : '고객 부담(귀책 고객)'}`, r, [recById(r.recId)]);
         r.done = 'mediated';
-        rejectedBack(r);
+        rejectedBack(r, backBy === 'partner');
       }
       mediationNotify(pid); refresh();
     },
@@ -1592,35 +1886,54 @@
   });
 
   function objectionNotify(pid, what) {
-    app.notify('NOTI_OBJECTION_RECEIVED', '고객', ['알림톡', '이메일'], '이의 접수');
-    app.notify('NOTI_PARTNER_OBJECTION_RECEIVED', PARTNERS[pid].name, ['알림톡'], '고객 이의 · 본사 중재');
-    app.notify('NOTI_INT_MEDIATION_NEW', '운영팀(CS)', ['관리자 알림', 'Slack'], what);
+    nt('NOTI_OBJECTION_RECEIVED', '고객', '이의 접수');
+    nt('NOTI_PARTNER_OBJECTION_RECEIVED', PARTNERS[pid].name, '고객 이의 · 본사 중재');
+    nt('NOTI_INT_MEDIATION_NEW', '운영팀(CS)', what);
   }
   function mediationNotify(pid) {
-    app.notify('NOTI_MEDIATION_DECIDED', '고객', ['알림톡', '이메일'], '중재 결과(최종)');
-    app.notify('NOTI_PARTNER_MEDIATION_DECIDED', PARTNERS[pid].name, ['알림톡', '이메일'], '중재 결과(최종)');
+    nt('NOTI_MEDIATION_DECIDED', '고객', '중재 결과(최종)');
+    nt('NOTI_PARTNER_MEDIATION_DECIDED', PARTNERS[pid].name, '중재 결과(최종)');
   }
   /** 취소 인정 건 회수 접수: 플랫폼이 계약 택배사로 접수하고 회수 배송비는 판매자 부담 */
   function startCancelCollect() {
     const c = S().creq; c.collect = 'collecting';
     app.log('ext', '계약 택배사 · 회수 접수(본사 중재로 취소 인정 · 회수 배송비 판매자 부담)');
-    app.notify('NOTI_CLAIM_UPDATED', '고객', ['알림톡', '푸시'], '취소 인정 · 회수 기사 방문 안내');
+    nt('NOTI_CLAIM_UPDATED', '고객', '취소 인정 · 회수 기사 방문 안내');
   }
   /** 출고 지연 판정(D58 · P-ORD-03): 고객·판매자에게 알리고 무단 지연을 기록, 고객 [바로 취소]를 엶. 자동 취소가 아니라 예고 간격(notify.notice_min_hours)을 두지 않음 */
   function markOverdue(pid) {
-    const s = S(); const o = s.order; const at = GC.order.overdueAt(promiseDate(pid)); const pn = PARTNERS[pid].name;
+    const s = S(); const o = s.order; const at = judgeAt(pid); const pn = PARTNERS[pid].name;
     o.overdue[pid] = { at };
     const items = s.recs.filter((r) => r.pid === pid && ['PAID', 'ACCEPTED'].includes(r.st));
-    app.log('rule', `출고 지연 판정(${fmtDate(at)} 지남): ${esc(pn)} 약속 출고일 ${fmtDate(promiseDate(pid), false)} 다음 영업일 끝까지 송장·지연 안내 없음 → ${items.map((r) => esc(recLabel(r))).join(' · ')} ‘출고 지연’ 표시`);
-    app.log('warn', `${esc(pn)} 무단 지연 기록(판매자 평가 · 페널티는 2차, A-PTN-03) · 고객 주문 상세에 [바로 취소] 열림(송장 등록 전까지) · 자동 취소가 아니라 예고 간격 없음`);
-    app.notify('NOTI_SHIP_OVERDUE', '고객', ['알림톡', '푸시'], `${esc(pn)} 상품 출고가 늦어지고 있어요 · 보내기 전까지 [바로 취소] 가능(판매자 승인 없이 낸 금액 환불)`);
-    app.notify('NOTI_PARTNER_SHIP_OVERDUE', pn, ['알림톡'], '출고 기한 넘김 · 무단 지연 기록 · 고객 바로 취소 열림');
+    const paidOnly = !items.some((r) => r.st === 'ACCEPTED');
+    app.log('rule', `출고 지연 판정(${fmtDate(at)} 지남${o.notice && o.notice.end ? ' · 일괄 공지 뒤 다시 정한 판정 시각' : ''}): ${esc(pn)} 약속 출고일 ${fmtDate(promiseDate(pid), false)} 다음 영업일 끝까지 송장·지연 안내 없음 → ${items.map((r) => esc(recLabel(r))).join(' · ')} ‘출고 지연’ 표시${paidOnly ? ' · 발주 확인 전(결제 완료)도 같게(㉑)' : ''}`);
+    app.log('warn', paidOnly ? `${esc(pn)} 무단 지연 기록(발주 확인 전 · 판매자 평가 · 페널티는 2차, A-PTN-03) · 고객 취소는 원래 바로라 [바로 취소]를 따로 열지 않아요 · 자동 취소 없음` : `${esc(pn)} 무단 지연 기록(판매자 평가 · 페널티는 2차, A-PTN-03) · 고객 주문 상세에 [바로 취소] 열림(송장 등록 전까지) · 자동 취소가 아니라 예고 간격 없음`);
+    nt('NOTI_SHIP_OVERDUE', '고객', paidOnly ? `${esc(pn)} 상품 출고가 늦어지고 있어요 · 판매자가 아직 주문을 확인하지 않았어요 · 지금 [취소]하면 바로 취소돼요` : `${esc(pn)} 상품 출고가 늦어지고 있어요 · 보내기 전까지 [바로 취소] 가능(판매자 승인 없이 낸 금액 환불)`);
+    nt('NOTI_PARTNER_SHIP_OVERDUE', pn, paidOnly ? '발주 확인 없이 출고 기한 넘김 · 무단 지연 기록' : '출고 기한 넘김 · 무단 지연 기록 · 고객 바로 취소 열림');
   }
-  /** 거부가 확정된 반품 물건(D56): 고객에게 되돌려 보냄(배송비 고객 부담) 또는 고객이 원하면 판매자가 폐기. 그 수량은 고객이 가진 것으로 보고 원래 흐름(구매 확정·정산)으로 */
-  function rejectedBack(r) {
-    const rec = recById(r.recId); const u = UW(rec.base); const fee = PARTNERS[rec.pid].retFee;
-    app.log('rule', r.back === 'dispose' ? `거부 확정 → 고객이 고른 대로 ${iga(PARTNERS[rec.pid].name)} ${eul(r.qty + u)} 폐기해요(되돌려 보내지 않음 · 배송비 없음)` : `거부 확정 → ${eul(r.qty + u)} 고객에게 다시 보내요 · 배송비 ${won(fee)} 고객 부담(추가 결제)`);
-    app.log('rule', '거부된 수량은 고객이 가진 것으로 보고 원래 흐름(구매 확정·정산)으로 돌아가요 · 새 정산 이벤트 없음');
+  /** 일괄 공지 시작·끝 알림(D72): 범위에 드는 진행 중 주문(송장 전)이 있는 고객 · 그 판매자 주문 담당자 */
+  function noticeNotify(phase) {
+    const s = S(); const o = s.order;
+    const pids = [...new Set(s.recs.filter((r) => ['PAID', 'ACCEPTED'].includes(r.st) && !o.ship[r.pid]).map((r) => r.pid))];
+    if (!pids.length) return;
+    nt('NOTI_BULK_DELAY_NOTICE', '고객', phase === 'start' ? '택배 파업으로 배송이 늦어질 수 있어요 · 공지 기간에는 출고 지연으로 보지 않아요(공지 글 보기)' : `배송 지연 공지가 끝났어요 · ${fmtDate(GC.order.afterNotice({ judgeAt: o.notice.start, notice: o.notice }), false)}까지도 출고되지 않으면 [바로 취소]할 수 있어요`);
+    pids.forEach((pid) => nt('NOTI_PARTNER_BULK_DELAY_NOTICE', PARTNERS[pid].name, phase === 'start' ? '본사 일괄 공지(택배 파업) 시작 · 이 기간에는 출고 지연으로 보지 않아요' : `본사 일괄 공지 끝 · 새 출고 지연 판정 ${fmtDate(judgeAt(pid))}`));
+  }
+  /** 거부가 확정된 반품 물건(D56 · D71, 법률 자문 전 초안): 고객이 claim.return_back_pay_days 안에 [되돌려 받기](되돌림 배송비 따로 결제 → 파트너가 claim.return_back_ship_bd 안에 송장)
+   *  또는 [폐기]를 고름. 고르지 않으면 3일 전 다시 알리고 기한이 지나면 폐기로 봄. 중재에서 파트너 귀책(partnerPays)이면 결제 없이 보냄.
+   *  그 수량은 고객이 가진 것으로 보고 원래 흐름(구매 확정·정산)으로 */
+  function rejectedBack(r, partnerPays = false) {
+    const rec = recById(r.recId); const u = UW(rec.base); const pa = PARTNERS[rec.pid]; const q = `${PROD[rec.base].short} ${r.qty}${u}`;
+    const at = now(); const due = new Date(at.getTime() + P('claim.return_back_pay_days') * DAY);
+    r.rb = { at, due, remindAt: new Date(due.getTime() - LOCAL.rbRemind.v * DAY), reminded: false, fee: pa.retFee, choice: partnerPays ? 'send' : null, by: partnerPays ? 'partner' : null, paidAt: null, shipDue: partnerPays ? GC.addBusinessDays(at, P('claim.return_back_ship_bd')) : null, shippedAt: null, disposedAt: null };
+    app.log('rule', '거부된 수량은 고객이 가진 것으로 보고 원래 흐름(구매 확정·정산)으로 돌아가요 · 반품 배송비는 일부 승인 때 한 번만 뺐어요(다시 빼지 않음)');
+    if (partnerPays) {
+      app.log('rule', `거부 확정(중재 · 귀책 파트너) → ${eul(q)} 판매자 부담으로 되돌려 보내요(고객 결제 없음) · 송장 기한 ${fmtDate(r.rb.shipDue)}(claim.return_back_ship_bd)`);
+      nt('NOTI_PARTNER_RETURN_BACK', pa.name, `거부한 ${esc(q)} 되돌려 보내기 · 중재 판정으로 배송비 판매자 부담 · ${fmtDate(r.rb.shipDue)}까지 송장 등록`);
+    } else {
+      app.log('rule', `거부 확정 → 고객이 ${fmtDate(due)}까지 [되돌려 받기](배송비 ${won(pa.retFee)} 따로 결제) 또는 [폐기]를 골라요 · 고르지 않으면 ${LOCAL.rbRemind.v}일 전 다시 알리고 기한이 지나면 폐기로 봐요(claim.return_back_pay_days · D71, 법률 자문 전 초안)`);
+      nt('NOTI_RETURN_BACK_DUE', '고객', `거부 확정 · ${esc(q)} [되돌려 받기](배송비 ${won(pa.retFee)}) 또는 [폐기]를 ${fmtDate(due)}까지 골라 주세요 · 지나면 판매자가 폐기해요`);
+    }
   }
   /** 출고 뒤 취소 이의 인정(D23 · 2026-10-16 D39): 회수 확인 → 파트너 검수 없이 그 항목에 낸 금액(D53) 환불
    *  → 주문 항목 DELIVERED → RETURNED(ORDER cancel_objection_return) · 클레임 CANCEL_APPROVED → 완료(collected_refund, 결과 REFUNDED)
@@ -1655,7 +1968,7 @@
     move(rec, 'cancel_approved', by);
     cascadeApply(casc, rec, r);
     logRefundCalc(r);
-    if (auto) { refundApply(r, '취소 요청 자동 승인', true); app.notify('NOTI_PARTNER_CLAIM_AUTO_APPROVED', PARTNERS[rec.pid].name, ['알림톡'], '취소 요청 자동 승인 · 평가 기록'); }
+    if (auto) { refundApply(r, '취소 요청 자동 승인', true); nt('NOTI_PARTNER_CLAIM_AUTO_APPROVED', PARTNERS[rec.pid].name, '취소 요청 자동 승인 · 평가 기록'); }
     else await payRefund(r, `${PROD[rec.base].short} 취소 요청 승인`);
     rec.refunded = r.refund;
     goClaim('cancel', 'refund', '환불 완료', c, [rec, ...casc.recs]);
@@ -1672,7 +1985,7 @@
     const back = couponBack(x);
     logRefundCalc(x);
     const label = `${PROD[rec.base].short} 반품 환불 · ${REASON[r.reason].label}${r.partial ? ` · 거부했던 ${r.qty}${UW(rec.base)}` : ''}`;
-    if (x.shortfall) app.log('money', `환불 0원 · 반품 배송비 ${won(x.deduction)}이 반품한 수량에 낸 금액보다 커서 모자란 ${won(x.shortfall)}은 고객이 추가 결제해요(D53 · 혜택 포기 동의 없음)`);
+    if (x.shortfall) { noteKept(x); app.log('money', `환불 0원 · 반품 배송비 ${won(x.deduction)}이 반품한 수량에 낸 금액보다 커서 모자란 ${won(x.shortfall)}은 고객이 추가 결제해요(D53 · 혜택 포기 동의 없음)`); }
     else if (silent) refundApply(x, `${label}(검수 기한 초과 자동 승인)`, true);
     else await payRefund(x, label, [x.feeBy === 'partner' ? '반품 배송비는 판매자 부담' : x.deduction ? `반품 배송비 ${won(x.deduction)}을 환불액에서 뺐어요` : '반품 배송비는 승인 수량 환불에서 이미 뺐어요']);
     restoreCoupons(back);
@@ -1877,7 +2190,7 @@
     if (how === 'auto') refundApply(pay, label, true, false);
     else await payRefund(pay, label, ['파트너 귀책이라 공제 없음(디자인 착수 뒤라도 디자인비 포함)', self ? `붙은 구성품 ${ad.short}은 먼저 취소해 ${won(self.refund)} 환불함 · 남은 결제 잔액 전부` : `붙은 구성품 ${ad.short} ${won(m.addonPaid)}도 결제 금액 그대로(쿠폰 최소 주문 다시 계산 안 함)`], false);
     app.log('rule', `쿠폰 되돌림: 본사 상품 할인 쿠폰 ${esc(HQ_COUPONS[0].name)} — 유효기간이 남았으면 쿠폰함으로 · ${PC.old.name}는 구매 확정 전이라 정산 이벤트 없음`);
-    app.notify('NOTI_ITEM_PARTNER_CHANGE_REFUNDED', '고객', ['알림톡', '푸시', '이메일'], `전액 환불 ${won(x.totalRefund)}${self ? '' : '(붙은 구성품 포함)'}${how === 'auto' ? ' · 답변 기한 지남' : ''}`);
+    nt('NOTI_ITEM_PARTNER_CHANGE_REFUNDED', '고객', `전액 환불 ${won(x.totalRefund)}${self ? '' : '(붙은 구성품 포함)'}${how === 'auto' ? ' · 답변 기한 지남' : ''}`);
     Object.assign(pc, { status: 'refunded', how, doneAt: app.clock.now() });
     pc.hist.push({ at: pc.doneAt, who: how === 'auto' ? '시스템' : '고객', what: `전액 환불 ${won(x.totalRefund)}${self ? '' : `(붙은 ${esc(ad.short)} ${won(m.addonPaid)} 포함 · 함께 취소)`} · ${esc(c.name)} 제안 닫힘` });
   }
@@ -1898,7 +2211,7 @@
       const prev = app.state('design');
       app.go('design', 'partner_changed', { by: '제작 파트너 변경 동의' });
       app.log('state', `디자인 요청: ${esc(GC.sm.stateName('DESIGN', prev))} → <b>파트너 전달</b> <span class="faint">(확정 디자인 그대로 ${esc(c.name)}에게 인쇄 패키지 다시 전달 · ${PC.old.name}는 더 못 받음)</span>`);
-      app.notify('NOTI_PARTNER_PACKAGE_HANDED_OFF', c.name, ['알림톡', '이메일'], `인쇄 파일 도착 · ${PC.no} · 판매자 변경으로 넘어온 맞춤 주문`);
+      nt('NOTI_PARTNER_PACKAGE_HANDED_OFF', c.name, `인쇄 파일 도착 · ${PC.no} · 판매자 변경으로 넘어온 맞춤 주문`);
       pcAddonCancel('제작 파트너 변경 동의 · 붙은 구성품은 원래 판매자 상품이라 새 판매자로 넘기지 않음');
       if (!self) app.log('rule', `붙은 추가 구성품 ${esc(eun(`${ad.name} ${ad.qty}${ad.u}`))} ${PC.old.name} 상품이라 같은 사유로 취소하고 결제 금액 ${won(m.addonPaid)} 그대로 환불해요(공제 없음 · 쿠폰 최소 주문 다시 계산 안 함). 새 판매자 구성품은 고객이 따로 주문해요`);
       const adPart = self ? '' : `붙은 구성품 ${won(m.addonPaid)}`;
@@ -1906,7 +2219,7 @@
         lo ? `차액 = (원래 합계 ${won(m.agree.oldBase)} − 새 합계 ${won(m.agree.newBase)}) × 결제 비율 ${won(m.oldPaid)}/${won(m.agree.oldBase)}, 원 단위 내림` : `새 합계 ${iga(won(m.agree.newBase))} 원래 합계 ${won(m.agree.oldBase)}보다 높아 차액은 0원(더 받지 않음)`,
         self ? `붙은 구성품 ${ad.short}은 먼저 취소해 ${won(self.refund)} 환불함` : `붙은 구성품 ${ad.short} ${won(m.addonPaid)}은 결제 금액 그대로`], false);
       app.log('money', `정산 기준 다시 저장(${esc(c.name)}): 판매가 ${won(st.sale)} = 새 상품 대금 ${won(m.newList)} + 새 판비 ${won(m.newPlate)} · 파트너 부담 할인 0원 · 요율 ${m.rate}%(동의 시점) · 고객이 낸 금액과의 차이 ${won(st.platformDisc)} = 플랫폼 부담 할인(구매 확정 때 보전)`);
-      app.notify('NOTI_ITEM_PARTNER_CHANGED', '고객', ['알림톡', '푸시', '이메일'], `제작 판매자가 ${esc(ro(c.name))} 바뀌었어요 · ${m.agree.totalRefund ? `환불 ${won(m.agree.totalRefund)}(${[lo ? '차액' : '', self ? '' : '붙은 구성품'].filter(Boolean).join('·')})` : '추가 결제·환불 없음'}`);
+      nt('NOTI_ITEM_PARTNER_CHANGED', '고객', `제작 판매자가 ${esc(ro(c.name))} 바뀌었어요 · ${m.agree.totalRefund ? `환불 ${won(m.agree.totalRefund)}(${[lo ? '차액' : '', self ? '' : '붙은 구성품'].filter(Boolean).join('·')})` : '추가 결제·환불 없음'}`);
       Object.assign(pc, { status: 'agreed', doneAt: app.clock.now() });
       pc.hist.push({ at: pc.doneAt, who: '고객', what: `변경 동의 · ${PC.old.name} → ${esc(c.name)} · 환불 ${won(m.agree.totalRefund)}(차액 ${won(m.agree.refund)}${self ? '' : ` + 붙은 구성품 ${won(m.addonPaid)}`})` });
       pc.hist.push({ at: pc.doneAt, who: '시스템', what: `정산 기준 다시 저장 · 판매가 ${won(st.sale)} · 파트너 부담 할인 0 · 요율 ${m.rate}% · 플랫폼 부담 할인 ${won(st.platformDisc)}` });
@@ -1949,7 +2262,7 @@
     const pc = S().pc; if (!pc || pc.status !== 'wait') return;
     if (!pc.noticedAt && t >= pc.remindAt) {
       pc.noticedAt = new Date(t);
-      app.notify('NOTI_ITEM_PARTNER_CHANGE_PROPOSED', '고객', ['알림톡', '푸시', '이메일'], `다시 알림 · ${fmtDate(pc.due)}까지 답이 없으면 전액 환불`);
+      nt('NOTI_ITEM_PARTNER_CHANGE_PROPOSED', '고객', `다시 알림 · ${fmtDate(pc.due)}까지 답이 없으면 전액 환불`);
       pc.hist.push({ at: pc.noticedAt, who: '시스템', what: '답변 기한 하루 전 다시 알림' });
       if (t >= pc.due) app.log('rule', `예고 없이 환불하지 않아요 → 지금 다시 알림을 보내고 ${P('notify.notice_min_hours')}시간 뒤에 환불해요(예고 먼저 · notify.notice_min_hours)`);
     }
@@ -1962,18 +2275,19 @@
     if (isPc()) return;
     const s = S(); const o = s.order; if (!o) return;
     if (o.vbDue && s.recs.some((r) => r.st === 'PAYMENT_PENDING')) {
-      if (!s.fired.vbSoon && t.getTime() >= o.vbDue.getTime() - DAY) { s.fired.vbSoon = true; app.notify('NOTI_VBANK_DUE_SOON', '고객', ['알림톡', '푸시'], `입금 기한 하루 전 · ${fmtDate(o.vbDue)}까지`); }
+      if (!s.fired.vbSoon && t.getTime() >= o.vbDue.getTime() - DAY) { s.fired.vbSoon = true; nt('NOTI_VBANK_DUE_SOON', '고객', `입금 기한 하루 전 · ${fmtDate(o.vbDue)}까지`); }
       if (t >= o.vbDue) {
         app.log('ext', '토스페이먼츠 · 가상계좌 마감 확인');
         s.recs.filter((r) => r.st === 'PAYMENT_PENDING').forEach((r) => move(r, 'vbank_expire', `입금 기한 ${P('payment.vbank_due_days')}일 경과`));
         app.log('rule', '쿠폰·포인트·재고를 되돌려요. 기한 뒤 들어온 입금은 주문을 되살리지 않고 자동 환불해요');
-        app.notify('NOTI_VBANK_EXPIRED', '고객', ['알림톡', '푸시'], '입금 기한이 지나 주문 취소');
+        nt('NOTI_VBANK_EXPIRED', '고객', '입금 기한이 지나 주문 취소');
       }
     }
     if (o.paidAt) ['A', 'B'].forEach((pid) => {
       if (!s.recs.some((r) => r.pid === pid && r.st === 'PAID')) return;
-      if (t >= GC.addBusinessDays(o.paidAt, LOCAL.acceptRemindBd.v) && !s.fired['a1' + pid]) { s.fired['a1' + pid] = true; app.notify('NOTI_PARTNER_ACCEPT_LATE', PARTNERS[pid].name, ['알림톡'], '발주 확인 리마인드'); }
-      if (t >= GC.addBusinessDays(o.paidAt, LOCAL.acceptAlertBd.v) && !s.fired['a2' + pid]) { s.fired['a2' + pid] = true; app.log('warn', `${PARTNERS[pid].name} 발주 확인 영업일 2일 지연 → 운영팀 알림`); }
+      /* P-ORD-01 · S12 맞춤 ㉑: order.accept_remind_bd 리마인드 · order.accept_alert_bd 운영팀 알림 · 자동 취소 없음 */
+      if (t >= GC.addBusinessDays(o.paidAt, P('order.accept_remind_bd')) && !s.fired['a1' + pid]) { s.fired['a1' + pid] = true; nt('NOTI_PARTNER_ACCEPT_LATE', PARTNERS[pid].name, `발주 확인 리마인드 · 결제 + 영업일 ${P('order.accept_remind_bd')}일`); }
+      if (t >= GC.addBusinessDays(o.paidAt, P('order.accept_alert_bd')) && !s.fired['a2' + pid]) { s.fired['a2' + pid] = true; app.log('warn', `${PARTNERS[pid].name} 발주 확인 영업일 ${P('order.accept_alert_bd')}일 지연 → 운영팀 알림(자동 취소는 없음 · 판정 시각을 넘기면 무단 지연)`); }
     });
     if (s.creq && app.state('cancel') === 'CANCEL_REQUESTED' && t >= s.creq.due && recById(s.creq.recId).st === 'ACCEPTED') approveCancelCore(true);
     /* 이의 기한(GC.claim.canObject = 거부 통지 + claim.objection_days)이 지나고 이의가 없으면 거부 확정. 이의가 있으면 중재를 기다림 */
@@ -1985,27 +2299,45 @@
     }
     if (retOpen()) {
       const r = s.ret; const st = app.state('claim');
-      if (st === 'RETURN_REQUESTED' && r.method === 'pickup' && t >= r.pickupDue) { app.log('ext', '계약 택배사 · 자동 회수 접수'); app.go('claim', 'pickup', { by: '영업일 2일 미접수 → 플랫폼 자동 회수 접수' }); app.log('rule', '판매자 기한 초과 자동 처리 → 평가 기록(페널티는 2차)'); }
-      if (st === 'RETURN_REQUESTED' && r.method === 'self' && t >= r.shipDue) { goClaim('claim', 'withdraw', '7일 안 미발송 → 자동 철회', r, [recById(r.recId)]); r.done = 'withdrawn'; app.notify('NOTI_CLAIM_WITHDRAWN', '고객', ['알림톡', '푸시'], '반품 자동 철회'); }
+      if (st === 'RETURN_REQUESTED' && r.method === 'pickup' && t >= r.pickupDue) { app.log('ext', '계약 택배사 · 자동 회수 접수'); app.go('claim', 'pickup', { by: `영업일 ${P('claim.pickup_register_bd')}일 미접수 → 플랫폼 자동 회수 접수` }); app.log('rule', '판매자 기한 초과 자동 처리 → 평가 기록(페널티는 2차)'); }
+      if (st === 'RETURN_REQUESTED' && r.method === 'self' && t >= r.shipDue) { goClaim('claim', 'withdraw', `${P('claim.return_ship_days')}일 안 미발송 → 자동 철회`, r, [recById(r.recId)]); r.done = 'withdrawn'; nt('NOTI_CLAIM_WITHDRAWN', '고객', '반품 자동 철회'); }
       if (st === 'RETURN_INSPECTING' && r.inspectDue && t >= r.inspectDue) approveReturnCore(`검수 기한 영업일 ${P('claim.inspect_bd')}일 초과 → 자동 승인`, true);
       if (st === 'RETURN_REJECTED' && !r.objection && expired('RETURN', st, r.rejAt)) { goClaim('claim', 'no_objection', `${P('claim.objection_days')}일 동안 이의 없음`, r, [recById(r.recId)]); r.done = 'rejected'; rejectedBack(r); }
     }
     /* D57: 환불 기한 전날·넘김 → 재무 알림. 검수 기한(영업일 2일)이 환불 기한(3일) 안이라 보통은 거부가 중재에서 뒤집힌 건만 넘김 */
     const rr = s.ret;
     if (refundWatch(rr)) {
-      if (!rr.dueNoti && t >= dueEve(rr.refundDue)) { rr.dueNoti = true; app.notify('NOTI_INT_REFUND_DUE', '재무 담당', ['이메일', '관리자 알림', 'Slack'], `반품 환불 기한 전날 · ${esc(recLabel(recById(rr.recId)))} · ${fmtDate(rr.refundDue)}까지`); }
-      if (!rr.overNoti && t > rr.refundDue) { rr.overNoti = true; app.notify('NOTI_INT_REFUND_OVER', '재무 담당', ['이메일', '관리자 알림', 'Slack'], `반품 환불 기한 넘김 · 환불할 때 지연배상금 자동 계산${rr.objection ? ' · 중재 중(거부가 뒤집히면 판매자 부담)' : ''}`); }
+      if (!rr.dueNoti && t >= dueEve(rr.refundDue)) { rr.dueNoti = true; nt('NOTI_INT_REFUND_DUE', '재무 담당', `반품 환불 기한 전날 · ${esc(recLabel(recById(rr.recId)))} · ${fmtDate(rr.refundDue)}까지`); }
+      if (!rr.overNoti && t > rr.refundDue) { rr.overNoti = true; nt('NOTI_INT_REFUND_OVER', '재무 담당', `반품 환불 기한 넘김 · 환불할 때 지연배상금 자동 계산${rr.objection ? ' · 중재 중(거부가 뒤집히면 판매자 부담)' : ''}`); }
     }
-    /* D58: 안내 없는 출고 지연 — 약속 출고일 + order.overdue_grace_bd 영업일 끝까지 송장이 없으면 출고 지연(판정 시각은 출고일이 정해질 때 저장) */
+    /* D71: 거부 확정 수량 — 고르는 기한 3일 전 다시 알림, 기한이 지나면 폐기로 보고 파트너에게 알림 */
+    const rb = s.ret && s.ret.rb;
+    if (rb && !rb.choice) {
+      const rec = recById(s.ret.recId); const q = `${PROD[rec.base].short} ${s.ret.qty}${UW(rec.base)}`;
+      if (!rb.reminded && t >= rb.remindAt && t < rb.due) { rb.reminded = true; nt('NOTI_RETURN_BACK_DUE', '고객', `기한 임박 · 거부된 ${esc(q)} ${fmtDate(rb.due)}까지 [되돌려 받기]·[폐기]를 고르지 않으면 판매자가 폐기해요`); }
+      if (t >= rb.due) {
+        Object.assign(rb, { choice: 'dispose', by: 'auto', choseAt: new Date(rb.due) });
+        app.log('rule', `고르는 기한(${fmtDate(rb.due)})이 지나 거부된 ${esc(q)} 폐기를 고른 것으로 봐요(claim.return_back_pay_days · D71, 법률 자문 전 초안)`);
+        nt('NOTI_PARTNER_RETURN_BACK', PARTNERS[rec.pid].name, `폐기 확정 · 고객이 기한까지 고르지 않아 거부한 ${esc(q)} 폐기 · 폐기 확인 기록을 남겨 주세요`);
+      }
+    }
+    /* S12 맞춤 ⑳: 환불 계좌를 7일 안에 넣지 않으면 한 번 더 알리고 본사 모니터링 ‘지연배상금 송금 대기’ */
+    if (o.compWait && !o.compWait.reminded && t >= o.compWait.remindAt) {
+      o.compWait.reminded = true;
+      nt('NOTI_REFUND_ACCOUNT_REQUIRED', '고객', `다시 알림 · 환불 지연배상금 ${won(o.compWait.amt)}을 보내 드릴 환불 계좌를 등록해 주세요`);
+      app.log('warn', `환불 계좌 입력 요청 뒤 ${LOCAL.acctRemind.v}일 동안 계좌가 없어요 → 본사 모니터링 ‘지연배상금 송금 대기’(A-ORD-01) · 금액은 ${won(o.compWait.amt)} 그대로`);
+    }
+    /* D58: 안내 없는 출고 지연 — 약속 출고일 + order.overdue_grace_bd 영업일 끝까지 송장이 없으면 출고 지연(판정 시각은 출고일이 정해질 때 저장).
+       발주 확인 전(PAID)도 같음(㉑) · 본사 일괄 공지 중에는 판정하지 않고, 끝나면 GC.order.isOverdue({ notice })가 하루 유예한 시각으로(D72) */
     if (o.paidAt) ['A', 'B'].forEach((pid) => {
       if (o.ship[pid] || o.overdue[pid] || !s.recs.some((r) => r.pid === pid && ['PAID', 'ACCEPTED'].includes(r.st))) return;
-      if (GC.order.isOverdue({ promisedAt: promiseDate(pid), now: t, shipped: false })) markOverdue(pid);
+      if (GC.order.isOverdue({ promisedAt: promiseDate(pid), now: t, shipped: false, notice: o.notice })) markOverdue(pid);
     });
     const days = P('order.auto_confirm_days');
     s.recs.forEach((r) => {
       if (r.st !== 'DELIVERED' || !r.deliveredAt || hasOpenClaim(r)) return;
       const due = r.deliveredAt.getTime() + days * DAY;
-      if (t.getTime() >= due - DAY && t.getTime() < due && !s.fired['cd' + r.pid]) { s.fired['cd' + r.pid] = true; app.notify('NOTI_CONFIRM_DUE', '고객', ['푸시'], '내일 자동 구매 확정'); }
+      if (t.getTime() >= due - DAY && t.getTime() < due && !s.fired['cd' + r.pid]) { s.fired['cd' + r.pid] = true; nt('NOTI_CONFIRM_DUE', '고객', '내일 자동 구매 확정'); }
       if (t.getTime() >= due) { move(r, 'confirm', `자동 구매 확정 배치 · 확정 시각 ${fmtDate(new Date(due))}(배송 완료 + ${days}일)`); app.log('money', `정산 이벤트: ${esc(recLabel(r))} 구매 확정 → ${PARTNERS[r.pid].name} 다음 주 정산 대상`); }
     });
     syncStrip(); guide();
