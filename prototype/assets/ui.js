@@ -106,6 +106,7 @@
           <button class="btn btn-sm btn-ghost" id="gc-reset" title="이 페이지를 처음 상태로">처음부터</button>
         </div>
       </div></header>
+      <div class="frozen-bar" role="note"><b>더 이상 고치지 않는 프로토타입입니다.</b> 2026-10-17 결정(D72)까지만 들어 있고, 그 뒤 바뀐 규칙(취소·환불 표준안, 본사 쿠폰 1장, 판매자 사정 취소, 추가 구성품, 사업자 상태, 출고 기한)은 반영하지 않았습니다. 규칙은 기능 명세서를 기준으로 보세요.</div>
       <main class="page">
         <div class="page-head">
           <h1>${esc(cfg.title)}</h1>
