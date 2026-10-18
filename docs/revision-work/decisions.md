@@ -1,4 +1,4 @@
-# 부록 B 반영 — 정할 것 (D1~D19) · S8 남은 확인 거리 (D20~D33) · S9 (D34~D35) · S10 (D36~D45) · S11 (D46~D52) · 취소·환불 정책 수정 (D53~D59) · 반영 세션 (D60) · 마무리 (D61) · 환경·배포 (D62~D65) · S12 (D66~D72) · 표준안 정리 (D73) · 정리 1단계 (D74~D76) · 정리 2단계 (D77~D80) · 출고 기한 (D81~D82) · 개발 시작 (D83~D85)
+# 부록 B 반영 — 정할 것 (D1~D19) · S8 남은 확인 거리 (D20~D33) · S9 (D34~D35) · S10 (D36~D45) · S11 (D46~D52) · 취소·환불 정책 수정 (D53~D59) · 반영 세션 (D60) · 마무리 (D61) · 환경·배포 (D62~D65) · S12 (D66~D72) · 표준안 정리 (D73) · 정리 1단계 (D74~D76) · 정리 2단계 (D77~D80) · 출고 기한 (D81~D82) · 개발 시작 (D83~D86)
 
 > 근거: `docs/analysis/2026-10-13_식업-기획서-분석.md` 부록 B. 줄 번호는 `docs/revision-work/baseline/` 기준.
 > 각 항목의 **결정:** 칸에 결론을 적었습니다(S1, 2026-10-14에 16건 모두 결정). 결정을 바꾸려면 이 파일을 고치고 HANDOFF 세션 기록에 남깁니다.
@@ -993,3 +993,15 @@ AskUserQuestion(개발 프로젝트 생성 ② sikup-android, 세 개 모두 추
   3. 언어는 Kotlin(AGP 9 내장 Kotlin). 시작 버전: AGP 9.4.1 · Gradle 9.8.1 · Kotlin 2.4.21 · compileSdk·targetSdk 37(Android 17).
 - **판단해서 넣은 것:** 빌드 변형 dev(패키지 `kr.co.sikup.app.dev`, 앱 이름 ‘식업 개발’, 웹앱 주소 임시 `https://dev.sikup.co.kr` — 개발 서버 주소가 정해지면 바꿈)·prod(`https://www.sikup.co.kr`)로 한 폰에 함께 설치(기획서 08장 ‘개발 서버를 보는 빌드를 따로’). 앱 데이터는 클라우드 백업·기기 간 전송에서 빼서 웹뷰 로그인 쿠키가 새 폰으로 옮겨지지 않게 함(새 폰에서는 다시 로그인). 릴리스 빌드는 R8로 줄임. 임시 아이콘(spot 초록 바탕 + 흰 상자)은 디자인 요청서의 앱 아이콘이 나오면 바꿈.
 - **반영:** 명세 00장 ‘앱’ 행 · `#g-dec4` · C-APP-01(규칙·정책 ‘앱 식별’, 로그인 유지 줄, 구형 OS 줄) / 기획서 09장 앱 행 · 15장 ‘앱’ 행 · ‘확정 (2026-10-18 추가 · 개발 시작)’ / 저장소 `sikup-android` 첫 커밋 331413e.
+
+## D86. iOS 앱 번들 ID·최소 OS·만드는 방법 — ☑ 2026-10-18
+
+사용자 지시(개발 프로젝트 생성 ③ sikup-ios, Mac에서 진행): 번들 ID **kr.co.sikup.app** · 최소 **iOS 15** · **Mac의 Xcode로 새 프로젝트**(SwiftUI App 생명주기).
+
+- **문제:** iOS 번들 ID(스토어에 올린 뒤엔 못 바꿈)와 프로젝트를 만드는 방법이 정해져 있지 않았음. HANDOFF는 Windows에서 XcodeGen `project.yml`로 만드는 안을 적어 두었으나, 이번 세션은 Mac(Xcode 있음)에서 진행.
+- **결정:**
+  1. 번들 ID는 안드로이드 패키지(D85)와 같은 `kr.co.sikup.app`.
+  2. 최소 설치 버전은 iOS 15(`IPHONEOS_DEPLOYMENT_TARGET`) — 명세 상수 `app.min_os` 기본값과 같음. 안드로이드처럼 C-APP-01의 ‘구형 OS 안내’는 나중에 `app.min_os`를 올릴 때 쓰임.
+  3. Xcode 프로젝트를 직접 둠(XcodeGen 안 씀). Swift + SwiftUI App 생명주기(iOS 27 SDK부터 scene 생명주기 필수), WKWebView는 나중에 `UIViewRepresentable`로 넣음. 시작 버전: Xcode 27.0(27A266a) · Swift 6.4(Swift 6 언어 모드) · iOS 27.0 SDK. Xcode 27.1이 아직 이 Mac에 없어 27.0으로 만듦.
+- **판단해서 넣은 것:** 환경 둘을 빌드 설정 `Debug-Dev`·`Release-Dev`·`Debug-Prod`·`Release-Prod`와 `Config/Dev.xcconfig`·`Config/Prod.xcconfig`로 나누고 scheme은 `Sikup Dev`·`Sikup` — dev는 번들 ID `kr.co.sikup.app.dev`, 앱 이름 ‘식업 개발’, 웹앱 주소 임시 `https://dev.sikup.co.kr`, prod는 `https://www.sikup.co.kr`(안드로이드 D85와 같음). iPhone 전용, 화면 회전은 막지 않음. 앱 버전 1.0.0 / 빌드 1. `ITSAppUsesNonExemptEncryption = NO`(HTTPS만 씀). 서명 Automatic, Apple 개발자 팀이 없어 `DEVELOPMENT_TEAM`은 비움. 런치 스크린은 paper 색, 임시 아이콘(spot 초록 바탕 + 흰 상자, 안드로이드와 같은 모양). 쿠키 유지·백업에서 로그인 쿠키 빼기·푸시·딥링크는 README ‘나중에 할 일’로만.
+- **반영:** 명세 00장 ‘앱’ 행 · `#g-dec4` · C-APP-01(규칙·정책 ‘앱 식별’, 구형 OS 줄) / 기획서 09장 앱 행 · 15장 ‘앱’ 행 · ‘확정 (2026-10-18 추가 · 개발 시작)’ / 저장소 `sikup-ios` 커밋 ab1f5ce·5aeed06.

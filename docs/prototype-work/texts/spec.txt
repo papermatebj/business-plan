@@ -40,7 +40,7 @@ MVP 정식 오픈(M13 말) 포함2차 오픈 후 3개월 안3차 오픈 후 1년
  | 1년 내 수익원 | 디자인 유료 서비스, 파트너 광고·유료 플랜, 고객 멤버십, PB·직매입 | D-OPT P-PLN P-ADS U-BEN-04 A-PB
  | 파트너 프로모션 | 즉시 할인 MVP, 쿠폰·대상 지정·기획전 2차 | P-PRM-01 P-PRM-02
  | 디자인 권리 | 저작권 회사 보유, 고객은 매장 이용권. 원본 AI 파일 30,000원 | D-APV-01 D-OPT-01
- | 앱 | 모바일 우선 웹앱 하나 + Android·iOS 웹뷰 쉘로 MVP에 함께 출시(React Native에서 변경). Android 쉘은 Kotlin, 패키지 kr.co.sikup.app, 최소 Android 8 | C-APP
+ | 앱 | 모바일 우선 웹앱 하나 + Android·iOS 웹뷰 쉘로 MVP에 함께 출시(React Native에서 변경). Android 쉘은 Kotlin, 패키지 kr.co.sikup.app, 최소 Android 8. iOS 쉘은 Swift(SwiftUI), 번들 ID kr.co.sikup.app, 최소 iOS 15 | C-APP
  | 백엔드·화면 기술 | Java 25 + Spring Boot 4.x + MySQL 8. 고객 웹앱·파트너 센터·관리자 화면은 Thymeleaf + htmx로 각 실행 앱에서 제공 | 전체
  | 백엔드 실행 구성 | core 공유 + web(고객) / partner(파트너) / admin(관리자, 사내망) / batch 4개 앱 분리 배포. 협의 룸 메시지는 Redis로 web↔admin, 생산 협의 채널은 partner↔admin 중계 | D-ROOM-02 A-SYS-01
  | 오픈 일정 | 정식 오픈 M13 말(개발 약 10.5개월 + 베타), MVP 범위 유지. 2차 = 오픈 후 3개월, 3차 = 오픈 후 1년 안(3차-1 정액 광고 → 3차-2 CPC) | 전체
@@ -163,6 +163,7 @@ MVP 정식 오픈(M13 말) 포함2차 오픈 후 3개월 안3차 오픈 후 1년
  | 백엔드 버전·개발 저장소 | Java 25 + Spring Boot 4.x(시작 4.1.1), Gradle 멀티 모듈 프로젝트 하나(core·web·admin·batch + core를 쓰지 않는 convert). 기획서의 Java 21 + Spring Boot 3.x를 바꿈 — 3.x는 2026-06에 무료 지원이 끝남. 저장소는 sikup-server · sikup-android · sikup-ios · sikup-infra로 나눔 | 전체
  | 파트너 센터를 따로 실행 | 파트너 센터를 web에서 떼어 partner 앱으로 따로 배포(partner.sikup.co.kr, 처음 1대). 실행 앱은 web·partner·admin·batch 넷, 파트너 로그인은 고객과 다른 도메인·쿠키·세션. 생산 협의 채널 메시지는 Redis로 partner↔admin 중계. ‘web = 고객 웹앱·파트너 센터’를 바꿈 | 전체
  | 안드로이드 앱 패키지·최소 OS·언어 | 패키지 kr.co.sikup.app(스토어에 올린 뒤엔 못 바꿈), 최소 설치 Android 8(minSdk 26 — 상수 app.min_os 기본값과 같음), Kotlin. 개발 서버를 보는 개발 빌드는 kr.co.sikup.app.dev(‘식업 개발’)로 한 폰에 함께 설치. 앱 데이터는 백업·기기 간 전송에서 빼 로그인 쿠키가 새 폰으로 옮겨지지 않음. 기획서의 ‘Java 또는 Kotlin’을 정함(D85) | C-APP-01
+ | iOS 앱 번들 ID·최소 OS·만드는 방법 | 번들 ID kr.co.sikup.app(안드로이드 패키지와 같음, 스토어에 올린 뒤엔 못 바꿈), 최소 설치 iOS 15(상수 app.min_os 기본값과 같음), Swift + SwiftUI App 생명주기(웹뷰는 WKWebView를 SwiftUI에 넣음). 프로젝트는 Mac의 Xcode로 만듦(XcodeGen 안 씀). 개발 빌드는 kr.co.sikup.app.dev(‘식업 개발’)로 한 폰에 함께 설치 — 안드로이드와 같음(D86) | C-APP-01
 ### [#g-draft] 법률 자문 전 초안 (2026-10-12, 확정 아님)
 i
 재주문이 직거래로 빠져나가지 않게 입점 계약에 넣을 조항입니다. 조항 전문은 기획서 07장 J에 있고, 이 명세서에는 화면·기록·상수로 바뀌는 부분만 넣었습니다. 기간·배수·금액은 상수이며 계약 버전에 고정되므로, 바꾼 값은 새 계약이나 변경 계약부터 적용합니다. 법률 자문(L-32·L-37·L-38) 답을 받으면 고칩니다. 재주문 인센티브(수수료 인하·연결 보장 등)는 2026-10-12에 도입을 확정해 D-RE-01·C-STL-01·A-PTN-03·U-SRCH-06에 넣었고, 그 계약 조건(L-39)은 아래 표와 P-ONB-03에 초안으로 있습니다. 재주문 정산 앞당김은 PG 확인 전까지 보류입니다.
@@ -4388,10 +4389,10 @@ C-APP-01
 - 앱 재배포는 네이티브 기능이 바뀔 때만 합니다. 화면·정책 변경은 웹 배포로 끝냅니다.
 - 애플 심사(“웹사이트를 감싸기만 한 앱” 반려) 대비로 푸시, 카메라 업로드, 딥링크, 오프라인 화면을 반드시 넣습니다.
 - 웹뷰 디버깅은 개발 빌드에서만 켭니다.
-- 앱 식별: Android 패키지 kr.co.sikup.app. 개발 서버를 보는 개발 빌드는 kr.co.sikup.app.dev(앱 이름 ‘식업 개발’)라 한 폰에 함께 설치되고, 앱 링크 검증 파일(C-APP-02)도 환경마다 이 이름으로 둡니다(2026-10-18, D85).
+- 앱 식별: Android 패키지와 iOS 번들 ID 모두 kr.co.sikup.app. 개발 서버를 보는 개발 빌드는 둘 다 kr.co.sikup.app.dev(앱 이름 ‘식업 개발’)라 한 폰에 함께 설치되고, 앱 링크 검증 파일(C-APP-02 — Android assetlinks.json·iOS apple-app-site-association)도 환경마다 이 이름으로 둡니다(2026-10-18, D85·D86).
 예외 처리
 - 웹앱 서버 장애 시 앱에 내장된 점검 안내 화면을 보여줍니다.
-- 지원하지 않는 구형 OS(상수 app.min_os, 기본 Android 8 미만·iOS 15 미만)는 실행 시 안내합니다. Android 앱은 처음부터 Android 8 미만에는 설치되지 않으므로(minSdk 26), 이 안내는 나중에 app.min_os를 올릴 때 쓰입니다.
+- 지원하지 않는 구형 OS(상수 app.min_os, 기본 Android 8 미만·iOS 15 미만)는 실행 시 안내합니다. Android 앱은 처음부터 Android 8 미만에는 설치되지 않으므로(minSdk 26), 이 안내는 나중에 app.min_os를 올릴 때 쓰입니다. iOS 앱도 처음부터 iOS 15 미만에는 설치되지 않습니다(배포 대상 iOS 15).
 - 메모리 부족으로 웹뷰가 종료되면 마지막 주소로 다시 엽니다. 결제 중이었으면 주문 상세에서 결제 상태를 다시 확인합니다.
 연관 기능: C-APP-02 · C-APP-03 · A-SYS-03
 C-APP-02
