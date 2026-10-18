@@ -1351,7 +1351,7 @@ tr.hl td{background:var(--primary-weak)}
       <div class="table-wrap"><table class="minw-760">
         <thead><tr><th>환경</th><th>쓰임</th><th>구성</th><th>외부 연동</th><th>데이터·접속</th></tr></thead>
         <tbody>
-          <tr><td><b>로컬</b><br>내 PC</td><td>개발, 단위·통합 테스트</td><td>Docker로 MySQL 8·Redis를 띄우고, 파일은 S3 대신 로컬 저장소(MinIO 등). 앱은 IDE에서 실행. 테스트는 JUnit + Testcontainers(MySQL)</td><td>PG·본인인증은 테스트 키. 알림톡·SMS·이메일·푸시는 보내지 않고 기록만</td><td>시드 데이터. 내 PC에서만 접속</td></tr>
+          <tr><td><b>로컬</b><br>내 PC</td><td>개발, 단위·통합 테스트</td><td>Docker Desktop으로 MySQL 8.4·Valkey(Redis 호환)를 띄우고, 파일은 S3 대신 S3 호환 로컬 저장소(SeaweedFS — MinIO는 보관 처리됨). DB 구조는 <code>migrate</code> 앱을 한 번 돌려 맞춤. 앱은 IDE에서 실행. 테스트는 JUnit + Testcontainers(같은 이미지·설정·마이그레이션)</td><td>PG·본인인증은 테스트 키. 알림톡·SMS·이메일·푸시는 보내지 않고 기록만</td><td>시드 데이터. 내 PC에서만 접속</td></tr>
           <tr><td><b>개발 서버</b><br>스테이징 겸용</td><td>main에 합친 코드의 통합 확인, 운영팀(MD·CS·디자인팀)의 시나리오 테스트</td><td>운영과 다른 AWS 계정(dev). 운영과 같은 Terraform 모듈을 작게 띄움(단일 AZ, 앱마다 1대, 쓸 때만 켬). 주소 예: www·partner·admin.dev.sikup.co.kr</td><td>테스트 키만. 알림톡·SMS·이메일·푸시는 허용 목록(개발자·사내 번호와 주소)에만 실제로 보내고 나머지는 기록만. 지급대행은 PG 테스트 환경</td><td>시드 데이터(운영 데이터 복사 금지). 전체를 사내 IP·VPN 안에 두고, PG 웹훅 주소만 엶</td></tr>
           <tr><td><b>운영</b></td><td>실제 서비스. 클로즈드 베타부터</td><td>운영 AWS 계정(prod). 위 그림 구성(RDS Multi-AZ, web 2대 이상)</td><td>라이브 키. prod 계정의 Secrets Manager에만 둠</td><td>실제 데이터. www·partner는 공개(베타 동안은 초대한 파트너·고객만 가입·주문), admin은 사내 IP·VPN만</td></tr>
         </tbody>
@@ -2250,6 +2250,7 @@ tr.hl td{background:var(--primary-weak)}
           <tr><td><b>안드로이드 앱 패키지·최소 OS·언어</b></td><td>패키지 이름은 kr.co.sikup.app입니다(스토어에 올린 뒤엔 바꿀 수 없음). Android 8 이상에만 설치되고(명세의 최소 지원 OS와 같음), 언어는 Kotlin입니다. 개발 서버를 보는 개발용 앱(‘식업 개발’)은 따로 빌드해 한 폰에 함께 깔 수 있습니다.</td></tr>
           <tr><td><b>iOS 앱 번들 ID·최소 OS</b></td><td>번들 ID는 안드로이드와 같은 kr.co.sikup.app입니다(스토어에 올린 뒤엔 바꿀 수 없음). iOS 15 이상에만 설치되고(명세의 최소 지원 OS와 같음), 언어는 Swift입니다. 안드로이드처럼 개발용 앱(‘식업 개발’)을 한 폰에 함께 깔 수 있습니다.</td></tr>
           <tr><td><b>인프라 코드 구성</b></td><td>인프라는 Terraform으로 남깁니다. 개발 서버(dev)와 운영(prod)은 AWS 계정이 달라 폴더를 나누고, 두 폴더가 같은 모듈을 크기만 다르게 씁니다(개발 서버는 작게). 인프라 상태 기록은 계정마다 그 계정의 S3에 두어, 개발 서버에서 실수해도 운영에 닿지 않습니다.</td></tr>
+                  <tr><td><b>서버 공통 기반</b></td><td>로컬은 Docker Desktop으로 MySQL 8.4 LTS·Valkey 8.1·SeaweedFS(08장 로컬 행의 ‘MinIO 등’을 바꿈 — MinIO 저장소가 보관 처리됨). DB 구조 변경은 <code>migrate</code> 앱에서만(Flyway), 실행 앱 넷은 시작 때 스키마 검사만. 시각은 DB에 UTC, 한국 날짜는 코드에서 Asia/Seoul로. 프로필 local·dev·prod, dev·prod 접속 정보는 환경 변수로만(필수 값이 없으면 시작하지 않음). DB 계정은 앱별, 구조 변경은 migrate 계정만(D88)</td><td>전체</td></tr>
         </tbody>
       </table></div>
 

@@ -1,4 +1,4 @@
-# 부록 B 반영 — 정할 것 (D1~D19) · S8 남은 확인 거리 (D20~D33) · S9 (D34~D35) · S10 (D36~D45) · S11 (D46~D52) · 취소·환불 정책 수정 (D53~D59) · 반영 세션 (D60) · 마무리 (D61) · 환경·배포 (D62~D65) · S12 (D66~D72) · 표준안 정리 (D73) · 정리 1단계 (D74~D76) · 정리 2단계 (D77~D80) · 출고 기한 (D81~D82) · 개발 시작 (D83~D87)
+# 부록 B 반영 — 정할 것 (D1~D19) · S8 남은 확인 거리 (D20~D33) · S9 (D34~D35) · S10 (D36~D45) · S11 (D46~D52) · 취소·환불 정책 수정 (D53~D59) · 반영 세션 (D60) · 마무리 (D61) · 환경·배포 (D62~D65) · S12 (D66~D72) · 표준안 정리 (D73) · 정리 1단계 (D74~D76) · 정리 2단계 (D77~D80) · 출고 기한 (D81~D82) · 개발 시작 (D83~D88)
 
 > 근거: `docs/analysis/2026-10-13_식업-기획서-분석.md` 부록 B. 줄 번호는 `docs/revision-work/baseline/` 기준.
 > 각 항목의 **결정:** 칸에 결론을 적었습니다(S1, 2026-10-14에 16건 모두 결정). 결정을 바꾸려면 이 파일을 고치고 HANDOFF 세션 기록에 남깁니다.
@@ -1017,3 +1017,17 @@ AskUserQuestion(개발 프로젝트 생성 ④ sikup-infra, Mac에서 진행, �
   3. state는 계정마다 S3 버킷(`sikup-tfstate-dev`·`sikup-tfstate-prod`, 버전 관리·암호화·공개 차단), 잠금은 S3 잠금 파일(`use_lockfile`, DynamoDB 없음). 버킷은 `bootstrap/`으로 계정마다 한 번 만듦. HCP Terraform 안 씀.
 - **판단해서 넣은 것:** 환경마다 provider `allowed_account_ids`로 그 계정에만 적용되게 함(계정 ID는 계정이 생기면 `terraform.tfvars`에 — 비밀값이 아니라 커밋, PG 키 등 비밀값은 Secrets Manager에만). 기본 태그 Project·Environment·ManagedBy. 모듈은 입력 변수(AZ 수, RDS 크기·Multi-AZ·백업 일수, Redis 크기, ECS 서비스별 대수·CPU·메모리, 도메인·공개 여부·사내 IP)와 들어갈 리소스 설명만, 리소스는 없음. 크기 값은 자리만(dev: 단일 AZ·db.t4g.micro·앱마다 1대·사내 IP만 / prod: 2 AZ·db.t4g.medium Multi-AZ·백업 14일·web 2대·공개). 잠금 파일에 macOS·Linux·Windows 해시. CI(GitHub Actions fmt·validate·plan, OIDC 역할)·dev ‘쓸 때만 켬’·VPN exit node 등은 README ‘나중에 할 일’로만.
 - **반영:** 명세 `#g-dec4` / 기획서 09장 인프라 행 · 15장 ‘확정 (2026-10-18 추가 · 개발 시작)’ / 저장소 `sikup-infra` 첫 커밋 38cfddf(Mac `~/Desktop/MyFiles/Papermate/Sikup/sikup-infra`).
+
+## D88. 서버 공통 기반 — 로컬 환경·DB·마이그레이션·프로필 — ☑ 2026-10-19
+
+AskUserQuestion(서버 공통 기반 플랜, 2026-10-18, 세 개 모두 추천안): 로컬 도구 **Docker Desktop** · 마이그레이션 **별도 `migrate` 모듈** · 시각 **DB는 UTC, 한국 시간은 코드에서**. 나머지는 확인 거리 기준(D74)대로 개발 기본값.
+
+- **문제:** 기획서 08장 ‘로컬(내 PC)’ 행은 ‘MySQL 8·Redis·MinIO 등’만 적었고, 마이그레이션을 어디서 돌릴지(‘한 곳에서’), 프로필·환경 변수 이름, DB 시각 저장 방식이 정해져 있지 않았음. MinIO는 저장소가 보관 처리되고 Docker Hub 이미지가 없어짐(2026-10-18 확인).
+- **결정:**
+  1. 로컬은 Docker Desktop + `compose.yaml` 하나: MySQL **8.4 LTS**(8.4.11), Valkey 8.1(Redis 호환 — ElastiCache 기본 엔진과 같은 계열), **SeaweedFS 4.48**(S3 호환, MinIO 대신). 포트는 이 PC에서만(127.0.0.1). 운영·개발 서버의 RDS도 8.4로(인프라 세션).
+  2. Flyway 마이그레이션은 `migrate` 모듈(적용하고 끝나는 앱)에서만. 실행 앱 4개(web·partner·admin·batch)에는 Flyway가 없고 시작 때 스키마 검사(`validate`)만. 적용된 파일은 고치지 않고, 되돌림도 새 파일로. `clean`은 모든 환경에서 막음.
+  3. 시점은 DB에 UTC(`DATETIME(6)` ↔ Java `Instant`), MySQL 서버 시간대 `+00:00`. 한국 날짜·하루 경계는 코드가 Asia/Seoul로 명시해 계산(JVM 기본 시간대에 기대지 않음). 업무 날짜(출고 예정일 등)는 `DATE`.
+  4. 프로필 `local`(기본)·`dev`·`prod`. 공통 설정은 core 한 파일. dev·prod 접속 정보는 환경 변수 `SIKUP_DB_HOST`·`SIKUP_DB_USERNAME`·`SIKUP_DB_PASSWORD`·`SIKUP_REDIS_HOST`·`SIKUP_STORAGE_BUCKET`(필수 — 없으면 이름을 나열하며 시작하지 않음)과 `SIKUP_DB_PORT`·`SIKUP_DB_NAME`·`SIKUP_REDIS_PORT`·`SIKUP_REDIS_SSL`·`SIKUP_REDIS_PASSWORD`·`SIKUP_AWS_REGION`(기본값 있음). ECS 작업 정의가 이 이름 그대로 넣음.
+  5. DB 계정은 앱별(`sikup_web`·`sikup_partner`·`sikup_admin`·`sikup_batch` — 데이터 읽기·쓰기만), 구조 변경은 `sikup_migrate`만(명세 C-SEC ‘DB 계정도 앱별로’).
+- **판단해서 넣은 것:** 문자셋 `utf8mb4_0900_ai_ci`, FULLTEXT ngram 2글자(검색 명세)를 MySQL 설정 파일 하나로 로컬·테스트가 함께 씀. batch 작업 중복 실행 방지는 ShedLock(DB 잠금 표, V1). web·partner·admin `/actuator/health`(DB·Redis 포함, ALB 헬스 체크용), batch는 외부 접속이 없어 없음. dev·prod 로그는 JSON(ECS 형식). 테스트는 Testcontainers로 compose와 같은 이미지·설정·마이그레이션, 테스트 JVM 시간대는 일부러 Asia/Seoul(기본 시간대에 기대는 코드를 잡으려고). 로컬 전용 비밀번호만 저장소에 둠. 인프라 세션으로 넘긴 것: dev·prod 앱 계정에서 마이그레이션 이력 표 권한 빼기, ALB 헬스 체크를 살아 있음/준비됨으로 나누기, MySQL `VERIFY_IDENTITY`.
+- **반영:** 명세 `#g-dec4` / 기획서 08장 로컬 행 · 15장 ‘확정 (2026-10-18 추가 · 개발 시작)’ / 저장소 `sikup-server`(플랜 `docs/plan/2026-10-18_서버-공통-기반-plan.md`).
