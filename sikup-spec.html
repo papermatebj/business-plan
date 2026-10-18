@@ -807,6 +807,7 @@ section.sec>.callout,section.sec>.states,section.sec>.table-wrap,section.sec>.ca
           <tr><td><b>파트너 센터를 따로 실행</b></td><td>파트너 센터를 web에서 떼어 partner 앱으로 따로 배포(partner.sikup.co.kr, 처음 1대). 실행 앱은 web·partner·admin·batch 넷, 파트너 로그인은 고객과 다른 도메인·쿠키·세션. 생산 협의 채널 메시지는 Redis로 partner↔admin 중계. ‘web = 고객 웹앱·파트너 센터’를 바꿈</td><td>전체</td></tr>
           <tr><td><b>안드로이드 앱 패키지·최소 OS·언어</b></td><td>패키지 <code>kr.co.sikup.app</code>(스토어에 올린 뒤엔 못 바꿈), 최소 설치 Android 8(minSdk 26 — 상수 <code>app.min_os</code> 기본값과 같음), Kotlin. 개발 서버를 보는 개발 빌드는 <code>kr.co.sikup.app.dev</code>(‘식업 개발’)로 한 폰에 함께 설치. 앱 데이터는 백업·기기 간 전송에서 빼 로그인 쿠키가 새 폰으로 옮겨지지 않음. 기획서의 ‘Java 또는 Kotlin’을 정함(D85)</td><td><a href="#C-APP-01">C-APP-01</a></td></tr>
           <tr><td><b>iOS 앱 번들 ID·최소 OS·만드는 방법</b></td><td>번들 ID <code>kr.co.sikup.app</code>(안드로이드 패키지와 같음, 스토어에 올린 뒤엔 못 바꿈), 최소 설치 iOS 15(상수 <code>app.min_os</code> 기본값과 같음), Swift + SwiftUI App 생명주기(웹뷰는 WKWebView를 SwiftUI에 넣음). 프로젝트는 Mac의 Xcode로 만듦(XcodeGen 안 씀). 개발 빌드는 <code>kr.co.sikup.app.dev</code>(‘식업 개발’)로 한 폰에 함께 설치 — 안드로이드와 같음(D86)</td><td><a href="#C-APP-01">C-APP-01</a></td></tr>
+          <tr><td><b>인프라 코드 구성</b></td><td>Terraform 1.16 + AWS provider 6.x. 저장소 sikup-infra는 환경별 폴더(<code>envs/dev</code>·<code>envs/prod</code>)가 같은 공통 모듈(network·data·app·edge)을 크기만 다르게 부름. state는 계정마다 S3 버킷(버전 관리·암호화, S3 잠금 파일 — DynamoDB 안 씀), 다른 계정에 잘못 적용하지 않도록 환경마다 그 계정만 허용. 비밀값은 Terraform 변수에 넣지 않고 그 계정의 Secrets Manager에만(D87)</td><td>전체</td></tr>
         </tbody>
       </table></div>
 

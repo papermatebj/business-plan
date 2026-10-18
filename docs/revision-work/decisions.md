@@ -1,4 +1,4 @@
-# 부록 B 반영 — 정할 것 (D1~D19) · S8 남은 확인 거리 (D20~D33) · S9 (D34~D35) · S10 (D36~D45) · S11 (D46~D52) · 취소·환불 정책 수정 (D53~D59) · 반영 세션 (D60) · 마무리 (D61) · 환경·배포 (D62~D65) · S12 (D66~D72) · 표준안 정리 (D73) · 정리 1단계 (D74~D76) · 정리 2단계 (D77~D80) · 출고 기한 (D81~D82) · 개발 시작 (D83~D86)
+# 부록 B 반영 — 정할 것 (D1~D19) · S8 남은 확인 거리 (D20~D33) · S9 (D34~D35) · S10 (D36~D45) · S11 (D46~D52) · 취소·환불 정책 수정 (D53~D59) · 반영 세션 (D60) · 마무리 (D61) · 환경·배포 (D62~D65) · S12 (D66~D72) · 표준안 정리 (D73) · 정리 1단계 (D74~D76) · 정리 2단계 (D77~D80) · 출고 기한 (D81~D82) · 개발 시작 (D83~D87)
 
 > 근거: `docs/analysis/2026-10-13_식업-기획서-분석.md` 부록 B. 줄 번호는 `docs/revision-work/baseline/` 기준.
 > 각 항목의 **결정:** 칸에 결론을 적었습니다(S1, 2026-10-14에 16건 모두 결정). 결정을 바꾸려면 이 파일을 고치고 HANDOFF 세션 기록에 남깁니다.
@@ -1005,3 +1005,15 @@ AskUserQuestion(개발 프로젝트 생성 ② sikup-android, 세 개 모두 추
   3. Xcode 프로젝트를 직접 둠(XcodeGen 안 씀). Swift + SwiftUI App 생명주기(iOS 27 SDK부터 scene 생명주기 필수), WKWebView는 나중에 `UIViewRepresentable`로 넣음. 시작 버전: Xcode 27.0(27A266a) · Swift 6.4(Swift 6 언어 모드) · iOS 27.0 SDK. Xcode 27.1이 아직 이 Mac에 없어 27.0으로 만듦.
 - **판단해서 넣은 것:** 환경 둘을 빌드 설정 `Debug-Dev`·`Release-Dev`·`Debug-Prod`·`Release-Prod`와 `Config/Dev.xcconfig`·`Config/Prod.xcconfig`로 나누고 scheme은 `Sikup Dev`·`Sikup` — dev는 번들 ID `kr.co.sikup.app.dev`, 앱 이름 ‘식업 개발’, 웹앱 주소 임시 `https://dev.sikup.co.kr`, prod는 `https://www.sikup.co.kr`(안드로이드 D85와 같음). iPhone 전용, 화면 회전은 막지 않음. 앱 버전 1.0.0 / 빌드 1. `ITSAppUsesNonExemptEncryption = NO`(HTTPS만 씀). 서명 Automatic, Apple 개발자 팀이 없어 `DEVELOPMENT_TEAM`은 비움. 런치 스크린은 paper 색, 임시 아이콘(spot 초록 바탕 + 흰 상자, 안드로이드와 같은 모양). 쿠키 유지·백업에서 로그인 쿠키 빼기·푸시·딥링크는 README ‘나중에 할 일’로만.
 - **반영:** 명세 00장 ‘앱’ 행 · `#g-dec4` · C-APP-01(규칙·정책 ‘앱 식별’, 구형 OS 줄) / 기획서 09장 앱 행 · 15장 ‘앱’ 행 · ‘확정 (2026-10-18 추가 · 개발 시작)’ / 저장소 `sikup-ios` 커밋 ab1f5ce·5aeed06.
+
+## D87. 인프라 코드 도구·구성·state — ☑ 2026-10-18
+
+AskUserQuestion(개발 프로젝트 생성 ④ sikup-infra, Mac에서 진행, 세 개 모두 추천안): 도구 **Terraform 1.16** · 구성 **환경별 폴더 + 공통 모듈** · state **계정마다 S3 + 잠금 파일**.
+
+- **문제:** 기획서 09장은 ‘Terraform’만 적었고, dev·prod 계정 분리(D65)를 코드에서 어떻게 나눌지, state를 어디에 둘지 정해져 있지 않았음.
+- **결정:**
+  1. Terraform 1.16(`~> 1.16`, 만들 때 1.16.6) + AWS provider 6.x(`~> 6.69`, 만들 때 6.69.1). OpenTofu 안 씀.
+  2. `envs/dev`·`envs/prod`가 같은 `modules/`(network·data·app·edge)를 크기만 다르게 부른다(기획서 08장 ‘같은 Terraform 모듈을 작게’). workspace 안 씀.
+  3. state는 계정마다 S3 버킷(`sikup-tfstate-dev`·`sikup-tfstate-prod`, 버전 관리·암호화·공개 차단), 잠금은 S3 잠금 파일(`use_lockfile`, DynamoDB 없음). 버킷은 `bootstrap/`으로 계정마다 한 번 만듦. HCP Terraform 안 씀.
+- **판단해서 넣은 것:** 환경마다 provider `allowed_account_ids`로 그 계정에만 적용되게 함(계정 ID는 계정이 생기면 `terraform.tfvars`에 — 비밀값이 아니라 커밋, PG 키 등 비밀값은 Secrets Manager에만). 기본 태그 Project·Environment·ManagedBy. 모듈은 입력 변수(AZ 수, RDS 크기·Multi-AZ·백업 일수, Redis 크기, ECS 서비스별 대수·CPU·메모리, 도메인·공개 여부·사내 IP)와 들어갈 리소스 설명만, 리소스는 없음. 크기 값은 자리만(dev: 단일 AZ·db.t4g.micro·앱마다 1대·사내 IP만 / prod: 2 AZ·db.t4g.medium Multi-AZ·백업 14일·web 2대·공개). 잠금 파일에 macOS·Linux·Windows 해시. CI(GitHub Actions fmt·validate·plan, OIDC 역할)·dev ‘쓸 때만 켬’·VPN exit node 등은 README ‘나중에 할 일’로만.
+- **반영:** 명세 `#g-dec4` / 기획서 09장 인프라 행 · 15장 ‘확정 (2026-10-18 추가 · 개발 시작)’ / 저장소 `sikup-infra` 첫 커밋 38cfddf(Mac `~/Desktop/MyFiles/Papermate/Sikup/sikup-infra`).

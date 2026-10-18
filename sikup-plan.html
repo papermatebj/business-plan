@@ -1423,7 +1423,7 @@ tr.hl td{background:var(--primary-weak)}
           <tr><td><b>검색</b></td><td>MVP: MySQL FULLTEXT(ngram) + 한 글자 접두 검색 + 초성 컬럼 + 동의어 테이블 → 2차 이후 조건 충족 시 OpenSearch(nori)</td><td>운영할 서버를 줄이고, 상품이 늘면 옮김(상품 5,000개 이상 또는 검색 품질 문제)</td><td>Algolia</td></tr>
           <tr><td><b>배치·스케줄</b></td><td>Spring Batch + @Scheduled + ShedLock</td><td>정산 집계, 무응답 리마인드, 자동 구매 확정을 서버 여러 대에서도 한 번만 실행</td><td>Quartz</td></tr>
           <tr><td><b>파일</b></td><td>S3 presigned 업로드 + 격리된 convert 작업(Ghostscript·ImageMagick) + batch의 썸네일·WebP(Thumbnailator)</td><td>최대 수백 MB의 디자인 원본. 고객 파일을 여는 AI/PDF 미리보기는 DB·PG 키가 없는 convert에서, 상품 이미지 리사이즈는 batch에서 처리</td><td>CloudConvert API</td></tr>
-          <tr><td><b>인프라</b></td><td>AWS 서울 + ECS Fargate(web·partner·admin·batch 4개 서비스 + 필요할 때만 실행하는 convert 작업) + Terraform</td><td>서버 관리 최소, 앱별로 따로 배포·확장. ALB 1개에서 호스트별로 나눔</td><td>EC2·Lightsail(더 단순하지만 수동 관리가 많음)</td></tr>
+          <tr><td><b>인프라</b></td><td>AWS 서울 + ECS Fargate(web·partner·admin·batch 4개 서비스 + 필요할 때만 실행하는 convert 작업) + Terraform(dev·prod 환경별 폴더가 같은 모듈을 크기만 다르게, state는 계정마다 S3)</td><td>서버 관리 최소, 앱별로 따로 배포·확장. ALB 1개에서 호스트별로 나눔</td><td>EC2·Lightsail(더 단순하지만 수동 관리가 많음)</td></tr>
           <tr><td><b>품질·운영</b></td><td>GitHub Actions, Sentry, CloudWatch, JUnit + Testcontainers(MySQL), Playwright(Java)</td><td>혼자서도 배포 자동화, 장애 감지, 결제·환불·정산 계산 회귀 테스트</td><td>Datadog(성장기)</td></tr>
           <tr><td><b>개발 도구</b></td><td>IntelliJ IDEA + AI 코딩 도구</td><td>1인 개발 생산성의 핵심(코드 작성·테스트·리뷰 보조)</td><td>-</td></tr>
         </tbody>
@@ -2249,6 +2249,7 @@ tr.hl td{background:var(--primary-weak)}
           <tr><td><b>파트너 센터를 따로 실행</b></td><td>파트너 센터를 고객 웹앱(web)에서 떼어 partner 앱으로 따로 배포합니다(partner.sikup.co.kr). 고객 화면과 파트너 화면의 배포·장애·로그인이 서로 묶이지 않습니다. 실행 앱은 web·partner·admin·batch 넷이 되고, partner는 처음에 작은 서버 1대로 둡니다(늘어나는 비용은 10장 월 고정 운영비의 어림 범위 안).</td></tr>
           <tr><td><b>안드로이드 앱 패키지·최소 OS·언어</b></td><td>패키지 이름은 kr.co.sikup.app입니다(스토어에 올린 뒤엔 바꿀 수 없음). Android 8 이상에만 설치되고(명세의 최소 지원 OS와 같음), 언어는 Kotlin입니다. 개발 서버를 보는 개발용 앱(‘식업 개발’)은 따로 빌드해 한 폰에 함께 깔 수 있습니다.</td></tr>
           <tr><td><b>iOS 앱 번들 ID·최소 OS</b></td><td>번들 ID는 안드로이드와 같은 kr.co.sikup.app입니다(스토어에 올린 뒤엔 바꿀 수 없음). iOS 15 이상에만 설치되고(명세의 최소 지원 OS와 같음), 언어는 Swift입니다. 안드로이드처럼 개발용 앱(‘식업 개발’)을 한 폰에 함께 깔 수 있습니다.</td></tr>
+          <tr><td><b>인프라 코드 구성</b></td><td>인프라는 Terraform으로 남깁니다. 개발 서버(dev)와 운영(prod)은 AWS 계정이 달라 폴더를 나누고, 두 폴더가 같은 모듈을 크기만 다르게 씁니다(개발 서버는 작게). 인프라 상태 기록은 계정마다 그 계정의 S3에 두어, 개발 서버에서 실수해도 운영에 닿지 않습니다.</td></tr>
         </tbody>
       </table></div>
 
