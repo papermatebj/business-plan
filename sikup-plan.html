@@ -1418,7 +1418,7 @@ tr.hl td{background:var(--primary-weak)}
           <tr><td><b>디자인 협의 룸</b></td><td>Spring WebSocket(STOMP) + stomp.js + 바닐라 JS</td><td>실시간 메시지·시안 알림. web(고객)·partner(파트너)와 admin(디자이너), 여러 대 서버 사이 메시지는 Redis pub/sub로 중계</td><td>Sendbird(일정이 부족할 때)</td></tr>
           <tr><td><b>상품 상세 에디터</b></td><td>Summernote(Bootstrap 5용) + 서버 HTML 정화(jsoup Safelist)</td><td>파트너 센터가 Bootstrap 5 기반(Tabler)이라 잘 맞고 스크립트만 붙이면 됨(MIT). 이미지는 S3로 바로 올리고 Base64 삽입·HTML 직접 편집은 끔. 저장한 HTML은 서버가 허용 태그만 남김</td><td>Toast UI Editor</td></tr>
           <tr><td><b>시안 핀 코멘트</b></td><td>이미지 위 비율 좌표 핀 + 바닐라 JS</td><td>라이브러리 없이 구현 가능. 시안 확대·축소(핀치)는 MVP에 바닐라 JS로 넣고, 시안 위에 그리는 마킹 같은 고급 기능만 2차에 Konva.js</td><td>Fabric.js</td></tr>
-          <tr><td><b>앱</b></td><td>웹뷰 쉘: Android(Java 또는 Kotlin, WebView) + iOS(Swift, WKWebView)</td><td>결제 앱 호출·카카오 로그인 가이드가 네이티브 기준으로 가장 잘 정리돼 있음. 쉘은 작아 혼자 만들 수 있음. iOS 빌드에는 Mac 필요</td><td>Capacitor, React Native WebView</td></tr>
+          <tr><td><b>앱</b></td><td>웹뷰 쉘: Android(Kotlin, WebView, 최소 Android 8) + iOS(Swift, WKWebView)</td><td>결제 앱 호출·카카오 로그인 가이드가 네이티브 기준으로 가장 잘 정리돼 있음. 쉘은 작아 혼자 만들 수 있음. iOS 빌드에는 Mac 필요</td><td>Capacitor, React Native WebView</td></tr>
           <tr><td><b>세션·캐시</b></td><td>Redis + Spring Session</td><td>서버 2대 이상에서 로그인 유지(웹뷰 쿠키 그대로), WebSocket 중계, 분산 락. 관리자 세션은 도메인·쿠키를 따로 씀</td><td>MySQL 세션(서버 1대일 때)</td></tr>
           <tr><td><b>검색</b></td><td>MVP: MySQL FULLTEXT(ngram) + 한 글자 접두 검색 + 초성 컬럼 + 동의어 테이블 → 2차 이후 조건 충족 시 OpenSearch(nori)</td><td>운영할 서버를 줄이고, 상품이 늘면 옮김(상품 5,000개 이상 또는 검색 품질 문제)</td><td>Algolia</td></tr>
           <tr><td><b>배치·스케줄</b></td><td>Spring Batch + @Scheduled + ShedLock</td><td>정산 집계, 무응답 리마인드, 자동 구매 확정을 서버 여러 대에서도 한 번만 실행</td><td>Quartz</td></tr>
@@ -2047,7 +2047,7 @@ tr.hl td{background:var(--primary-weak)}
           <tr><td><b>1년 내 수익원</b></td><td>디자인 유료 서비스, 파트너 광고·유료 플랜, 고객 멤버십, PB·직매입</td></tr>
           <tr><td><b>파트너 프로모션</b></td><td>즉시 할인 MVP, 쿠폰·대상 고객 지정·기획전 참여 2차</td></tr>
           <tr><td><b>디자인 권리</b></td><td>저작권은 회사, 고객은 매장 이용권. 원본 AI 파일 30,000원</td></tr>
-          <tr><td><b>앱</b></td><td>모바일 우선 웹앱 하나 + Android·iOS 웹뷰 쉘로 MVP에 함께 출시(React Native에서 변경)</td></tr>
+          <tr><td><b>앱</b></td><td>모바일 우선 웹앱 하나 + Android·iOS 웹뷰 쉘로 MVP에 함께 출시(React Native에서 변경). Android 쉘은 Kotlin, 패키지 kr.co.sikup.app, 최소 Android 8</td></tr>
           <tr><td><b>백엔드·DB</b></td><td>Java 25 + Spring Boot 4.x + MySQL 8. 화면은 Thymeleaf + htmx로 각 실행 앱에서 제공</td></tr>
           <tr><td><b>개발 체계</b></td><td>1인 개발(본인), 외주 없음. 핵심이 아닌 기능은 외부 서비스·수작업으로 시작</td></tr>
           <tr><td><b>오픈 일정</b></td><td>정식 오픈 M13 말(개발 약 10.5개월 + 베타), MVP 범위는 줄이지 않음</td></tr>
@@ -2247,6 +2247,7 @@ tr.hl td{background:var(--primary-weak)}
         <tbody>
           <tr><td><b>백엔드 버전·개발 저장소</b></td><td>Java 25 + Spring Boot 4.x(시작 4.1.1)로 올립니다. 처음 정한 Spring Boot 3.x는 2026-06에 무료 보안 지원이 끝났습니다. 서버는 지금처럼 프로젝트 하나 안에 core·web·admin·batch·convert 모듈을 두고 실행 앱만 따로 배포합니다. 저장소는 서버·안드로이드·iOS·인프라 넷(sikup-server · sikup-android · sikup-ios · sikup-infra)입니다.</td></tr>
           <tr><td><b>파트너 센터를 따로 실행</b></td><td>파트너 센터를 고객 웹앱(web)에서 떼어 partner 앱으로 따로 배포합니다(partner.sikup.co.kr). 고객 화면과 파트너 화면의 배포·장애·로그인이 서로 묶이지 않습니다. 실행 앱은 web·partner·admin·batch 넷이 되고, partner는 처음에 작은 서버 1대로 둡니다(늘어나는 비용은 10장 월 고정 운영비의 어림 범위 안).</td></tr>
+          <tr><td><b>안드로이드 앱 패키지·최소 OS·언어</b></td><td>패키지 이름은 kr.co.sikup.app입니다(스토어에 올린 뒤엔 바꿀 수 없음). Android 8 이상에만 설치되고(명세의 최소 지원 OS와 같음), 언어는 Kotlin입니다. 개발 서버를 보는 개발용 앱(‘식업 개발’)은 따로 빌드해 한 폰에 함께 깔 수 있습니다.</td></tr>
         </tbody>
       </table></div>
 
