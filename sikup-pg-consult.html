@@ -338,7 +338,7 @@ tr.grp td{background:var(--surface-2)}
         <div class="fl-item h"><b>본사 계좌</b> 84,000<span>디자인비 39,000 + 수수료 45,000</span></div>
       </div>
     </div>
-    <p class="muted fl-foot">배송비 제외. PG 결제 수수료와 지급대행 수수료는 본사가 부담하므로 파트너 지급액에서 빼지 않습니다. 금액·요율은 모두 임시 기본값이고 실제 값은 관리자가 설정합니다. 결제가 끝난 뒤에도 원 주문에 연결된 추가 결제가 생깁니다(본사 몫: 디자인 부가 결제·맞춤형 전환 차액 / 파트너 몫: 새 판비·추가 배송비·반품 차액, <a class="xref" href="#PG-70">PG-70</a>). 고객이 동의하면 결제 뒤 맞춤 항목의 판매자가 다른 파트너로 바뀔 수도 있습니다(<a class="xref" href="#PG-71">PG-71</a>).</p>
+    <p class="muted fl-foot">배송비 제외. PG 결제 수수료와 지급대행 수수료는 본사가 부담하므로 파트너 지급액에서 빼지 않습니다. 금액·요율은 모두 임시 기본값이고 실제 값은 관리자가 설정합니다. 결제가 끝난 뒤에도 원 주문에 연결된 추가 결제가 생깁니다(본사 몫: 디자인 부가 결제·맞춤형 전환 차액 / 파트너 몫: 새 판비·추가 배송비·반품 차액, <a class="xref" href="#PG-70">PG-70</a>). 결제 뒤 맞춤 항목의 판매자를 다른 파트너로 바꾸지는 않습니다. 파트너가 만들 수 없게 되면 판매자 사정 취소로 전액 환불하고 고객이 새로 주문합니다(<a class="xref" href="#PG-71">PG-71</a>, 2026-10-18 설계 변경으로 해소).</p>
   </div>
 
   <div class="grid g2" style="margin-top:14px">
@@ -451,7 +451,7 @@ tr.grp td{background:var(--surface-2)}
     <label class="done"><input type="checkbox"> 확인함</label></div>
   <p class="ask"><span class="ask-l">물어볼 말</span>파트너를 하위몰로 등록할 때 필요한 정보와 서류, 심사 기간을 알려 주세요. API로 등록·조회·수정할 수 있나요? 하위몰 심사에서 거절될 수 있는 업종이나 조건이 있나요?</p>
   <div class="q-grid"><div><h5>왜 묻나</h5><p>입점 심사 흐름에 하위몰 등록을 넣어야 합니다. 본사 심사를 통과해도 하위몰 승인이 늦으면 판매 시작이 밀립니다.</p></div><div><h5>원하는 답</h5><p>API 등록, 짧은 심사 기간, 필요한 필드 목록(사업자번호, 대표자, 정산 계좌 등).</p></div><div><h5>안 되면</h5><p>입점 절차에 “PG 승인 대기” 단계를 추가하고, 수동 등록을 운영팀 업무로 둡니다.</p></div></div>
-  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>셀러 등록 API(POST /v2/sellers)가 있습니다. 필드는 refSellerId(7~20자), businessType(INDIVIDUAL·INDIVIDUAL_BUSINESS·CORPORATE), 회사 정보, 정산 계좌입니다. 개인사업자는 등록 후 본인인증 문자를 거쳐야 주 1천만 원 미만까지 지급할 수 있고, 법인은 등록 즉시 가능합니다. 사업자번호는 수정할 수 없습니다(폐업 시 삭제 후 재등록). 상태 변경은 seller.changed 웹훅으로 받습니다(<a class="xref" href="#PG-64">PG-64</a>).</div>
+  <div class="known"><span class="known-l">토스페이먼츠 공개 문서 (2026-10-12 확인)</span>셀러 등록 API(POST /v2/sellers)가 있습니다. 필드는 refSellerId(7~20자), businessType(INDIVIDUAL·INDIVIDUAL_BUSINESS·CORPORATE), 회사 정보, 정산 계좌입니다. 개인사업자는 등록 후 본인인증 문자를 거쳐야 주 1천만 원 미만까지 지급할 수 있고, 법인은 등록 즉시 가능합니다. 사업자번호는 수정할 수 없습니다(폐업 시 삭제 후 재등록). 상태 변경은 seller.changed 웹훅으로 받습니다(<a class="xref" href="#PG-64">PG-64</a>). 그래서 파트너가 새 사업자등록번호로 바꾸면 새 번호로 새로 입점(새 셀러 등록)하고 기존 계약은 종료하는 관리자 처리로 둡니다(2026-10-18 결정).</div>
   <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#P-ONB-01">P-ONB-01</a><a class="sid" href="sikup-spec.html#P-ONB-04">P-ONB-04</a><a class="sid" href="sikup-spec.html#A-PTN-01">A-PTN-01</a></div>
   <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
   <div class="memo-print"></div>
@@ -654,10 +654,10 @@ tr.grp td{background:var(--surface-2)}
   <div class="memo-print"></div>
 </article>
 <article class="q" id="PG-71" data-pri="rec" data-title="결제 뒤 판매자 변경">
-  <div class="q-h"><span class="qid">PG-71</span><span class="b rec">중요</span><h4>결제 뒤 판매자 변경</h4>
+  <div class="q-h"><span class="qid">PG-71</span><span class="b rec">중요</span><span class="b opt">설계 변경으로 해소</span><h4>결제 뒤 판매자 변경</h4>
     <label class="done"><input type="checkbox"> 확인함</label></div>
-  <p class="ask"><span class="ask-l">물어볼 말</span>파트너가 판매를 멈추거나 정지·계약 종료되면, 아직 인쇄 전인 맞춤 주문 항목을 같은 사양의 다른 파트너 상품으로 옮길 수 있습니다(고객 동의를 받은 경우만). 새 상품이 더 싸면 관리자가 정한 차액을 부분 환불하고(2026-10-17 결정 — 계산식 대신 관리자가 금액을 넣음), 비싸도 고객에게 더 받지 않습니다. ① 하위몰형이면 이미 승인된 결제 안에서 그 항목의 판매자(하위몰)를 다른 판매자로 바꿀 수 있나요? 부분 취소 뒤 다시 결제하지 않고 할 방법이 있나요? ② 안 된다면 원래 판매자 몫을 부분 취소하고 새 판매자 몫을 어떻게 다시 잡아야 하나요(고객 재결제 없이)? ③ 지급대행형이면 결제 기록은 그대로 두고 내부 장부의 판매자만 바꿔 새 판매자에게 지급하면 되나요?</p>
-  <div class="q-grid"><div><h5>왜 묻나</h5><p>예: 인쇄 300,000 + 판비 50,000을 결제한 맞춤 항목을 원래 파트너가 만들 수 없게 되어 인쇄 280,000 + 판비 50,000인 다른 파트너 상품으로 옮기면, 관리자가 정한 차액(예: 20,000원)을 돌려주고 새 파트너에게 정산해야 합니다. 원래 파트너에게는 지급하지 않습니다. 금액은 모두 임시 기본값입니다.</p></div><div><h5>원하는 답</h5><p>결제 안에서 판매자 변경, 또는 고객 재결제 없이 판매자를 옮기는 처리 방법.</p></div><div><h5>안 되면</h5><p>원래 판매자 몫을 전액 부분 취소하고 플랫폼이 받은 것으로 기록한 뒤, 정산 이벤트로 새 파트너에게 지급합니다.</p></div></div>
+  <p class="ask"><span class="ask-l">물어볼 말</span><b>설계 변경으로 해소(2026-10-18, 답변 불필요).</b> 파트너가 판매를 멈추거나 정지·계약 종료되면 아직 인쇄 전인 맞춤 주문 항목을 고객 동의를 받아 다른 파트너 상품으로 옮기고, 새 상품이 더 싸면 차액을 부분 환불하던 설계를 없앴습니다. 원래 질문은 ‘이미 승인된 결제 안에서 그 항목의 판매자(하위몰)를 고객 재결제 없이 다른 판매자로 바꿀 수 있는지’였고, 지금은 묻지 않습니다. 질문 번호는 그대로 둡니다.</p>
+  <div class="q-grid"><div><h5>지금 설계</h5><p>2026-10-18 결정: 원래 파트너가 [인쇄 가능] 전 맞춤 항목을 만들 수 없게 되면 본사가 ‘판매자 사정 취소’로 그 항목을 전액 부분 취소합니다(디자인비·판비 포함, 일반 상품의 품절 취소와 같음 — 부분 취소는 <a class="xref" href="#PG-20">PG-20</a>). 고객은 원하면 같은 디자인으로 다른 파트너 상품을 새로 주문해 새로 결제합니다. 판매자를 바꾸는 처리와 차액 환불은 없습니다.</p></div><div><h5>원하는 답</h5><p>없음(설계 변경으로 해소).</p></div><div><h5>안 되면</h5><p>없음.</p></div></div>
   <div class="q-foot"><span>관련 기능</span><a class="sid" href="sikup-spec.html#A-ORD-01">A-ORD-01</a><a class="sid" href="sikup-spec.html#C-PAY-02">C-PAY-02</a><a class="sid" href="sikup-spec.html#C-STL-01">C-STL-01</a></div>
   <textarea class="memo" rows="2" placeholder="답변 메모 (이 브라우저에만 저장됩니다)"></textarea>
   <div class="memo-print"></div>

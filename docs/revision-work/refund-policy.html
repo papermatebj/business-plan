@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<!-- 게시본: https://claude.ai/artifact/EjAuQ29zfAmfFABhg6PMeq (2026-10-17 표준안 D73으로 다시 정리: 법 · 표준 · 관리자 처리 세 층, 지금 규칙만 표시. 결정 기록은 docs/revision-work/decisions.md · 2026-10-17 정리 1단계 D75: T 표 키 열에 정책값(●)·상수 구분) -->
+<!-- 게시본: https://claude.ai/artifact/EjAuQ29zfAmfFABhg6PMeq (2026-10-17 표준안 D73으로 다시 정리: 법 · 표준 · 관리자 처리 세 층, 지금 규칙만 표시. 결정 기록은 docs/revision-work/decisions.md · 2026-10-17 정리 1단계 D75: T 표 키 열에 정책값(●)·상수 구분 · 2026-10-18 정리 2단계 D77~D80: 본사 쿠폰 주문당 1장·쿠폰으로 0원이 된 묶음은 편도(R3·K3·K 예시 1), 제작 파트너 변경 → 판매자 사정 취소(G7, M9·T12 지움), 추가 구성품 독립 + 출고 전 함께 취소(G3·G6)) -->
 <style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>식업 취소·환불 정책</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -233,7 +233,7 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
   <header class="top">
     <div class="eyebrow">SIKUP · 취소 · 반품 · 환불</div>
     <h1>식업 취소·환불 정책</h1>
-    <p class="lead">기획서(07장 F, 15장 확정 사항)와 기능 명세서(C-PAY-02 · C-STATE-01~03 · U-MY-01~03 · A-ORD-02 등)에 흩어져 있는 주문 취소·반품·환불 규칙을 한곳에 모았습니다. 2026-10-17 표준안(D73)까지 반영했습니다. 법이 요구하는 것과 다수 쇼핑몰이 쓰는 표준만 자동으로 처리하고, 나머지는 관리자가 사유와 환불 금액을 넣어 처리합니다.</p>
+    <p class="lead">기획서(07장 F, 15장 확정 사항)와 기능 명세서(C-PAY-02 · C-STATE-01~03 · U-MY-01~03 · A-ORD-02 등)에 흩어져 있는 주문 취소·반품·환불 규칙을 한곳에 모았습니다. 2026-10-17 표준안(D73)과 2026-10-18 정리 2단계(D77~D80)까지 반영했습니다. 법이 요구하는 것과 다수 쇼핑몰이 쓰는 표준만 자동으로 처리하고, 나머지는 관리자가 사유와 환불 금액을 넣어 처리합니다.</p>
     <div class="chips">
       <span class="chip"><b>금액·기한</b>은 모두 관리자 설정값의 임시 기본값</span>
       <span class="chip"><b>법률 자문 답 0 / 61</b> · 법적 성격 규칙은 초안</span>
@@ -266,13 +266,15 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
       <p class="sm">자세한 내용은 아래 <a href="#a">A 관리자 처리</a>. 각 항목 앞의 <span class="tier law">법</span><span class="tier std">표준</span><span class="tier adm">관리자 처리</span> 표시가 어느 층인지 알려 줍니다.</p>
     </div>
     <div class="gone">
-      <h2>2026-10-17 표준안으로 정리하며 없앤 것</h2>
+      <h2>표준안(2026-10-17)과 정리 2단계(2026-10-18)로 없앤 것</h2>
       <ul>
         <li>맞춤 확정 뒤 취소의 본사 판정(확정 후 취소 · CUSTOM_CANCEL), 그동안의 생산 보류, 판 제작 증빙(영업시간 4시간), 판비 공제(= 파트너 ‘취소 보상’) → [인쇄 가능] 전이면 고객이 바로 취소하고 낸 디자인비만 뺍니다 (D55·D1·D18·D19)</li>
         <li>맞춤 생산 지연 취소 전용 규칙(DELAY_CANCEL — 승인하면 전액·파트너 부담, 기각하면 새 출고 예정일·다시 요청) → [관리자 처리 요청] (D59·D61)</li>
         <li>지연배상금 자동 계산·자동 송금·카드 환불 송금 대기 → 관리자가 금액과 부담을 넣어 지급, 기한 감시는 그대로 (D57)</li>
         <li>검수 거부 수량의 [되돌려 받기] 따로 결제 · [폐기] 선택 · 14일 기한 → 파트너가 착불로 되돌려 보냄 (D71·D56)</li>
-        <li>제작 파트너 변경 때 더 싼 상품의 차액 계산식 → 관리자가 차액 환불 금액을 넣음 (D33)</li>
+        <li>제작 파트너 변경(다른 파트너 상품 제안 · [변경 동의]·[전액 환불] · 7일 무응답 환불 · 차액 환불 · 정지가 풀리면 제안 거두기) → 판매자 사정 취소로 전액 환불, 다른 판매자로는 고객이 같은 디자인으로 새로 주문 (D33·D36~D38·D40·D46 → 2026-10-18 D78)</li>
+        <li>추가 구성품을 본 상품 클레임에 묶는 규칙(출고된 구성품 함께 회수 · 클레임 묶음 · 맞춤에 붙으면 시스템이 발주 확인) → 구성품은 일반 상품처럼 각자, 본 상품이 모두 취소되면 출고 전 구성품만 함께 취소 (D39·D49·D52 → D79)</li>
+        <li>본사 쿠폰 자리 3개(상품 할인 · 디자인비 · 배송비) → 주문당 1장 (D21 → D77)</li>
         <li>‘본사 중재 결과는 최종’ → 외부 분쟁 조정 안내. 정리하며 찾았던 문서의 빈칸(X1~X7)은 모두 해소됨</li>
       </ul>
     </div>
@@ -340,7 +342,7 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
         <p><span class="tier std">표준</span><b class="rt">발주 확인 뒤에는 취소 요청</b>ACCEPTED 항목은 취소 요청(CANCEL_REQUESTED)이 파트너에게 갑니다. 파트너가 승인하면 환불이 자동으로 진행되고, 1영업일 안에 처리하지 않으면 자동 승인됩니다. 송장이 등록된 항목은 자동 승인하지 않고 반품으로 안내합니다.</p>
         <div class="refs"><span class="ref">P-ORD-04</span><span class="ref">C-STATE-02</span><span class="ref">claim.cancel_auto_approve_bd</span></div></div></div>
       <div class="rule" data-id="G3"><span class="rid">G3</span><div class="rbody">
-        <p><span class="tier adm">관리자 처리</span><b class="rt">‘이미 출고’ 거부와 이의 제기</b>이미 보냈으면 파트너는 송장을 넣어 거부(CANCEL_REJECTED)하고 고객에게 반품 절차가 안내됩니다. 고객은 거부 통지 후 3일 안에 [이의 제기]를 누를 수 있고, 그러면 관리자 처리로 넘어갑니다(A). 관리자가 고객 주장을 인정하면 플랫폼이 회수해 파트너 검수 없이 환불하고(RETURNED), 같은 상자로 간 추가 구성품도 함께 회수·환불합니다. 회수 배송비는 관리자가 정한 부담을 따릅니다.</p>
+        <p><span class="tier adm">관리자 처리</span><b class="rt">‘이미 출고’ 거부와 이의 제기</b>이미 보냈으면 파트너는 송장을 넣어 거부(CANCEL_REJECTED)하고 고객에게 반품 절차가 안내됩니다. 고객은 거부 통지 후 3일 안에 [이의 제기]를 누를 수 있고, 그러면 관리자 처리로 넘어갑니다(A). 관리자가 고객 주장을 인정하면 플랫폼이 회수해 파트너 검수 없이 환불합니다(RETURNED). 같은 상자로 간 추가 구성품은 따로 된 항목이라 관리자가 항목마다 회수할지 정합니다(G6). 회수 배송비는 관리자가 정한 부담을 따릅니다.</p>
         <div class="refs"><span class="ref">U-MY-02</span><span class="ref">A-ORD-02</span><span class="ref">C-STATE-02</span><span class="flag legal">법률 L-22</span></div></div></div>
       <div class="rule" data-id="G4"><span class="rid">G4</span><div class="rbody">
         <p><span class="tier std">표준</span><b class="rt">출고가 늦어지면 바로 취소</b>파트너가 출고 지연을 안내했거나, 안내 없이 약속 출고일을 넘기고 다음 영업일까지도 송장이 없으면(무단 지연) 송장 등록 전까지 고객이 파트너 승인 없이 바로 취소하고 전액 환불받습니다. 지연 안내는 주문당 1번, 최대 영업일 10일까지입니다.</p>
@@ -354,18 +356,20 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
         <p><span class="tier std">표준</span><b class="rt">부분 취소</b>항목과 수량을 골라 일부만 취소할 수 있습니다. 취소한 항목에 낸 금액을 그대로 환불하고 남은 항목은 다시 계산하지 않습니다. 남은 수량이 다른 구간 단가가 되면 부분 취소를 막고, 전체 취소 후 남길 수량으로 다시 주문하도록 안내합니다. 같은 구간 안이면 그대로 부분 취소합니다(K 예시 2).</p>
         <div class="refs"><span class="ref">U-MY-02</span><span class="ref">C-PAY-02</span><span class="flag dec">D53</span><span class="flag legal">법률 L-18</span></div></div></div>
       <div class="rule" data-id="G6"><span class="rid">G6</span><div class="rbody">
-        <p><span class="tier std">표준</span><b class="rt">추가 구성품</b>본 상품과 따로 취소할 수 있습니다. 본 상품의 남은 수량을 모두 취소하면 붙은 구성품도 함께 처리합니다. 출고 전이면 같이 취소하고, 이미 같은 상자로 나갔으면 같은 클레임으로 회수해 검수 없이 환불합니다. 본 상품 일부만 취소하면 구성품은 그대로입니다. 맞춤 항목에 붙은 구성품은 [인쇄 가능] 전까지 PAID라 고객이 바로 취소할 수 있습니다.</p>
-        <div class="refs"><span class="ref">U-MY-02</span><span class="ref">C-STATE-01</span><span class="ref">P-PRD-02</span></div></div></div>
+        <p><span class="tier std">표준</span><b class="rt">추가 구성품</b>일반 상품과 같은 주문 항목이라 따로 취소·반품합니다(발주 확인 전 바로 취소, 뒤에는 취소 요청, 반품 7일). 맞춤 항목에 붙은 구성품도 파트너가 [발주 확인]합니다. 본 상품의 남은 수량이 모두 취소되면(누가 취소하든) 아직 출고되지 않은 구성품만 같은 사유로 함께 취소하고 낸 금액을 돌려줍니다. 이미 출고된 구성품은 고객이 일반 반품하거나, 판매자 사정이면 CS가 관리자 처리로 회수·반품 배송비 부담을 정합니다(A). 본 상품 일부만 취소하면 구성품은 그대로입니다.</p>
+        <div class="refs"><span class="ref">U-MY-02</span><span class="ref">C-STATE-01</span><span class="ref">P-PRD-02</span><span class="flag dec">D79</span></div></div></div>
       <div class="rule" data-id="G7"><span class="rid">G7</span><div class="rbody">
         <p><span class="tier std">표준</span><b class="rt">고객이 아닌 쪽이 하는 취소</b></p>
         <ul>
           <li>파트너 품절 취소: 바로 알리고 전액 환불(법: 공급이 어려우면 3영업일 안에 환급), 파트너 평가에 기록</li>
+          <li>맞춤 항목의 판매자 사정 취소: 파트너 정지·계약 종료·판매 중지 등으로 [인쇄 가능] 전 맞춤 항목(디자인 단계 포함)을 만들 수 없으면 운영팀이 취소합니다. 품절 취소와 같이 공제 없이 전액 환불(디자인비·판비 포함)하고 쿠폰·이용권을 돌려주며, 출고 전 추가 구성품도 함께 취소합니다. 고객이 정지가 풀리기를 기다리겠다고 하면 관리자 처리로 남겨 둡니다.</li>
+          <li>다른 판매자로는 고객이 같은 디자인으로 새로 주문합니다. 디자인을 이어서 쓰고, 디자인비는 새 주문 규칙 그대로(50만원 이상 무료, 아니면 39,000원 — 취소 때 돌려받았으므로 결국 한 번)입니다.</li>
           <li>결제 직후 재고 부족: 그 항목만 자동 취소·전액 환불</li>
           <li>가상계좌 3일 미입금: PG 계좌 마감 확인 뒤 자동 취소, 그 뒤 들어온 입금은 자동 환불</li>
           <li>PG 승인 뒤 서버 처리 실패: 승인을 자동 취소(망취소)하고 안내</li>
           <li>관리자 강제 취소: 표준 계산식(C-PAY-02), 사유 필수. 계산식과 다른 금액이 필요하면 관리자 처리(A)</li>
         </ul>
-        <div class="refs"><span class="ref">C-PAY-01</span><span class="ref">C-STATE-01</span><span class="ref">A-ORD-01</span></div></div></div>
+        <div class="refs"><span class="ref">C-PAY-01</span><span class="ref">C-STATE-01</span><span class="ref">A-ORD-01</span><span class="ref">D-REQ-03</span><span class="flag dec">D78</span></div></div></div>
       <div class="rule" data-id="G8"><span class="rid">G8</span><div class="rbody">
         <p><span class="tier std">표준</span><b class="rt">취소 전 환불 예정액 미리 보기</b>취소 사유를 고르면 쿠폰 복원과 공제까지 반영한 환불 예정 금액을 먼저 보여줍니다. 환불이 끝나면 알립니다.</p>
         <div class="refs"><span class="ref">U-MY-02</span></div></div></div>
@@ -386,12 +390,13 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
         <p><span class="tier law">법</span><b class="rt">반품·교환 배송비</b>파트너가 배송비 템플릿에 정한 금액을 씁니다. 단순 변심은 고객, 판매자 잘못은 판매자가 냅니다.</p>
         <ul>
           <li>단순 변심 반품: 편도 반품 배송비를 고객이 냄(환불금에서 뺌)</li>
-          <li>무료배송으로 받은 묶음을 전부 반품: 왕복 금액</li>
+          <li>판매자 무료배송(템플릿의 무료·조건부 무료 충족, 판매자 부담 무료배송 이벤트·배송비 쿠폰)으로 0원인 묶음을 전부 반품: 왕복 금액</li>
+          <li>본사 쿠폰으로 배송비가 0원(또는 일부)이 된 묶음을 전부 반품: 편도. 판매자는 본사 보전으로 배송비를 받았기 때문이고, 쿠폰은 돌려줌(K3)</li>
           <li>교환: 왕복 교환 배송비</li>
           <li>불량·오배송·표시와 다름·늦게 받음: 파트너 부담</li>
           <li>처음 낸 배송비: 출고 전에 묶음을 모두 취소했을 때, 또는 그 묶음에 남는 항목이 없게 되는 반품이 판매자 잘못일 때 함께 돌려줌(나눠 반품했으면 마지막 건). 단순 변심이면 돌려주지 않음. 반품 순서와 상관없이 같은 금액 — 냅킨 2박스 60,000 + 배송비 4,000원, 반품 배송비 4,000원이면 판매자 잘못 64,000원, 단순 변심 56,000원</li>
         </ul>
-        <div class="refs"><span class="ref">C-PRICE-03</span><span class="ref">U-MY-03</span><span class="ref">C-PAY-02</span><span class="ref">전자상거래법 제18조</span><span class="flag dec">D70</span><span class="flag legal">법률 L-21</span></div></div></div>
+        <div class="refs"><span class="ref">C-PRICE-03</span><span class="ref">U-MY-03</span><span class="ref">C-PAY-02</span><span class="ref">전자상거래법 제18조</span><span class="flag dec">D70</span><span class="flag dec">D77</span><span class="flag legal">법률 L-21</span></div></div></div>
       <div class="rule" data-id="R4"><span class="rid">R4</span><div class="rbody">
         <p><span class="tier std">표준</span><b class="rt">신청 방법</b>DELIVERED 항목에서 반품 또는 교환을 고르고 수량·사유를 정합니다. 불량·오배송은 사진이 필수(최대 10장)입니다. 회수는 자동 회수 접수(파트너 지정 택배)와 고객 직접 발송(송장 입력) 중에서 고릅니다.</p>
         <div class="refs"><span class="ref">U-MY-03</span></div></div></div>
@@ -453,11 +458,11 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
         <p><span class="tier std">표준</span><b class="rt">디자인비 공제액 정하는 법</b>첫 시안 뒤 ~ [인쇄 가능] 전 취소에서 빼는 금액은 실제로 낸 디자인비뿐입니다. 50만원 무료·멤버십 이용권·디자인비 쿠폰으로 무료였으면 0원이고, 쿠폰으로 일부 할인받았으면 할인 뒤 낸 금액만 뺍니다. 이용권·쿠폰은 시안이 나갔으므로 사용 처리합니다. 판비는 공제하지 않습니다.</p>
         <ul>
           <li>낸 디자인비 예: 맞춤형 39,000원, 같은 콘셉트 추가 품목 19,000원</li>
-          <li>멤버십 이용권을 쓴 묶음은 낸 추가 품목 디자인비만 뺌</li>
+          <li>멤버십 이용권(2차)을 쓴 묶음은 낸 추가 품목 디자인비만 뺌</li>
           <li>템플릿형·자체 파일·같은 디자인 재주문은 0원</li>
           <li>공제액은 환불 대상 금액을 넘지 않음</li>
         </ul>
-        <div class="refs"><span class="ref">C-PAY-02</span><span class="ref">D-REQ-04</span><span class="ref">U-ORD-02</span><span class="flag dec">D54</span><span class="flag dec">D60</span><span class="flag dec">D73</span><span class="flag legal">법률 L-13</span></div></div></div>
+        <div class="refs"><span class="ref">C-PAY-02</span><span class="ref">D-REQ-04</span><span class="ref">U-ORD-02</span><span class="flag dec">D54</span><span class="flag dec">D60</span><span class="flag dec">D73</span><span class="flag dec">D77</span><span class="flag legal">법률 L-13</span></div></div></div>
       <div class="rule" data-id="M3"><span class="rid">M3</span><div class="rbody">
         <p><span class="tier std">표준</span><b class="rt">재주문의 취소</b>같은 규칙입니다. 판비 0원 재주문이든 판비를 낸 재주문(보관 기간이 지났거나 수정 재주문으로 판을 새로 만듦)이든 [인쇄 가능] 전이면 고객이 바로 취소하고, 낸 디자인비만 뺍니다.</p>
         <div class="refs"><span class="ref">D-RE-01</span><span class="flag dec">D73</span></div></div></div>
@@ -481,19 +486,9 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
           <li>비용: 귀책 쪽이 부담. 디자인팀 실수(확정본과 다른 파일 전달)면 회사가 전부 부담. 파트너가 거부하면 이의 제기로 관리자 처리</li>
         </ul>
         <div class="refs"><span class="ref">U-MY-03</span><span class="ref">C-STATE-02</span><span class="ref">A-ORD-02</span><span class="ref">claim.tolerance</span><span class="flag legal">법률 L-16</span></div></div></div>
-      <div class="rule" data-id="M9"><span class="rid">M9</span><div class="rbody">
-        <p><span class="tier std">표준</span><b class="rt">제작 파트너 변경</b>파트너의 판매 중지·정지·계약 종료로 [인쇄 가능] 전 맞춤 항목을 만들 수 없으면, 운영팀이 같은 사양의 다른 파트너 상품을 제안하고 고객이 [변경 동의]·[전액 환불]을 고릅니다.</p>
-        <ul>
-          <li>7일 안에 답이 없으면 전액 환불 (하루 전 다시 알림, 예고 뒤 24시간)</li>
-          <li>전액 환불은 파트너 귀책이라 공제 없음. 디자인비·판비까지 돌려주고 이용권·쿠폰 복원</li>
-          <li>동의했는데 새 상품이 더 싸면 차액 환불 금액은 관리자가 넣음(관리자 처리). 비싸도 더 받지 않음</li>
-          <li>붙은 추가 구성품은 어느 경우든 공제 없이 결제 금액 그대로 환불</li>
-          <li>답하기 전에 정지·판매 중지가 풀리면 제안을 거두고 원래 파트너가 이어서 만듦</li>
-        </ul>
-        <div class="refs"><span class="ref">A-ORD-01</span><span class="ref">D-REQ-04</span><span class="ref">order.partner_change_reply_days</span><span class="flag dec">D73</span><span class="flag pg">PG-71</span></div></div></div>
       <div class="rule" data-id="M10"><span class="rid">M10</span><div class="rbody">
-        <p><span class="tier std">표준</span><b class="rt">부분 취소해도 무료 혜택은 다시 받지 않음</b>50만원 이상이라 디자인비가 무료였던 주문을 부분 취소해 기준 아래가 되어도 디자인비를 받지 않습니다. 디자인비 쿠폰 최소 주문도 같습니다.</p>
-        <div class="refs"><span class="ref">U-MY-02</span><span class="ref">design.free_threshold</span></div></div></div>
+        <p><span class="tier std">표준</span><b class="rt">부분 취소해도 무료 혜택은 다시 받지 않음</b>50만원 이상이라 디자인비가 무료였던 주문(판단 금액 = 그 묶음 맞춤 품목의 판매자 할인 뒤 금액)을 부분 취소해 기준 아래가 되어도 디자인비를 받지 않습니다. 쿠폰 최소 주문·무료배송 기준도 같습니다(모두 결제 때 판매자 할인 뒤 금액으로 판단).</p>
+        <div class="refs"><span class="ref">U-MY-02</span><span class="ref">C-PRICE-01</span><span class="ref">design.free_threshold</span><span class="flag dec">D53</span><span class="flag dec">D77</span></div></div></div>
       <div class="rule" data-id="M11"><span class="rid">M11</span><div class="rbody">
         <p><span class="tier adm">관리자 처리</span><b class="rt">생산 지연</b>[인쇄 가능]으로 생산을 시작한 맞춤 제작이 출고 예정일(교정쇄는 승인일 + 리드타임, 지연 안내를 했으면 새 예정일) 다음 영업일까지 송장이 없으면, 고객·파트너에게 알리고 고객에게 [관리자 처리 요청]을 엽니다(클레임 유형 MANUAL). 요청 중에도 생산·출고는 계속합니다. 환불할지, 얼마를, 파트너가 얼마를 부담할지는 관리자가 정합니다(A). 본사 일괄 공지 기간은 지연으로 보지 않습니다(G4).</p>
         <div class="refs"><span class="ref">P-ORD-03</span><span class="ref">C-STATE-02</span><span class="ref">A-ORD-02</span><span class="ref">order.overdue_grace_bd</span><span class="flag dec">D73</span></div></div></div>
@@ -564,8 +559,8 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
         <p><span class="tier std">표준</span><b class="rt">다시 계산하지 않음</b>구간 단가·쿠폰 조건·무료배송 기준을 다시 계산하지 않습니다. 대신 출고 전 부분 취소로 남은 수량의 구간 단가가 바뀌면 부분 취소를 막고 전체 취소 후 재주문을 안내합니다. 배송 묶음의 항목이 출고 전에 모두 취소되면 낸 배송비를 돌려줍니다. 50만원 디자인비 무료·디자인비 쿠폰 할인도 다시 받지 않습니다.</p>
         <div class="refs"><span class="ref">C-PAY-02</span><span class="ref">C-PRICE-03</span><span class="flag dec">D53</span><span class="flag legal">법률 L-18</span></div></div></div>
       <div class="rule" data-id="K3"><span class="rid">K3</span><div class="rbody">
-        <p><span class="tier std">표준</span><b class="rt">쿠폰 복원</b>취소한 항목에만 걸린 쿠폰은 유효기간이 남았으면 돌려줍니다. 여러 항목에 나눠 걸린 쿠폰(본사 상품 할인 쿠폰, 배송비 쿠폰)은 남은 항목에 계속 쓰이므로, 걸린 항목이 모두 취소·반품될 때 돌려줍니다. 조건이 깨져도 회수하지 않습니다. 디자인비 쿠폰·멤버십 이용권은 첫 시안 전 취소일 때만 돌려줍니다.</p>
-        <div class="refs"><span class="ref">C-PAY-02</span><span class="ref">U-BEN-01</span><span class="flag dec">D53</span><span class="flag dec">D54</span><span class="flag legal">법률 L-25</span></div></div></div>
+        <p><span class="tier std">표준</span><b class="rt">쿠폰 복원</b>본사 쿠폰은 주문당 1장(장바구니·상품·디자인비·배송비 중 하나)입니다. 쿠폰은 걸린 항목이 모두 취소·반품될 때 유효기간이 남았으면 돌려줍니다. 여러 항목에 나눠 걸린 장바구니·상품 쿠폰은 남은 항목에 계속 쓰이므로 마지막 항목이 취소될 때 돌려주고, 조건이 깨져도 회수하지 않습니다. 디자인비 쿠폰은 첫 시안 전 취소일 때만 돌려줍니다(2차 멤버십 이용권도 같음). 2차 판매자 쿠폰도 같은 방식입니다.</p>
+        <div class="refs"><span class="ref">C-PAY-02</span><span class="ref">U-BEN-01</span><span class="flag dec">D53</span><span class="flag dec">D54</span><span class="flag dec">D77</span><span class="flag legal">법률 L-25</span></div></div></div>
       <div class="rule" data-id="K4"><span class="rid">K4</span><div class="rbody">
         <p><span class="tier std">표준</span><b class="rt">결제 수단 나누기</b>취소할 때마다 그때 남은 결제 잔액의 비율로 나눕니다. 포인트 몫은 10P 단위로 내리고 나머지는 원결제 수단으로 돌려줍니다. 남은 항목이 없는 마지막 취소는 잔액 전부를 돌려줍니다. 포인트는 2차 기능이라 MVP에서는 전부 원결제 수단으로 갑니다.</p>
         <div class="refs"><span class="ref">C-PAY-02</span></div></div></div>
@@ -584,11 +579,11 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
           <table>
             <thead><tr><th>단계</th><th class="num">포인트</th><th class="num">카드</th><th class="num">합계</th></tr></thead>
             <tbody>
-              <tr><td>결제 직후 잔액</td><td class="num">2,000</td><td class="num">134,000</td><td class="num">136,000</td></tr>
-              <tr><td>1차 · 냅킨 취소 → 냅킨에 낸 금액<br><small>60,000 − 냅킨 쿠폰 5,000 − 본사 쿠폰 나눈 몫 3,793. 냅킨 쿠폰은 돌려주고, 본사 쿠폰은 수저집에 계속 씀</small></td><td class="num">750</td><td class="num">50,457</td><td class="num">51,207</td></tr>
-              <tr><td>2차 · 수저집 취소 → 남은 잔액 전부<br><small>수저집 83,793 + 배송비 1,000. 본사 쿠폰·멤버십 배송비 쿠폰 돌려줌</small></td><td class="num">1,250</td><td class="num">83,543</td><td class="num">84,793</td></tr>
+              <tr><td>결제 직후 잔액</td><td class="num">2,000</td><td class="num">137,000</td><td class="num">139,000</td></tr>
+              <tr><td>1차 · 냅킨 취소 → 냅킨에 낸 금액<br><small>60,000 − 냅킨 판매자 쿠폰 5,000 − 본사 쿠폰 나눈 몫 3,793. 판매자 쿠폰은 돌려주고, 본사 쿠폰은 수저집에 계속 씀</small></td><td class="num">730</td><td class="num">50,477</td><td class="num">51,207</td></tr>
+              <tr><td>2차 · 수저집 취소 → 남은 잔액 전부<br><small>수저집 83,793 + 배송비 4,000. 본사 쿠폰 돌려줌</small></td><td class="num">1,270</td><td class="num">86,523</td><td class="num">87,793</td></tr>
             </tbody>
-            <caption>결제 수단은 그때 남은 잔액 비율로 나누고 포인트는 10P 단위로 내립니다(포인트는 2차 기능이라 MVP는 전부 카드).</caption>
+            <caption>본사 쿠폰은 주문당 1장(여기서는 장바구니 10% 쿠폰, 최대 10,000원)이라 배송비 쿠폰을 같이 쓰지 않습니다. 결제 수단은 그때 남은 잔액 비율로 나누고 포인트는 10P 단위로 내립니다(1차 51,207 × 2,000 ÷ 139,000 = 736.8 → 730P). 판매자 쿠폰·포인트는 2차 기능이라 MVP는 전부 카드입니다.</caption>
           </table>
         </div>
       </div>
@@ -628,7 +623,6 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
           <tr data-id="T9" data-title="출고 지연 최대 기간"><td class="tid">T9</td><td><span class="tier std">표준</span>출고 지연 안내로 늦출 수 있는 기간</td><td>영업일 10일, 주문당 1번</td><td>—</td><td class="key">order.delay_cancel_days</td></tr>
           <tr data-id="T10" data-title="무단 지연·생산 지연 판정"><td class="tid">T10</td><td><span class="tier std">표준</span>무단 지연·생산 지연 판정</td><td>약속 출고일(맞춤은 출고 예정일) 다음 영업일</td><td>일반 상품은 [바로 취소], 맞춤 제작은 [관리자 처리 요청]</td><td class="key">order.overdue_grace_bd</td></tr>
           <tr data-id="T11" data-title="가상계좌 입금 기한"><td class="tid">T11</td><td><span class="tier std">표준</span>가상계좌 입금</td><td>3일</td><td>자동 취소, 늦은 입금은 자동 환불</td><td class="key">● payment.vbank_due_days</td></tr>
-          <tr data-id="T12" data-title="제작 파트너 변경 응답 기한"><td class="tid">T12</td><td><span class="tier std">표준</span>제작 파트너 변경 제안 응답</td><td>7일</td><td>전액 환불 (예고 뒤 24시간)</td><td class="key">order.partner_change_reply_days</td></tr>
           <tr data-id="T13" data-title="디자인 무응답 기한"><td class="tid">T13</td><td><span class="tier std">표준</span>디자인 단계 고객 무응답</td><td>3 / 14 / 30일</td><td>리마인드 / 보류 / 자동 취소</td><td class="key">design.no_response_remind_days · _hold_days · _cancel_days</td></tr>
           <tr data-id="T14" data-title="환불 기한"><td class="tid">T14</td><td><span class="tier law">법</span>환불 (반품은 회수 확인 뒤)</td><td>3영업일</td><td>관리자 처리 목록에 올리고 재무 담당 알림. 지연배상금(기준 연 15%)은 관리자가 넣어 지급</td><td class="key">claim.refund_due_bd · claim.refund_delay_rate</td></tr>
           <tr data-id="T15" data-title="늦게 받음 반품 기한"><td class="tid">T15</td><td><span class="tier std">표준</span>‘늦게 받음(출고 지연)’ 반품 신청</td><td>받은 날부터 7일</td><td>판매자 잘못이라 반품 배송비는 판매자</td><td class="key">claim.late_return_days</td></tr>
@@ -699,8 +693,8 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
         <p><span class="tier adm">관리자 처리</span><b class="rt">관리자 처리의 부담과 재제작 비용</b>관리자 처리에서 정한 파트너 부담액은 ‘중재 판정’ 정산 이벤트(본사 청구 ‘분쟁 조정’)로 파트너 정산에서 뺍니다. 재제작 비용도 귀책에 따라 파트너 부담(−) 또는 본사 부담(+)입니다. 이미 구매 확정·정산된 항목을 재제작해도 새 정산 이벤트는 만들지 않습니다.</p>
         <div class="refs"><span class="ref">C-STL-01</span><span class="ref">C-STATE-01</span><span class="flag dec">D73</span></div></div></div>
       <div class="rule" data-id="P4"><span class="rid">P4</span><div class="rbody">
-        <p><span class="tier std">표준</span><b class="rt">파트너 평가</b>품절 취소, 기한 초과 자동 승인, 무단 지연, 관리자 처리의 파트너 귀책은 MVP에서 기록만 하고 페널티는 2차입니다.</p>
-        <div class="refs"><span class="ref">A-PTN-03</span><span class="ref">C-STATE-01</span></div></div></div>
+        <p><span class="tier std">표준</span><b class="rt">파트너 평가</b>품절 취소(맞춤 항목의 판매자 사정 취소 포함), 기한 초과 자동 승인, 무단 지연, 관리자 처리의 파트너 귀책은 MVP에서 기록만 하고 페널티는 2차입니다. 판매자 사정 취소로 돌려준 디자인비는 본사가 먼저 부담하고 파트너 정산에서 자동으로 빼지 않습니다. 파트너가 부담할 몫이 있으면 관리자 처리에서 파트너 부담액을 넣습니다(P3).</p>
+        <div class="refs"><span class="ref">A-PTN-03</span><span class="ref">C-STATE-01</span><span class="ref">P-ONB-03</span><span class="flag dec">D78</span></div></div></div>
       <div class="rule" data-id="P5"><span class="rid">P5</span><div class="rbody">
         <p><span class="tier std">표준</span><b class="rt">결제 수수료</b>PG 결제 수수료와 지급대행 수수료는 플랫폼이 냅니다. 취소할 때 결제 수수료를 돌려받는지는 아직 모릅니다.</p>
         <div class="refs"><span class="ref">C-PAY-01</span><span class="flag pg">PG-25</span></div></div></div>
@@ -712,7 +706,7 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
 
   <!-- ===== Q ===== -->
   <section id="q" class="sec">
-    <header class="sec-h"><span class="sec-k">Q</span><div><h2>답을 기다리는 것</h2><p class="sec-d">취소·환불과 관련된 법률 자문 질문 17개(그중 L-14·L-15는 결정으로 필요 없어짐), PG 상담 질문 10개, 기획서의 남은 결정 1개(Q6)입니다. 법률 자문은 아직 하나도 답을 받지 않았습니다(0 / 61). 답에 따라 위 규칙이 바뀔 수 있습니다.</p></div></header>
+    <header class="sec-h"><span class="sec-k">Q</span><div><h2>답을 기다리는 것</h2><p class="sec-d">취소·환불과 관련된 법률 자문 질문 17개(그중 L-14·L-15는 결정으로 필요 없어짐), PG 상담 질문 10개(그중 PG-71은 결정으로 필요 없어짐), 기획서의 남은 결정 1개(Q6)입니다. 법률 자문은 아직 하나도 답을 받지 않았습니다(0 / 61). 답에 따라 위 규칙이 바뀔 수 있습니다.</p></div></header>
     <div class="two">
       <div>
         <h3>법률 자문</h3>
@@ -731,12 +725,12 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
               <tr><td class="tid">L-18</td><td>부분 취소 단가 재계산·할인 회수</td><td>D53으로 질문이 바뀜: 구간이 바뀌는 출고 전 부분 취소를 막는 것이 괜찮은지 (G5·K2)</td></tr>
               <tr><td class="tid">L-19</td><td>원본 파일 등 디지털 상품 청약철회</td><td>옵션 환불 (O1·O2)</td></tr>
               <tr><td class="tid">L-20</td><td>로고 제작 단계별 환불</td><td>로고 약관 (O4)</td></tr>
-              <tr><td class="tid">L-21</td><td>반품 비용·환급 기한·지연배상금</td><td>처음 배송비(R3), 지연배상금을 관리자가 금액·부담을 넣어 지급하는 방식 (A5·T14)</td></tr>
+              <tr><td class="tid">L-21</td><td>반품 비용·환급 기한·지연배상금</td><td>처음 배송비·본사 쿠폰으로 0원이 된 묶음의 편도 반품(R3), 지연배상금을 관리자가 금액·부담을 넣어 지급하는 방식 (A5·T14)</td></tr>
               <tr><td class="tid">L-22</td><td>‘관리자 처리’ 조항</td><td>본사가 환불 금액·부담을 정하고 외부 조정을 안내하는 방식, 파트너에게 부담을 지우는 입점 계약 조항 (A3·A6)</td></tr>
               <tr><td class="tid">L-61</td><td>출고 지연을 알리지 않았을 때의 고지와 취소</td><td>지연 판정·고객 알림·바로 취소 시점, 늦게 받은 상품 반품 배송비 (G4). 맞춤 생산 지연은 관리자 처리 (M11)</td></tr>
               <tr><td class="tid">L-23</td><td>멤버십 청약철회·연간 해지 환불식</td><td>해지 환불 계산 (S1·S3)</td></tr>
               <tr><td class="tid">L-24</td><td>정기결제 고지·해지 (다크패턴 규제)</td><td>멤버십 가입·해지 화면</td></tr>
-              <tr><td class="tid">L-25</td><td>쿠폰·포인트 규칙</td><td>혜택 약관, 복원 (K3·S6)</td></tr>
+              <tr><td class="tid">L-25</td><td>쿠폰·포인트 규칙</td><td>혜택 약관, 본사 쿠폰 주문당 1장·복원 (K3·S6)</td></tr>
             </tbody>
           </table>
         </div>
@@ -756,7 +750,7 @@ tr.sub td{background:var(--surface-2);font-weight:700;font-size:13px;color:var(-
               <tr><td class="tid">PG-26</td><td>결제 후 취소 가능 기간 (맞춤은 몇 달 뒤 취소 가능)</td><td>기간 지난 건은 환불 계좌 송금</td></tr>
               <tr><td class="tid">PG-27</td><td>환불 반영 시점·승인 금액 초과 방지·요청 키</td><td>서버 검증만으로 처리</td></tr>
               <tr><td class="tid">PG-70</td><td>원 주문에 연결된 추가 결제의 환불 순서</td><td>승인별로 나눠 계산</td></tr>
-              <tr><td class="tid">PG-71</td><td>결제 뒤 판매자 변경 (차액 환불은 관리자 입력)</td><td>원래 몫 전액 부분 취소 후 정산으로 이전</td></tr>
+              <tr><td class="tid">PG-71</td><td>결제 뒤 판매자 변경 (차액 환불)</td><td>D78로 판매자 변경이 없어져(판매자 사정 취소 → 전액 환불) 질문이 필요 없어짐</td></tr>
               <tr><td class="tid">Q6</td><td>PG 정산 방식 (하위몰형 / 지급대행형)</td><td>부분 환불을 PG가 할지 내부 장부로 할지</td></tr>
             </tbody>
           </table>

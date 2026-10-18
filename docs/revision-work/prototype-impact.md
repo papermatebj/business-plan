@@ -1,4 +1,4 @@
-# 프로토타입 영향 목록 (S7 입력 · S9~S12 입력·결과 · S13 입력 · D73 입력 · 정리 1단계 입력은 맨 아래)
+# 프로토타입 영향 목록 (S7 입력 · S9~S12 입력·결과 · S13 입력 · D73 입력 · 정리 1단계 입력 · 정리 2단계 입력은 맨 아래)
 
 > **확인 거리 기준(2026-10-17 D74):** 명세에 없는 세부(알림 채널·문구·묶음·재알림 시점, 상수 값, 드문 예외)는 개발·프로토타입에서 기본값으로 정해 ‘판단해서 넣은 것’에 적고 확인 거리로 올리지 않는다. 돈·법·고객 권리(고객이 손해를 보거나 권리를 잃는 것)에 걸리는 것만 확인 거리로 올린다.
 
@@ -580,3 +580,26 @@
 흐름: 정책값 화면·알림 표를 보는 system 흐름의 기대값(키 수·영역 이름·채널 표시)을 고치고 전체 흐름 재실행. 금액 흐름은 바뀌지 않아야 합니다.
 
 **S13 입력 정리(정리 1단계 뒤):** 2·5·6·8·10·11·12는 D74~D76으로 확인 거리에서 뺌(2 = 상수·키 나누기는 개발 때, 5 = 멤버십 결제 실패는 필수(돈)라 이메일 그대로, 6·8·12 = 상수 값, 10·11 = 알림 세부). 1(판매 중지 예고 시점)·7(관리자 처리 요청 철회 알림)도 D74(상수 값 · 알림 세부)로 개발 때 기본값 — 페이지의 지금 값(납부 기한 3일 전 · 철회 알림 없음 또는 진행 안내)을 그대로 씀. 9·13·14·15는 D73에서 정리됨. **남은 것:** 3·4(사업자·파트너 상태) → 정리 2단계 6번과 함께, 16(쿠폰으로 0원이 된 무료배송) → 정리 2단계 3번(할인·쿠폰)과 함께, 17(페이지 판단 확인) → 프로토타입 세션에서 확인. 엔진 제안 중 ‘C-NOTI-01 채널 표를 엔진 데이터로’는 위 4번(등급 원칙)으로, ‘정책값 메타에 값 범위’는 키에만.
+
+---
+
+# 정리 2단계 입력 — 할인·쿠폰 · 제작 파트너 변경 · 추가 구성품 · 사업자·파트너 상태를 프로토타입에 반영 (2026-10-18 작성, 프로토타입 세션)
+
+> 문서(결정 `decisions.md` D77~D80 · 명세 C-PRICE-01~03·C-PAY-02·C-STL-01·C-STATE-01~03·C-NOTI-01·U-ORD-02·05·07·U-BEN-01·05·U-MY-01·02·U-MEM-05·07·A-MEM-01·02·A-PTN-01·02·A-ORD-01·02·A-STL-01·A-MKT-01·A-REV-04·A-SYS-03·P-PRD-02·P-ONB-02~04·P-ORD-01·03·P-PRM-02·03·D-REQ-03·04·D-OPT-01·D-PRD-02·`#g-dec4` ‘정리 2단계’ 4행 · 기획서 03·05·07·11·15장 · 요청서 S-04·S-21·S-25·S-26·S-28·09·11장 · 법률 L-01·21·25·26·41·43·T-04·05 · PG PG-05·71 · 정리본 버전 17)는 2026-10-18 ‘정리 2단계’ 세션에서 고쳤습니다. **동작이 바뀝니다** — 엔진 계산·상태·흐름 기대값이 바뀝니다. ‘D73 입력’·‘정리 1단계 입력’과 함께 한 번에 반영합니다. 줄 번호는 조사 때(2026-10-18) 프로토타입 기준입니다.
+
+| # | 무엇 | 명세 | 고칠 곳(조사 때 찾은 것) |
+| --- | --- | --- | --- |
+| 1 | **D77 본사 쿠폰 1장(엔진):** `calcOrder`의 본사 상품 쿠폰·디자인비 쿠폰·배송비 쿠폰을 쿠폰 하나(`coupon {kind}`)로 합침, 할인이 가장 큰 쿠폰 자동 추천, `couponDiscount`·`designCouponDiscount` 합침, 배송비 쿠폰의 ‘본사 쿠폰 후’ 기준 → 파트너 할인 뒤, `steps` 표시. 이용권(`voucher`) 경로는 2차 규칙으로 남기되 쿠폰 칸 밖. `allocate`(안분)는 그대로. `partialCancel` 쿠폰 복원(680~702)·`designShare`(628) 확인. C-PRICE-01 예시 **134,000 → 137,000**(멤버십 배송비 쿠폰 줄 없앰), C-PAY-02 예시 1 수단 안분 750P·50,457 → **730P·50,477**, 2차 1,270P·86,523, 누적 카드 137,000 | C-PRICE-01·02·03 · C-PAY-02 | engine.js `calcOrder`(427–569) · 검사 TC-01·02·07(예시 숫자) · TC-35(D21) · TC-41·42·43(D41·D51) · TC-44(이용권) |
+| 2 | **D77 페이지:** 쿠폰 시트·발행 폼·쿠폰함·주문서 쿠폰 칸을 1장으로, 디자인비 판정 표시에서 ‘50만원 → 이용권 → 쿠폰’ 문구 없앰, 정산 보전 예시(예시 2 냅킨 배송비 = 고객이 낸 4,000) | U-ORD-02 · U-BEN-01 · A-MKT-01 · C-STL-01 | benefit.html · order.html · design.html · settlement.html |
+| 3 | **D77 S13 16번:** 본사 쿠폰으로 0원이 된 배송비 묶음의 단순 변심 전부 반품 = 편도. 프로토타입은 이미 템플릿 0원만 왕복(order.html 478–485) — 엔진 TC-45에 사례만 더함 | C-PRICE-03 | engine.test.js |
+| 4 | **D78 판매자 사정 취소(엔진):** `partnerChange`(792)·내보내기(1306)·상수 `order.partner_change_reply_days`(81)·이벤트 `partner_change_cancel`(1029)·`partner_changed`(1142) 없앰. `partner_change_refund`(1071·1143) → 일반 품절 취소 이벤트(1024)를 맞춤 항목([인쇄 가능] 전 DESIGNING·DESIGN_CONFIRMED, 주체 본사)까지 넓힘. 출고 전 구성품은 `parent_canceled`(1028)로. `printDue` 주석(612) | A-ORD-01 · C-STATE-01·03 · C-PAY-02 | engine.js · TC-39 다시 씀 · TC-45의 D67 부분 확인 |
+| 5 | **D78 페이지:** 고객 ‘판매자 변경 확인 필요’ 카드·[변경 동의]·[전액 환불] → ‘판매자 사정으로 취소’ 안내(전액 환불 + 같은 디자인으로 새로 주문, 디자인비는 새 주문 기준), 관리자 [판매자 사정 취소](일괄), 정산 다시 저장 예시·정지 해제 때 제안 거두기 없앰 | U-MY-01 · A-ORD-01 · A-PTN-02 · C-STL-01 | order.html(장면 pc_lo·pc_mid·pc_hi, 117·173~230·261·344~362·2000~2265) · partner.html(208~233·436~477·858~877·1099~1222·1511·1612~1620·1739~1758·1906~1959·2042) · settlement.html(222~223·684) · system.html(208) · index.html(207·214) |
+| 6 | **D79 추가 구성품:** `addonCascade`(576) → 출고 전 함께 취소만(회수 쪽 지움), 이벤트 `parent_printable`(1022)·`parent_collected`(1034) 없앰, `parent_canceled`(1028) 남김. 맞춤에 붙은 구성품도 파트너 [발주 확인], 출고 지연 때 [바로 취소] | P-PRD-02 · C-STATE-01·02 · P-ORD-01·03 | engine.js · TC-36(541~544)·TC-41(630~633)·TC-42(673) · order.html(`cascadeOf` 443, 1516~1519, 1940~1951, 351~361·2154) · partner.html(1520) |
+| 7 | **D80 사업자 상태:** 상수 `member.biz_closed_grace_days`(engine 157) 없앰, `batch.biz_recheck_schedule` 설명. 회원 BIZ_CHECK·`closure_detected`·`reverified`·`grace_over` → 정기 조회 결과 표시 + 관리자 [사업자 해제]. 파트너 `biz_closed` 자동 정지 없앰, 정지 사유 쌓기(STOP_REASONS·`addStop`·`liveStops`·`relFor`)·사유별 해소 → 정지 사유 + 이력, 해제는 한 번(해제 때 재조회), 심사 자동 반려 → MD 반려, 미수금 정지는 납부 뒤 MD 해제. `taxBlocked`(폐업 세금계산서 막기)는 남김 | U-MEM-05 · A-MEM-02 · P-ONB-04 · A-PTN-02 · A-STL-01 | engine.js · TC-42(655·690 기대값에서 키 뺌) · member.html(121·127~135·721~·780~) · partner.html(150~187·284·1032~1072·1318·1717~1753·1808~1838) · system.html(103·195·215) · index.html(205·214) |
+| 8 | **알림:** 필수 목록 코드 91 → 86(`NOTI_ITEM_PARTNER_CHANGE_PROPOSED`·`NOTI_ITEM_PARTNER_CHANGED`·`NOTI_ITEM_PARTNER_CHANGE_REFUNDED`·`NOTI_ITEM_PARTNER_CHANGE_WITHDRAWN`·`NOTI_PARTNER_CHANGE_WITHDRAWN` 없앰), `NOTI_ITEM_STOCKOUT_CANCELED`를 맞춤 판매자 사정 취소에도 씀, `NOTI_BIZ_STATUS_CHECK` 뜻(폐업 확인 · 관리자 해제) | C-NOTI-01 | system · 알림 미리보기가 있는 페이지 |
+
+흐름(`docs/prototype-work/tools/flows/`): **고치거나 지울 것** — benefit 쪽 `benefit-coupon-slots`(+narrow)·`benefit-design-coupon`·`-block`·`-min`(각 +narrow)·`benefit-voucher-bundle`(+dark·narrow)·`benefit-flow`·`flow2`·`dark`·`narrow`, order 쪽 `order-flow`·`order-claims`·`order-retall`(+narrow), 파트너 변경 `order-partner-change`·`order-partner-change2`·`order-partner-change-narrow`·`partner-change`·`partner-change-narrow`·`partner-change-withdraw`(없애거나 판매자 사정 취소로), 구성품 `order-addon-collect`(+narrow)·`order-addon-paid`(+narrow), 사업자 상태 `member-suspend`(+narrow)·`member-flow`·`member-hq`·`member-late`(재조회 단계)·`partner-stops`(+narrow)·`partner-biz-resumed`(+narrow)·`system-s11`·`system-s12`(+narrow)·`system-policy-security`(상수 정규식). **확인만** — `partner-flow`·`partner-overdue`·`order-addon`(+narrow)·`catalog-addon`(+narrow·dark). 그 뒤 전체 재실행 → 같은 URL 재게시.
+
+**‘D73 입력’ 중 바뀐 것:** 7행(제작 파트너 변경 차액은 관리자 입력)은 D78로 없어짐 — 제작 파트너 변경 자체가 판매자 사정 취소로 바뀜(위 4·5).
+
+**S13 입력 정리(정리 2단계 뒤):** 3(유예 중·정지 중 휴업↔폐업)·10(정지 사유 일부 해소 알림)은 D80으로 없어짐 · 4(새 사업자번호)는 D80으로 답함(회원 [사업자 정보 변경]으로 다시 인증, 파트너 새 입점 + 기존 계약 종료) · 16(쿠폰으로 0원이 된 무료배송)은 D77로 답함(편도). **남은 것은 17(페이지 판단 확인)뿐** → 프로토타입 세션에서 확인.
