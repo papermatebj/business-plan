@@ -669,8 +669,8 @@ section.sec>.callout,section.sec>.states,section.sec>.table-wrap,section.sec>.ca
           <tr><td><b>파트너 프로모션</b></td><td>즉시 할인 MVP, 쿠폰·대상 지정·기획전 2차</td><td><a href="#P-PRM-01">P-PRM-01</a> <a href="#P-PRM-02">P-PRM-02</a></td></tr>
           <tr><td><b>디자인 권리</b></td><td>저작권 회사 보유, 고객은 매장 이용권. 원본 AI 파일 30,000원</td><td><a href="#D-APV-01">D-APV-01</a> <a href="#D-OPT-01">D-OPT-01</a></td></tr>
           <tr><td><b>앱</b></td><td>모바일 우선 웹앱 하나 + Android·iOS 웹뷰 쉘로 MVP에 함께 출시(React Native에서 변경)</td><td><a href="#C-APP-01">C-APP</a></td></tr>
-          <tr><td><b>백엔드·화면 기술</b></td><td>Java 21 + Spring Boot + MySQL 8. 고객 웹앱·파트너 센터·관리자 화면은 Thymeleaf + htmx로 각 실행 앱에서 제공</td><td>전체</td></tr>
-          <tr><td><b>백엔드 실행 구성</b></td><td>core 공유 + web(고객·파트너) / admin(관리자, 사내망) / batch 3개 앱 분리 배포. 협의 룸 메시지는 Redis로 web↔admin 중계</td><td><a href="#D-ROOM-02">D-ROOM-02</a> <a href="#A-SYS-01">A-SYS-01</a></td></tr>
+          <tr><td><b>백엔드·화면 기술</b></td><td>Java 25 + Spring Boot 4.x + MySQL 8. 고객 웹앱·파트너 센터·관리자 화면은 Thymeleaf + htmx로 각 실행 앱에서 제공</td><td>전체</td></tr>
+          <tr><td><b>백엔드 실행 구성</b></td><td>core 공유 + web(고객) / partner(파트너) / admin(관리자, 사내망) / batch 4개 앱 분리 배포. 협의 룸 메시지는 Redis로 web↔admin, 생산 협의 채널은 partner↔admin 중계</td><td><a href="#D-ROOM-02">D-ROOM-02</a> <a href="#A-SYS-01">A-SYS-01</a></td></tr>
           <tr><td><b>오픈 일정</b></td><td>정식 오픈 M13 말(개발 약 10.5개월 + 베타), MVP 범위 유지. 2차 = 오픈 후 3개월, 3차 = 오픈 후 1년 안(3차-1 정액 광고 → 3차-2 CPC)</td><td>전체</td></tr>
           <tr><td><b>개발 체계</b></td><td>1인 개발(외주 없음). 상담은 채널톡, 전자계약은 외부 서비스, 통계는 Metabase로 시작</td><td><a href="#U-CS-02">U-CS-02</a> <a href="#A-ORD-03">A-ORD-03</a></td></tr>
           <tr><td><b>로고 제작 권리</b></td><td>로고는 납품 때 저작재산권을 고객에게 양도(다른 디자인은 회사 보유 원칙 유지)</td><td><a href="#D-OPT-02">D-OPT-02</a></td></tr>
@@ -803,6 +803,8 @@ section.sec>.callout,section.sec>.states,section.sec>.table-wrap,section.sec>.ca
           <tr class="grp"><td colspan="3">출고 기한(2026-10-18, D81·D82) — 주문·재주문·배송 흐름 점검에서 찾은 빈 곳</td></tr>
           <tr><td><b>‘함께 받기’ 일반 상품의 출고 기한</b></td><td>맞춤 항목에 붙은 추가 구성품처럼 맞춤 항목을 따름: 약속 출고일 = 그 묶음에서 처음 [인쇄 가능]된 맞춤 항목의 출고 예정일(지연 안내를 했으면 새 예정일), 그 송장으로 함께 출고. 그 전에는 출고 지연 판정 없음, 넘기면 일반 상품처럼 [바로 취소]. 맞춤 항목이 출고 전에 모두 취소되면 그날 + 출고 소요일로 다시 정해 따로 출고(배송비 더 받지 않음). 예전에는 결제일 + 출고 소요일이라 맞춤을 기다리는 동안 무단 지연으로 판정됐음</td><td><a href="#C-PRICE-03">C-PRICE-03</a> <a href="#P-PRD-04">P-PRD-04</a> <a href="#P-ORD-01">P-ORD-01</a> <a href="#P-ORD-03">P-ORD-03</a></td></tr>
           <tr><td><b>맞춤 출고 예정일은 자동 계산</b></td><td>[인쇄 가능] 확인일 + 그 상품의 제작 리드타임(파트너가 상품마다 넣은 값), 주문 수량이 하루 생산 가능량을 넘으면 ⌈수량 ÷ 하루 생산 가능량⌉ − 1 영업일을 더함. 파트너는 날짜를 넣거나 고치지 않고, 늦출 때는 출고 지연 안내(주문당 1번, 최대 영업일 10일)만 씀. 일찍 보내는 것은 언제든. ‘[인쇄 가능] 때 파트너가 출고 예정일 입력’(D-PRD-02)을 바꿈 — 처음부터 날짜를 길게 넣어 생산 지연 판정을 피하는 길을 막음</td><td><a href="#D-PRD-02">D-PRD-02</a> <a href="#D-PRD-04">D-PRD-04</a> <a href="#P-PRD-05">P-PRD-05</a> <a href="#P-ORD-03">P-ORD-03</a> <a href="#P-ORD-06">P-ORD-06</a></td></tr>
+          <tr><td><b>백엔드 버전·개발 저장소</b></td><td>Java 25 + Spring Boot 4.x(시작 4.1.1), Gradle 멀티 모듈 프로젝트 하나(core·web·admin·batch + core를 쓰지 않는 convert). 기획서의 Java 21 + Spring Boot 3.x를 바꿈 — 3.x는 2026-06에 무료 지원이 끝남. 저장소는 sikup-server · sikup-android · sikup-ios · sikup-infra로 나눔</td><td>전체</td></tr>
+          <tr><td><b>파트너 센터를 따로 실행</b></td><td>파트너 센터를 web에서 떼어 partner 앱으로 따로 배포(partner.sikup.co.kr, 처음 1대). 실행 앱은 web·partner·admin·batch 넷, 파트너 로그인은 고객과 다른 도메인·쿠키·세션. 생산 협의 채널 메시지는 Redis로 partner↔admin 중계. ‘web = 고객 웹앱·파트너 센터’를 바꿈</td><td>전체</td></tr>
         </tbody>
       </table></div>
 
@@ -819,7 +821,7 @@ section.sec>.callout,section.sec>.states,section.sec>.table-wrap,section.sec>.ca
       </table></div>
 
       <h3 class="sub" id="g-impl">구현 기준 (1인 개발)</h3>
-      <div class="callout info"><span class="ic">i</span><div><b>코드는 하나, 실행 앱은 셋</b>입니다. core 모듈을 공유하는 <b>web</b>(고객 웹앱·파트너 센터 — 채널 표시 “웹·앱”, “파트너 센터”), <b>admin</b>(통합 관리자·디자인 스튜디오 — “관리자”, 사내 IP·VPN만), <b>batch</b>(정산·알림·리마인드 — “시스템”)를 따로 배포합니다. 고객·파트너가 올린 디자인 파일의 미리보기 변환은 DB·PG 키 없이 따로 도는 <b>convert</b> 작업이 맡습니다(<a href="#C-FILE-01">C-FILE-01</a>). 화면은 서버 렌더링(Thymeleaf)이고, 앱은 web을 담은 웹뷰 쉘입니다(<a href="#C-APP-01">C-APP</a>). 이 문서의 “웹·앱” 기능은 같은 웹 화면 하나로 만들고, 앱에서만 다른 부분만 표시했습니다. 1인 개발이라 외부 서비스로 대신하는 기능(채널톡 상담, 전자계약, 팝빌 조회 화면, Metabase 통계)은 해당 기능에 “1인 개발 MVP”로 적었습니다.</div></div>
+      <div class="callout info"><span class="ic">i</span><div><b>코드는 하나, 실행 앱은 넷</b>입니다. core 모듈을 공유하는 <b>web</b>(고객 웹앱 — 채널 표시 “웹·앱”), <b>partner</b>(파트너 센터 — “파트너 센터”), <b>admin</b>(통합 관리자·디자인 스튜디오 — “관리자”, 사내 IP·VPN만), <b>batch</b>(정산·알림·리마인드 — “시스템”)를 따로 배포합니다. 고객·파트너가 올린 디자인 파일의 미리보기 변환은 DB·PG 키 없이 따로 도는 <b>convert</b> 작업이 맡습니다(<a href="#C-FILE-01">C-FILE-01</a>). 화면은 서버 렌더링(Thymeleaf)이고, 앱은 web을 담은 웹뷰 쉘입니다(<a href="#C-APP-01">C-APP</a>). 이 문서의 “웹·앱” 기능은 같은 웹 화면 하나로 만들고, 앱에서만 다른 부분만 표시했습니다. 1인 개발이라 외부 서비스로 대신하는 기능(채널톡 상담, 전자계약, 팝빌 조회 화면, Metabase 통계)은 해당 기능에 “1인 개발 MVP”로 적었습니다.</div></div>
       <div class="callout info" id="g-backup"><span class="ic">i</span><div><b>백업·복구 기준(2026-10-14 추가 · 부록 B)</b>. 아래 값은 관리자 정책값이 아니라 인프라 설정이며, 운영하면서 바꿉니다.<br>
         <b>목표</b>: RPO 5분(장애 때 잃을 수 있는 데이터 최대 5분), RTO 4시간(서비스를 되살리기까지 최대 4시간). 한 가용 영역 장애는 RDS Multi-AZ 자동 전환으로 넘깁니다.<br>
         <b>DB 백업</b>: RDS 자동 백업(시점 복구)을 켜고 14일 보관합니다. 지운 개인정보도 백업 안에는 이 기간 동안 남았다가 함께 사라지며, 처리방침에 적습니다(법률 검토 필요).<br>
@@ -6420,7 +6422,7 @@ section.sec>.callout,section.sec>.states,section.sec>.table-wrap,section.sec>.ca
         <li>Sentry·Slack으로 보내는 로그와 알림에서는 개인정보를 지우고 보냅니다. Clarity 세션 녹화는 이름·주소·전화번호·이메일·결제·계좌 입력칸을 가리도록 설정하고(입력값 마스킹), 마이페이지·주문서·관리자 화면에는 붙이지 않습니다.</li>
         <li>파트너가 고객 명단을 따로 내려받거나 마케팅에 쓰는 것을 계약으로 금지합니다.</li>
         <li>1년 동안 이용하지 않은 고객의 개인정보는 별도 스키마·DB 계정·암호화 키를 쓰는 분리 보관 저장소로 옮깁니다(<a href="#U-MEM-09">U-MEM-09</a>, 2차). 탈퇴 회원의 법정 보관 기록은 MVP부터 같은 방식의 분리 스키마에 둡니다(<a href="#u-mem-withdraw">U-MEM-08 탈퇴 처리 표</a>, 법률 자문 전 초안).</li>
-        <li><b>관리자 네트워크 분리:</b> admin 앱은 사내 IP·VPN에서만 열리고, DB 계정도 앱별로 나눕니다(web·admin·batch, Metabase는 읽기 전용 계정, convert는 DB 계정 없음). VPN(Tailscale 등)은 기본으로 고정 출구 IP가 없으므로, 고정 IP를 가진 exit node(작은 EC2 1대)로 나가게 해서 그 IP만 WAF 허용 목록에 넣습니다.</li>
+        <li><b>관리자 네트워크 분리:</b> admin 앱은 사내 IP·VPN에서만 열리고, DB 계정도 앱별로 나눕니다(web·partner·admin·batch, Metabase는 읽기 전용 계정, convert는 DB 계정 없음). VPN(Tailscale 등)은 기본으로 고정 출구 IP가 없으므로, 고정 IP를 가진 exit node(작은 EC2 1대)로 나가게 해서 그 IP만 WAF 허용 목록에 넣습니다.</li>
         <li><b>Metabase(통계, 2026-10-14 추가):</b> DB를 직접 읽으면 화면의 가림·감사 로그·조회 몰림 잠금을 모두 우회하므로, 원본 표가 아니라 개인정보 열(이름·연락처·주소·이메일·계좌·사업자 정보)을 뺀 집계 뷰만 모은 별도 스키마에 연결합니다. Metabase의 읽기 전용 DB 계정은 그 스키마만 볼 수 있습니다. 사용자는 통계·리포트 권한이 있는 관리자 가운데 최고관리자가 지정한 실명 1인만(<a href="#A-SYS-01">A-SYS-01</a>, Metabase 계정은 따로 발급), 관리자와 같은 사내 IP·VPN 안에서만 씁니다. 질의 기록(누가·언제·무슨 질의)을 남겨 접속 기록과 같은 기간 보관합니다(<a href="#A-SYS-02">A-SYS-02</a>). 개인정보가 필요한 분석은 Metabase가 아니라 관리자 화면의 마스킹 해제·다운로드 절차로 합니다.</li>
       </ul></div>
       <div class="fsec"><h5>예외 처리</h5><ul>

@@ -660,7 +660,7 @@ tr.hl td{background:var(--primary-weak)}
 
     <!-- ================= 02 CHANNELS ================= -->
     <section class="sec" id="channels">
-      <div class="sec-head"><div class="sec-num">02</div><h2>채널 구성</h2><p>세 채널이 코드베이스와 데이터베이스를 함께 쓰고, 실행 앱은 web·admin·batch로 나뉩니다.</p></div>
+      <div class="sec-head"><div class="sec-num">02</div><h2>채널 구성</h2><p>세 채널이 코드베이스와 데이터베이스를 함께 쓰고, 실행 앱은 web·partner·admin·batch로 나뉩니다.</p></div>
       <div class="grid g3">
         <div class="card ch">
           <div class="ch-ic" style="background:var(--blue-weak);color:var(--blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg></div>
@@ -1266,7 +1266,7 @@ tr.hl td{background:var(--primary-weak)}
 
     <!-- ================= 08 ARCH ================= -->
     <section class="sec" id="arch">
-      <div class="sec-head"><div class="sec-num">08</div><h2>시스템 아키텍처</h2><p><b>코드와 DB는 하나, 실행 앱은 셋</b>인 모듈러 모놀리스입니다. 공통 도메인(core)을 공유하는 <b>web</b>(고객 웹앱·파트너 센터), <b>admin</b>(통합 관리자), <b>batch</b>(정산·알림)를 따로 배포해, 한쪽을 배포해도 다른 쪽이 멈추지 않습니다. 트랜잭션은 같은 DB 안에서 그대로 묶입니다. 고객이 올린 디자인 파일의 미리보기 변환만은 DB·결제 권한이 없는 <b>convert</b> 작업으로 떼어 따로 실행합니다.</p></div>
+      <div class="sec-head"><div class="sec-num">08</div><h2>시스템 아키텍처</h2><p><b>코드와 DB는 하나, 실행 앱은 넷</b>인 모듈러 모놀리스입니다. 공통 도메인(core)을 공유하는 <b>web</b>(고객 웹앱), <b>partner</b>(파트너 센터), <b>admin</b>(통합 관리자), <b>batch</b>(정산·알림)를 따로 배포해, 한쪽을 배포해도 다른 쪽이 멈추지 않습니다. 트랜잭션은 같은 DB 안에서 그대로 묶입니다. 고객이 올린 디자인 파일의 미리보기 변환만은 DB·결제 권한이 없는 <b>convert</b> 작업으로 떼어 따로 실행합니다.</p></div>
       <div class="arch">
         <div>
           <div class="layer"><div class="lt">CLIENTS</div><div class="boxes">
@@ -1278,14 +1278,15 @@ tr.hl td{background:var(--primary-weak)}
           <div class="layer"><div class="lt">EDGE</div><div class="boxes">
             <div class="box e"><b>CloudFront CDN</b><span>이미지·정적 파일 캐시</span></div>
             <div class="box e"><b>AWS WAF</b><span>봇·공격 차단</span></div>
-            <div class="box e"><b>Route 53 · ALB</b><span>www·partner → web · admin → admin(사내·VPN 고정 IP만)</span></div>
+            <div class="box e"><b>Route 53 · ALB</b><span>www → web · partner → partner · admin → admin(사내·VPN 고정 IP만)</span></div>
           </div></div>
-          <div class="layer"><div class="lt">APPLICATION · ECS FARGATE (서울 리전) · 실행 앱 3개 (core 모듈 공유) + 격리된 변환 작업</div><div class="boxes">
-            <div class="box a"><b>web</b><span>고객 웹앱 + 파트너 센터 · 외부 공개 · 2대 이상 · 협의 룸 WebSocket(고객·파트너 쪽)</span></div>
+          <div class="layer"><div class="lt">APPLICATION · ECS FARGATE (서울 리전) · 실행 앱 4개 (core 모듈 공유) + 격리된 변환 작업</div><div class="boxes">
+            <div class="box a"><b>web</b><span>고객 웹앱 · 외부 공개 · 2대 이상 · 협의 룸 WebSocket(고객 쪽)</span></div>
+            <div class="box a"><b>partner</b><span>파트너 센터 · 외부 공개 · 1~2대 · 생산 협의 채널 WebSocket(파트너 쪽)</span></div>
             <div class="box a"><b>admin</b><span>통합 관리자·디자인 스튜디오 · 사내 IP·VPN만 · 협의 룸 WebSocket(디자이너 쪽)</span></div>
             <div class="box a"><b>batch</b><span>Spring Batch·스케줄러 · 정산·리마인드·알림 · 변환 작업 실행 요청</span></div>
             <div class="box a"><b>convert</b><span>파일 미리보기 변환 전용 · 필요할 때만 실행 · DB·PG 키·S3 권한 없음, 받은 서명 주소로만 읽고 씀</span></div>
-            <div class="box a"><b>core (라이브러리)</b><span>도메인·엔티티·서비스·정책값 · 세 앱이 함께 씀 · 배포 대상 아님</span></div>
+            <div class="box a"><b>core (라이브러리)</b><span>도메인·엔티티·서비스·정책값 · 네 앱이 함께 씀 · 배포 대상 아님</span></div>
           </div></div>
           <div class="layer"><div class="lt">DATA</div><div class="boxes">
             <div class="box d"><b>MySQL 8</b><span>RDS Multi-AZ · 자동 백업 14일(시점 복구) · 주문·정산 · JSON 컬럼</span></div>
@@ -1312,8 +1313,9 @@ tr.hl td{background:var(--primary-weak)}
       <div class="table-wrap"><table class="minw-760">
         <thead><tr><th>모듈</th><th>담당</th><th>접속 주소(예시)</th><th>배포</th></tr></thead>
         <tbody>
-          <tr><td><b>core</b></td><td>엔티티, 도메인 서비스, 리포지토리, 정책값, 외부 연동 클라이언트(PG·알림톡·팝빌)</td><td>-</td><td>라이브러리(세 앱에 포함)</td></tr>
-          <tr><td><b>web</b></td><td>고객 웹앱·웹뷰 앱 화면, 파트너 센터, 고객·파트너용 API, 협의 룸 WebSocket</td><td>www.sikup.co.kr · partner.sikup.co.kr</td><td>독립 배포, 2대 이상(무중단)</td></tr>
+          <tr><td><b>core</b></td><td>엔티티, 도메인 서비스, 리포지토리, 정책값, 외부 연동 클라이언트(PG·알림톡·팝빌)</td><td>-</td><td>라이브러리(네 앱에 포함)</td></tr>
+          <tr><td><b>web</b></td><td>고객 웹앱·웹뷰 앱 화면, 고객용 API, 협의 룸 WebSocket(고객 쪽)</td><td>www.sikup.co.kr</td><td>독립 배포, 2대 이상(무중단)</td></tr>
+          <tr><td><b>partner</b></td><td>파트너 센터, 파트너용 API, 생산 협의 채널 WebSocket(파트너 쪽)</td><td>partner.sikup.co.kr</td><td>독립 배포, 1~2대(1대여도 새 작업을 먼저 띄운 뒤 바꿔 무중단)</td></tr>
           <tr><td><b>admin</b></td><td>통합 관리자, 디자인 스튜디오, 정산 확정·지급, Metabase 연결 계정 관리(개인정보를 뺀 집계 뷰 스키마만 연결, 질의 기록 보관), 배치 감시(마지막 성공 시각 확인)</td><td>admin.sikup.co.kr (사내 IP 또는 VPN만 — 재택·프리랜서는 Tailscale 같은 VPN. VPN은 고정 IP를 가진 exit node로 나가게 해서 그 IP만 허용 목록에 넣음)</td><td>독립 배포, 1~2대</td></tr>
           <tr><td><b>batch</b></td><td>정산 집계, 자동 구매 확정, 무응답 리마인드, 알림 발송, 미리보기 변환 요청·결과 반영. 보류·자동 취소 같은 본 처리는 예고를 보내고 24시간이 지난 건만 하고, 배치마다 마지막 성공 시각을 남김</td><td>외부 접속 없음(업타임 감시로 못 잡으므로 batch 밖에서 마지막 성공 시각을 감시)</td><td>독립 배포, 1대(ShedLock으로 중복 실행 방지)</td></tr>
           <tr><td><b>convert</b></td><td>고객·파트너가 올린 AI·PDF·PSD·SVG를 미리보기 PNG로 변환(Ghostscript·ImageMagick). core를 쓰지 않는 작은 모듈</td><td>외부 접속 없음</td><td>batch가 파일마다 ECS 작업으로 띄움(RunTask), 끝나면 종료</td></tr>
@@ -1325,10 +1327,10 @@ tr.hl td{background:var(--primary-weak)}
           <li><b>마이그레이션(Flyway)은 한 곳에서:</b> 앱 시작 때 돌리지 않고, 배포 파이프라인의 별도 단계에서 한 번만 실행합니다.</li>
           <li><b>core를 바꾸면 영향받는 앱을 함께 배포:</b> CI가 바뀐 모듈을 보고 배포 대상을 고릅니다. web만 바뀌면 web만 배포합니다.</li>
         </ul></div></div>
-        <div class="callout info"><span class="ic">i</span><div><b>두 앱에 걸친 기능</b><ul class="rv-list" style="margin-top:6px">
-          <li><b>디자인 협의 룸:</b> 고객은 web, 디자이너는 admin에 접속합니다. 메시지는 Redis pub/sub로 두 앱 사이에 중계해 실시간으로 주고받습니다.</li>
-          <li><b>로그인·세션 분리:</b> 관리자는 별도 도메인·쿠키·세션을 써서, 고객 쪽 취약점이 관리자 권한으로 번지지 않게 합니다.</li>
-          <li><b>앱 사이 호출 없음:</b> web과 admin은 서로 API를 부르지 않고 같은 DB와 Redis만 봅니다.</li>
+        <div class="callout info"><span class="ic">i</span><div><b>여러 앱에 걸친 기능</b><ul class="rv-list" style="margin-top:6px">
+          <li><b>디자인 협의 룸·생산 협의 채널:</b> 고객은 web, 파트너는 partner, 디자이너는 admin에 접속합니다(협의 룸은 web↔admin, 생산 협의 채널은 partner↔admin). 메시지는 Redis pub/sub로 앱 사이에 중계해 실시간으로 주고받습니다.</li>
+          <li><b>로그인·세션 분리:</b> 관리자는 별도 도메인·쿠키·세션을 써서, 고객 쪽 취약점이 관리자 권한으로 번지지 않게 합니다. 파트너 센터도 partner 앱에서 고객과 다른 도메인·쿠키·세션을 씁니다.</li>
+          <li><b>앱 사이 호출 없음:</b> web·partner·admin은 서로 API를 부르지 않고 같은 DB와 Redis만 봅니다.</li>
         </ul></div></div>
       </div>
       <div class="callout info" style="margin-top:12px"><span class="ic">i</span><div><b>디자인 스튜디오를 admin에 두는 이유 (2026-10-17 확정)</b><ul class="rv-list" style="margin-top:6px">
@@ -1405,15 +1407,15 @@ tr.hl td{background:var(--primary-weak)}
 
     <!-- ================= 09 STACK ================= -->
     <section class="sec" id="stack">
-      <div class="sec-head"><div class="sec-num">09</div><h2>기술 스택 · 구축 방식</h2><p>이미 익숙한 Java/Spring + MySQL을 중심으로, 화면까지 Spring으로 만듭니다(코드 하나·실행 앱 셋). 혼자 개발하고 운영하므로 언어·배포 대상·서버 종류를 최소로 줄였습니다.</p></div>
+      <div class="sec-head"><div class="sec-num">09</div><h2>기술 스택 · 구축 방식</h2><p>이미 익숙한 Java/Spring + MySQL을 중심으로, 화면까지 Spring으로 만듭니다(코드 하나·실행 앱 넷). 혼자 개발하고 운영하므로 언어·배포 대상·서버 종류를 최소로 줄였습니다.</p></div>
       <div class="table-wrap"><table class="minw-760">
         <thead><tr><th>영역</th><th>추천</th><th>이유</th><th>대안</th></tr></thead>
         <tbody>
-          <tr><td><b>백엔드</b></td><td>Java 21 + Spring Boot 3.x, Gradle 멀티 모듈(core·web·admin·batch)</td><td>이미 익숙한 스택. 코드는 하나로 공유하고 실행 앱만 셋으로 나눠 배포를 독립시킴</td><td>Kotlin(나중에 섞어 쓰기 가능)</td></tr>
+          <tr><td><b>백엔드</b></td><td>Java 25 + Spring Boot 4.x, Gradle 멀티 모듈(core·web·partner·admin·batch·convert)</td><td>이미 익숙한 스택. 코드는 하나로 공유하고 실행 앱만 넷으로 나눠 배포를 독립시킴</td><td>Kotlin(나중에 섞어 쓰기 가능)</td></tr>
           <tr><td><b>DB</b></td><td>MySQL 8(RDS Multi-AZ) + JPA·QueryDSL + Flyway</td><td>익숙한 DB. 옵션·인쇄 사양·확정 스냅샷은 JSON 컬럼에 저장</td><td>Aurora MySQL(성장기)</td></tr>
           <tr><td><b>고객 웹앱</b></td><td>Thymeleaf(서버 렌더링) + htmx + Alpine.js + Tailwind(standalone CLI)</td><td>Java만으로 화면까지 한 앱에서 만들 수 있고, 서버 렌더링이라 검색 노출(SEO)이 기본. Node 빌드 없이 운영</td><td>React/Next.js(프론트 개발자를 뽑은 뒤 특정 화면부터)</td></tr>
           <tr><td><b>파트너·관리자</b></td><td>Thymeleaf + Tabler(Bootstrap 기반 무료 관리자 템플릿) + htmx</td><td>표·폼 위주 화면을 이미 만들어진 부품으로 빠르게 조립</td><td>AdminLTE</td></tr>
-          <tr><td><b>디자인 협의 룸</b></td><td>Spring WebSocket(STOMP) + stomp.js + 바닐라 JS</td><td>실시간 메시지·시안 알림. web(고객)과 admin(디자이너), 여러 대 서버 사이 메시지는 Redis pub/sub로 중계</td><td>Sendbird(일정이 부족할 때)</td></tr>
+          <tr><td><b>디자인 협의 룸</b></td><td>Spring WebSocket(STOMP) + stomp.js + 바닐라 JS</td><td>실시간 메시지·시안 알림. web(고객)·partner(파트너)와 admin(디자이너), 여러 대 서버 사이 메시지는 Redis pub/sub로 중계</td><td>Sendbird(일정이 부족할 때)</td></tr>
           <tr><td><b>상품 상세 에디터</b></td><td>Summernote(Bootstrap 5용) + 서버 HTML 정화(jsoup Safelist)</td><td>파트너 센터가 Bootstrap 5 기반(Tabler)이라 잘 맞고 스크립트만 붙이면 됨(MIT). 이미지는 S3로 바로 올리고 Base64 삽입·HTML 직접 편집은 끔. 저장한 HTML은 서버가 허용 태그만 남김</td><td>Toast UI Editor</td></tr>
           <tr><td><b>시안 핀 코멘트</b></td><td>이미지 위 비율 좌표 핀 + 바닐라 JS</td><td>라이브러리 없이 구현 가능. 시안 확대·축소(핀치)는 MVP에 바닐라 JS로 넣고, 시안 위에 그리는 마킹 같은 고급 기능만 2차에 Konva.js</td><td>Fabric.js</td></tr>
           <tr><td><b>앱</b></td><td>웹뷰 쉘: Android(Java 또는 Kotlin, WebView) + iOS(Swift, WKWebView)</td><td>결제 앱 호출·카카오 로그인 가이드가 네이티브 기준으로 가장 잘 정리돼 있음. 쉘은 작아 혼자 만들 수 있음. iOS 빌드에는 Mac 필요</td><td>Capacitor, React Native WebView</td></tr>
@@ -1421,7 +1423,7 @@ tr.hl td{background:var(--primary-weak)}
           <tr><td><b>검색</b></td><td>MVP: MySQL FULLTEXT(ngram) + 한 글자 접두 검색 + 초성 컬럼 + 동의어 테이블 → 2차 이후 조건 충족 시 OpenSearch(nori)</td><td>운영할 서버를 줄이고, 상품이 늘면 옮김(상품 5,000개 이상 또는 검색 품질 문제)</td><td>Algolia</td></tr>
           <tr><td><b>배치·스케줄</b></td><td>Spring Batch + @Scheduled + ShedLock</td><td>정산 집계, 무응답 리마인드, 자동 구매 확정을 서버 여러 대에서도 한 번만 실행</td><td>Quartz</td></tr>
           <tr><td><b>파일</b></td><td>S3 presigned 업로드 + 격리된 convert 작업(Ghostscript·ImageMagick) + batch의 썸네일·WebP(Thumbnailator)</td><td>최대 수백 MB의 디자인 원본. 고객 파일을 여는 AI/PDF 미리보기는 DB·PG 키가 없는 convert에서, 상품 이미지 리사이즈는 batch에서 처리</td><td>CloudConvert API</td></tr>
-          <tr><td><b>인프라</b></td><td>AWS 서울 + ECS Fargate(web·admin·batch 3개 서비스 + 필요할 때만 실행하는 convert 작업) + Terraform</td><td>서버 관리 최소, 앱별로 따로 배포·확장. ALB 1개에서 호스트별로 나눔</td><td>EC2·Lightsail(더 단순하지만 수동 관리가 많음)</td></tr>
+          <tr><td><b>인프라</b></td><td>AWS 서울 + ECS Fargate(web·partner·admin·batch 4개 서비스 + 필요할 때만 실행하는 convert 작업) + Terraform</td><td>서버 관리 최소, 앱별로 따로 배포·확장. ALB 1개에서 호스트별로 나눔</td><td>EC2·Lightsail(더 단순하지만 수동 관리가 많음)</td></tr>
           <tr><td><b>품질·운영</b></td><td>GitHub Actions, Sentry, CloudWatch, JUnit + Testcontainers(MySQL), Playwright(Java)</td><td>혼자서도 배포 자동화, 장애 감지, 결제·환불·정산 계산 회귀 테스트</td><td>Datadog(성장기)</td></tr>
           <tr><td><b>개발 도구</b></td><td>IntelliJ IDEA + AI 코딩 도구</td><td>1인 개발 생산성의 핵심(코드 작성·테스트·리뷰 보조)</td><td>-</td></tr>
         </tbody>
@@ -1447,7 +1449,7 @@ tr.hl td{background:var(--primary-weak)}
       <div class="grid g2">
         <div class="card"><ul class="rv-list" style="margin-top:0">
           <li><b>범위를 먼저 동결합니다.</b> MVP 기능은 기능 명세서의 MVP 목록으로 고정하고, 새 아이디어는 2차 목록에만 적습니다.</li>
-          <li><b>코드는 하나, 실행 앱은 셋.</b> core를 공유하는 web·admin·batch를 따로 배포해 한쪽 배포가 다른 쪽을 막지 않게 합니다.</li>
+          <li><b>코드는 하나, 실행 앱은 넷.</b> core를 공유하는 web·partner·admin·batch를 따로 배포해 한쪽 배포가 다른 쪽을 막지 않게 합니다.</li>
           <li><b>돈 계산은 테스트로 지킵니다.</b> 가격·환불·정산 계산(C-PRICE, C-PAY, C-STL)의 예시 숫자를 그대로 단위 테스트로 만듭니다.</li>
         </ul></div>
         <div class="card"><ul class="rv-list" style="margin-top:0">
@@ -1494,7 +1496,7 @@ tr.hl td{background:var(--primary-weak)}
       <div class="tab-panel" id="sum-growth" hidden>
         <div class="sum-wrap">
           <div class="card"><div class="bars" data-bars='[["클라우드 인프라(AWS)",435,820],["모니터링·분석",150,400],["개발·협업 SaaS",100,160],["디자인 도구·폰트",90,130],["CS·운영 SaaS",50,120],["결제·인증 부가",50,120],["세무·보험·기타",50,100]]'></div></div>
-          <div class="big-total"><div class="k">성장기 월 고정 운영비</div><div class="v">약 925~1,850만원</div><div class="s">알림 발송비는 주문 수에 비례하므로 여기서 빼고 11장 변동비로 셉니다. 알림톡은 발송량이 많아지면 볼륨 할인(최대 약 58%)을 받을 수 있습니다.</div><ul><li>제외: 인건비, 광고비, 거래 비례 비용(PG 수수료, 알림 발송)</li><li>연 1회: 모의해킹 500~2,000만원</li></ul></div>
+          <div class="big-total"><div class="k">성장기 월 고정 운영비</div><div class="v">약 930~1,855만원</div><div class="s">알림 발송비는 주문 수에 비례하므로 여기서 빼고 11장 변동비로 셉니다. 알림톡은 발송량이 많아지면 볼륨 할인(최대 약 58%)을 받을 수 있습니다.</div><ul><li>제외: 인건비, 광고비, 거래 비례 비용(PG 수수료, 알림 발송)</li><li>연 1회: 모의해킹 500~2,000만원</li></ul></div>
         </div>
       </div>
 
@@ -1502,20 +1504,20 @@ tr.hl td{background:var(--primary-weak)}
       <div class="table-wrap"><table class="minw-900">
         <thead><tr><th>항목</th><th>필요 이유</th><th>초기 구성 · 월</th><th>성장기 구성 · 월</th></tr></thead>
         <tbody>
-          <tr><td><b>ECS Fargate</b><span class="sub">web·admin·batch·convert</span></td><td>서버를 직접 관리하지 않고 컨테이너를 실행하며 트래픽에 따라 자동으로 늘어남. 실행 앱 3개를 따로 배포하고, 파일 변환(convert)은 올라올 때만 몇 분 실행(월 몇 달러)</td><td class="price">$90~160<span class="sub">web × 2 + admin × 1~2 + batch × 1</span></td><td class="price">$500~1,000<span class="sub">오토스케일 6~16개</span></td></tr>
+          <tr><td><b>ECS Fargate</b><span class="sub">web·partner·admin·batch·convert</span></td><td>서버를 직접 관리하지 않고 컨테이너를 실행하며 트래픽에 따라 자동으로 늘어남. 실행 앱 4개를 따로 배포하고, 파일 변환(convert)은 올라올 때만 몇 분 실행(월 몇 달러)</td><td class="price">$100~170<span class="sub">web × 2 + partner × 1 + admin × 1~2 + batch × 1</span></td><td class="price">$520~1,040<span class="sub">오토스케일 7~18개</span></td></tr>
           <tr><td><b>RDS MySQL 8</b></td><td>주문·결제·정산 데이터. Multi-AZ로 장애가 나도 자동 전환. 자동 백업(시점 복구) 14일 보관, 목표 RPO 5분·RTO 4시간(명세 00장 백업·복구 기준)</td><td class="price">$150~200<span class="sub">db.t4g.medium Multi-AZ</span></td><td class="price">$700~1,000<span class="sub">r7g.large Multi-AZ + 읽기 복제본</span></td></tr>
           <tr><td><b>ElastiCache (Redis/Valkey)</b></td><td>세션, 캐시, 재고 락, WebSocket 메시지 중계</td><td class="price">$25~50<span class="sub">작은 노드 2개</span></td><td class="price">$350~450</td></tr>
           <tr><td><b>OpenSearch</b></td><td>한글 상품 검색(형태소, 동의어, 필터). MVP는 MySQL 검색으로 대신함</td><td class="price">$0<span class="sub">2차부터</span></td><td class="price">$350~550</td></tr>
           <tr><td><b>S3</b></td><td>상품 이미지, 디자인 원본과 시안, 백업. 버전 관리를 켜고 덮어쓰기·실수 삭제로 생긴 이전 버전은 30일 뒤 만료</td><td class="price">$5~15<span class="sub">약 200GB</span></td><td class="price">$70~120<span class="sub">약 3TB</span></td></tr>
           <tr><td><b>CloudFront + WAF</b></td><td>이미지를 빠르게 전송하고 봇과 공격을 막음</td><td class="price">$15~80<span class="sub">정액 Pro $15 검토</span></td><td class="price">$200~800<span class="sub">정액 Business $200 검토</span></td></tr>
-          <tr><td><b>ALB</b></td><td>로드밸런서, HTTPS 처리. ALB 1개에서 호스트별로 web·admin에 나눠 보냄(관리자 호스트는 WAF IP 허용 목록)</td><td class="price">$25~35</td><td class="price">$60~120</td></tr>
+          <tr><td><b>ALB</b></td><td>로드밸런서, HTTPS 처리. ALB 1개에서 호스트별로 web·partner·admin에 나눠 보냄(관리자 호스트는 WAF IP 허용 목록)</td><td class="price">$25~35</td><td class="price">$60~120</td></tr>
           <tr><td><b>NAT Gateway</b></td><td>내부 서버가 PG·알림톡 API를 호출할 때 필요. 자주 놓치는 비용</td><td class="price">$45~70</td><td class="price">$100~250</td></tr>
           <tr><td><b>SQS(선택)</b></td><td>비동기 작업 큐(처음엔 DB 작업 큐로 대신해도 됨). 이미지 리사이즈는 batch에서 처리</td><td class="price">$5~20</td><td class="price">$50~150</td></tr>
           <tr><td><b>CloudWatch</b></td><td>로그, 지표, 알람</td><td class="price">$20~50</td><td class="price">$150~400</td></tr>
           <tr><td><b>Route 53·ACM·Secrets·ECR·Backup</b></td><td>DNS, SSL 인증서(무료), 비밀키, 이미지 저장소, 백업. 복구한 뒤에는 PG 거래 대사를 한 번 돌리고 파기 기록을 다시 적용한 다음 배치를 켬</td><td class="price">$10~20</td><td class="price">$30~60</td></tr>
           <tr><td><b>SES</b></td><td>이메일 발송(1,000건당 $0.10)</td><td class="price">$1~5</td><td class="price">$10~50</td></tr>
           <tr><td><b>개발 서버(스테이징 겸용)</b></td><td>운영과 다른 AWS 계정에 운영과 같은 구성을 작게 띄움(단일 AZ, 앱마다 1대, 쓸 때만 켬, 08장 환경과 배포 흐름)</td><td class="price">$80~150</td><td class="price">$400~700</td></tr>
-          <tr class="total"><td>AWS 합계</td><td></td><td class="price">$470~860<span class="sub" style="color:inherit">≈ 70~125만원</span></td><td class="price">$3,000~5,650<span class="sub" style="color:inherit">≈ 435~820만원</span></td></tr>
+          <tr class="total"><td>AWS 합계</td><td></td><td class="price">$480~870<span class="sub" style="color:inherit">≈ 70~125만원</span></td><td class="price">$3,020~5,690<span class="sub" style="color:inherit">≈ 440~825만원</span></td></tr>
         </tbody>
       </table></div>
       <div class="grid g2" style="margin-top:12px">
@@ -2046,10 +2048,10 @@ tr.hl td{background:var(--primary-weak)}
           <tr><td><b>파트너 프로모션</b></td><td>즉시 할인 MVP, 쿠폰·대상 고객 지정·기획전 참여 2차</td></tr>
           <tr><td><b>디자인 권리</b></td><td>저작권은 회사, 고객은 매장 이용권. 원본 AI 파일 30,000원</td></tr>
           <tr><td><b>앱</b></td><td>모바일 우선 웹앱 하나 + Android·iOS 웹뷰 쉘로 MVP에 함께 출시(React Native에서 변경)</td></tr>
-          <tr><td><b>백엔드·DB</b></td><td>Java 21 + Spring Boot + MySQL 8. 화면은 Thymeleaf + htmx로 각 실행 앱에서 제공</td></tr>
+          <tr><td><b>백엔드·DB</b></td><td>Java 25 + Spring Boot 4.x + MySQL 8. 화면은 Thymeleaf + htmx로 각 실행 앱에서 제공</td></tr>
           <tr><td><b>개발 체계</b></td><td>1인 개발(본인), 외주 없음. 핵심이 아닌 기능은 외부 서비스·수작업으로 시작</td></tr>
           <tr><td><b>오픈 일정</b></td><td>정식 오픈 M13 말(개발 약 10.5개월 + 베타), MVP 범위는 줄이지 않음</td></tr>
-          <tr><td><b>백엔드 실행 구성</b></td><td>core 모듈 공유 + 실행 앱 3개(web: 고객·파트너 / admin: 관리자, 사내망 / batch) 분리 배포</td></tr>
+          <tr><td><b>백엔드 실행 구성</b></td><td>core 모듈 공유 + 실행 앱 4개(web: 고객 / partner: 파트너 / admin: 관리자, 사내망 / batch) 분리 배포</td></tr>
           <tr><td><b>로고 제작 권리</b></td><td>로고는 납품 때 저작재산권을 고객에게 양도(다른 디자인은 회사 보유 원칙 유지)</td></tr>
           <tr><td><b>원본 파일 이용</b></td><td>원본 AI를 산 고객은 자기 매장용이면 다른 업체에서 인쇄 가능. 재판매·양도 금지</td></tr>
           <tr><td><b>클레임 기한 초과</b></td><td>파트너가 처리 기한(취소 1영업일, 반품 검수 2영업일)을 넘기면 자동 승인(맞춤 생산 지연 등의 관리자 처리 요청은 본사가 처리하므로 제외, 2026-10-17 표준안)</td></tr>
@@ -2235,6 +2237,16 @@ tr.hl td{background:var(--primary-weak)}
         <tbody>
           <tr><td><b>‘함께 받기’ 일반 상품의 출고 기한</b></td><td>맞춤 상품과 같은 날 받기(‘함께 받기’)로 고른 일반 상품은 맞춤 상품에 붙은 추가 구성품처럼 맞춤 상품의 출고 기한을 따르고 같은 송장으로 나갑니다. 맞춤 상품의 인쇄가 시작되기 전에는 출고 지연으로 보지 않고, 맞춤 상품이 출고 전에 모두 취소되면 그날부터 다시 출고 기한을 세어 따로 보냅니다(배송비는 더 받지 않음). 예전에는 결제일부터 영업일 2일로 세어, 맞춤 상품을 기다리는 동안 ‘무단 지연’으로 잘못 판정됐습니다.</td></tr>
           <tr><td><b>맞춤 출고 예정일은 자동 계산</b></td><td>파트너가 [인쇄 가능]을 누른 날 + 그 상품의 제작 리드타임(파트너가 상품마다 넣은 값)으로 시스템이 정하고, 주문 수량이 하루 생산 가능량을 넘으면 그만큼 영업일을 더합니다. 파트너는 날짜를 따로 넣지 않고, 늦출 때는 출고 지연 안내(주문당 1번, 최대 영업일 10일)만 씁니다. 일찍 보내는 것은 언제든 됩니다. 파트너가 처음부터 날짜를 길게 넣어 생산 지연 판정을 피하는 길을 막습니다.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3 class="sub">확정 (2026-10-18 추가 · 개발 시작)</h3>
+      <p class="t2" style="margin-bottom:10px">실제 개발을 시작하며 빈 프로젝트를 만들 때 정한 것입니다. 명세서 00장 ‘<a href="sikup-spec.html#g-dec4">확정된 결정 (2026-10-15~16 추가 · 남은 확인 거리)</a>’ 표에도 있습니다.</p>
+      <div class="table-wrap"><table class="minw-760">
+        <thead><tr><th>항목</th><th>확정 내용</th></tr></thead>
+        <tbody>
+          <tr><td><b>백엔드 버전·개발 저장소</b></td><td>Java 25 + Spring Boot 4.x(시작 4.1.1)로 올립니다. 처음 정한 Spring Boot 3.x는 2026-06에 무료 보안 지원이 끝났습니다. 서버는 지금처럼 프로젝트 하나 안에 core·web·admin·batch·convert 모듈을 두고 실행 앱만 따로 배포합니다. 저장소는 서버·안드로이드·iOS·인프라 넷(sikup-server · sikup-android · sikup-ios · sikup-infra)입니다.</td></tr>
+          <tr><td><b>파트너 센터를 따로 실행</b></td><td>파트너 센터를 고객 웹앱(web)에서 떼어 partner 앱으로 따로 배포합니다(partner.sikup.co.kr). 고객 화면과 파트너 화면의 배포·장애·로그인이 서로 묶이지 않습니다. 실행 앱은 web·partner·admin·batch 넷이 되고, partner는 처음에 작은 서버 1대로 둡니다(늘어나는 비용은 10장 월 고정 운영비의 어림 범위 안).</td></tr>
         </tbody>
       </table></div>
 
